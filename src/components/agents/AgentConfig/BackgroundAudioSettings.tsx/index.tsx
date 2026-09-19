@@ -78,7 +78,7 @@ export default function BackgroundAudioSettings({
     <div className="space-y-4">
       {/* Mode Selection */}
       <div className="space-y-3">
-        <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+        <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
           Background Audio Mode
         </Label>
         <RadioGroup 
@@ -110,7 +110,7 @@ export default function BackgroundAudioSettings({
       {mode === 'single' && (
         <div className="space-y-4 ml-6">
           <div className="space-y-2">
-            <Label className="text-xs text-gray-600 dark:text-gray-400">Audio Type</Label>
+            <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Audio Type</Label>
             <Select 
               value={singleType}
               onValueChange={(value) => onFieldChange('advancedSettings.backgroundAudio.singleType', value)}
@@ -129,7 +129,7 @@ export default function BackgroundAudioSettings({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs text-gray-600 dark:text-gray-400">
+            <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
               Volume (0-100)
             </Label>
             <Input
@@ -145,7 +145,7 @@ export default function BackgroundAudioSettings({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs text-gray-600 dark:text-gray-400">Play Timing</Label>
+            <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Play Timing</Label>
             <RadioGroup 
               value={singleTiming}
               onValueChange={(value: 'thinking' | 'always') => onFieldChange('advancedSettings.backgroundAudio.singleTiming', value)}
@@ -172,10 +172,10 @@ export default function BackgroundAudioSettings({
         <div className="space-y-4 ml-6">
           {/* Ambient Audio */}
           <div className="space-y-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <h4 className="text-xs font-medium text-gray-700 dark:text-gray-300">Ambient Audio</h4>
+            <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Ambient Audio</h4>
             
             <div className="space-y-2">
-              <Label className="text-xs text-gray-600 dark:text-gray-400">Type</Label>
+              <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Type</Label>
               <Select 
                 value={ambientType}
                 onValueChange={(value) => onFieldChange('advancedSettings.backgroundAudio.ambientType', value)}
@@ -194,7 +194,7 @@ export default function BackgroundAudioSettings({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs text-gray-600 dark:text-gray-400">
+              <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                 Volume (0-100)
               </Label>
               <Input
@@ -212,10 +212,10 @@ export default function BackgroundAudioSettings({
 
           {/* Thinking Audio */}
           <div className="space-y-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <h4 className="text-xs font-medium text-gray-700 dark:text-gray-300">Thinking Audio</h4>
+            <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Thinking Audio</h4>
             
             <div className="space-y-2">
-              <Label className="text-xs text-gray-600 dark:text-gray-400">Type</Label>
+              <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Type</Label>
               <Select 
                 value={thinkingType}
                 onValueChange={(value) => onFieldChange('advancedSettings.backgroundAudio.thinkingType', value)}
@@ -234,7 +234,7 @@ export default function BackgroundAudioSettings({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs text-gray-600 dark:text-gray-400">
+              <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                 Volume (0-100)
               </Label>
               <Input
@@ -250,7 +250,7 @@ export default function BackgroundAudioSettings({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs text-gray-600 dark:text-gray-400">
+              <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                 Play Probability (0–100%)
               </Label>
               <Input
@@ -278,7 +278,7 @@ export default function BackgroundAudioSettings({
                 step={1}
                 className="h-8"
               />
-              <p className="text-xs text-gray-400 dark:text-gray-500">
+              <p className="text-[11px] text-gray-400 dark:text-gray-500">
                 How often the thinking sound plays on normal LLM replies (100% = always)
               </p>
             </div>
@@ -290,19 +290,19 @@ export default function BackgroundAudioSettings({
       {mode !== 'disabled' && (
         <div className="space-y-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-medium text-gray-700 dark:text-gray-300">Tool Call Typing Sound</h4>
+            <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Tool Call Typing Sound</h4>
             <Switch
               checked={toolCallTyping}
               onCheckedChange={(checked) => onFieldChange('advancedSettings.backgroundAudio.toolCallTyping', checked)}
             />
           </div>
-          <p className="text-xs text-gray-400 dark:text-gray-500">
+          <p className="text-[11px] text-gray-400 dark:text-gray-500">
             Plays keyboard typing sound whenever the agent runs a tool call (100% always)
           </p>
 
           {toolCallTyping && (
             <div className="space-y-2">
-              <Label className="text-xs text-gray-600 dark:text-gray-400">Volume (0–100)</Label>
+              <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Volume (0–100)</Label>
               <Input
                 type="number"
                 value={localToolCallVolume}

@@ -420,7 +420,7 @@ export function WorkflowChat({
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">AI Workflow Builder</h3>
-              <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight truncate">
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-tight truncate">
                 {formatContextSummary(contextSummary)}
               </p>
             </div>
@@ -620,7 +620,7 @@ function AssistantMessage({
         )
       )}
       {streaming && hasOpenJsonBlock && (
-        <div className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-medium">
+        <div className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[11px] font-medium">
           <Loader2 className="w-3 h-3 animate-spin" />
           Generating workflow...
         </div>
@@ -653,7 +653,7 @@ function AssistantMessageJsonPart({
 }>) {
   if (streaming) {
     return (
-      <div className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-medium">
+      <div className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[11px] font-medium">
         <Loader2 className="w-3 h-3 animate-spin" />
         Parsing workflow...
       </div>
@@ -661,7 +661,7 @@ function AssistantMessageJsonPart({
   }
   if (applyStatus === 'error') {
     return (
-      <div className="flex items-start gap-1.5 py-1 px-2 rounded-md bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-[10px] font-medium">
+      <div className="flex items-start gap-1.5 py-1 px-2 rounded-md bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-[11px] font-medium">
         <span>⚠</span>
         <span>Failed to apply: {applyError || 'invalid workflow JSON'}</span>
       </div>
@@ -674,7 +674,7 @@ function AssistantMessageJsonPart({
   return (
     <div className="space-y-1">
       <div
-        className={`flex items-center gap-1.5 py-1 px-2 rounded-md text-[10px] font-medium ${
+        className={`flex items-center gap-1.5 py-1 px-2 rounded-md text-[11px] font-medium ${
           isSuspiciouslySmall
             ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400'
             : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
@@ -687,7 +687,7 @@ function AssistantMessageJsonPart({
       {/* Same lint the canvas warning badge runs — shown here too since the
           whole point of chat-only building is never opening the canvas. */}
       {applyWarnings && applyWarnings.length > 0 && (
-        <div className="py-1 px-2 rounded-md bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-[10px]">
+        <div className="py-1 px-2 rounded-md bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-[11px]">
           <p className="font-medium mb-0.5">
             ⚠ {applyWarnings.length} warning{applyWarnings.length === 1 ? '' : 's'}:
           </p>

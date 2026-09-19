@@ -16,7 +16,7 @@ export function WorkflowPalette() {
           if (!items.length) return null
           return (
             <div key={category}>
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1.5 px-1">
+              <div className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 px-1">
                 {category}
               </div>
               <div className="space-y-1">

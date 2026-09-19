@@ -165,7 +165,7 @@ export default function PasteConfigDialog({
 
           {/* Actions */}
           <div className="flex items-center justify-between pt-2 border-t">
-            <span className="text-xs text-gray-500">
+            <span className="text-[11px] text-gray-400 dark:text-gray-500">
               {pastedJson.length.toLocaleString()} characters
             </span>
             

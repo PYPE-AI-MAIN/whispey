@@ -80,7 +80,7 @@ export default function AssistantSwitcher({
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           "fixed right-0 top-1/2 -translate-y-1/2 z-50",
-          "bg-white dark:bg-gray-800 border border-l-0 border-gray-200 dark:border-gray-700",
+          "bg-white dark:bg-gray-900 border border-l-0 border-gray-200 dark:border-gray-800",
           "rounded-l-lg shadow-sm hover:shadow-md transition-all duration-200",
           "p-3 pr-2 group",
           "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
@@ -97,7 +97,7 @@ export default function AssistantSwitcher({
         ref={panelRef}
         className={cn(
           "fixed right-0 top-1/2 -translate-y-1/2 z-50",
-          "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700",
+          "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800",
           "rounded-l-lg shadow-xl transition-all duration-300",
           "max-h-[60vh] overflow-hidden flex flex-col",
           isOpen ? "translate-x-0 opacity-100" : "translate-x-full opacity-0 pointer-events-none"
@@ -105,14 +105,14 @@ export default function AssistantSwitcher({
         style={{ width: '280px' }}
       >
         {/* Panel Header */}
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
               Assistants ({assistants.length})
             </h3>
           </div>
           <div className="flex items-center gap-2">
-            <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 px-1.5 text-xs text-gray-600 dark:text-gray-400">
+            <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 px-1.5 text-xs text-gray-600 dark:text-gray-400">
               <Command className="w-3 h-3" />K
             </kbd>
             <button
@@ -180,7 +180,7 @@ export default function AssistantSwitcher({
                       <span>Configured</span>
                     </span>
                   ) : (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                    <span className="text-[11px] text-gray-400 dark:text-gray-500">
                       Not configured
                     </span>
                   )}
@@ -200,7 +200,7 @@ export default function AssistantSwitcher({
         </div>
 
         {/* Add Assistant Button */}
-        <div className="p-2 border-t border-gray-200 dark:border-gray-700">
+        <div className="p-2 border-t border-gray-200 dark:border-gray-800">
           <Button
             onClick={onAssistantCreate}
             variant="ghost"

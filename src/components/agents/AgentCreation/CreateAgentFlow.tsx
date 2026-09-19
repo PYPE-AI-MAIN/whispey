@@ -34,9 +34,9 @@ const PLATFORM_OPTIONS = [
 // Success-view badge styling keyed by creation mode / platform — pulled out of
 // JSX to avoid a nested-ternary pileup in the render.
 function getResultBadgeClass(creationMode: 'single' | 'flow', selectedPlatform: string): string {
-  if (creationMode === 'flow') return 'bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800'
-  if (selectedPlatform === 'vapi') return 'bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 border-teal-200 dark:border-teal-800'
-  if (selectedPlatform === 'pipecat') return 'bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800'
+  if (creationMode === 'flow') return 'bg-gray-50 dark:bg-gray-900/30 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
+  if (selectedPlatform === 'vapi') return 'bg-gray-50 dark:bg-gray-900/30 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
+  if (selectedPlatform === 'pipecat') return 'bg-gray-50 dark:bg-gray-900/30 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
   return 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800'
 }
 
@@ -290,7 +290,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
   if (currentStep === 'creating') {
     return (
       <div className="px-6 py-8 text-center">
-        <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-50 to-teal-50 dark:from-blue-900/20 dark:to-teal-900/20 rounded-2xl flex items-center justify-center border border-gray-100 dark:border-gray-800">
+        <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 rounded-2xl flex items-center justify-center border border-gray-100 dark:border-gray-800">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
         </div>
         
@@ -342,9 +342,9 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
                 {(() => {
-                  if (creationMode === 'flow') return <GitBranch className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                  if (selectedPlatform === 'vapi') return <Zap className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-                  if (selectedPlatform === 'pipecat') return <Radio className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                  if (creationMode === 'flow') return <GitBranch className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  if (selectedPlatform === 'vapi') return <Zap className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  if (selectedPlatform === 'pipecat') return <Radio className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                   return <Activity className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 })()}
               </div>
@@ -413,7 +413,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
       <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
         <div className="flex items-center gap-3 mb-3">
           <div className="text-center flex-1">
-            <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-blue-50 to-teal-50 dark:from-blue-900/20 dark:to-teal-900/20 rounded-xl flex items-center justify-center border border-gray-100 dark:border-gray-800">
+            <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 rounded-xl flex items-center justify-center border border-gray-100 dark:border-gray-800">
               <Activity className="w-6 h-6 text-gray-700 dark:text-gray-300" />
             </div>
             <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
@@ -463,7 +463,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
                 }`}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <GitBranch className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                  <GitBranch className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                   <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Conversation Flow</span>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Multi-step canvas: branches, tools, transfers.</p>

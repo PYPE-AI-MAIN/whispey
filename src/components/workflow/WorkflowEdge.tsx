@@ -48,7 +48,7 @@ function WorkflowEdgeComponent({
         <EdgeLabelRenderer>
           <button
             type="button"
-            className={`nodrag nopan absolute text-[10px] font-medium px-1.5 py-0.5 rounded-md border cursor-pointer whitespace-nowrap ${
+            className={`nodrag nopan absolute text-[11px] font-medium px-1.5 py-0.5 rounded-md border cursor-pointer whitespace-nowrap ${
               selected
                 ? 'bg-blue-600 text-white border-blue-600 z-10'
                 : 'bg-white/95 dark:bg-gray-900/95 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'

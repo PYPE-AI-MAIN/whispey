@@ -149,7 +149,7 @@ function Section({ icon, label, open, onToggle, children }: {
         <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
           <div className="flex items-center gap-2">
             <span className="text-gray-500">{icon}</span>
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</span>
+            <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</span>
           </div>
           <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
         </CollapsibleTrigger>
@@ -215,7 +215,7 @@ export default function PipecatAdvancedSettings({
   const toggle = (s: string) => setOpenSections(prev => ({ ...prev, [s]: !prev[s] }))
 
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg h-full overflow-y-auto">
+    <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm h-full overflow-y-auto">
       <div className="p-4 space-y-3">
 
         <Section
@@ -365,10 +365,10 @@ export default function PipecatAdvancedSettings({
 
         {/* Background Sounds */}
         <Section icon={<Music2Icon className="w-3.5 h-3.5" />} label="Background Sounds" open={openSections.ambient} onToggle={() => toggle('ambient')}>
-          <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Ambient</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">Ambient</p>
           <AmbientSoundSettings ambientSoundEnabled={ambientSoundEnabled} ambientSoundVolume={ambientSoundVolume} onAmbientSoundEnabledChange={onAmbientSoundEnabledChange} onAmbientSoundVolumeChange={onAmbientSoundVolumeChange} />
           <div className="h-px bg-gray-200 dark:bg-gray-700 my-4" />
-          <p className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Keyboard Typing</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">Keyboard Typing</p>
           <KeyboardSoundSettings keyboardSoundEnabled={keyboardSoundEnabled} keyboardSoundVolume={keyboardSoundVolume} keyboardSoundProbability={keyboardSoundProbability} keyboardSoundOnToolCalls={keyboardSoundOnToolCalls} onKeyboardSoundEnabledChange={onKeyboardSoundEnabledChange} onKeyboardSoundVolumeChange={onKeyboardSoundVolumeChange} onKeyboardSoundProbabilityChange={onKeyboardSoundProbabilityChange} onKeyboardSoundOnToolCallsChange={onKeyboardSoundOnToolCallsChange} />
         </Section>
 

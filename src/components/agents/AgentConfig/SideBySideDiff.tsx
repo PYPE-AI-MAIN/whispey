@@ -58,20 +58,20 @@ export function SideBySideDiff({
 
   if (!hasChanges(rows)) {
     return (
-      <div className="flex items-center justify-center py-6 rounded-lg border border-dashed text-xs text-muted-foreground">
+      <div className="flex items-center justify-center py-6 rounded-xl border border-dashed text-xs text-muted-foreground">
         No changes to publish
       </div>
     )
   }
 
   return (
-    <div className="rounded-lg border overflow-hidden font-mono text-xs leading-5">
+    <div className="rounded-xl border overflow-hidden font-mono text-xs leading-5">
       <div className="grid grid-cols-2 border-b bg-muted/20">
         <div className="px-3 py-2 flex items-center gap-2 text-[11px] font-medium text-foreground">
-          {leftLabel} <span className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-[10px]">Main</span>
+          {leftLabel} <span className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-[11px]">Main</span>
         </div>
         <div className="px-3 py-2 flex items-center gap-2 text-[11px] font-medium text-foreground border-l">
-          {rightLabel} <span className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-[10px]">Main</span>
+          {rightLabel} <span className="px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-[11px]">Main</span>
         </div>
       </div>
 

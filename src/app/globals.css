@@ -69,6 +69,19 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
+  /* the analytics charts' 8-slot categorical palette — dataviz skill's
+     validated default (references/palette.md). Fixed hue order, never
+     cycled: worst adjacent CVD ΔE 9.1 light / 8.4 dark, clears the >=8
+     target — the previous ad-hoc rainbow (blue/violet/emerald/amber/red/
+     cyan/pink/lime, all near-max saturation) was never checked for this. */
+  --analytics-series-1: #2a78d6;
+  --analytics-series-2: #eb6834;
+  --analytics-series-3: #1baf7a;
+  --analytics-series-4: #eda100;
+  --analytics-series-5: #e87ba4;
+  --analytics-series-6: #008300;
+  --analytics-series-7: #4a3aa7;
+  --analytics-series-8: #e34948;
   --sidebar: oklch(0.985 0.001 106.423);
   --sidebar-foreground: oklch(0.147 0.004 49.25);
   --sidebar-primary: oklch(0.216 0.006 56.043);
@@ -103,6 +116,15 @@
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
+  /* same 8 hues, stepped for the dark surface — not a separate palette */
+  --analytics-series-1: #3987e5;
+  --analytics-series-2: #d95926;
+  --analytics-series-3: #199e70;
+  --analytics-series-4: #c98500;
+  --analytics-series-5: #d55181;
+  --analytics-series-6: #008300;
+  --analytics-series-7: #9085e9;
+  --analytics-series-8: #e66767;
   --sidebar: oklch(0.216 0.006 56.043);
   --sidebar-foreground: oklch(0.985 0.001 106.423);
   --sidebar-primary: oklch(0.488 0.243 264.376);

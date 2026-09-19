@@ -169,7 +169,7 @@ export default function OrganizationSwitcher({
         <>
           {displayOrg ? (
             <>
-              <div className="w-6 h-6 bg-gradient-to-br from-indigo-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-[10px] flex-shrink-0">
+              <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-[10px] flex-shrink-0">
                 {getOrganizationInitials(displayOrg.name)}
               </div>
               {(!isCollapsed || isMobile) && (
@@ -260,18 +260,18 @@ export default function OrganizationSwitcher({
                           key={selectedOrg.id}
                           value={selectedOrg.name}
                           onSelect={() => handleSelect(selectedOrg.id)}
-                          className="cursor-pointer px-2 py-2 rounded-md transition-colors bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800"
+                          className="cursor-pointer px-2 py-2 rounded-md transition-colors bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800"
                         >
                           <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <div className="w-6 h-6 bg-gradient-to-br from-indigo-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-[10px] flex-shrink-0">
+                            <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-[10px] flex-shrink-0">
                               {getOrganizationInitials(selectedOrg.name)}
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5 mb-0.5">
-                                <span className="font-medium text-xs truncate text-indigo-900 dark:text-indigo-100">
+                                <span className="font-medium text-xs truncate text-blue-900 dark:text-blue-100">
                                   {selectedOrg.name}
                                 </span>
-                                <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 flex-shrink-0" />
+                                <Check className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <Badge 
@@ -311,7 +311,7 @@ export default function OrganizationSwitcher({
                             className="cursor-pointer px-2 py-2 rounded-md transition-colors aria-selected:bg-gray-50 dark:aria-selected:bg-gray-800 border border-transparent"
                           >
                             <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <div className="w-6 h-6 bg-gradient-to-br from-indigo-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-[10px] flex-shrink-0">
+                              <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-[10px] flex-shrink-0">
                                 {getOrganizationInitials(org.name)}
                               </div>
                               <div className="flex-1 min-w-0">

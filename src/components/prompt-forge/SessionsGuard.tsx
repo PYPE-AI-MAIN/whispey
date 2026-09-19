@@ -19,7 +19,7 @@ export function SessionsGuard() {
   if (!canAccessPromptForge) {
     return (
       <div className="h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-10 max-w-sm w-full text-center mx-4">
+        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-10 max-w-sm w-full text-center mx-4">
           <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center mx-auto mb-4">
             <Lock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
           </div>

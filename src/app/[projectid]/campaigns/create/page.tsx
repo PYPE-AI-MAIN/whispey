@@ -555,7 +555,11 @@ function CreateCampaign() {
         onSubmit={handleSubmit}
       >
         {({ values, setFieldValue, isSubmitting, dirty, isValid, handleSubmit: formikHandleSubmit }) => (
-          <div className="flex-1 overflow-hidden flex">
+          // stacks on phone: the recipients preview is a fixed-width data table
+          // by nature (arbitrary CSV columns), and a flex ROW at 375px with
+          // overflow-hidden was clipping it — and squeezing the form panel —
+          // rather than stacking
+          <div className="flex-1 overflow-hidden flex flex-col sm:flex-row">
             {/* Left Panel - Form */}
             <div className="flex-1 overflow-y-auto">
               <div className="max-w-2xl mx-auto p-4 space-y-4">

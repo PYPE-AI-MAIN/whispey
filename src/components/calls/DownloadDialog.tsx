@@ -238,7 +238,7 @@ export default function DownloadDialog({
 
         <div className="space-y-4">
           {/* Date range + timezone */}
-          <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3 space-y-3">
+          <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-3 space-y-3">
             <div>
               <span className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 block">Date range</span>
               <div className="flex items-center gap-2">
@@ -284,7 +284,7 @@ export default function DownloadDialog({
 
           {/* Row count estimate — prominent callout, amber when large */}
           <div
-            className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2.5 ${
+            className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 ${
               isLarge
                 ? 'border-amber-300 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-400/10'
                 : 'border-gray-200 dark:border-gray-800'
@@ -313,7 +313,7 @@ export default function DownloadDialog({
             <CollapsibleTrigger asChild>
               <button
                 type="button"
-                className="w-full flex items-center justify-between rounded-lg border border-gray-200 dark:border-gray-800 px-3 py-2 text-left"
+                className="w-full flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-800 px-3 py-2 text-left"
               >
                 <span className="text-xs font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
                   Columns
@@ -325,7 +325,7 @@ export default function DownloadDialog({
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="rounded-lg border border-t-0 border-gray-200 dark:border-gray-800 rounded-t-none max-h-48 overflow-y-auto p-2 space-y-1 mt-[-1px]">
+              <div className="rounded-xl border border-t-0 border-gray-200 dark:border-gray-800 rounded-t-none max-h-48 overflow-y-auto p-2 space-y-1 mt-[-1px]">
                 {allowedBasic.map(col => (
                   <CheckboxRow
                     key={col.key}

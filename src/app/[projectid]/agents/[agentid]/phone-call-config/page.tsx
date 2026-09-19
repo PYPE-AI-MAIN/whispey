@@ -128,6 +128,260 @@ function touchExistingCall(existing: CallRecord, status: string): CallRecord {
   }
 }
 
+type AgentStatusInfo = {
+  containerClass: string
+  dotClass: string
+  label: string
+  labelClass: string
+}
+
+// Same color/label decision the badge used to make inline via stacked ternaries —
+// pulled out as a plain lookup so the component itself has no branching left.
+function getAgentStatusInfo(
+  agent: Agent,
+  runningStatus: { isRunning: boolean; agentName: string | null },
+  isCheckingRunning: boolean,
+): AgentStatusInfo {
+  if (isCheckingRunning) {
+    return {
+      containerClass: 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700',
+      dotClass: '',
+      label: 'Checking...',
+      labelClass: 'text-xs font-medium text-gray-700 dark:text-gray-400',
+    }
+  }
+  const isPypeAgent = agent.agent_type === 'pype_agent'
+  const isRunning = isPypeAgent ? runningStatus.isRunning : agent.is_active
+  if (isRunning) {
+    return {
+      containerClass: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
+      dotClass: 'bg-green-500 rounded-full animate-pulse',
+      label: isPypeAgent ? 'Running' : 'Active',
+      labelClass: 'text-xs font-semibold text-green-700 dark:text-green-400',
+    }
+  }
+  if (isPypeAgent) {
+    return {
+      containerClass: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
+      dotClass: 'bg-red-500 rounded-full',
+      label: 'Stopped',
+      labelClass: 'text-xs font-semibold text-red-700 dark:text-red-400',
+    }
+  }
+  return {
+    containerClass: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800',
+    dotClass: 'bg-yellow-500 rounded-full',
+    label: 'Inactive',
+    labelClass: 'text-xs font-semibold text-yellow-700 dark:text-yellow-400',
+  }
+}
+
+// Running/active indicator pill — its color and label depend on agent type and live status.
+function AgentStatusBadge({ agent, runningStatus, isCheckingRunning }: Readonly<{
+  agent: Agent
+  runningStatus: { isRunning: boolean; agentName: string | null }
+  isCheckingRunning: boolean
+}>) {
+  const info = getAgentStatusInfo(agent, runningStatus, isCheckingRunning)
+  return (
+    <div className="mb-5">
+      <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${info.containerClass}`}>
+        {isCheckingRunning
+          ? <Loader2 className="w-3 h-3 animate-spin text-gray-500" />
+          : <div className={`w-1.5 h-1.5 ${info.dotClass}`} />}
+        <span className={info.labelClass}>{info.label}</span>
+      </div>
+    </div>
+  )
+}
+
+// Number-pad keys shown when "Calling To" is toggled into dialer mode.
+function DialerPad({ buttons, phoneNumber, onDigit, onBackspace }: Readonly<{
+  buttons: { digit: string; letters: string }[]
+  phoneNumber: string
+  onDigit: (digit: string) => void
+  onBackspace: () => void
+}>) {
+  return (
+    <div className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-800/50 dark:to-gray-900/50 rounded-xl p-3 border border-gray-200 dark:border-gray-700 shadow-inner">
+      <div className="grid grid-cols-3 gap-2">
+        {buttons.map(({ digit, letters }) => (
+          <button key={digit} onClick={() => onDigit(digit)} className="group relative h-11 bg-white dark:bg-gray-800 hover:bg-gradient-to-br hover:from-blue-50 hover:to-blue-100 dark:hover:from-blue-900/30 dark:hover:to-blue-800/30 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-200 shadow-sm hover:shadow-md active:scale-95">
+            <div className="flex flex-col items-center justify-center h-full">
+              <span className="text-lg font-bold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{digit}</span>
+              {letters && <span className="text-[8px] font-medium text-gray-500 dark:text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 tracking-wide">{letters}</span>}
+            </div>
+          </button>
+        ))}
+      </div>
+      <button onClick={onBackspace} disabled={!phoneNumber} className="mt-2 w-full h-10 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 hover:from-red-100 hover:to-red-200 dark:hover:from-red-900/30 dark:hover:to-red-800/30 rounded-lg border border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center justify-center gap-2 shadow-sm hover:shadow-md">
+        <Delete className="w-4 h-4 text-red-600 dark:text-red-400" /><span className="text-xs font-semibold text-red-700 dark:text-red-400">Backspace</span>
+      </button>
+    </div>
+  )
+}
+
+type DispatchVariable = { id: string; key: string; value: string }
+
+// Pulled out of the onChange/onClick handlers below: they were closures nested
+// 5 deep (component > map > handler > setVariables callback > inner map/filter).
+// These take the array + index as plain params instead, dropping one level.
+function updateVariableAt(variables: DispatchVariable[], index: number, field: 'key' | 'value', value: string): DispatchVariable[] {
+  return variables.map((v, j) => (j === index ? { ...v, [field]: value } : v))
+}
+
+function removeVariableAt(variables: DispatchVariable[], index: number): DispatchVariable[] {
+  return variables.filter((_, j) => j !== index)
+}
+
+// The {{key}} → value list sent along with the dispatch request.
+function VariablesEditor({ variables, setVariables }: Readonly<{
+  variables: DispatchVariable[]
+  setVariables: React.Dispatch<React.SetStateAction<DispatchVariable[]>>
+}>) {
+  return (
+    <fieldset className="border-0 p-0 m-0">
+      <legend className="w-full flex items-center justify-between mb-2 p-0 text-sm font-semibold text-gray-700 dark:text-gray-300">
+        <span>Variables <span className="text-xs font-normal text-gray-400">(optional)</span></span>
+        <button
+          onClick={() => setVariables(prev => [...prev, { id: crypto.randomUUID(), key: '', value: '' }])}
+          className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+        >
+          <Plus className="w-3.5 h-3.5" /> Add Variable
+        </button>
+      </legend>
+      {variables.length === 0 ? (
+        <p className="text-xs text-gray-400 dark:text-gray-500 italic">
+          No variables. Use <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{'{{key}}'}</code> in your agent prompt.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {variables.map((v, i) => (
+            <div key={v.id} className="flex gap-2 items-center">
+              <Input
+                placeholder="key"
+                value={v.key}
+                onChange={e => setVariables(prev => updateVariableAt(prev, i, 'key', e.target.value))}
+                className="h-8 text-xs font-mono w-[35%] bg-white dark:bg-gray-800"
+              />
+              <Input
+                placeholder="value"
+                value={v.value}
+                onChange={e => setVariables(prev => updateVariableAt(prev, i, 'value', e.target.value))}
+                className="h-8 text-xs flex-1 bg-white dark:bg-gray-800"
+              />
+              <button
+                onClick={() => setVariables(prev => removeVariableAt(prev, i))}
+                className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </fieldset>
+  )
+}
+
+// One row in the call-history list — redial target, inline rename, delete.
+function CallHistoryItem({ call, isSelected, isEditing, editingName, setEditingName, onSelect, onStartEdit, onSaveEdit, onCancelEdit, onNameKeyDown, onDelete }: Readonly<{
+  call: CallRecord
+  isSelected: boolean
+  isEditing: boolean
+  editingName: string
+  setEditingName: (name: string) => void
+  onSelect: (call: CallRecord) => void
+  onStartEdit: (callId: string, currentName: string, e: React.MouseEvent) => void
+  onSaveEdit: (callId: string, e?: React.MouseEvent) => void
+  onCancelEdit: (e?: React.MouseEvent) => void
+  onNameKeyDown: (callId: string, e: React.KeyboardEvent) => void
+  onDelete: (callId: string, e: React.MouseEvent) => void
+}>) {
+  return (
+    <div className={`group relative p-5 rounded-xl border transition-all ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 shadow-md' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md'}`}>
+      {/* Real button covering the whole card for "click anywhere to redial". A <button> can't
+          legally contain the delete/edit buttons below it (nested buttons get mangled by the
+          HTML parser on SSR), so instead it sits as a plain sibling and the visible content on
+          top opts out of hit-testing (pointer-events-none) except for its own real buttons/input
+          (pointer-events-auto), which keeps this whole card's "click anywhere selects it" behavior
+          intact while making delete/edit/save/cancel independently clickable. */}
+      <button
+        type="button"
+        onClick={() => onSelect(call)}
+        aria-label={`Select call to ${call.formatted_number}`}
+        className="absolute inset-0 w-full h-full rounded-xl cursor-pointer bg-transparent border-0 p-0"
+      />
+      <button onClick={(e) => onDelete(call.id, e)} className={`absolute top-4 right-4 transition-opacity p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg z-10 ${isEditing ? 'opacity-0 pointer-events-none' : 'opacity-0 group-hover:opacity-100'}`}>
+        <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
+      </button>
+      <div className="relative flex items-start gap-4 pointer-events-none">
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-blue-100 dark:bg-blue-800/30' : 'bg-gray-100 dark:bg-gray-700'}`}>
+          <Phone className={`w-6 h-6 ${isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-2 pr-8">
+            {isEditing ? (
+              <div className="flex items-center gap-1 flex-1 pointer-events-auto">
+                <Input value={editingName || ''} onChange={(e) => setEditingName(e.target.value)} onKeyDown={(e) => onNameKeyDown(call.id, e)} className="h-7 text-sm font-semibold bg-white dark:bg-gray-700 border-blue-300 dark:border-blue-600" placeholder="Enter name" autoFocus />
+                <button onClick={(e) => onSaveEdit(call.id, e)} className="p-1 hover:bg-green-100 dark:hover:bg-green-900/30 rounded"><Check className="w-4 h-4 text-green-600 dark:text-green-400" /></button>
+                <button onClick={(e) => onCancelEdit(e)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"><X className="w-4 h-4 text-red-600 dark:text-red-400" /></button>
+              </div>
+            ) : (
+              <>
+                <span className="text-base font-semibold text-gray-900 dark:text-gray-100">{call.name}{call.call_count && call.call_count > 1 && <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">({call.call_count})</span>}</span>
+                <button onClick={(e) => onStartEdit(call.id, call.name, e)} className="p-1 opacity-0 group-hover:opacity-100 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-opacity pointer-events-auto"><Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /></button>
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-base font-mono font-medium text-gray-700 dark:text-gray-300">{call.formatted_number}</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 font-medium">{COUNTRIES.find(c => c.code === call.country_code)?.flag}</span>
+          </div>
+          <div className="space-y-1 text-sm">
+            <div className="flex items-center gap-2"><span className="text-gray-500 dark:text-gray-400">From:</span><span className="font-mono text-xs text-gray-700 dark:text-gray-300">{call.from_phone_display}</span></div>
+          </div>
+          <div className="flex items-center gap-2 mt-3 text-xs text-gray-500 dark:text-gray-400">
+            <Clock className="w-3.5 h-3.5" /><span>{formatRelativeTime(call.timestamp)}</span>
+            <span className="px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium">{call.status}</span>
+          </div>
+        </div>
+        {isSelected && (
+          <div className="flex-shrink-0 mr-8"><div className="w-8 h-8 bg-blue-600 dark:bg-blue-500 rounded-full flex items-center justify-center"><RotateCcw className="w-4 h-4 text-white" /></div></div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Relative "Xm ago" label for a call-history timestamp.
+function formatRelativeTime(timestamp: number): string {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000)
+  if (seconds < 60) return 'Just now'
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
+  return `${Math.floor(seconds / 86400)}d ago`
+}
+
+// Whether the agent needs starting before it can take dispatched calls.
+function shouldShowNotRunningWarning(agent: Agent, runningStatus: { isRunning: boolean; agentName: string | null }, isCheckingRunning: boolean): boolean {
+  return agent.agent_type === 'pype_agent' && !runningStatus.isRunning && !isCheckingRunning
+}
+
+// All the reasons the "Dispatch Call" button should be disabled, combined.
+function isDispatchDisabled(
+  agent: Agent,
+  runningStatus: { isRunning: boolean; agentName: string | null },
+  isCheckingRunning: boolean,
+  isLoading: boolean,
+  phoneNumber: string,
+  fromPhoneNumberId: string,
+): boolean {
+  if (isLoading || !phoneNumber.trim() || !fromPhoneNumberId.trim() || isCheckingRunning) return true
+  if (agent.agent_type === 'pype_agent') return !runningStatus.isRunning
+  return !agent.is_active
+}
+
 export default function PhoneCallConfig() {
   const params = useParams()
   const router = useRouter()
@@ -168,7 +422,7 @@ export default function PhoneCallConfig() {
   const [fromPhoneNumberId, setFromPhoneNumberId] = useState('')
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([])
   const [loadingPhoneNumbers, setLoadingPhoneNumbers] = useState(true)
-  const [variables, setVariables] = useState<{ key: string; value: string }[]>([])
+  const [variables, setVariables] = useState<DispatchVariable[]>([])
 
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingAgent, setIsLoadingAgent] = useState(true)
@@ -406,13 +660,6 @@ export default function PhoneCallConfig() {
     if (selectedCallId === callId) { setPhoneNumber(''); setFromPhoneNumberId(''); setSelectedCallId(null) }
   }
   const clearAllHistory = () => { setCallHistory([]); localStorage.removeItem(`${STORAGE_KEY}_${agentId}`); setPhoneNumber(''); setFromPhoneNumberId(''); setSelectedCallId(null) }
-  const formatRelativeTime = (timestamp: number) => {
-    const seconds = Math.floor((Date.now() - timestamp) / 1000)
-    if (seconds < 60) return 'Just now'
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-    return `${Math.floor(seconds / 86400)}d ago`
-  }
 
   if (redirectLoading || isLoadingAgent) {
     return (
@@ -447,9 +694,12 @@ export default function PhoneCallConfig() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900">
-      <div className="flex h-screen">
-        <div className="w-[45%] border-r border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl overflow-hidden flex flex-col">
-          <div className="p-8 flex-1 flex flex-col overflow-y-auto">
+      {/* stacks on phone: a fixed 45%/55% split left each panel under 200px
+          wide on a real phone screen — this is a dialer, not a data table,
+          so half-width panels are unusable rather than just cramped */}
+      <div className="flex flex-col sm:flex-row h-screen">
+        <div className="w-full sm:w-[45%] h-1/2 sm:h-auto border-r-0 sm:border-r border-b sm:border-b-0 border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl overflow-hidden flex flex-col">
+          <div className="p-4 sm:p-8 flex-1 flex flex-col overflow-y-auto">
             <div className="mb-6 flex items-center gap-4">
               <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-xl shadow-lg shadow-blue-500/20">
                 <Phone className="w-6 h-6 text-white" />
@@ -460,24 +710,7 @@ export default function PhoneCallConfig() {
               </div>
             </div>
 
-            <div className="mb-5">
-              <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${
-                isCheckingRunning ? 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700'
-                : agent.agent_type === 'pype_agent'
-                  ? runningStatus.isRunning ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                  : agent.is_active ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
-              }`}>
-                {isCheckingRunning ? (<><Loader2 className="w-3 h-3 animate-spin text-gray-500" /><span className="text-xs font-medium text-gray-700 dark:text-gray-400">Checking...</span></>)
-                : agent.agent_type === 'pype_agent' ? (
-                  runningStatus.isRunning
-                    ? (<><div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /><span className="text-xs font-semibold text-green-700 dark:text-green-400">Running</span></>)
-                    : (<><div className="w-1.5 h-1.5 bg-red-500 rounded-full" /><span className="text-xs font-semibold text-red-700 dark:text-red-400">Stopped</span></>)
-                ) : agent.is_active
-                  ? (<><div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /><span className="text-xs font-semibold text-green-700 dark:text-green-400">Active</span></>)
-                  : (<><div className="w-1.5 h-1.5 bg-yellow-500 rounded-full" /><span className="text-xs font-semibold text-yellow-700 dark:text-yellow-400">Inactive</span></>)
-                }
-              </div>
-            </div>
+            <AgentStatusBadge agent={agent} runningStatus={runningStatus} isCheckingRunning={isCheckingRunning} />
 
             <div className="space-y-5 flex-1 w-full">
               <div className='w-full'>
@@ -504,7 +737,7 @@ export default function PhoneCallConfig() {
                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                   <div className="flex gap-4 items-center">
                     Calling To <span className="text-red-500">*</span>
-                    <button onClick={() => setShowDialer(!showDialer)} className={`h-7 w-7 flex items-center justify-center rounded-xl border transition-all duration-200 active:scale-95 ${showDialer ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-blue-300 dark:hover:border-blue-600 hover:text-blue-600 dark:hover:text-blue-400'}`} title={showDialer ? 'Hide dialer' : 'Show dialer'}>
+                    <button onClick={() => setShowDialer(!showDialer)} className={`h-7 w-7 flex items-center justify-center rounded-md border transition-all duration-200 active:scale-95 ${showDialer ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-blue-300 dark:hover:border-blue-600 hover:text-blue-600 dark:hover:text-blue-400'}`} title={showDialer ? 'Hide dialer' : 'Show dialer'}>
                       {showDialer ? <PhoneOff className="w-4 h-4" /> : <PhoneCall className="w-4 h-4" />}
                     </button>
                   </div>
@@ -527,67 +760,11 @@ export default function PhoneCallConfig() {
               </div>
 
               {showDialer && (
-                <div className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-800/50 dark:to-gray-900/50 rounded-xl p-3 border border-gray-200 dark:border-gray-700 shadow-inner">
-                  <div className="grid grid-cols-3 gap-2">
-                    {dialerButtons.map(({ digit, letters }) => (
-                      <button key={digit} onClick={() => handleDialerClick(digit)} className="group relative h-11 bg-white dark:bg-gray-800 hover:bg-gradient-to-br hover:from-blue-50 hover:to-blue-100 dark:hover:from-blue-900/30 dark:hover:to-blue-800/30 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-200 shadow-sm hover:shadow-md active:scale-95">
-                        <div className="flex flex-col items-center justify-center h-full">
-                          <span className="text-lg font-bold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{digit}</span>
-                          {letters && <span className="text-[8px] font-medium text-gray-500 dark:text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 tracking-wide">{letters}</span>}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                  <button onClick={handleDialerBackspace} disabled={!phoneNumber} className="mt-2 w-full h-10 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 hover:from-red-100 hover:to-red-200 dark:hover:from-red-900/30 dark:hover:to-red-800/30 rounded-lg border border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center justify-center gap-2 shadow-sm hover:shadow-md">
-                    <Delete className="w-4 h-4 text-red-600 dark:text-red-400" /><span className="text-xs font-semibold text-red-700 dark:text-red-400">Backspace</span>
-                  </button>
-                </div>
+                <DialerPad buttons={dialerButtons} phoneNumber={phoneNumber} onDigit={handleDialerClick} onBackspace={handleDialerBackspace} />
               )}
 
               {/* Variables */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Variables <span className="text-xs font-normal text-gray-400">(optional)</span>
-                  </label>
-                  <button
-                    onClick={() => setVariables(prev => [...prev, { key: '', value: '' }])}
-                    className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Add Variable
-                  </button>
-                </div>
-                {variables.length === 0 ? (
-                  <p className="text-xs text-gray-400 dark:text-gray-500 italic">
-                    No variables. Use <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{'{{key}}'}</code> in your agent prompt.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {variables.map((v, i) => (
-                      <div key={i} className="flex gap-2 items-center">
-                        <Input
-                          placeholder="key"
-                          value={v.key}
-                          onChange={e => setVariables(prev => prev.map((x, j) => j === i ? { ...x, key: e.target.value } : x))}
-                          className="h-8 text-xs font-mono w-[35%] bg-white dark:bg-gray-800"
-                        />
-                        <Input
-                          placeholder="value"
-                          value={v.value}
-                          onChange={e => setVariables(prev => prev.map((x, j) => j === i ? { ...x, value: e.target.value } : x))}
-                          className="h-8 text-xs flex-1 bg-white dark:bg-gray-800"
-                        />
-                        <button
-                          onClick={() => setVariables(prev => prev.filter((_, j) => j !== i))}
-                          className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <VariablesEditor variables={variables} setVariables={setVariables} />
 
               {message && (
                 <div className={`p-4 rounded-xl border backdrop-blur-sm transition-all ${messageType === 'success' ? 'bg-green-50/80 dark:bg-green-900/20 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800' : 'bg-red-50/80 dark:bg-red-900/20 text-red-800 dark:text-red-400 border-red-200 dark:border-red-800'}`}>
@@ -598,7 +775,7 @@ export default function PhoneCallConfig() {
                 </div>
               )}
 
-              {agent.agent_type === 'pype_agent' && !runningStatus.isRunning && !isCheckingRunning && (
+              {shouldShowNotRunningWarning(agent, runningStatus, isCheckingRunning) && (
                 <div className="p-4 rounded-xl border bg-yellow-50/80 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800 backdrop-blur-sm">
                   <div className="flex items-center gap-3"><AlertCircle className="w-5 h-5 flex-shrink-0" /><span className="text-sm font-medium">Start the agent to dispatch calls</span></div>
                 </div>
@@ -606,7 +783,7 @@ export default function PhoneCallConfig() {
             </div>
 
             <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-800">
-              <Button onClick={handleDispatchCall} disabled={isLoading || !phoneNumber.trim() || !fromPhoneNumberId.trim() || isCheckingRunning || (agent.agent_type === 'pype_agent' && !runningStatus.isRunning) || (agent.agent_type !== 'pype_agent' && !agent.is_active)} className="w-full h-13 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 dark:from-blue-600 dark:to-blue-700 dark:hover:from-blue-700 dark:hover:to-blue-800 text-white font-semibold text-base rounded-xl shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all">
+              <Button onClick={handleDispatchCall} disabled={isDispatchDisabled(agent, runningStatus, isCheckingRunning, isLoading, phoneNumber, fromPhoneNumberId)} className="w-full h-13 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 dark:from-blue-600 dark:to-blue-700 dark:hover:from-blue-700 dark:hover:to-blue-800 text-white font-semibold text-base rounded-xl shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all">
                 {isLoading ? (<><Loader2 className="mr-2 h-5 w-5 animate-spin" />Dispatching Call...</>) : (<><PhoneCall className="mr-2 h-5 w-5" />Dispatch Call</>)}
               </Button>
             </div>
@@ -614,8 +791,8 @@ export default function PhoneCallConfig() {
         </div>
 
         {/* ── Right Panel ──────────────────────────────────────────────────────── */}
-        <div className="w-[55%] flex flex-col bg-white/30 dark:bg-gray-900/30 backdrop-blur-sm">
-          <div className="p-8 pb-6 border-b border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl">
+        <div className="w-full sm:w-[55%] h-1/2 sm:h-auto flex flex-col bg-white/30 dark:bg-gray-900/30 backdrop-blur-sm">
+          <div className="p-4 sm:p-8 pb-4 sm:pb-6 border-b border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
                 <History className="w-6 h-6 text-gray-700 dark:text-gray-300" />
@@ -642,7 +819,7 @@ export default function PhoneCallConfig() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-8 pt-6">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-8 pt-4 sm:pt-6">
             {callHistory.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4"><Phone className="w-10 h-10 text-gray-400 dark:text-gray-600" /></div>
@@ -652,46 +829,20 @@ export default function PhoneCallConfig() {
             ) : (
               <div className="space-y-3">
                 {callHistory.map((call) => (
-                  <div key={call.id} onClick={() => loadCallFromHistory(call)} className={`group relative p-5 rounded-xl border transition-all cursor-pointer ${selectedCallId === call.id ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 shadow-md' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md'}`}>
-                    <button onClick={(e) => deleteCallFromHistory(call.id, e)} className={`absolute top-4 right-4 transition-opacity p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg z-10 ${editingCallId === call.id ? 'opacity-0 pointer-events-none' : 'opacity-0 group-hover:opacity-100'}`}>
-                      <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
-                    </button>
-                    <div className="flex items-start gap-4">
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${selectedCallId === call.id ? 'bg-blue-100 dark:bg-blue-800/30' : 'bg-gray-100 dark:bg-gray-700'}`}>
-                        <Phone className={`w-6 h-6 ${selectedCallId === call.id ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2 pr-8">
-                          {editingCallId === call.id ? (
-                            <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
-                              <Input value={editingName || ''} onChange={(e) => setEditingName(e.target.value)} onKeyDown={(e) => handleNameKeyDown(call.id, e)} className="h-7 text-sm font-semibold bg-white dark:bg-gray-700 border-blue-300 dark:border-blue-600" placeholder="Enter name" autoFocus />
-                              <button onClick={(e) => saveEditedName(call.id, e)} className="p-1 hover:bg-green-100 dark:hover:bg-green-900/30 rounded"><Check className="w-4 h-4 text-green-600 dark:text-green-400" /></button>
-                              <button onClick={(e) => cancelEditingName(e)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"><X className="w-4 h-4 text-red-600 dark:text-red-400" /></button>
-                            </div>
-                          ) : (
-                            <>
-                              <span className="text-base font-semibold text-gray-900 dark:text-gray-100">{call.name}{call.call_count && call.call_count > 1 && <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">({call.call_count})</span>}</span>
-                              <button onClick={(e) => startEditingName(call.id, call.name, e)} className="p-1 opacity-0 group-hover:opacity-100 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-opacity"><Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /></button>
-                            </>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-base font-mono font-medium text-gray-700 dark:text-gray-300">{call.formatted_number}</span>
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 font-medium">{COUNTRIES.find(c => c.code === call.country_code)?.flag}</span>
-                        </div>
-                        <div className="space-y-1 text-sm">
-                          <div className="flex items-center gap-2"><span className="text-gray-500 dark:text-gray-400">From:</span><span className="font-mono text-xs text-gray-700 dark:text-gray-300">{call.from_phone_display}</span></div>
-                        </div>
-                        <div className="flex items-center gap-2 mt-3 text-xs text-gray-500 dark:text-gray-400">
-                          <Clock className="w-3.5 h-3.5" /><span>{formatRelativeTime(call.timestamp)}</span>
-                          <span className="px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium">{call.status}</span>
-                        </div>
-                      </div>
-                      {selectedCallId === call.id && (
-                        <div className="flex-shrink-0 mr-8"><div className="w-8 h-8 bg-blue-600 dark:bg-blue-500 rounded-full flex items-center justify-center"><RotateCcw className="w-4 h-4 text-white" /></div></div>
-                      )}
-                    </div>
-                  </div>
+                  <CallHistoryItem
+                    key={call.id}
+                    call={call}
+                    isSelected={selectedCallId === call.id}
+                    isEditing={editingCallId === call.id}
+                    editingName={editingName}
+                    setEditingName={setEditingName}
+                    onSelect={loadCallFromHistory}
+                    onStartEdit={startEditingName}
+                    onSaveEdit={saveEditedName}
+                    onCancelEdit={cancelEditingName}
+                    onNameKeyDown={handleNameKeyDown}
+                    onDelete={deleteCallFromHistory}
+                  />
                 ))}
               </div>
             )}

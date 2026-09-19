@@ -108,7 +108,7 @@ export function LogicConditionField({ workflow, value, onChange }: Readonly<{ wo
             )}
           </div>
           {knownVars.length === 0 && (
-            <p className="text-[10px] text-gray-500 dark:text-gray-400">
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">
               No known variables yet — declare one in Variables, or add an extraction / save-to-variable field upstream.
             </p>
           )}

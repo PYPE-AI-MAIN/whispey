@@ -108,7 +108,7 @@ export function KnowledgeBaseDocumentList({
           return (
             <li
               key={doc.id}
-              className="flex items-center gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 px-4 py-3 group"
+              className="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm px-4 py-3 group"
             >
               {isUrl ? (
                 <LinkIcon className="h-5 w-5 text-gray-500 dark:text-gray-400 flex-shrink-0" />
