@@ -116,7 +116,7 @@ export default function AgentNameEditor({
               {shown}
             </h1>
           </TooltipTrigger>
-          <TooltipContent>
+          <TooltipContent side="bottom" sideOffset={8} collisionPadding={12}>
             <p>{shown}</p>
             {agent.display_name?.trim() && agent.name && (
               <p className="text-xs opacity-70 mt-0.5">Backend name: {agent.name}</p>
