@@ -585,7 +585,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
       {/* Header - Mobile optimized */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
         <div className={`${isMobile ? 'px-4 py-3' : 'px-8 py-3'}`}>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-y-2">
             {/* Left: Navigation & Identity */}
             <div className="flex items-center gap-4">
               <button 
@@ -721,7 +721,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
 
             {/* Right: Controls or Mobile Menu Button */}
             {!showQuickStart && !showNoCallsMessage && (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center flex-wrap justify-end gap-4">
                 {isMobile ? (
                   /* Mobile Menu Button */
                   <button

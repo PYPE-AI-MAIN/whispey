@@ -132,13 +132,23 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
    * report — "again it fails when collapsed and opened" — and `measureWidth` is
    * the escape hatch the library documents for exactly this.
    *
+   * `dashboard.isLoading` is in the dependency list for the same reason, not
+   * as a resize case: `containerRef`'s own div doesn't exist until the loading
+   * skeleton (§334) stops rendering, so every effect that runs before then
+   * measures a null ref and does nothing — including the library's own setup
+   * effect, whose dependency (`measureWidth`'s identity) never changes again
+   * once that first, wasted run is behind it. Nothing was left to measure the
+   * container the moment it actually mounted, until a *later* panelOpen change
+   * (a manual toggle) happened to fire this same effect again — which is
+   * exactly the "toggle it once and it fixes itself" report.
+   *
    * Twice: once now, once after the frame the layout settles in.
    */
   useEffect(() => {
     measureWidth()
     const id = requestAnimationFrame(measureWidth)
     return () => cancelAnimationFrame(id)
-  }, [panelOpen, measureWidth])
+  }, [panelOpen, dashboard.isLoading, measureWidth])
 
   // the ResizeObserver on containerRef should already catch the whole browser
   // window growing or shrinking — its element is `w-full` and does resize with
