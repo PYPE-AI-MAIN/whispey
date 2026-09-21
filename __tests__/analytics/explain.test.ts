@@ -3,7 +3,7 @@
  * card can say what it counted, in words, with no database in them.
  */
 import { describe, it, expect } from 'vitest'
-import { CALCULATIONS, explainSpec, fieldName, describeCondition } from '@/components/analytics/explain'
+import { CALCULATIONS, explainFormula, explainSpec, fieldName, describeCondition } from '@/components/analytics/explain'
 import type { CatalogField } from '@/types/analytics'
 import type { SpecInput } from '@/server/analytics/spec'
 
@@ -154,5 +154,20 @@ describe('the calculation vocabulary', () => {
       const spec = { spec_version: 1 as const, agg: { fn: c.fn, field: { col: 'avg_latency' } }, range: { days: 30 } }
       expect(explainSpec(spec as never, fields)).toBe(`${c.phrase} avg latency`)
     }
+  })
+})
+
+describe('a percentage card says what it divided', () => {
+  it('names both sides, so 78.1% is a number someone can check', () => {
+    expect(
+      explainFormula(
+        {
+          a: { spec_version: 1, agg: { fn: 'count' }, having: [{ field: { col: 'call_ended_reason' }, op: 'eq', value: 'completed' }], range: { days: 30 } },
+          b: { spec_version: 1, agg: { fn: 'count' }, range: { days: 30 } },
+          op: 'percent',
+        },
+        fields
+      )
+    ).toBe('Count of calls · only where why the call ended is completed \u00f7 Count of calls')
   })
 })
