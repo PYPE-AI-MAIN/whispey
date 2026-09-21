@@ -13,9 +13,10 @@
  */
 'use client'
 import React from 'react'
-import { AlertTriangle, Clock, GripVertical, Trash2 } from 'lucide-react'
+import { AlertTriangle, Clock, GripVertical, Info, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import type { FormulaContent, Widget, WidgetResult } from '@/types/analytics'
 import { DRAG_HANDLE_CLASS } from './ChartCard'
 
@@ -74,6 +75,26 @@ export function FormulaCard({
             <h3 className="truncate text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
               {widget.title}
             </h3>
+            {/* the same "how is this calculated" affordance every other card
+                has — a divided number needs it more, not less */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="How this percentage is calculated"
+                    className="pointer-events-auto shrink-0 text-gray-300 outline-none transition hover:text-gray-500 focus-visible:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400"
+                  >
+                    <Info className="h-3 w-3" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" sideOffset={6} className="max-w-[220px] text-xs">
+                  {spec.op === 'percent'
+                    ? 'The first number divided by the second, times 100. Each side is its own query over the same filters.'
+                    : 'The first number divided by the second. Each side is its own query over the same filters.'}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
 
           <div className="mt-0.5 min-w-0 text-[11px] text-gray-400">
