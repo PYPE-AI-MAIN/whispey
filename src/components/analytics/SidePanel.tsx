@@ -24,6 +24,9 @@ import type { FilterNodeInput, SpecInput } from '@/server/analytics/spec'
 /** What a chart-type tile puts on the drag event, and what the grid reads off it. */
 export const CHART_TYPE_DRAG_TYPE = 'application/x-whispey-chart-type'
 
+/** Presentational only, same conversion starterCharts.ts uses for its own duration cards. */
+const SECONDS_TO_MINUTES = 1 / 60
+
 const CHART_TYPES: { kind: ChartKind; label: string; icon: React.ReactNode }[] = [
   { kind: 'kpi', label: 'Number', icon: <Hash className="h-4 w-4" /> },
   { kind: 'bar', label: 'Bar', icon: <BarChart3 className="h-4 w-4" /> },
@@ -347,6 +350,36 @@ function ChartSettings({
               <FieldShape field={chosenAggField} />
             </p>
           )}
+        </Row>
+      )}
+
+      {/* a duration field is stored in seconds; "423,616.00" of them is not a
+          number anyone reads at a glance, so offer the same seconds/minutes
+          choice the starter "Total call time" card ships with by default */}
+      {chosenAggField?.value_type === 'number' && /seconds/i.test(chosenAggField.label) && (
+        <Row label="Show as">
+          <div className="flex gap-1">
+            {(
+              [
+                { label: 'Seconds', unit: undefined, scale: undefined },
+                { label: 'Minutes', unit: 'm' as const, scale: SECONDS_TO_MINUTES },
+              ] as const
+            ).map((opt) => (
+              <button
+                key={opt.label}
+                disabled={!canEdit}
+                onClick={() => setSpec({ display: { ...spec.display, unit: opt.unit, scale: opt.scale } })}
+                className={cn(
+                  'rounded-md border px-2 py-1 text-xs transition disabled:opacity-50',
+                  (spec.display?.unit === 'm') === (opt.unit === 'm')
+                    ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
+                    : 'border-gray-200 text-gray-600 hover:border-gray-300 dark:border-gray-800 dark:text-gray-400'
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </Row>
       )}
 
