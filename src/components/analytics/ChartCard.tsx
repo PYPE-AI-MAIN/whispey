@@ -130,13 +130,13 @@ export function ChartCard({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span
-                      tabIndex={0}
+                    <button
+                      type="button"
                       aria-label={`How "${calc.label}" is calculated`}
                       className="pointer-events-auto shrink-0 text-gray-300 outline-none transition hover:text-gray-500 focus-visible:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400"
                     >
                       <Info className="h-3 w-3" />
-                    </span>
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" sideOffset={6} className="max-w-[220px] text-xs">
                     {calc.help}

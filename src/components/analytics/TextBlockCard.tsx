@@ -68,7 +68,7 @@ export function TextBlockCard({
 
       <div className="relative z-10 flex min-h-0 flex-1 flex-col gap-1 overflow-hidden pointer-events-none">
         {text.trim() ? (
-          text.split('\n').map(renderLine)
+          text.split('\n').map((line, i) => renderLine(line, i))
         ) : (
           <span className="flex items-center gap-1.5 text-sm text-gray-400 dark:text-gray-500">
             <Type className="h-3.5 w-3.5" /> Click to write a heading or a note
