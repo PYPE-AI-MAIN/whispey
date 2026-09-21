@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useMemo } from "react"
-import { Plus, X, AlertCircle, Maximize2, Minimize2, Copy, Check } from "lucide-react"
+import { Plus, X, AlertCircle, Maximize2, Minimize2, Copy, Check, ClipboardPaste } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -49,6 +49,8 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const [copiedAll, setCopiedAll] = useState(false)
+  const [pastedAll, setPastedAll] = useState(false)
+  const [pasteError, setPasteError] = useState<string | null>(null)
 
   const copyField = (field: FieldExtractorItem, index: number) => {
     navigator.clipboard.writeText(JSON.stringify(field, null, 2))
@@ -60,6 +62,31 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
     navigator.clipboard.writeText(JSON.stringify(fields, null, 2))
     setCopiedAll(true)
     setTimeout(() => setCopiedAll(false), 1500)
+  }
+
+  /** The other half of "Copy all" — replaces the field list with a pasted JSON array of the same shape. */
+  const pasteAllFields = async () => {
+    setPasteError(null)
+    try {
+      const text = await navigator.clipboard.readText()
+      const parsed: unknown = JSON.parse(text)
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        throw new Error('Expected a JSON array of fields')
+      }
+      const next: FieldExtractorItem[] = parsed.map((item, i) => {
+        if (typeof item !== 'object' || item === null || typeof (item as { key?: unknown }).key !== 'string') {
+          throw new Error(`Item ${i + 1} is missing a "key" string`)
+        }
+        const { key, description } = item as { key: string; description?: unknown }
+        return { key, description: typeof description === 'string' ? description : '' }
+      })
+      setFields(next)
+      setPastedAll(true)
+      setTimeout(() => setPastedAll(false), 1500)
+    } catch (e) {
+      setPasteError(e instanceof Error ? e.message : 'Clipboard did not contain a valid fields JSON array')
+      setTimeout(() => setPasteError(null), 3000)
+    }
   }
 
   // Extract variable names from all field descriptions
@@ -169,17 +196,31 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-foreground">Extraction Fields</h3>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={copyAllFields}
-                  className="h-7 text-xs"
-                  title="Copy all fields as a JSON array"
-                >
-                  {copiedAll ? <Check className="w-3.5 h-3.5 mr-1 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
-                  Copy all
-                </Button>
+                <div className="flex items-center gap-2">
+                  {pasteError && <span className="text-xs text-red-500">{pasteError}</span>}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void pasteAllFields()}
+                    className="h-7 text-xs"
+                    title="Replace all fields with a pasted JSON array"
+                  >
+                    {pastedAll ? <Check className="w-3.5 h-3.5 mr-1 text-emerald-500" /> : <ClipboardPaste className="w-3.5 h-3.5 mr-1" />}
+                    Paste all
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={copyAllFields}
+                    className="h-7 text-xs"
+                    title="Copy all fields as a JSON array"
+                  >
+                    {copiedAll ? <Check className="w-3.5 h-3.5 mr-1 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
+                    Copy all
+                  </Button>
+                </div>
               </div>
               <div className="space-y-4">
                 {fields.map((field, index) => {
