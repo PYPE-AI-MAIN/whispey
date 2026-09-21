@@ -101,7 +101,7 @@ const SaveBody = z.object({
       z.object({
         id: z.string().uuid().optional(),
         title: z.string().min(1).max(120),
-        kind: z.enum(['kpi', 'bar', 'line', 'table', 'pie', 'text']),
+        kind: z.enum(['kpi', 'bar', 'line', 'table', 'pie', 'text', 'formula']),
         spec: z.unknown(),
         // a rectangle on the twelve-column grid. `width` is the pre-grid shape,
         // still accepted so an older client cannot fail to save.
@@ -133,10 +133,18 @@ export const PUT = guarded('analytics/dashboard', async (req: NextRequest) => {
   // every chart is validated before it is stored, so a saved dashboard can
   // never contain something the query builder will refuse later. A text block
   // is not a chart at all — it never reaches buildQuery — so it gets its own,
-  // much smaller check instead of the full query Spec.
+  // much smaller check instead of the full query Spec. A formula card is two
+  // ordinary charts divided, so each side is the same full Spec everything
+  // else uses — the compiler never sees the division itself.
   const TextSpec = z.object({ text: z.string().max(4000) })
+  const FormulaSpec = z.object({
+    a: Spec,
+    b: Spec,
+    op: z.enum(['percent', 'ratio']),
+    display: z.object({ round: z.number().int().min(0).max(6).optional(), unit: z.string().max(16).optional() }).optional(),
+  })
   for (const w of body.widgets) {
-    const check = w.kind === 'text' ? TextSpec.safeParse(w.spec) : Spec.safeParse(w.spec)
+    const check = w.kind === 'text' ? TextSpec.safeParse(w.spec) : w.kind === 'formula' ? FormulaSpec.safeParse(w.spec) : Spec.safeParse(w.spec)
     if (!check.success) {
       return NextResponse.json({ error: `"${w.title}" is not a valid chart`, detail: check.error.flatten() }, { status: 400 })
     }

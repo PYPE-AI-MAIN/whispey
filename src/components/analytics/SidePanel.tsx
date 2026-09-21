@@ -10,10 +10,10 @@
  */
 'use client'
 import React, { useMemo } from 'react'
-import { ArrowLeft, BarChart3, Hash, LineChart as LineIcon, PieChart as PieIcon, Table2, Type as TextIcon } from 'lucide-react'
+import { ArrowLeft, BarChart3, Hash, LineChart as LineIcon, Percent, PieChart as PieIcon, Table2, Type as TextIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import type { CatalogField, ChartKind, TextContent, Widget } from '@/types/analytics'
+import type { CatalogField, ChartKind, FormulaContent, TextContent, Widget } from '@/types/analytics'
 import type { ChartWidget } from './ChartCard'
 import { ChartFilters } from './FilterBar'
 import { CALCULATIONS, explainSpec } from './explain'
@@ -44,6 +44,10 @@ const CHART_TYPES: { kind: ChartKind; label: string; icon: React.ReactNode }[] =
 const ADDABLE_TYPES: { kind: ChartKind; label: string; icon: React.ReactNode }[] = [
   ...CHART_TYPES,
   { kind: 'text', label: 'Text', icon: <TextIcon className="h-4 w-4" /> },
+  // two ordinary charts divided — "unique picked up ÷ unique called", "task
+  // complete ÷ answered" — anything a single rate chart can't express because
+  // the two sides are different aggregates
+  { kind: 'formula', label: 'Percentage', icon: <Percent className="h-4 w-4" /> },
 ]
 
 const BUCKETS = [
@@ -130,7 +134,7 @@ export function SidePanel({
   onAddChart: (kind: ChartKind) => void
   /** Tells the canvas which type is in flight, so the drop placeholder is the right size. */
   onDragChartType: (kind: ChartKind | null) => void
-  onChange: (spec: SpecInput | TextContent) => void
+  onChange: (spec: SpecInput | TextContent | FormulaContent) => void
   onChangeKind: (kind: ChartKind) => void
   onChangeTitle: (title: string) => void
 }>) {
@@ -162,6 +166,19 @@ export function SidePanel({
     return (
       <TextSettings
         widget={selected}
+        canEdit={canEdit}
+        onBack={onBack}
+        onChange={onChange}
+        onChangeTitle={onChangeTitle}
+      />
+    )
+  }
+
+  if (selected.kind === 'formula') {
+    return (
+      <FormulaSettings
+        widget={selected}
+        fields={fields}
         canEdit={canEdit}
         onBack={onBack}
         onChange={onChange}
@@ -220,6 +237,155 @@ function TextSettings({
         Everything else is a plain line of text.
       </p>
     </Panel>
+  )
+}
+
+const FORMULA_OPS: { op: FormulaContent['op']; label: string }[] = [
+  { op: 'percent', label: 'A ÷ B, as %' },
+  { op: 'ratio', label: 'A ÷ B' },
+]
+
+/**
+ * Two ordinary metrics divided into one number — the way to build "unique
+ * picked up ÷ unique called" or "task complete ÷ answered" when the two sides
+ * are different aggregates (two `count_distinct`s, say) rather than one
+ * boolean field's yes/no split, which is all a `rate` chart can express.
+ *
+ * Each side is built with the exact same calculation/field/filter pickers as
+ * any other chart (`MiniAggEditor`) — the division happens once, server-side,
+ * after both run; nothing here changes the query compiler.
+ */
+function FormulaSettings({
+  widget, fields, canEdit, onBack, onChange, onChangeTitle,
+}: Readonly<{
+  widget: Widget
+  fields: CatalogField[]
+  canEdit: boolean
+  onBack: () => void
+  onChange: (spec: FormulaContent) => void
+  onChangeTitle: (title: string) => void
+}>) {
+  const spec = widget.spec as FormulaContent
+
+  return (
+    <Panel title="Percentage" onBack={onBack}>
+      <Row label="Name">
+        <input
+          value={widget.title}
+          disabled={!canEdit}
+          onChange={(e) => onChangeTitle(e.target.value)}
+          className="w-full rounded-md border border-gray-200 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-blue-400 disabled:opacity-60 dark:border-gray-800"
+        />
+      </Row>
+
+      <MiniAggEditor label="Value A" value={spec.a} fields={fields} canEdit={canEdit} onChange={(a) => onChange({ ...spec, a })} />
+
+      <Row label="Compared as">
+        <div className="flex gap-1">
+          {FORMULA_OPS.map((o) => (
+            <button
+              key={o.op}
+              disabled={!canEdit}
+              onClick={() =>
+                onChange({ ...spec, op: o.op, display: { round: spec.display?.round ?? 1, unit: o.op === 'percent' ? '%' : '' } })
+              }
+              className={cn(
+                'rounded-md border px-2 py-1 text-xs transition disabled:opacity-50',
+                spec.op === o.op
+                  ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
+                  : 'border-gray-200 text-gray-600 hover:border-gray-300 dark:border-gray-800 dark:text-gray-400'
+              )}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </Row>
+
+      <MiniAggEditor label="Value B" value={spec.b} fields={fields} canEdit={canEdit} onChange={(b) => onChange({ ...spec, b })} />
+
+      <p className="text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">
+        {spec.op === 'percent' ? 'Value A as a percentage of Value B.' : 'Value A divided by Value B.'}
+      </p>
+    </Panel>
+  )
+}
+
+/** One side of a Percentage card — the same calculation, field and filter pickers `ChartSettings` uses, condensed. */
+function MiniAggEditor({
+  label, value, fields, canEdit, onChange,
+}: Readonly<{
+  label: string
+  value: SpecInput
+  fields: CatalogField[]
+  canEdit: boolean
+  onChange: (next: SpecInput) => void
+}>) {
+  const calculation = CALCULATIONS.find((c) => c.fn === value.agg?.fn) ?? CALCULATIONS[0]
+  const usable = useMemo(() => {
+    if (calculation.needs === 'none') return []
+    return fields.filter((f) => {
+      if (calculation.needs === 'number') return f.value_type === 'number'
+      if (calculation.needs === 'boolean') return f.value_type === 'boolean'
+      return f.value_type !== 'json'
+    })
+  }, [fields, calculation.needs])
+  const aggField = value.agg?.field
+
+  return (
+    <div className="mb-3 rounded-md border border-gray-200 p-2.5 dark:border-gray-800">
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">{label}</p>
+
+      <Row label="Calculation">
+        <Picker
+          value={calculation.fn}
+          disabled={!canEdit}
+          options={CALCULATIONS.map((c) => ({ value: c.fn, label: c.label, help: c.help }))}
+          onChange={(fn) => {
+            const next = CALCULATIONS.find((c) => c.fn === fn)!
+            onChange({
+              ...value,
+              agg:
+                next.needs === 'none'
+                  ? { fn: next.fn }
+                  : { fn: next.fn, field: value.agg?.field, ...(next.needs === 'boolean' ? { denominator: 'field_present' as const } : {}) },
+            })
+          }}
+        />
+      </Row>
+
+      {calculation.needs !== 'none' && (
+        <Row label="Of which field">
+          <FieldPicker
+            fields={usable}
+            value={aggField ? fieldKey(aggField) : ''}
+            disabled={!canEdit}
+            placeholder={usable.length ? 'Pick a field' : 'No fields of this kind yet'}
+            onChange={(key) => {
+              const f = fields.find((x) => fieldKey(x) === key)
+              if (!f) return
+              onChange({
+                ...value,
+                agg: {
+                  fn: calculation.fn,
+                  field: { col: f.col, ...(f.path.length ? { path: f.path } : {}), ...(f.boolean_encoding ? { boolean_encoding: f.boolean_encoding } : {}) },
+                  ...(calculation.needs === 'boolean' ? { denominator: 'field_present' as const } : {}),
+                },
+              })
+            }}
+          />
+        </Row>
+      )}
+
+      <Row label="Only counting">
+        <ChartFilters
+          filters={(value.having ?? []) as FilterNodeInput[]}
+          fields={fields}
+          disabled={!canEdit}
+          onChange={(having) => onChange({ ...value, having })}
+        />
+      </Row>
+    </div>
   )
 }
 

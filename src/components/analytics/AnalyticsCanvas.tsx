@@ -24,6 +24,7 @@ import type { CatalogField, ChartKind, Widget } from '@/types/analytics'
 import type { FilterNodeInput, SpecInput } from '@/server/analytics/spec'
 import { ChartCard, DRAG_HANDLE_CLASS, type ChartWidget } from './ChartCard'
 import { TextBlockCard } from './TextBlockCard'
+import { FormulaCard } from './FormulaCard'
 import { ChartErrorBoundary } from './ErrorBoundary'
 import { SidePanel, CHART_TYPE_DRAG_TYPE } from './SidePanel'
 import { LogsOverlay } from './LogsOverlay'
@@ -480,6 +481,20 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
                   {w.kind === 'text' ? (
                     <TextBlockCard
                       widget={w}
+                      selected={selectedId === w.id}
+                      canEdit={canEdit}
+                      draggable={!isMobile}
+                      onSelect={() => selectChart(w.id)}
+                      onRemove={() => {
+                        setDraft((draft ?? widgets).filter((x) => x.id !== w.id))
+                        if (selectedId === w.id) setSelectedId(null)
+                      }}
+                    />
+                  ) : w.kind === 'formula' ? (
+                    <FormulaCard
+                      widget={w}
+                      result={charts.byWidget.get(w.id)}
+                      isLoading={charts.isLoading}
                       selected={selectedId === w.id}
                       canEdit={canEdit}
                       draggable={!isMobile}
