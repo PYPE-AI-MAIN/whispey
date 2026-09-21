@@ -3,7 +3,7 @@
  * §11.2. Every case below is a shape that exists in production.
  */
 import { describe, it, expect } from 'vitest'
-import { inferField, humanise, type FieldStats } from '@/server/analytics/catalog'
+import { inferField, humanise, catalogIsStale, BUILTIN_COLUMNS, type FieldStats } from '@/server/analytics/catalog'
 
 const stats = (over: Partial<FieldStats>): FieldStats => ({
   path: ['field'], rows_with_key: 100, rows_sampled: 100,
@@ -150,5 +150,32 @@ describe('what can actually be an axis', () => {
       distinct_values: 40, sample_values: ['andheri-jan', 'andheri-feb'],
     }))
     expect(f.is_dimension).toBe(true)
+  })
+})
+
+describe('a catalog scanned before the agent had calls', () => {
+  const at = (iso: string) => Date.parse(iso)
+  const full = BUILTIN_COLUMNS.map((col) => ({ col, coverage_pct: 100, last_seen_at: '2026-09-21T06:16:21Z' }))
+
+  it('rescans when every column came back empty — the prod agent whose first call arrived after the scan', () => {
+    const allZero = BUILTIN_COLUMNS.map((col) => ({ col, coverage_pct: 0, last_seen_at: '2026-09-21T06:16:21Z' }))
+    // one hour later: inside the six-hour window, so only the all-zero rule can save it
+    expect(catalogIsStale(allZero, at('2026-09-21T07:16:21Z'))).toBe(true)
+  })
+
+  it('leaves a catalog with real coverage alone inside the window', () => {
+    expect(catalogIsStale(full, at('2026-09-21T07:16:21Z'))).toBe(false)
+  })
+
+  it('rescans once the window is past', () => {
+    expect(catalogIsStale(full, at('2026-09-21T13:16:21Z'))).toBe(true)
+  })
+
+  it('rescans when the code learned about a built-in column the stored catalog has never heard of', () => {
+    expect(catalogIsStale(full.slice(1), at('2026-09-21T07:16:21Z'))).toBe(true)
+  })
+
+  it('rescans when nothing is stored at all', () => {
+    expect(catalogIsStale([], at('2026-09-21T07:16:21Z'))).toBe(true)
   })
 })

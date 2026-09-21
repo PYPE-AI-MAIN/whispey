@@ -340,3 +340,26 @@ export async function scanBuiltins(agentId: string): Promise<BuiltinField[]> {
     }
   })
 }
+
+/** Six hours: a dashboard is opened far more often than an agent gains a new field. */
+export const STALE_AFTER_MS = 6 * 60 * 60 * 1000
+
+/**
+ * Whether the stored catalog has to be rescanned before it is shown.
+ *
+ * The three reasons are all "this was written about a different world": there
+ * is nothing stored, a built-in column was added to the code since, or the
+ * scan ran before the agent's first call and so wrote every column at 0% with
+ * no extracted fields — caching that for six hours means a brand-new agent
+ * shows an empty field picker all morning.
+ */
+export function catalogIsStale(
+  rows: { col: string; coverage_pct: number | null; last_seen_at: string | null }[],
+  nowMs: number
+): boolean {
+  if (!rows.length) return true
+  if (BUILTIN_COLUMNS.some((col) => !rows.some((r) => r.col === col))) return true
+  if (rows.every((r) => (r.coverage_pct ?? 0) === 0)) return true
+  const newest = rows.reduce((max, r) => Math.max(max, Date.parse(r.last_seen_at ?? '') || 0), 0)
+  return nowMs - newest > STALE_AFTER_MS
+}
