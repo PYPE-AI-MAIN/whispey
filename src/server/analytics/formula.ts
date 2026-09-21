@@ -33,17 +33,19 @@ export function combineFormula(
 ): WidgetResult {
   const a = results.get(f.aId)
   const b = results.get(f.bId)
-  if (!a || a.status !== 'ok') return { widget_id: f.id, status: a?.status ?? 'error', error: a?.error ?? 'Could not compute this' }
-  if (!b || b.status !== 'ok') return { widget_id: f.id, status: b?.status ?? 'error', error: b?.error ?? 'Could not compute this' }
+  if (a?.status !== 'ok') return { widget_id: f.id, status: a?.status ?? 'error', error: a?.error ?? 'Could not compute this' }
+  if (b?.status !== 'ok') return { widget_id: f.id, status: b?.status ?? 'error', error: b?.error ?? 'Could not compute this' }
 
   const aVal = firstValue(a.data)
   const bVal = firstValue(b.data)
-  const value = aVal === null || bVal === null || bVal === 0 ? null : f.op === 'percent' ? (aVal / bVal) * 100 : aVal / bVal
+  if (aVal === null || bVal === null || bVal === 0) return { widget_id: f.id, status: 'ok', data: [{ value: null }] }
+
+  const value = f.op === 'percent' ? (aVal / bVal) * 100 : aVal / bVal
   return { widget_id: f.id, status: 'ok', data: [{ value }] }
 }
 
 function firstValue(rows: unknown[] | undefined): number | null {
   const raw = (rows?.[0] as { value?: unknown } | undefined)?.value
-  const n = raw === null || raw === undefined ? NaN : Number(raw)
+  const n = raw === null || raw === undefined ? Number.NaN : Number(raw)
   return Number.isFinite(n) ? n : null
 }

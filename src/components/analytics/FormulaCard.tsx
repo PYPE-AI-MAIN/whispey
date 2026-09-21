@@ -53,25 +53,7 @@ export function FormulaCard({
           {widget.title}
         </h3>
 
-        {isLoading && !result ? (
-          <Skeleton className="h-8 w-24" />
-        ) : result?.status === 'error' ? (
-          <span className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
-            <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-            {result.error ?? 'Could not compute this'}
-          </span>
-        ) : result?.status === 'timeout' ? (
-          <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-            <Clock className="h-3.5 w-3.5 shrink-0" /> This took too long.
-          </span>
-        ) : value === null ? (
-          <span className="text-3xl font-semibold text-gray-300 dark:text-gray-700">—</span>
-        ) : (
-          <span className="text-3xl font-semibold text-gray-900 dark:text-gray-50">
-            {value.toLocaleString(undefined, { minimumFractionDigits: round, maximumFractionDigits: round })}
-            {unit}
-          </span>
-        )}
+        <FormulaValue isLoading={isLoading} result={result} value={value} round={round} unit={unit} />
       </div>
 
       {canEdit && (
@@ -96,5 +78,44 @@ export function FormulaCard({
         </div>
       )}
     </div>
+  )
+}
+
+/** The same four states `ChartCard`'s body draws, condensed to one number instead of a chart. */
+function FormulaValue({
+  isLoading, result, value, round, unit,
+}: Readonly<{
+  isLoading: boolean
+  result?: WidgetResult
+  value: number | null
+  round: number
+  unit: string
+}>) {
+  if (isLoading && !result) return <Skeleton className="h-8 w-24" />
+
+  if (result?.status === 'error') {
+    return (
+      <span className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+        {result.error ?? 'Could not compute this'}
+      </span>
+    )
+  }
+
+  if (result?.status === 'timeout') {
+    return (
+      <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+        <Clock className="h-3.5 w-3.5 shrink-0" /> This took too long.
+      </span>
+    )
+  }
+
+  if (value === null) return <span className="text-3xl font-semibold text-gray-300 dark:text-gray-700">—</span>
+
+  return (
+    <span className="text-3xl font-semibold text-gray-900 dark:text-gray-50">
+      {value.toLocaleString(undefined, { minimumFractionDigits: round, maximumFractionDigits: round })}
+      {unit}
+    </span>
   )
 }

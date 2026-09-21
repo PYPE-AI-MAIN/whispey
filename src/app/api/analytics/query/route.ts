@@ -74,6 +74,53 @@ function resolveWidgetSpec(
   }
 }
 
+/** A formula widget's two sides, resolved — or the one of them that failed. */
+function resolveFormulaWidget(
+  widgetId: string,
+  formula: { a: unknown; b: unknown; op: 'percent' | 'ratio' },
+  body: z.infer<typeof Body>,
+  agentOutcomeOrder: string[] | null | undefined
+):
+  | { ok: true; formula: { id: string; op: 'percent' | 'ratio'; aId: string; bId: string }; specs: { id: string; spec: Spec }[] }
+  | { ok: false; result: WidgetResult } {
+  const aId = `${widgetId}::a`
+  const bId = `${widgetId}::b`
+  const a = resolveWidgetSpec({ id: aId, spec: formula.a }, body, agentOutcomeOrder)
+  if ('error' in a) return { ok: false, result: { widget_id: widgetId, status: 'error', error: a.error } }
+  const b = resolveWidgetSpec({ id: bId, spec: formula.b }, body, agentOutcomeOrder)
+  if ('error' in b) return { ok: false, result: { widget_id: widgetId, status: 'error', error: b.error } }
+
+  return {
+    ok: true,
+    formula: { id: widgetId, op: formula.op, aId, bId },
+    specs: [{ id: aId, spec: a.spec }, { id: bId, spec: b.spec }],
+  }
+}
+
+/**
+ * What one widget contributes to the batch: specs to actually run, and either
+ * the formula bookkeeping to combine them or an answer already known (a spec
+ * that failed to resolve never reaches the database at all).
+ */
+function planWidget(
+  widget: { id: string; spec?: unknown },
+  body: z.infer<typeof Body>,
+  agentOutcomeOrder: string[] | null | undefined
+): { runnable: { id: string; spec: Spec }[]; error?: WidgetResult; formula?: { id: string; op: 'percent' | 'ratio'; aId: string; bId: string } } {
+  const formula = asFormulaSpec(widget.spec)
+  if (formula) {
+    const resolved = resolveFormulaWidget(widget.id, formula, body, agentOutcomeOrder)
+    if (!resolved.ok) return { runnable: [], error: resolved.result }
+    return { runnable: resolved.specs, formula: resolved.formula }
+  }
+
+  const resolution = resolveWidgetSpec(widget, body, agentOutcomeOrder)
+  if ('error' in resolution) {
+    return { runnable: [], error: { widget_id: widget.id, status: 'error', error: resolution.error } }
+  }
+  return { runnable: [{ id: widget.id, spec: resolution.spec }] }
+}
+
 /** Runs one shared-scan statement and records every member widget's result. */
 async function runPlan(
   plan: ReturnType<typeof planDashboardQueries>[number],
@@ -131,27 +178,10 @@ export const POST = guarded('analytics/query', async (req: NextRequest) => {
   const formulas: { id: string; op: 'percent' | 'ratio'; aId: string; bId: string }[] = []
 
   for (const widget of body.widgets) {
-    const formula = asFormulaSpec(widget.spec)
-    if (formula) {
-      const aId = `${widget.id}::a`
-      const bId = `${widget.id}::b`
-      const a = resolveWidgetSpec({ id: aId, spec: formula.a }, body, agentOutcomeOrder)
-      const b = resolveWidgetSpec({ id: bId, spec: formula.b }, body, agentOutcomeOrder)
-      if ('error' in a || 'error' in b) {
-        const error = 'error' in a ? a.error : 'error' in b ? b.error : 'Could not compute this'
-        results.set(widget.id, { widget_id: widget.id, status: 'error', error })
-        continue
-      }
-      formulas.push({ id: widget.id, op: formula.op, aId, bId })
-      runnable.push({ id: aId, spec: a.spec }, { id: bId, spec: b.spec })
-      continue
-    }
-    const resolution = resolveWidgetSpec(widget, body, agentOutcomeOrder)
-    if ('error' in resolution) {
-      results.set(widget.id, { widget_id: widget.id, status: 'error', error: resolution.error })
-    } else {
-      runnable.push({ id: widget.id, spec: resolution.spec })
-    }
+    const plan = planWidget(widget, body, agentOutcomeOrder)
+    if (plan.error) results.set(widget.id, plan.error)
+    if (plan.formula) formulas.push(plan.formula)
+    runnable.push(...plan.runnable)
   }
 
   // charts that read the same rows under the same rules answer in one statement

@@ -121,6 +121,35 @@ const SaveBody = z.object({
     .max(40),
 })
 
+// every chart is validated before it is stored, so a saved dashboard can never
+// contain something the query builder will refuse later. A text block is not
+// a chart at all — it never reaches buildQuery — so it gets its own, much
+// smaller check instead of the full query Spec. A formula card is two
+// ordinary charts divided, so each side is the same full Spec everything else
+// uses — the compiler never sees the division itself.
+const TextSpec = z.object({ text: z.string().max(4000) })
+const FormulaSpec = z.object({
+  a: Spec,
+  b: Spec,
+  op: z.enum(['percent', 'ratio']),
+  display: z.object({ round: z.number().int().min(0).max(6).optional(), unit: z.string().max(16).optional() }).optional(),
+})
+
+function specSchemaFor(kind: string) {
+  if (kind === 'text') return TextSpec
+  if (kind === 'formula') return FormulaSpec
+  return Spec
+}
+
+/** The first widget whose spec doesn't validate, or null when every one does. */
+function firstInvalidWidget(widgets: z.infer<typeof SaveBody>['widgets']): { title: string; error: z.ZodError } | null {
+  for (const w of widgets) {
+    const check = specSchemaFor(w.kind).safeParse(w.spec)
+    if (!check.success) return { title: w.title, error: check.error }
+  }
+  return null
+}
+
 export const PUT = guarded('analytics/dashboard', async (req: NextRequest) => {
   const parsed = SaveBody.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'Bad request', detail: parsed.error.flatten() }, { status: 400 })
@@ -130,24 +159,9 @@ export const PUT = guarded('analytics/dashboard', async (req: NextRequest) => {
   if (isDenied(resolved)) return resolved.errorResponse
   if (resolved.role === 'viewer') return NextResponse.json({ error: 'You can view this dashboard but not change it' }, { status: 403 })
 
-  // every chart is validated before it is stored, so a saved dashboard can
-  // never contain something the query builder will refuse later. A text block
-  // is not a chart at all — it never reaches buildQuery — so it gets its own,
-  // much smaller check instead of the full query Spec. A formula card is two
-  // ordinary charts divided, so each side is the same full Spec everything
-  // else uses — the compiler never sees the division itself.
-  const TextSpec = z.object({ text: z.string().max(4000) })
-  const FormulaSpec = z.object({
-    a: Spec,
-    b: Spec,
-    op: z.enum(['percent', 'ratio']),
-    display: z.object({ round: z.number().int().min(0).max(6).optional(), unit: z.string().max(16).optional() }).optional(),
-  })
-  for (const w of body.widgets) {
-    const check = w.kind === 'text' ? TextSpec.safeParse(w.spec) : w.kind === 'formula' ? FormulaSpec.safeParse(w.spec) : Spec.safeParse(w.spec)
-    if (!check.success) {
-      return NextResponse.json({ error: `"${w.title}" is not a valid chart`, detail: check.error.flatten() }, { status: 400 })
-    }
+  const invalid = firstInvalidWidget(body.widgets)
+  if (invalid) {
+    return NextResponse.json({ error: `"${invalid.title}" is not a valid chart`, detail: invalid.error.flatten() }, { status: 400 })
   }
 
   const bumped = await supabase
