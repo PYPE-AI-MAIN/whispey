@@ -1,16 +1,24 @@
 /** Shapes shared between the analytics API routes and the canvas. */
 import type { SpecInput } from '@/server/analytics/spec'
 
-export type ChartKind = 'kpi' | 'bar' | 'line' | 'table' | 'pie'
+export type ChartKind = 'kpi' | 'bar' | 'line' | 'table' | 'pie' | 'text'
 /** A rectangle on the twelve-column grid; `width` is the shape saved before the grid. */
 export type WidgetLayout = { x: number; y: number; w: number; h: number } | { width: 'quarter' | 'half' | 'full' }
+
+/**
+ * A freeform note dropped on the canvas — a Metabase-style text/heading card.
+ * Not a query: nothing here reaches buildQuery or the query route, so it has
+ * no `agg`/`range`/etc. Markdown-lite: headings and plain paragraphs only,
+ * rendered by TextBlockCard.
+ */
+export type TextContent = { text: string }
 
 export type Widget = {
   id: string
   dashboard_id: string
   title: string
   kind: ChartKind
-  spec: SpecInput
+  spec: SpecInput | TextContent
   layout: WidgetLayout
   position: number
   live: boolean

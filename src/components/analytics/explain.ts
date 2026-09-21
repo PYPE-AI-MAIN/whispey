@@ -9,8 +9,8 @@
  * No database words, ever. Fields are named the way the catalog names them, and
  * a JSON path never appears.
  */
-import type { CatalogField, Widget } from '@/types/analytics'
-import type { Condition, FilterNode } from '@/server/analytics/spec'
+import type { CatalogField } from '@/types/analytics'
+import type { Condition, FilterNode, SpecInput } from '@/server/analytics/spec'
 
 const OPERATOR_WORDS: Record<Condition['op'], string> = {
   eq: 'is',
@@ -132,7 +132,7 @@ function describeNode(node: FilterNode, fields: CatalogField[]): string {
 }
 
 /** The one-line definition under a card's title. Empty when there is nothing to explain. */
-export function explainSpec(spec: Widget['spec'], fields: CatalogField[]): string {
+export function explainSpec(spec: SpecInput, fields: CatalogField[]): string {
   const parts: string[] = []
 
   const fn = spec.agg?.fn ?? 'count'

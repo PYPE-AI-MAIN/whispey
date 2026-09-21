@@ -8,7 +8,7 @@
  * say why. When the model is added it writes the same object this does — and if
  * it is down, this still works.
  */
-import type { CatalogField, ChartKind } from '@/types/analytics'
+import type { CatalogField, ChartKind, TextContent } from '@/types/analytics'
 import type { SpecInput } from '@/server/analytics/spec'
 
 /** A field almost nobody fills in makes a chart that looks broken. */
@@ -24,8 +24,11 @@ const usable = (fields: CatalogField[], type: CatalogField['value_type']) =>
  * The spec a freshly dropped chart starts with. Never empty: an empty card is a
  * puzzle, a filled one is a thing to adjust.
  */
-export function suggestSpec(kind: ChartKind, fields: CatalogField[]): SpecInput {
+export function suggestSpec(kind: ChartKind, fields: CatalogField[]): SpecInput | TextContent {
   const base = { spec_version: 1 as const, range: { days: 30 }, display: { round: 0 } }
+
+  // a note, not a query — never reaches buildQuery or the query route
+  if (kind === 'text') return { text: '' }
 
   if (kind === 'kpi') {
     // a rate reads better as a single number than a count does
@@ -53,6 +56,7 @@ export function suggestSpec(kind: ChartKind, fields: CatalogField[]): SpecInput 
 
 /** The title that goes with it, in the words the catalog uses rather than a path. */
 export function suggestTitle(kind: ChartKind, fields: CatalogField[]): string {
+  if (kind === 'text') return 'Text'
   if (kind === 'kpi') {
     const boolean = usable(fields, 'boolean')[0]
     return boolean ? boolean.label : 'Total calls'
@@ -213,7 +217,8 @@ export function adaptSpecToKind(spec: SpecInput, kind: ChartKind, fields: Catalo
   // bar, pie and table read categories. Keep a time bucket if one is already
   // set — a stacked bar over time is a real chart — but a pie cannot hold both.
   if (!next.dimension) {
-    const suggested = suggestSpec(kind, fields).dimension
+    // never called with kind 'text' — the caller only offers CHART_TYPES here
+    const suggested = (suggestSpec(kind, fields) as SpecInput).dimension
     if (suggested) next.dimension = suggested
   }
   if (kind === 'pie') {

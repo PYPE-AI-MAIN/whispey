@@ -25,6 +25,9 @@ export const DEFAULT_SIZE: Record<ChartKind, { w: number; h: number }> = {
   line: { w: 6, h: 5 },
   pie: { w: 4, h: 5 },
   table: { w: 6, h: 5 },
+  // a heading plus a line or two of body text — the common Metabase pattern
+  // of a section title sitting above the row of charts it introduces
+  text: { w: 12, h: 2 },
 }
 
 /** Below this a chart is unreadable, so resizing stops rather than allowing it. */
@@ -34,6 +37,7 @@ export const MIN_SIZE: Record<ChartKind, { w: number; h: number }> = {
   line: { w: 3, h: 3 },
   pie: { w: 3, h: 4 },
   table: { w: 3, h: 3 },
+  text: { w: 2, h: 1 },
 }
 
 export type GridItem = { i: string; x: number; y: number; w: number; h: number; minW: number; minH: number }
