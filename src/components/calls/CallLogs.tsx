@@ -652,8 +652,8 @@ const CallLogs: React.FC<CallLogsProps> = ({
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="flex-none relative p-4 border-b border-gray-200 dark:border-gray-700 bg-background/95 dark:bg-gray-900/95">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between flex-wrap gap-y-2">
+          <div className="flex items-center flex-wrap gap-2">
             <CallFilter
               onFiltersChange={handleFiltersChange}
               onClear={handleClearFilters}
@@ -683,7 +683,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
             </Button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center flex-wrap justify-end gap-2">
             {canReanalyze && <ReanalyzeDialogWrapper projectId={project?.id} agentId={agent?.id} />}
             {canManageFlagRules && agent?.id && (
               <FlagRulesDialog
