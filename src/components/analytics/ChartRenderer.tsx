@@ -13,7 +13,8 @@ import {
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import { cn } from '@/lib/utils'
-import type { ChartKind, ResultRow, Widget } from '@/types/analytics'
+import type { ChartKind, ResultRow } from '@/types/analytics'
+import type { SpecInput } from '@/server/analytics/spec'
 import { shape, zeroFill, formatValue, formatBucket, shortLabel, displayNumber, unitFor } from './chartData'
 
 /** Distinguishable in both themes, and still distinguishable for the most common colour blindness. */
@@ -62,7 +63,7 @@ export function ChartRenderer({
 }: Readonly<{
   kind: ChartKind
   rows: ResultRow[]
-  spec: Widget['spec']
+  spec: SpecInput
   bucket?: string
   /** Every value this field is known to produce, so a zero is drawn rather than dropped. */
   categories?: string[] | null
@@ -165,7 +166,7 @@ export function ChartRenderer({
   )
 }
 
-function Kpi({ rows, spec, short }: Readonly<{ rows: ResultRow[]; spec: Widget['spec']; short?: boolean }>) {
+function Kpi({ rows, spec, short }: Readonly<{ rows: ResultRow[]; spec: SpecInput; short?: boolean }>) {
   const value = displayNumber(rows[0], spec)
   return (
     <div className="flex h-full flex-col justify-center overflow-hidden">
@@ -186,7 +187,7 @@ function Table({
   shaped, spec, bucket, onSelect,
 }: Readonly<{
   shaped: ReturnType<typeof shape>
-  spec: Widget['spec']
+  spec: SpecInput
   bucket?: string
   onSelect?: (value: string | null) => void
 }>) {

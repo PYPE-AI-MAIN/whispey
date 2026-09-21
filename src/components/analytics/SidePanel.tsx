@@ -10,10 +10,11 @@
  */
 'use client'
 import React, { useMemo } from 'react'
-import { ArrowLeft, BarChart3, Hash, LineChart as LineIcon, PieChart as PieIcon, Table2 } from 'lucide-react'
+import { ArrowLeft, BarChart3, Hash, LineChart as LineIcon, PieChart as PieIcon, Table2, Type as TextIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import type { CatalogField, ChartKind, Widget } from '@/types/analytics'
+import type { CatalogField, ChartKind, TextContent, Widget } from '@/types/analytics'
+import type { ChartWidget } from './ChartCard'
 import { ChartFilters } from './FilterBar'
 import { CALCULATIONS, explainSpec } from './explain'
 import { FieldPicker, FieldShape } from './FieldPicker'
@@ -29,6 +30,17 @@ const CHART_TYPES: { kind: ChartKind; label: string; icon: React.ReactNode }[] =
   { kind: 'line', label: 'Line', icon: <LineIcon className="h-4 w-4" /> },
   { kind: 'table', label: 'Table', icon: <Table2 className="h-4 w-4" /> },
   { kind: 'pie', label: 'Pie', icon: <PieIcon className="h-4 w-4" /> },
+]
+
+/**
+ * The chart-type tiles plus the one non-query type, for the "drop something
+ * onto the canvas" picker. `CHART_TYPES` alone (no text) is what "Shown as"
+ * uses while editing a chart — switching a chart into a text block or back
+ * has no query to preserve across the change, so that switch isn't offered.
+ */
+const ADDABLE_TYPES: { kind: ChartKind; label: string; icon: React.ReactNode }[] = [
+  ...CHART_TYPES,
+  { kind: 'text', label: 'Text', icon: <TextIcon className="h-4 w-4" /> },
 ]
 
 const BUCKETS = [
@@ -115,7 +127,7 @@ export function SidePanel({
   onAddChart: (kind: ChartKind) => void
   /** Tells the canvas which type is in flight, so the drop placeholder is the right size. */
   onDragChartType: (kind: ChartKind | null) => void
-  onChange: (spec: SpecInput) => void
+  onChange: (spec: SpecInput | TextContent) => void
   onChangeKind: (kind: ChartKind) => void
   onChangeTitle: (title: string) => void
 }>) {
@@ -128,7 +140,7 @@ export function SidePanel({
             : 'You can view this dashboard but not change it.'}
         </p>
         <div className="grid grid-cols-2 gap-2">
-          {CHART_TYPES.map((t) => (
+          {ADDABLE_TYPES.map((t) => (
             <ChartTypeTile
               key={t.kind}
               type={t}
@@ -143,9 +155,21 @@ export function SidePanel({
     )
   }
 
+  if (selected.kind === 'text') {
+    return (
+      <TextSettings
+        widget={selected}
+        canEdit={canEdit}
+        onBack={onBack}
+        onChange={onChange}
+        onChangeTitle={onChangeTitle}
+      />
+    )
+  }
+
   return (
     <ChartSettings
-      widget={selected}
+      widget={selected as ChartWidget}
       fields={fields}
       canEdit={canEdit}
       onBack={onBack}
@@ -156,10 +180,50 @@ export function SidePanel({
   )
 }
 
+/** A note, not a chart — a title and a body, nothing to query. */
+function TextSettings({
+  widget, canEdit, onBack, onChange, onChangeTitle,
+}: Readonly<{
+  widget: Widget
+  canEdit: boolean
+  onBack: () => void
+  onChange: (spec: TextContent) => void
+  onChangeTitle: (title: string) => void
+}>) {
+  const text = (widget.spec as TextContent).text ?? ''
+  return (
+    <Panel title="Text block" onBack={onBack}>
+      <Row label="Name">
+        <input
+          value={widget.title}
+          disabled={!canEdit}
+          onChange={(e) => onChangeTitle(e.target.value)}
+          className="w-full rounded-md border border-gray-200 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-blue-400 disabled:opacity-60 dark:border-gray-800"
+        />
+      </Row>
+      <Row label="Content">
+        <textarea
+          value={text}
+          disabled={!canEdit}
+          onChange={(e) => onChange({ text: e.target.value })}
+          placeholder={'# A heading\nA line of body text underneath it.'}
+          rows={8}
+          className="w-full resize-y rounded-md border border-gray-200 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-blue-400 disabled:opacity-60 dark:border-gray-800"
+        />
+      </Row>
+      <p className="text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">
+        A line starting with <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">#</code> is a
+        heading, <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">##</code> a smaller one.
+        Everything else is a plain line of text.
+      </p>
+    </Panel>
+  )
+}
+
 function ChartSettings({
   widget, fields, canEdit, onBack, onChange, onChangeKind, onChangeTitle,
 }: Readonly<{
-  widget: Widget
+  widget: ChartWidget
   fields: CatalogField[]
   canEdit: boolean
   onBack: () => void

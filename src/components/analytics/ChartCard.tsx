@@ -10,24 +10,30 @@
  */
 'use client'
 import React from 'react'
-import { AlertTriangle, Clock, Copy, Download, EyeOff, GripVertical, List, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { AlertTriangle, Clock, Copy, Download, EyeOff, GripVertical, Info, List, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import type { CatalogField, Widget, WidgetResult } from '@/types/analytics'
+import type { SpecInput } from '@/server/analytics/spec'
 import { ChartRenderer } from './ChartRenderer'
 import { coverage } from './chartData'
+import { CALCULATIONS } from './explain'
 
 /** react-grid-layout only starts a drag from this class, so a click on the card selects it. */
 export const DRAG_HANDLE_CLASS = 'chart-drag-handle'
+
+/** A real, query-backed chart — never the freeform text block, which has its own card. */
+export type ChartWidget = Widget & { spec: SpecInput }
 
 export function ChartCard({
   widget, result, isLoading, selected, canEdit, draggable, categories, catalog, catalogReady, grainLabel, definition,
   onSelect, onOpenLogs, onEdit, onDuplicate, onRemove, onExport, onChangeGrain,
 }: Readonly<{
-  widget: Widget
+  widget: ChartWidget
   result?: WidgetResult
   isLoading: boolean
   /** Known values of the field this chart splits by, so a zero shows as a zero. */
@@ -63,6 +69,11 @@ export function ChartCard({
   // counts, so "99 of 99 calls" says nothing and implies a universe of 99.
   const showCoverage = Boolean(cover && (cover.used < cover.total || widget.spec.dimension))
   const grain = widget.spec.grain ?? 'interaction'
+  // Metabase's "how is this calculated" info — the same help text already
+  // shown while editing a chart (SidePanel), surfaced here too since a viewer
+  // reading "Pick up rate" has no way to open the editor to find out what a
+  // rate is actually a percentage of.
+  const calc = CALCULATIONS.find((c) => c.fn === (widget.spec.agg?.fn ?? 'count'))
   // "no rows" and "this field is no longer produced" used to look identical —
   // a dropped or renamed field read as a confident zero. The catalog is a
   // fresh read of what the agent actually produces right now, so a field this
@@ -115,6 +126,24 @@ export function ChartCard({
             <h3 className="truncate text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
               {widget.title}
             </h3>
+            {calc?.help && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={`How "${calc.label}" is calculated`}
+                      className="pointer-events-auto shrink-0 text-gray-300 outline-none transition hover:text-gray-500 focus-visible:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400"
+                    >
+                      <Info className="h-3 w-3" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" sideOffset={6} className="max-w-[220px] text-xs">
+                    {calc.help}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
 
           <div className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-1.5 text-[11px] text-gray-400">
@@ -206,7 +235,7 @@ export function ChartCard({
 function CardBody({
   widget, result, isLoading, rows, categories, fieldMissing, short, onSelect,
 }: Readonly<{
-  widget: Widget
+  widget: ChartWidget
   result?: WidgetResult
   isLoading: boolean
   rows: WidgetResult['data'] & object

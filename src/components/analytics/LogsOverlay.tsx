@@ -12,7 +12,7 @@ import { ArrowUpRight, Download, Loader2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import type { Widget } from '@/types/analytics'
+import type { ChartWidget } from './ChartCard'
 import { useCsvExport, type DashboardContext } from '@/hooks/useAnalyticsDashboard'
 
 type Row = {
@@ -36,7 +36,7 @@ export function LogsOverlay({
   grainLabel: string
   /** What the chart splits by, for the column heading. */
   seriesLabel?: string | null
-  widget: Widget | null
+  widget: ChartWidget | null
   /** undefined = every row behind the chart; null = the rows with no value. */
   dimensionValue: string | null | undefined
   open: boolean
