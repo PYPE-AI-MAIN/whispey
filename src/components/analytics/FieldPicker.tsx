@@ -16,10 +16,16 @@
  *    are actually computed from.
  *  - **Coverage on every row**, so a field filled in on 3% of calls is never
  *    picked by accident.
+ *  - **Rescan**, because the extractor's keys are not a fixed list: a key the
+ *    model only started emitting this morning is not in a catalog scanned
+ *    before lunch, and the person looking for it has no other way to say
+ *    "look again".
  */
 'use client'
 import React, { useMemo, useState } from 'react'
-import { Check, ChevronsUpDown, Search } from 'lucide-react'
+import { useParams } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
+import { Check, ChevronsUpDown, RefreshCw, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
@@ -74,6 +80,10 @@ export function FieldPicker({
 }>) {
   const [open, setOpen] = useState(false)
   const names = useMemo(() => disambiguate(fields), [fields])
+  // the picker is only ever rendered on the agent page, so the agent is in the
+  // URL — cheaper than threading a callback through four call sites
+  const { agentid } = useParams<{ agentid?: string }>()
+  const rescan = useRescan(agentid)
 
   const grouped = useMemo(() => {
     const byGroup = new Map<FieldGroup, CatalogField[]>()
@@ -172,6 +182,18 @@ export function FieldPicker({
               </CommandGroup>
             ))}
           </CommandList>
+
+          {agentid && (
+            <button
+              type="button"
+              onClick={rescan.run}
+              disabled={rescan.busy}
+              className="flex w-full items-center gap-1.5 border-t border-gray-100 px-3 py-2 text-left text-[11px] text-gray-500 transition hover:bg-gray-50 disabled:opacity-60 dark:border-gray-800 dark:text-gray-400 dark:hover:bg-gray-800/60"
+            >
+              <RefreshCw className={cn('h-3 w-3', rescan.busy && 'animate-spin')} />
+              {rescan.busy ? 'Looking at the latest calls…' : 'Field missing? Rescan this agent'}
+            </button>
+          )}
         </Command>
       </PopoverContent>
     </Popover>
@@ -206,4 +228,30 @@ export function FieldShape({ field }: Readonly<{ field: CatalogField }>) {
     )
   }
   return null
+}
+
+/**
+ * Re-reads the agent's fields from its most recent calls. Extractor keys are
+ * dynamic — the model emits what it found — so a field can appear days after
+ * the catalog was built, and the six-hour cache would otherwise hide it.
+ */
+function useRescan(agentId?: string) {
+  const queryClient = useQueryClient()
+  const [busy, setBusy] = useState(false)
+
+  const run = async () => {
+    if (!agentId || busy) return
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/analytics/fields?agentId=${agentId}&refresh=1`)
+      if (res.ok) queryClient.setQueryData(['analytics', 'fields', agentId], await res.json())
+    } catch (err) {
+      // a failed rescan leaves the catalog exactly as it was, which is usable
+      console.error('[analytics] rescan failed', err)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return { run, busy }
 }
