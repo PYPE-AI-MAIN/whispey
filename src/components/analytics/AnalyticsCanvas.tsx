@@ -37,7 +37,7 @@ import { DashboardSkeleton } from './DashboardSkeleton'
 import { SuggestedStrip } from './SuggestedStrip'
 import { explainFormula, explainSpec, fieldName } from './explain'
 import {
-  applyGridLayout, toGridLayout, nextRow, DEFAULT_SIZE, GRID_COLUMNS, GRID_MARGIN, ROW_HEIGHT,
+  applyGridLayout, toGridLayout, nextRow, usableWidth, DEFAULT_SIZE, GRID_COLUMNS, GRID_MARGIN, ROW_HEIGHT,
 } from './gridLayout'
 import 'react-grid-layout/css/styles.css'
 import './grid.css'
@@ -163,11 +163,22 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
     return () => window.removeEventListener('resize', measureWidth)
   }, [measureWidth])
 
-  // a zero-width reading is the tab being display:none, not a one-column
-  // dashboard — draw the last real width rather than reflowing into a strip
+  // a zero — or a sliver — is the tab being display:none or the flex row still
+  // settling, not a one-column dashboard; draw the last real width rather than
+  // reflowing every card into a strip (see usableWidth)
   const lastGood = useRef(0)
-  if (width > 0) lastGood.current = width
-  const gridWidth = width > 0 ? width : lastGood.current || 1024
+  const viewport = typeof window === 'undefined' ? 0 : window.innerWidth
+  const gridWidth = usableWidth(width, viewport, lastGood.current)
+  if (gridWidth === width) lastGood.current = width
+
+  // a reading we refused is a layout that had not finished — ask again on the
+  // next frame, or the canvas stays at the old width until something else
+  // resizes it, which is the "I have to refresh" report
+  useEffect(() => {
+    if (gridWidth === width) return
+    const id = requestAnimationFrame(measureWidth)
+    return () => cancelAnimationFrame(id)
+  }, [gridWidth, width, measureWidth])
 
   const widgets = useMemo(() => draft ?? dashboard.data?.widgets ?? [], [draft, dashboard.data])
   // a text block is a note, not a query — it has no valid Spec, so it never
