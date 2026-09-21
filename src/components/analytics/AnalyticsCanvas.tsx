@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useMobile } from '@/hooks/use-mobile'
 import { useAnalyticsDashboard, useChartData, useCsvExport, type DashboardContext } from '@/hooks/useAnalyticsDashboard'
-import type { CatalogField, ChartKind, Widget } from '@/types/analytics'
+import type { CatalogField, ChartKind, FormulaContent, Widget } from '@/types/analytics'
 import type { FilterNodeInput, SpecInput } from '@/server/analytics/spec'
 import { ChartCard, DRAG_HANDLE_CLASS, type ChartWidget } from './ChartCard'
 import { TextBlockCard } from './TextBlockCard'
@@ -35,7 +35,7 @@ import { adaptSpecToKind, identityFields, outcomeField, suggestSpec, suggestTitl
 import { coverage } from './chartData'
 import { DashboardSkeleton } from './DashboardSkeleton'
 import { SuggestedStrip } from './SuggestedStrip'
-import { explainSpec, fieldName } from './explain'
+import { explainFormula, explainSpec, fieldName } from './explain'
 import {
   applyGridLayout, toGridLayout, nextRow, DEFAULT_SIZE, GRID_COLUMNS, GRID_MARGIN, ROW_HEIGHT,
 } from './gridLayout'
@@ -501,6 +501,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
                       selected={selectedId === w.id}
                       canEdit={canEdit}
                       draggable={!isMobile}
+                      definition={explainFormula(w.spec as FormulaContent, catalog)}
                       onSelect={() => selectChart(w.id)}
                       onRemove={removeWidget}
                     />
