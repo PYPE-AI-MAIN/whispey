@@ -9,7 +9,7 @@
  * No database words, ever. Fields are named the way the catalog names them, and
  * a JSON path never appears.
  */
-import type { CatalogField } from '@/types/analytics'
+import type { CatalogField, FormulaContent } from '@/types/analytics'
 import type { Condition, FilterNode, SpecInput } from '@/server/analytics/spec'
 
 const OPERATOR_WORDS: Record<Condition['op'], string> = {
@@ -159,4 +159,13 @@ export function explainSpec(spec: SpecInput, fields: CatalogField[]): string {
   if (spec.exclude_environments?.length) parts.push(`not counting ${spec.exclude_environments.join(', ')}`)
 
   return parts.join(' · ')
+}
+
+/**
+ * A formula card in the same words as any other card — "Unique count of phone
+ * number ÷ Count of calls". Without it the card is a bare percentage nobody
+ * can check.
+ */
+export function explainFormula(content: FormulaContent, fields: CatalogField[]): string {
+  return `${explainSpec(content.a, fields)} ÷ ${explainSpec(content.b, fields)}`
 }
