@@ -24,6 +24,7 @@ import type { CatalogField, ChartKind, Widget } from '@/types/analytics'
 import type { FilterNodeInput, SpecInput } from '@/server/analytics/spec'
 import { ChartCard, DRAG_HANDLE_CLASS, type ChartWidget } from './ChartCard'
 import { TextBlockCard } from './TextBlockCard'
+import { FormulaCard } from './FormulaCard'
 import { ChartErrorBoundary } from './ErrorBoundary'
 import { SidePanel, CHART_TYPE_DRAG_TYPE } from './SidePanel'
 import { LogsOverlay } from './LogsOverlay'
@@ -473,51 +474,70 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
                 if (kind && DEFAULT_SIZE[kind]) addChart(kind, { x: item?.x ?? 0, y: item?.y ?? 0 })
               }}
             >
-              {widgets.map((w) => (
-                <div key={w.id}>
-                  {/* the eleven cards beside this one keep working */}
-                  <ChartErrorBoundary label={w.title}>
-                  {w.kind === 'text' ? (
+              {widgets.map((w) => {
+                const removeWidget = () => {
+                  setDraft((draft ?? widgets).filter((x) => x.id !== w.id))
+                  if (selectedId === w.id) setSelectedId(null)
+                }
+
+                let card: React.ReactNode
+                if (w.kind === 'text') {
+                  card = (
                     <TextBlockCard
                       widget={w}
                       selected={selectedId === w.id}
                       canEdit={canEdit}
                       draggable={!isMobile}
                       onSelect={() => selectChart(w.id)}
-                      onRemove={() => {
-                        setDraft((draft ?? widgets).filter((x) => x.id !== w.id))
-                        if (selectedId === w.id) setSelectedId(null)
-                      }}
+                      onRemove={removeWidget}
                     />
-                  ) : (
-                  <ChartCard
-                    widget={w as ChartWidget}
-                    result={charts.byWidget.get(w.id)}
-                    isLoading={charts.isLoading}
-                    selected={selectedId === w.id}
-                    canEdit={canEdit}
-                    // dragging off on a phone: the canvas is for reading there
-                    draggable={!isMobile}
-                    categories={categoriesFor(w as ChartWidget, catalog, ranking)}
-                    catalog={catalog}
-                    catalogReady={fields.isSuccess}
-                    grainLabel={grainLabel(w as ChartWidget, catalog)}
-                    definition={explainSpec(w.spec as SpecInput, catalog)}
-                    onSelect={() => selectChart(w.id)}
-                    onOpenLogs={(value) => setLogs({ widget: w as ChartWidget, value })}
-                    onEdit={() => selectChart(w.id)}
-                    onDuplicate={() => duplicate(w)}
-                    onRemove={() => {
-                      setDraft((draft ?? widgets).filter((x) => x.id !== w.id))
-                      if (selectedId === w.id) setSelectedId(null)
-                    }}
-                    onExport={() => !downloadDisabled && csv.run(w.spec as SpecInput, undefined, w.title, dashboardContext)}
-                    onChangeGrain={(grain) => setGrain(w as ChartWidget, grain)}
-                  />
-                  )}
-                  </ChartErrorBoundary>
-                </div>
-              ))}
+                  )
+                } else if (w.kind === 'formula') {
+                  card = (
+                    <FormulaCard
+                      widget={w}
+                      result={charts.byWidget.get(w.id)}
+                      isLoading={charts.isLoading}
+                      selected={selectedId === w.id}
+                      canEdit={canEdit}
+                      draggable={!isMobile}
+                      onSelect={() => selectChart(w.id)}
+                      onRemove={removeWidget}
+                    />
+                  )
+                } else {
+                  card = (
+                    <ChartCard
+                      widget={w as ChartWidget}
+                      result={charts.byWidget.get(w.id)}
+                      isLoading={charts.isLoading}
+                      selected={selectedId === w.id}
+                      canEdit={canEdit}
+                      // dragging off on a phone: the canvas is for reading there
+                      draggable={!isMobile}
+                      categories={categoriesFor(w as ChartWidget, catalog, ranking)}
+                      catalog={catalog}
+                      catalogReady={fields.isSuccess}
+                      grainLabel={grainLabel(w as ChartWidget, catalog)}
+                      definition={explainSpec(w.spec as SpecInput, catalog)}
+                      onSelect={() => selectChart(w.id)}
+                      onOpenLogs={(value) => setLogs({ widget: w as ChartWidget, value })}
+                      onEdit={() => selectChart(w.id)}
+                      onDuplicate={() => duplicate(w)}
+                      onRemove={removeWidget}
+                      onExport={() => !downloadDisabled && csv.run(w.spec as SpecInput, undefined, w.title, dashboardContext)}
+                      onChangeGrain={(grain) => setGrain(w as ChartWidget, grain)}
+                    />
+                  )
+                }
+
+                return (
+                  <div key={w.id}>
+                    {/* the eleven cards beside this one keep working */}
+                    <ChartErrorBoundary label={w.title}>{card}</ChartErrorBoundary>
+                  </div>
+                )
+              })}
               </ResponsiveGridLayout>
             )}
           </div>

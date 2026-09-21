@@ -1,7 +1,7 @@
 /** Shapes shared between the analytics API routes and the canvas. */
 import type { SpecInput } from '@/server/analytics/spec'
 
-export type ChartKind = 'kpi' | 'bar' | 'line' | 'table' | 'pie' | 'text'
+export type ChartKind = 'kpi' | 'bar' | 'line' | 'table' | 'pie' | 'text' | 'formula'
 /** A rectangle on the twelve-column grid; `width` is the shape saved before the grid. */
 export type WidgetLayout = { x: number; y: number; w: number; h: number } | { width: 'quarter' | 'half' | 'full' }
 
@@ -13,12 +13,27 @@ export type WidgetLayout = { x: number; y: number; w: number; h: number } | { wi
  */
 export type TextContent = { text: string }
 
+/**
+ * One number divided by another — "unique picked up ÷ unique called", "task
+ * complete ÷ answered", anything a single `rate` chart can't express because
+ * the two sides are different aggregates (two `count_distinct`s, say) rather
+ * than one boolean field's yes/no split. `a` and `b` are each an ordinary
+ * chart Spec — same calculation/field/filter pickers as any other chart — run
+ * as two queries and combined server-side, never in the SQL itself.
+ */
+export type FormulaContent = {
+  a: SpecInput
+  b: SpecInput
+  op: 'percent' | 'ratio'
+  display?: { round?: number; unit?: string }
+}
+
 export type Widget = {
   id: string
   dashboard_id: string
   title: string
   kind: ChartKind
-  spec: SpecInput | TextContent
+  spec: SpecInput | TextContent | FormulaContent
   layout: WidgetLayout
   position: number
   live: boolean

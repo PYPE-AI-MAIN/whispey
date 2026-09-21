@@ -40,9 +40,10 @@ export function SuggestedStrip({
   const [dismissed, setDismissed] = useState<string[]>([])
 
   const offers = useMemo(() => {
-    // a text block has no query to compare against — never a duplicate of a suggestion
+    // a text block or a formula card has no single query to compare against
+    // — never a duplicate of a suggestion
     const already = new Set(
-      widgets.filter((w) => w.kind !== 'text').map((w) => chartSubject(w.spec as SpecInput))
+      widgets.filter((w) => w.kind !== 'text' && w.kind !== 'formula').map((w) => chartSubject(w.spec as SpecInput))
     )
     return suggestions(fields)
       .filter((s) => !already.has(chartSubject(s.spec)) && !dismissed.includes(s.title))

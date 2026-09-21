@@ -28,6 +28,8 @@ export const DEFAULT_SIZE: Record<ChartKind, { w: number; h: number }> = {
   // a heading plus a line or two of body text — the common Metabase pattern
   // of a section title sitting above the row of charts it introduces
   text: { w: 12, h: 2 },
+  // one number, same footprint as a kpi
+  formula: { w: 3, h: 2 },
 }
 
 /** Below this a chart is unreadable, so resizing stops rather than allowing it. */
@@ -38,6 +40,7 @@ export const MIN_SIZE: Record<ChartKind, { w: number; h: number }> = {
   pie: { w: 3, h: 4 },
   table: { w: 3, h: 3 },
   text: { w: 2, h: 1 },
+  formula: { w: 2, h: 2 },
 }
 
 export type GridItem = { i: string; x: number; y: number; w: number; h: number; minW: number; minH: number }
@@ -65,12 +68,24 @@ export function toGridLayout(widgets: Widget[]): GridItem[] {
   let rowHeight = 0
   const placed: GridItem[] = []
 
+  // the lowest point of every card placed so far, including ones that kept
+  // their own saved (x, y) and so never advanced `cursorY` themselves — a
+  // dropped card that collides with one of those falls through to pack()
+  // below, and without this it packs starting from wherever `cursorY`
+  // happened to be left, which is usually the untouched (0, 0) it started
+  // at — the reported "the new card jumps to the top" bug.
+  const bottom = () => placed.reduce((m, p) => Math.max(m, p.y + p.h), 0)
+
   const pack = (w: number, h: number) => {
     if (cursorX + w > GRID_COLUMNS) {
       cursorX = 0
       cursorY += rowHeight
       rowHeight = 0
     }
+    // only re-sync at the start of a row: mid-row this would push every
+    // later card in the same row down onto its own row, since placing the
+    // first one already raises `bottom()` past the row's own y
+    if (cursorX === 0) cursorY = Math.max(cursorY, bottom())
     const at = { x: cursorX, y: cursorY }
     cursorX += w
     rowHeight = Math.max(rowHeight, h)
