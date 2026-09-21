@@ -146,3 +146,32 @@ function clamp(value: number, min: number, max: number): number {
 export function nextRow(widgets: Widget[]): number {
   return toGridLayout(widgets).reduce((lowest, item) => Math.max(lowest, item.y + item.h), 0)
 }
+
+/**
+ * The width to draw the grid at, given what the container just reported.
+ *
+ * Two readings are lies, and both produce the same symptom — every card
+ * reflowed into a narrow strip down the left, which a refresh "fixes":
+ *
+ *  - **0**, from a `display:none` parent: the canvas tab stays mounted while
+ *    hidden, and a hidden element reports nothing to its own observer.
+ *  - **A sliver**, from measuring mid-layout: the canvas is `w-full` inside a
+ *    flex row whose siblings (the app sidebar, the settings panel) have not
+ *    resolved their widths yet, so for one frame it is 100px wide inside a
+ *    1400px window.
+ *
+ * A reading far narrower than the viewport is therefore the row still
+ * settling, not a narrow screen — unless the viewport really is that narrow,
+ * which is the phone case and genuinely one column.
+ */
+export function usableWidth(measured: number, viewport: number, lastGood: number): number {
+  const plausible = measured > 0 && (measured >= MIN_SANE_WIDTH || viewport < MIN_SANE_VIEWPORT)
+  return plausible ? measured : lastGood || FALLBACK_WIDTH
+}
+
+/** Narrower than any real phone: nothing legitimately reports this on a desktop. */
+const MIN_SANE_WIDTH = 320
+/** Below this the viewport itself is a phone, so a narrow canvas is the truth. */
+const MIN_SANE_VIEWPORT = 768
+/** Only used before anything has ever measured — a plain desktop column. */
+const FALLBACK_WIDTH = 1024
