@@ -68,12 +68,24 @@ export function toGridLayout(widgets: Widget[]): GridItem[] {
   let rowHeight = 0
   const placed: GridItem[] = []
 
+  // the lowest point of every card placed so far, including ones that kept
+  // their own saved (x, y) and so never advanced `cursorY` themselves — a
+  // dropped card that collides with one of those falls through to pack()
+  // below, and without this it packs starting from wherever `cursorY`
+  // happened to be left, which is usually the untouched (0, 0) it started
+  // at — the reported "the new card jumps to the top" bug.
+  const bottom = () => placed.reduce((m, p) => Math.max(m, p.y + p.h), 0)
+
   const pack = (w: number, h: number) => {
     if (cursorX + w > GRID_COLUMNS) {
       cursorX = 0
       cursorY += rowHeight
       rowHeight = 0
     }
+    // only re-sync at the start of a row: mid-row this would push every
+    // later card in the same row down onto its own row, since placing the
+    // first one already raises `bottom()` past the row's own y
+    if (cursorX === 0) cursorY = Math.max(cursorY, bottom())
     const at = { x: cursorX, y: cursorY }
     cursorX += w
     rowHeight = Math.max(rowHeight, h)
