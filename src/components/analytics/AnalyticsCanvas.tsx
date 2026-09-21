@@ -14,7 +14,7 @@
 'use client'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ResponsiveGridLayout, useContainerWidth, type Layout } from 'react-grid-layout'
+import { ResponsiveGridLayout, type Layout } from 'react-grid-layout'
 import { ChevronRight, Loader2, PanelRightOpen, RefreshCw, RotateCcw, Save, SlidersHorizontal, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -124,27 +124,14 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
       return !open
     })
   }, [])
-  const { width, mounted, containerRef, measureWidth } = useContainerWidth()
+  const { width, containerRef, measureWidth } = useMeasuredWidth()
 
   /**
-   * Opening and closing the panel is the one resize the observer cannot be
-   * trusted for: the element that changes size is a *sibling* of the measured
-   * one, the flex row redistributes in the same frame, and the observer's
-   * callback is deferred to the next animation frame behind it. That is the
-   * report — "again it fails when collapsed and opened" — and `measureWidth` is
-   * the escape hatch the library documents for exactly this.
-   *
-   * `dashboard.isLoading` is in the dependency list for the same reason, not
-   * as a resize case: `containerRef`'s own div doesn't exist until the loading
-   * skeleton (§334) stops rendering, so every effect that runs before then
-   * measures a null ref and does nothing — including the library's own setup
-   * effect, whose dependency (`measureWidth`'s identity) never changes again
-   * once that first, wasted run is behind it. Nothing was left to measure the
-   * container the moment it actually mounted, until a *later* panelOpen change
-   * (a manual toggle) happened to fire this same effect again — which is
-   * exactly the "toggle it once and it fixes itself" report.
-   *
-   * Twice: once now, once after the frame the layout settles in.
+   * The panel opening and closing is the one resize an observer sees late: the
+   * element that changes size is a *sibling* of the measured one, and the
+   * observer's callback lands a frame behind the flex row redistributing.
+   * Measuring twice — now, and after the frame the layout settles in — is what
+   * the library documents for exactly this.
    */
   useEffect(() => {
     measureWidth()
@@ -152,12 +139,9 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
     return () => cancelAnimationFrame(id)
   }, [panelOpen, dashboard.isLoading, measureWidth])
 
-  // the ResizeObserver on containerRef should already catch the whole browser
-  // window growing or shrinking — its element is `w-full` and does resize with
-  // it — but the tab this canvas lives in can be kept mounted-but-hidden by its
-  // parent (`isActive`, §"do not fetch for a screen nobody is looking at"), and
-  // a display:none element reports 0 to its own observer. A direct window
-  // listener doesn't have that blind spot.
+  // the tab this canvas lives in is kept mounted-but-hidden by its parent
+  // (`isActive`), and a display:none element reports nothing to its observer —
+  // so the window itself is the one resize the observer can miss entirely
   useEffect(() => {
     window.addEventListener('resize', measureWidth)
     return () => window.removeEventListener('resize', measureWidth)
@@ -170,15 +154,9 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
   const viewport = typeof window === 'undefined' ? 0 : window.innerWidth
   const gridWidth = usableWidth(width, viewport, lastGood.current)
   if (gridWidth === width) lastGood.current = width
-
-  // a reading we refused is a layout that had not finished — ask again on the
-  // next frame, or the canvas stays at the old width until something else
-  // resizes it, which is the "I have to refresh" report
-  useEffect(() => {
-    if (gridWidth === width) return
-    const id = requestAnimationFrame(measureWidth)
-    return () => cancelAnimationFrame(id)
-  }, [gridWidth, width, measureWidth])
+  // the grid's first paint has to be at a real measured width; laying twelve
+  // columns out at a guess and snapping afterwards is the jump on load
+  const measured = lastGood.current > 0
 
   const widgets = useMemo(() => draft ?? dashboard.data?.widgets ?? [], [draft, dashboard.data])
   // a text block is a note, not a query — it has no valid Spec, so it never
@@ -462,7 +440,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
                 twelve columns out at the library's guessed default and then snapping
                 to the real width is the visible jump/overlap on load. `containerRef`
                 must stay mounted either way, or it never gets measured to begin with. */}
-            {widgets.length > 0 && mounted && (
+            {widgets.length > 0 && measured && (
             <ResponsiveGridLayout
               width={gridWidth}
               layouts={{ lg: layout, sm: layout.map((l) => ({ ...l, x: 0, w: 1 })) }}
@@ -715,4 +693,50 @@ function Banner({ children, onDismiss }: Readonly<{ children: React.ReactNode; o
       </button>
     </div>
   )
+}
+
+/**
+ * The container's width, measured for real and kept up to date.
+ *
+ * react-grid-layout ships `useContainerWidth`, but it attaches its
+ * ResizeObserver in an effect that bails out when `containerRef.current` is
+ * null and then never runs again — its only dependency is a callback whose
+ * identity stops changing after the first render. This canvas renders a
+ * loading skeleton first, so the measured div does not exist on that first
+ * run: the observer is never attached at all, and the width only ever changes
+ * when something manually re-measures. Measure at the wrong moment — mid
+ * animation, or while the tab is still hidden — and the canvas keeps that
+ * width until the next manual trigger, which is the strip of cards a refresh
+ * "fixes".
+ *
+ * A callback ref cannot miss the mount: it fires with the node whenever the
+ * node appears, however late, and the observer is attached there.
+ */
+function useMeasuredWidth() {
+  const [width, setWidth] = useState(0)
+  const node = useRef<HTMLDivElement | null>(null)
+  const observer = useRef<ResizeObserver | null>(null)
+
+  const containerRef = useCallback((next: HTMLDivElement | null) => {
+    observer.current?.disconnect()
+    observer.current = null
+    node.current = next
+    if (!next) return
+
+    setWidth(Math.round(next.getBoundingClientRect().width))
+    if (typeof ResizeObserver === 'undefined') return
+    observer.current = new ResizeObserver((entries) => {
+      const entry = entries[0]
+      if (entry) setWidth(Math.round(entry.contentRect.width))
+    })
+    observer.current.observe(next)
+  }, [])
+
+  useEffect(() => () => observer.current?.disconnect(), [])
+
+  const measureWidth = useCallback(() => {
+    if (node.current) setWidth(Math.round(node.current.getBoundingClientRect().width))
+  }, [])
+
+  return { width, containerRef, measureWidth }
 }
