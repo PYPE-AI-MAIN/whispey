@@ -22,7 +22,8 @@ import { useMobile } from '@/hooks/use-mobile'
 import { useAnalyticsDashboard, useChartData, useCsvExport, type DashboardContext } from '@/hooks/useAnalyticsDashboard'
 import type { CatalogField, ChartKind, Widget } from '@/types/analytics'
 import type { FilterNodeInput, SpecInput } from '@/server/analytics/spec'
-import { ChartCard, DRAG_HANDLE_CLASS } from './ChartCard'
+import { ChartCard, DRAG_HANDLE_CLASS, type ChartWidget } from './ChartCard'
+import { TextBlockCard } from './TextBlockCard'
 import { ChartErrorBoundary } from './ErrorBoundary'
 import { SidePanel, CHART_TYPE_DRAG_TYPE } from './SidePanel'
 import { LogsOverlay } from './LogsOverlay'
@@ -88,7 +89,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
 
   const [draft, setDraft] = useState<Widget[] | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [logs, setLogs] = useState<{ widget: Widget; value: string | null | undefined } | null>(null)
+  const [logs, setLogs] = useState<{ widget: ChartWidget; value: string | null | undefined } | null>(null)
   const [orderEditor, setOrderEditor] = useState(false)
   const [droppingKind, setDroppingKind] = useState<ChartKind | null>(null)
 
@@ -168,6 +169,9 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
   const gridWidth = width > 0 ? width : lastGood.current || 1024
 
   const widgets = useMemo(() => draft ?? dashboard.data?.widgets ?? [], [draft, dashboard.data])
+  // a text block is a note, not a query — it has no valid Spec, so it never
+  // reaches the query route at all
+  const queryableWidgets = useMemo(() => widgets.filter((w) => w.kind !== 'text'), [widgets])
   const canEdit = dashboard.data?.can_edit === true
   const downloadDisabled = dashboard.data?.download_disabled === true
   const dirty = draft !== null
@@ -197,7 +201,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
   )
 
   const range = useMemo(() => ({ from: dateRange.from.slice(0, 10), to: dateRange.to.slice(0, 10) }), [dateRange])
-  const charts = useChartData(agentId, widgets, range, filters, when, Boolean(isActive))
+  const charts = useChartData(agentId, queryableWidgets, range, filters, when, Boolean(isActive))
   // the same Period/filters/When merge /api/analytics/query does, so the logs
   // overlay and CSV export read what the card on screen is showing rather than
   // the widget's own saved defaults — memoized, or a new object every render
@@ -304,7 +308,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
   }
 
   /** One per patient needs an order to rank by, so ask for one instead of failing. */
-  const setGrain = (w: Widget, grain: 'interaction' | 'entity') => {
+  const setGrain = (w: ChartWidget, grain: 'interaction' | 'entity') => {
     if (grain === 'interaction') {
       edit(w.id, { spec: { ...w.spec, grain: 'interaction', dedupe: undefined } as SpecInput })
       return
@@ -473,30 +477,44 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
                 <div key={w.id}>
                   {/* the eleven cards beside this one keep working */}
                   <ChartErrorBoundary label={w.title}>
+                  {w.kind === 'text' ? (
+                    <TextBlockCard
+                      widget={w}
+                      selected={selectedId === w.id}
+                      canEdit={canEdit}
+                      draggable={!isMobile}
+                      onSelect={() => selectChart(w.id)}
+                      onRemove={() => {
+                        setDraft((draft ?? widgets).filter((x) => x.id !== w.id))
+                        if (selectedId === w.id) setSelectedId(null)
+                      }}
+                    />
+                  ) : (
                   <ChartCard
-                    widget={w}
+                    widget={w as ChartWidget}
                     result={charts.byWidget.get(w.id)}
                     isLoading={charts.isLoading}
                     selected={selectedId === w.id}
                     canEdit={canEdit}
                     // dragging off on a phone: the canvas is for reading there
                     draggable={!isMobile}
-                    categories={categoriesFor(w, catalog, ranking)}
+                    categories={categoriesFor(w as ChartWidget, catalog, ranking)}
                     catalog={catalog}
                     catalogReady={fields.isSuccess}
-                    grainLabel={grainLabel(w, catalog)}
-                    definition={explainSpec(w.spec, catalog)}
+                    grainLabel={grainLabel(w as ChartWidget, catalog)}
+                    definition={explainSpec(w.spec as SpecInput, catalog)}
                     onSelect={() => selectChart(w.id)}
-                    onOpenLogs={(value) => setLogs({ widget: w, value })}
+                    onOpenLogs={(value) => setLogs({ widget: w as ChartWidget, value })}
                     onEdit={() => selectChart(w.id)}
                     onDuplicate={() => duplicate(w)}
                     onRemove={() => {
                       setDraft((draft ?? widgets).filter((x) => x.id !== w.id))
                       if (selectedId === w.id) setSelectedId(null)
                     }}
-                    onExport={() => !downloadDisabled && csv.run(w.spec, undefined, w.title, dashboardContext)}
-                    onChangeGrain={(grain) => setGrain(w, grain)}
+                    onExport={() => !downloadDisabled && csv.run(w.spec as SpecInput, undefined, w.title, dashboardContext)}
+                    onChangeGrain={(grain) => setGrain(w as ChartWidget, grain)}
                   />
+                  )}
                   </ChartErrorBoundary>
                 </div>
               ))}
@@ -545,7 +563,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
             onChange={(spec) => selected && edit(selected.id, { spec })}
             // a new type needs the shape that draws it, or you get an empty box
             onChangeKind={(kind) =>
-              selected && edit(selected.id, { kind, spec: adaptSpecToKind(selected.spec, kind, catalog) })
+              selected && edit(selected.id, { kind, spec: adaptSpecToKind(selected.spec as SpecInput, kind, catalog) })
             }
             onChangeTitle={(title) => selected && edit(selected.id, { title })}
           />
@@ -596,7 +614,7 @@ export function decodeWhen(raw: string | null): TimeOfDay {
  * and never what the chart itself showed.
  */
 function categoriesFor(
-  w: Widget,
+  w: ChartWidget,
   fields: { col: string; path: string[]; enum_values: string[] | null }[],
   ranking?: OutcomeRanking
 ) {
@@ -639,7 +657,7 @@ function entitySpec(spec: SpecInput, fields: CatalogField[], ranking: OutcomeRan
 }
 
 /** "Every call", or the name of whatever the chart counts one of. */
-function grainLabel(w: Widget, fields: CatalogField[]): string {
+function grainLabel(w: ChartWidget, fields: CatalogField[]): string {
   const key = w.spec.dedupe?.key.field
   if (w.spec.grain !== 'entity' || !key) return 'Every call'
   const match = fields.find((f) => f.col === key.col && f.path.join('.') === (key.path ?? []).join('.'))

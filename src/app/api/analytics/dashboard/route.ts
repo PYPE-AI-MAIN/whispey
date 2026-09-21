@@ -101,7 +101,7 @@ const SaveBody = z.object({
       z.object({
         id: z.string().uuid().optional(),
         title: z.string().min(1).max(120),
-        kind: z.enum(['kpi', 'bar', 'line', 'table', 'pie']),
+        kind: z.enum(['kpi', 'bar', 'line', 'table', 'pie', 'text']),
         spec: z.unknown(),
         // a rectangle on the twelve-column grid. `width` is the pre-grid shape,
         // still accepted so an older client cannot fail to save.
@@ -131,9 +131,12 @@ export const PUT = guarded('analytics/dashboard', async (req: NextRequest) => {
   if (resolved.role === 'viewer') return NextResponse.json({ error: 'You can view this dashboard but not change it' }, { status: 403 })
 
   // every chart is validated before it is stored, so a saved dashboard can
-  // never contain something the query builder will refuse later
+  // never contain something the query builder will refuse later. A text block
+  // is not a chart at all — it never reaches buildQuery — so it gets its own,
+  // much smaller check instead of the full query Spec.
+  const TextSpec = z.object({ text: z.string().max(4000) })
   for (const w of body.widgets) {
-    const check = Spec.safeParse(w.spec)
+    const check = w.kind === 'text' ? TextSpec.safeParse(w.spec) : Spec.safeParse(w.spec)
     if (!check.success) {
       return NextResponse.json({ error: `"${w.title}" is not a valid chart`, detail: check.error.flatten() }, { status: 400 })
     }

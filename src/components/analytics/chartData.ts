@@ -7,7 +7,8 @@
  * a different way of drawing that, which is what "chart type is presentational"
  * has to mean in practice — a new chart type lands here, never in the SQL.
  */
-import type { ResultRow, Widget } from '@/types/analytics'
+import type { ResultRow } from '@/types/analytics'
+import type { SpecInput } from '@/server/analytics/spec'
 
 export type Point = { x: string; [series: string]: string | number | null }
 
@@ -18,7 +19,7 @@ const num = (v: unknown): number | null => {
 }
 
 /** Presentational only — seconds drawn as minutes. The query returns full precision. */
-export function scaled(value: unknown, spec: Widget['spec']): number | null {
+export function scaled(value: unknown, spec: SpecInput): number | null {
   const n = num(value)
   if (n === null) return null
   return n * (spec.display?.scale ?? 1)
@@ -34,7 +35,7 @@ export function scaled(value: unknown, spec: Widget['spec']): number | null {
  * A rate is a percentage whatever `display.unit` says, so that is decided here
  * and callers simply print what they are given.
  */
-export function formatValue(value: number | null, spec: Widget['spec']): string {
+export function formatValue(value: number | null, spec: SpecInput): string {
   if (value === null) return '—'
   const round = spec.display?.round ?? 1
   const unit = unitFor(spec)
@@ -44,16 +45,16 @@ export function formatValue(value: number | null, spec: Widget['spec']): string 
 }
 
 /** What goes after the number — and for a rate that is '%', never twice. */
-export function unitFor(spec: Widget['spec']): string {
+export function unitFor(spec: SpecInput): string {
   return isRate(spec) ? '%' : (spec.display?.unit ?? '')
 }
 
 /** A rate comes back as 0–1 and is read as a percentage. */
-export function isRate(spec: Widget['spec']): boolean {
+export function isRate(spec: SpecInput): boolean {
   return spec.agg?.fn === 'rate'
 }
 
-export function displayNumber(row: ResultRow | undefined, spec: Widget['spec']): number | null {
+export function displayNumber(row: ResultRow | undefined, spec: SpecInput): number | null {
   const raw = scaled(row?.value, spec)
   if (raw === null) return null
   return isRate(spec) ? raw * 100 : raw
@@ -88,7 +89,7 @@ export function zeroFill(shaped: Shaped, categories: string[] | null | undefined
   return { ...shaped, points: sorted }
 }
 
-export function shape(rows: ResultRow[], spec: Widget['spec']): Shaped {
+export function shape(rows: ResultRow[], spec: SpecInput): Shaped {
   const hasBucket = rows.some((r) => r.bucket !== undefined && r.bucket !== null)
   const hasSeries = rows.some((r) => r.series !== undefined)
   const multiplier = isRate(spec) ? 100 : 1
