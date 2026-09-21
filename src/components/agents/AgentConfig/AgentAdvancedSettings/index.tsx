@@ -137,7 +137,7 @@ const chevronClass = (open: boolean) => open ? 'rotate-180' : ''
 function GroupLabel({ children, first = false }: Readonly<{ children: React.ReactNode; first?: boolean }>) {
   return (
     <div className={first ? 'px-2 pb-1' : 'px-2 pb-1 pt-1'}>
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{children}</span>
+      <span className="text-[11px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-200">{children}</span>
     </div>
   )
 }
