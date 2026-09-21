@@ -39,6 +39,23 @@ describe('a dashboard saved before the grid still opens', () => {
   it('gives a card with no layout at all the size its type needs', () => {
     expect(toGridLayout([widget('a', 'pie', undefined)])[0]).toMatchObject(DEFAULT_SIZE.pie)
   })
+
+  it('drops a new full-width card below the dashboard, not on top of it', () => {
+    // three rows of cards that all kept their own saved, non-overlapping
+    // positions — none of them ever calls the internal packer, so it has no
+    // idea the dashboard isn't empty
+    const existing = [
+      widget('a', 'kpi', { x: 0, y: 0, w: 3, h: 2 }),
+      widget('b', 'kpi', { x: 3, y: 0, w: 3, h: 2 }),
+      widget('c', 'bar', { x: 0, y: 2, w: 6, h: 5 }),
+    ]
+    // a full-width text block dropped mid-canvas collides with something in
+    // every occupied row, so it always falls through to the packer
+    const dropped = widget('d', 'text', { x: 0, y: 3, w: 12, h: 2 })
+    const items = toGridLayout([...existing, dropped])
+    const d = items[items.length - 1]
+    expect(d.y).toBeGreaterThanOrEqual(7) // below 'c', which ends at y = 2 + 5
+  })
 })
 
 describe('a card cannot be resized into something unreadable', () => {
