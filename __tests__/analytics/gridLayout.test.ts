@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { toGridLayout, applyGridLayout, GRID_COLUMNS, DEFAULT_SIZE, MIN_SIZE } from '@/components/analytics/gridLayout'
+import { toGridLayout, applyGridLayout, usableWidth, GRID_COLUMNS, DEFAULT_SIZE, MIN_SIZE } from '@/components/analytics/gridLayout'
 import type { Widget } from '@/types/analytics'
 
 const widget = (id: string, kind: Widget['kind'], layout: unknown): Widget => ({
@@ -90,5 +90,27 @@ describe('moving a card changes what comes first', () => {
   it('leaves a card the grid did not report alone', () => {
     const original = widget('a', 'bar', { x: 1, y: 1, w: 4, h: 4 })
     expect(applyGridLayout([original], [])[0].layout).toEqual({ x: 1, y: 1, w: 4, h: 4 })
+  })
+})
+
+describe('a container width that cannot be true', () => {
+  it('ignores the sliver a flex row reports mid-layout — the strip people fix by refreshing', () => {
+    expect(usableWidth(130, 1440, 1180)).toBe(1180)
+  })
+
+  it('ignores a hidden tab reporting zero', () => {
+    expect(usableWidth(0, 1440, 1180)).toBe(1180)
+  })
+
+  it('believes a narrow canvas on a narrow viewport, because that is a phone', () => {
+    expect(usableWidth(360, 375, 1180)).toBe(360)
+  })
+
+  it('believes any ordinary desktop reading', () => {
+    expect(usableWidth(1180, 1440, 0)).toBe(1180)
+  })
+
+  it('falls back to a desktop column when nothing has ever measured', () => {
+    expect(usableWidth(0, 1440, 0)).toBe(1024)
   })
 })
