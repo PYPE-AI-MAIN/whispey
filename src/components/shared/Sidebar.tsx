@@ -8,6 +8,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { 
   ArrowLeft,
@@ -87,6 +88,7 @@ interface NavigationItem {
   path: string
   external?: boolean
   group?: string
+  badge?: string
 }
 
 interface NavigationGroup {
@@ -262,7 +264,8 @@ function matchesPrefixRoute(navPath: string, currentBasePath: string): boolean {
     '/phone-call-config',
     '/phone-call-config/pipecat',
     '/knowledge',
-    '/settings'
+    '/settings',
+    '/flows'
   ]
 
   // Check if current path contains any special sub-route
@@ -360,7 +363,14 @@ function renderNavigationItem(
     `}>
       <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`} />
       {(!isCollapsed || isMobile) && (
-        <span className="truncate">{item.name}</span>
+        <>
+          <span className="truncate">{item.name}</span>
+          {item.badge && (
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-medium rounded-full shrink-0">
+              {item.badge}
+            </Badge>
+          )}
+        </>
       )}
     </div>
   )

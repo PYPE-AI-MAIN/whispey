@@ -13,9 +13,12 @@ export function findRoot(nodes: FNode[], edges: Edge[]): FNode | undefined {
   return nodes.find((n) => !edges.some((e) => e.target === n.id))
 }
 
-let counter = 1000
+// A module-level counter restarts at the same value every fresh page load,
+// so a flow saved in an earlier session (with node ids from a previous
+// counter run) could collide with ids generated in a new one — exactly what
+// happened here. crypto.randomUUID() can't collide across sessions.
 export function nextId() {
-  return `step-${counter++}`
+  return `step-${crypto.randomUUID()}`
 }
 
 // Every node has more than one handle of each type now (top+left are both

@@ -66,6 +66,7 @@ interface NavigationItem {
   path: string
   group?: string
   external?: boolean
+  badge?: string
 }
 
 export interface SidebarConfig {
@@ -198,6 +199,14 @@ const sidebarRoutes: SidebarRoute[] = [
           icon: 'Calendar',
           path: `/${projectId}/campaigns`,
           group: 'Batch Calls'
+        })
+        campaignsItems.push({
+          id: 'campaign-flows',
+          name: 'Campaign Flows',
+          icon: 'GitBranch',
+          path: `/${projectId}/campaigns/flows`,
+          group: 'Batch Calls',
+          badge: 'Beta'
         })
       }
 

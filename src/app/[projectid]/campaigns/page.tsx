@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react'
-import { useRouter, useParams, useSearchParams } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -29,11 +29,6 @@ import { useCampaigns } from '@/hooks/useCampaigns'
 import { useQueryClient } from '@tanstack/react-query'
 import { useProjectAgents } from '@/hooks/useProjectAgents'
 import { resolveStoredAgentName } from '@/lib/agentDisplayName'
-import { Workflow, ArrowRight } from 'lucide-react'
-import { useCampaignFlows } from '@/hooks/useCampaignFlows'
-import type { CampaignFlowSummary } from '@/lib/campaignFlows/types'
-
-type Tab = 'campaigns' | 'flows'
 
 const PAGE_SIZE = 10
 
@@ -169,42 +164,10 @@ function Pagination({
 function Campaigns() {
   const router   = useRouter()
   const params   = useParams()
-  const searchParams = useSearchParams()
   const projectId = params.projectid as string
   const { data: agents = [] } = useProjectAgents(projectId)
-  const { data: campaignFlows = [] } = useCampaignFlows(projectId)
   const queryClient = useQueryClient()
-  const [renamingFlowId, setRenamingFlowId] = useState<string | null>(null)
-  const [renameValue, setRenameValue] = useState('')
 
-  const invalidateCampaignFlows = () => queryClient.invalidateQueries({ queryKey: ['campaign-flows', projectId] })
-
-  const startRenameFlow = (flow: CampaignFlowSummary, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setRenamingFlowId(flow.flowId)
-    setRenameValue(flow.name)
-  }
-
-  const commitRenameFlow = async (flowId: string) => {
-    const trimmed = renameValue.trim()
-    setRenamingFlowId(null)
-    if (!trimmed) return
-    await fetch(`/api/campaign-flows/${flowId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: trimmed }),
-    })
-    invalidateCampaignFlows()
-  }
-
-  const deleteFlow = async (flowId: string, e: React.MouseEvent) => {
-    e.stopPropagation()
-    if (!confirm('Delete this campaign flow? This cannot be undone.')) return
-    await fetch(`/api/campaign-flows/${flowId}`, { method: 'DELETE' })
-    invalidateCampaignFlows()
-  }
-
-  const [activeTab, setActiveTab]     = useState<Tab>(searchParams.get('tab') === 'flows' ? 'flows' : 'campaigns')
   const [page, setPage]               = useState(1)
   const [searchInput, setSearchInput] = useState('')
   const [search, setSearch]           = useState('')   // debounced value sent to API
@@ -509,92 +472,6 @@ function Campaigns() {
     )
   }
 
-  const renderCampaignFlowsContent = () => {
-    if (campaignFlows.length === 0) {
-      return (
-        <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
-          <div className="w-12 h-12 bg-violet-100 dark:bg-violet-900/20 rounded-full flex items-center justify-center mb-3">
-            <Workflow className="w-6 h-6 text-violet-600 dark:text-violet-400" />
-          </div>
-          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
-            No campaign flows yet
-          </h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 max-w-xs">
-            Design a multi-step, multi-channel sequence a contact can be run through.
-          </p>
-          <Button onClick={() => router.push(`/${projectId}/campaigns/flows/create`)} size="sm" className="h-7 text-xs gap-2">
-            <Plus className="w-3 h-3" />
-            Create Campaign Flow
-          </Button>
-        </div>
-      )
-    }
-
-    return (
-      <div className="grid gap-3">
-        {campaignFlows.map((flow) => (
-          <div
-            key={flow.flowId}
-            onClick={() => router.push(`/${projectId}/campaigns/flows/${flow.flowId}`)}
-            className="relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700
-              rounded-lg p-4 hover:border-violet-300 dark:hover:border-violet-700 hover:shadow-sm
-              transition-all cursor-pointer group"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-1.5">
-                  {renamingFlowId === flow.flowId ? (
-                    <Input
-                      autoFocus
-                      value={renameValue}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => setRenameValue(e.target.value)}
-                      onBlur={() => commitRenameFlow(flow.flowId)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') commitRenameFlow(flow.flowId)
-                        if (e.key === 'Escape') setRenamingFlowId(null)
-                      }}
-                      className="h-6 max-w-xs text-sm font-semibold"
-                    />
-                  ) : (
-                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
-                      {flow.name}
-                    </h3>
-                  )}
-                  <Badge variant="outline" className="text-xs shrink-0">
-                    {flow.status === 'live' ? 'Live' : 'Draft'}
-                  </Badge>
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{flow.description}</p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="flex items-center gap-1 text-xs font-medium text-violet-600 dark:text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity pt-0.5">
-                  Open in builder <ArrowRight className="w-3 h-3" />
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                      <MoreVertical className="w-3.5 h-3.5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenuItem onClick={(e) => startRenameFlow(flow, e)}>Rename</DropdownMenuItem>
-                    <DropdownMenuItem onClick={(e) => deleteFlow(flow.flowId, e)} className="text-red-600 dark:text-red-400">
-                      <Trash2 className="w-3.5 h-3.5 mr-2" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  const isCampaignsTab = activeTab === 'campaigns'
-
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
 
@@ -602,96 +479,62 @@ function Campaigns() {
       <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isCampaignsTab ? 'bg-blue-100 dark:bg-blue-900/20' : 'bg-violet-100 dark:bg-violet-900/20'}`}>
-              {isCampaignsTab
-                ? <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                : <Workflow className="w-4 h-4 text-violet-600 dark:text-violet-400" />}
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-100 dark:bg-blue-900/20">
+              <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                {isCampaignsTab ? 'Campaigns' : 'Campaign Flows'}
-              </h1>
+              <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">Campaigns</h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                {isCampaignsTab
-                  ? <>Scheduled runs against a contact list{pagination && <span className="text-gray-400 dark:text-gray-500"> · {pagination.total} total</span>}</>
-                  : <>Reusable, multi-step designs a contact can be run through<span className="text-gray-400 dark:text-gray-500"> · {campaignFlows.length} total</span></>}
+                Scheduled runs against a contact list{pagination && <span className="text-gray-400 dark:text-gray-500"> · {pagination.total} total</span>}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {isCampaignsTab && (
-              <Button
-                onClick={() => invalidateAndRefetch()}
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs gap-1.5"
-                disabled={isFetching}
-              >
-                <RefreshCw className={`w-3 h-3 ${isFetching ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-            )}
             <Button
-              onClick={() => router.push(isCampaignsTab ? `/${projectId}/campaigns/create` : `/${projectId}/campaigns/flows/create`)}
+              onClick={() => invalidateAndRefetch()}
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs gap-1.5"
+              disabled={isFetching}
+            >
+              <RefreshCw className={`w-3 h-3 ${isFetching ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button
+              onClick={() => router.push(`/${projectId}/campaigns/create`)}
               size="sm"
               className="h-7 text-xs gap-1.5"
             >
               <Plus className="w-3 h-3" />
-              {isCampaignsTab ? 'Create Campaign' : 'Create Campaign Flow'}
+              Create Campaign
             </Button>
           </div>
         </div>
+      </div>
 
-        {/* ── Tabs ── */}
-        <div className="flex items-center gap-1 mt-3">
-          <button
-            onClick={() => setActiveTab('campaigns')}
-            className={`h-7 rounded-md px-3 text-xs font-medium transition-colors ${
-              isCampaignsTab
-                ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100'
-                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-            }`}
-          >
-            Campaigns
-          </button>
-          <button
-            onClick={() => setActiveTab('flows')}
-            className={`h-7 rounded-md px-3 text-xs font-medium transition-colors ${
-              !isCampaignsTab
-                ? 'bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100'
-                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-            }`}
-          >
-            Campaign Flows
-          </button>
+      {/* ── Search ── */}
+      <div className="px-4 py-2.5 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+          <Input
+            placeholder="Search campaigns by name or ID…"
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+            className="pl-8 h-8 text-xs"
+          />
+          {searchInput && (
+            <button
+              onClick={() => setSearchInput('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs"
+            >
+              ✕
+            </button>
+          )}
         </div>
       </div>
 
-      {/* ── Search (campaigns tab only — flows is a small, static list for now) ── */}
-      {isCampaignsTab && (
-        <div className="px-4 py-2.5 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
-          <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
-            <Input
-              placeholder="Search campaigns by name or ID…"
-              value={searchInput}
-              onChange={e => setSearchInput(e.target.value)}
-              className="pl-8 h-8 text-xs"
-            />
-            {searchInput && (
-              <button
-                onClick={() => setSearchInput('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* ── Error banner ── */}
-      {isCampaignsTab && isError && (
+      {isError && (
         <div className="mx-4 mt-3 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20 px-3 py-2 text-xs text-red-700 dark:text-red-400">
           <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
           Failed to load campaigns. Check your connection and try refreshing.
@@ -700,11 +543,11 @@ function Campaigns() {
 
       {/* ── Content ── */}
       <div className="flex-1 overflow-auto p-4">
-        {isCampaignsTab ? renderCampaignsContent() : renderCampaignFlowsContent()}
+        {renderCampaignsContent()}
       </div>
 
       {/* ── Pagination bar ── */}
-      {isCampaignsTab && !isLoading && !isError && pagination && (
+      {!isLoading && !isError && pagination && (
         <div className="px-4 pb-2 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex-shrink-0">
           <Pagination
             currentPage={pagination.currentPage}

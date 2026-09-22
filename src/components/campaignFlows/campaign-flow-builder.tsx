@@ -13,28 +13,33 @@ import {
   applyNodeChanges,
   applyEdgeChanges,
   ConnectionMode,
+  useReactFlow,
   type Connection,
   type Edge,
   type Node,
+  type OnConnectStart,
+  type OnConnectEnd,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { ArrowLeft, MessageCircle, Phone, Video, Clock, GitBranch, Plus, Save, Trash2, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, MessageCircle, Phone, Clock, GitBranch, Plus, Save, Trash2, ShieldCheck, Copy, Check } from 'lucide-react'
 
 import { FlowNode } from './flow-node'
 import { SmartEdge } from './smart-edge'
 import { RetryRuleEditor } from './retry-rule-editor'
-import { BranchConditionEditor, emptyBranchCondition, summarizeCondition } from './branch-condition-editor'
+import { BranchConditionEditor, emptyBranchCondition } from './branch-condition-editor'
+import { WhatsAppTemplateEditor } from './whatsapp-template-editor'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import type { BranchNodeConfig, CampaignFlowSummary, DispatchNodeConfig, FlowBranch, FlowNodeData, FlowNodeKind, WaitNodeConfig } from '@/lib/campaignFlows/types'
+import type { CampaignFlowSummary, ConditionNodeConfig, ConditionRule, DispatchNodeConfig, FlowNodeData, FlowNodeKind, WaitNodeConfig } from '@/lib/campaignFlows/types'
 import { defaultConfigFor, isChannelKind } from '@/lib/campaignFlows/types'
-import { appendAfter, insertOnEdge, layoutTree, makeRoomBelow, nextId, outgoing, removeNode } from '@/lib/campaignFlows/graph-ops'
+import { insertOnEdge, layoutTree, makeRoomBelow, nextId, removeNode } from '@/lib/campaignFlows/graph-ops'
 import { useProjectAgents } from '@/hooks/useProjectAgents'
 import { useAgentById } from '@/hooks/useAgentById'
 import { agentDisplayName } from '@/lib/agentDisplayName'
@@ -43,23 +48,25 @@ import { parseExtractorKeys } from '@/lib/flagRulesValidation'
 const nodeTypes = { flow: FlowNode }
 const edgeTypes = { smart: SmartEdge }
 
+// Dispatch channels a step can actually be. 'video' isn't here — it's
+// currently just a WhatsApp message with a video attachment, not its own
+// dispatch path, so it isn't its own block.
 const paletteItems: { kind: FlowNodeKind; label: string; icon: React.ElementType }[] = [
   { kind: 'whatsapp', label: 'WhatsApp message', icon: MessageCircle },
   { kind: 'call', label: 'Phone call', icon: Phone },
-  { kind: 'video', label: 'Video call', icon: Video },
   { kind: 'wait', label: 'Wait', icon: Clock },
 ]
 
-const branchPaletteItem: { kind: FlowNodeKind; label: string; icon: React.ElementType } = {
-  kind: 'branch',
-  label: 'Branch',
+const conditionPaletteItem: { kind: FlowNodeKind; label: string; icon: React.ElementType } = {
+  kind: 'condition',
+  label: 'Condition',
   icon: GitBranch,
 }
 
 // Everything a step can be, for the header's "Add step" menu — includes
-// Branch, which is its own visible block in the graph rather than something
-// hidden inside a dispatch node's settings.
-const stepPaletteItems = [...paletteItems, branchPaletteItem]
+// Condition, which is its own visible block in the graph (a single yes/no
+// question) rather than something hidden inside a dispatch node's settings.
+const stepPaletteItems = [...paletteItems, conditionPaletteItem]
 
 type FNode = Node<FlowNodeData>
 
@@ -91,6 +98,21 @@ export function CampaignFlowBuilder({
   const [agentId, setAgentId] = React.useState<string>(flow.agentId ?? '')
   const [name, setName] = React.useState(flow.name)
   const [description, setDescription] = React.useState(flow.description)
+  const [idCopied, setIdCopied] = React.useState(false)
+
+  // n8n-style: a step is added by dragging a connection out from a node's
+  // handle, not by a button. Dropping on empty canvas (rather than another
+  // node) opens a small step-type picker right there, then creates and
+  // wires the new node in one motion.
+  const connectStartRef = React.useRef<{ nodeId: string; handleId: string | null } | null>(null)
+  const [pendingConnection, setPendingConnection] = React.useState<{
+    sourceNodeId: string
+    sourceHandle: string | null
+    flowPosition: { x: number; y: number }
+    screenPosition: { x: number; y: number }
+  } | null>(null)
+  const screenToFlowPositionRef = React.useRef<((pos: { x: number; y: number }) => { x: number; y: number }) | null>(null)
+  const canvasWrapperRef = React.useRef<HTMLDivElement>(null)
 
   // The flow's attached agent is what supplies real field-extractor field
   // names for branch/retry conditions — without one, those fall back to a
@@ -183,61 +205,30 @@ export function CampaignFlowBuilder({
     setNodes((nds) => [...nds, makeNode(kind)])
   }
 
-  // Non-dispatch nodes (trigger, wait) only ever have one path forward.
-  const addNextStep = (kind: FlowNodeKind) => {
-    if (!selectedNodeId || !selectedNode) return
-    pushHistory()
-    const newNode = makeNode(kind, selectedNode.position)
-    const outs = outgoing(selectedNodeId, edges)
-    if (outs.length > 0) {
-      const oldTarget = outs[0].target
-      setEdges(insertOnEdge(edges, outs[0].id, newNode.id))
-      setNodes((nds) => [...makeRoomBelow(nds, edges, oldTarget, 170), newNode])
-    } else {
-      setEdges(appendAfter(edges, selectedNodeId, newNode.id))
-      setNodes((nds) => [...nds, newNode])
-    }
-  }
-
-  // A branch block's branches are freeform and user-defined, built from the
+  // A condition block's rules are freeform and user-defined, built from the
   // same real signals a client already understands from campaign retry rules
   // (sipCode / metric / fieldExtractor / metadata) — e.g. "disconnected 3+
   // times" is just a metric condition (metricName: disconnect_count, >=, 3).
-  // There's always exactly one extra fixed "Otherwise" fallback path besides
-  // whatever branches are added, for anything no branch condition catches.
-  const addBranch = () => {
-    if (!selectedNodeId || !branchConfig) return
+  // Whatever rules exist, they combine (AND/OR) into exactly one yes/no —
+  // the block always has exactly two outputs, never more.
+  const addConditionRule = () => {
+    if (!conditionConfig) return
     pushHistory()
-    const branch: FlowBranch = { id: nextId(), label: '', condition: emptyBranchCondition('sipCode') }
-    updateSelectedConfig({ branches: [...branchConfig.branches, branch] })
+    const rule: ConditionRule = { id: nextId(), condition: emptyBranchCondition('sipCode') }
+    updateSelectedConfig({ rules: [...conditionConfig.rules, rule] })
   }
 
-  const updateBranch = (branchId: string, patch: Partial<FlowBranch>) => {
-    if (!branchConfig) return
+  const updateConditionRule = (ruleId: string, patch: Partial<ConditionRule>) => {
+    if (!conditionConfig) return
     updateSelectedConfig({
-      branches: branchConfig.branches.map((b) => (b.id === branchId ? { ...b, ...patch } : b)),
+      rules: conditionConfig.rules.map((r) => (r.id === ruleId ? { ...r, ...patch } : r)),
     })
   }
 
-  const removeBranch = (branchId: string) => {
-    if (!selectedNodeId || !branchConfig) return
+  const removeConditionRule = (ruleId: string) => {
+    if (!conditionConfig) return
     pushHistory()
-    updateSelectedConfig({ branches: branchConfig.branches.filter((b) => b.id !== branchId) })
-    setEdges((eds) => eds.filter((e) => !(e.source === selectedNodeId && e.sourceHandle === `branch-${branchId}`)))
-  }
-
-  // handle 'default' below is the fixed "Otherwise" fallback every branch
-  // block has in addition to its user-defined branches.
-  const addOutcomeStep = (sourceHandle: string, kind: FlowNodeKind, label: string) => {
-    if (!selectedNodeId || !selectedNode) return
-    pushHistory()
-    const existingCount = outgoing(selectedNodeId, edges).length
-    const newNode = makeNode(kind, { x: selectedNode.position.x + existingCount * 90 - 45, y: selectedNode.position.y })
-    setEdges((eds) => [
-      ...eds,
-      { id: `e-${selectedNodeId}-${sourceHandle}-${newNode.id}`, source: selectedNodeId, target: newNode.id, sourceHandle, targetHandle: 'top', label },
-    ])
-    setNodes((nds) => [...nds, newNode])
+    updateSelectedConfig({ rules: conditionConfig.rules.filter((r) => r.id !== ruleId) })
   }
 
   const unlinkOutcome = (sourceHandle: string) => {
@@ -245,6 +236,51 @@ export function CampaignFlowBuilder({
     pushHistory()
     setEdges((eds) => eds.filter((e) => !(e.source === selectedNodeId && e.sourceHandle === sourceHandle)))
   }
+
+  // Finishes a connection dragged out to empty canvas: creates the picked
+  // step at the drop position and wires it to whichever handle the drag
+  // started from.
+  const createNodeFromConnection = (kind: FlowNodeKind) => {
+    if (!pendingConnection) return
+    pushHistory()
+    const { sourceNodeId, sourceHandle, flowPosition } = pendingConnection
+    const newNode: FNode = {
+      id: nextId(),
+      type: 'flow',
+      position: flowPosition,
+      data: { kind, title: stepPaletteItems.find((p) => p.kind === kind)?.label ?? kind, config: defaultConfigFor(kind) },
+    }
+    const label = sourceHandle === 'yes' ? 'Yes' : sourceHandle === 'no' ? 'No' : undefined
+    setEdges((eds) => [
+      ...eds,
+      { id: `e-${sourceNodeId}-${sourceHandle ?? 'bottom'}-${newNode.id}`, source: sourceNodeId, target: newNode.id, sourceHandle: sourceHandle ?? undefined, targetHandle: 'top', label },
+    ])
+    setNodes((nds) => [...nds, newNode])
+    setPendingConnection(null)
+  }
+
+  const onConnectStart: OnConnectStart = React.useCallback((_event, { nodeId, handleId }) => {
+    connectStartRef.current = nodeId ? { nodeId, handleId } : null
+  }, [])
+
+  const onConnectEnd: OnConnectEnd = React.useCallback((event, connectionState) => {
+    const start = connectStartRef.current
+    connectStartRef.current = null
+    // A connection that landed on a real target handle is a normal connect,
+    // already handled by onConnect — only an invalid drop (empty canvas)
+    // should offer to create a new step here.
+    if (!start || connectionState.isValid) return
+    const point = 'changedTouches' in event ? event.changedTouches[0] : event
+    if (!point || !screenToFlowPositionRef.current || !canvasWrapperRef.current) return
+    const flowPosition = screenToFlowPositionRef.current({ x: point.clientX, y: point.clientY })
+    const wrapperRect = canvasWrapperRef.current.getBoundingClientRect()
+    setPendingConnection({
+      sourceNodeId: start.nodeId,
+      sourceHandle: start.handleId,
+      flowPosition,
+      screenPosition: { x: point.clientX - wrapperRect.left, y: point.clientY - wrapperRect.top },
+    })
+  }, [])
 
   const deleteSelected = () => {
     if (!selectedNodeId) return
@@ -353,14 +389,12 @@ export function CampaignFlowBuilder({
 
   const dispatchConfig = selectedNode && isChannelKind(selectedNode.data.kind) ? (selectedNode.data.config as DispatchNodeConfig) : null
   const waitConfig = selectedNode?.data.kind === 'wait' ? (selectedNode.data.config as WaitNodeConfig) : null
-  const branchConfig = selectedNode?.data.kind === 'branch' ? (selectedNode.data.config as BranchNodeConfig) : null
+  const conditionConfig = selectedNode?.data.kind === 'condition' ? (selectedNode.data.config as ConditionNodeConfig) : null
 
-  const defaultEdge = edges.find((e) => e.source === selectedNodeId && e.sourceHandle === 'default')
-  const defaultTarget = defaultEdge ? nodes.find((n) => n.id === defaultEdge.target) : undefined
-  const branchTarget = (branchId: string) => {
-    const edge = edges.find((e) => e.source === selectedNodeId && e.sourceHandle === `branch-${branchId}`)
-    return edge ? nodes.find((n) => n.id === edge.target) : undefined
-  }
+  const yesEdge = edges.find((e) => e.source === selectedNodeId && e.sourceHandle === 'yes')
+  const noEdge = edges.find((e) => e.source === selectedNodeId && e.sourceHandle === 'no')
+  const yesTarget = yesEdge ? nodes.find((n) => n.id === yesEdge.target) : undefined
+  const noTarget = noEdge ? nodes.find((n) => n.id === noEdge.target) : undefined
 
   return (
     <div className="flex h-screen flex-col bg-gray-50 dark:bg-gray-900">
@@ -369,7 +403,7 @@ export function CampaignFlowBuilder({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push(`/${projectId}/campaigns?tab=flows`)}
+            onClick={() => router.push(`/${projectId}/campaigns/flows`)}
             className="h-7 w-7 p-0 shrink-0"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
@@ -383,6 +417,20 @@ export function CampaignFlowBuilder({
                 className="min-w-0 truncate rounded border border-transparent bg-transparent text-base font-semibold text-gray-900 dark:text-gray-100 hover:border-gray-200 dark:hover:border-gray-700 focus:border-gray-300 dark:focus:border-gray-600 focus:outline-none px-1 -mx-1"
               />
               <Badge variant="outline" className="text-[10px] shrink-0">{flow.status === 'live' ? 'Live' : 'Draft'}</Badge>
+              {flowId && (
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(flowId)
+                    setIdCopied(true)
+                    setTimeout(() => setIdCopied(false), 1200)
+                  }}
+                  title={idCopied ? 'Copied!' : `${flowId} — click to copy. This is what ties this flow to its n8n workflow once compiled.`}
+                  className="shrink-0 flex items-center gap-1 rounded-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 px-1.5 py-0.5 font-mono text-[10px] text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-700 dark:hover:text-gray-200"
+                >
+                  {idCopied ? <Check className="size-2.5" /> : <Copy className="size-2.5" />}
+                  {flowId.slice(0, 8)}
+                </button>
+              )}
             </div>
             <input
               value={description}
@@ -435,13 +483,14 @@ export function CampaignFlowBuilder({
       )}
 
       <div className="flex min-h-0 flex-1">
-        <div className="campaign-flow-canvas min-w-0 flex-1">
+        <div ref={canvasWrapperRef} className="campaign-flow-canvas relative min-w-0 flex-1">
           {/* React Flow's own stylesheet puts `cursor: grab` directly on the
               draggable node wrapper. A class on our node's own inner content
               can't reliably out-specificity that rule, but a scoped override
               here — same specificity, later in the cascade — does. */}
           <style>{`.campaign-flow-canvas .react-flow__node { cursor: pointer; }`}</style>
           <ReactFlowProvider>
+            <ScreenToFlowPositionBridge targetRef={screenToFlowPositionRef} />
             <ReactFlow
               nodes={nodes}
               edges={edgesWithHandlers}
@@ -457,10 +506,15 @@ export function CampaignFlowBuilder({
               }}
               onEdgesChange={(changes) => setEdges((eds) => applyEdgeChanges(changes, eds))}
               onConnect={onConnect}
+              onConnectStart={onConnectStart}
+              onConnectEnd={onConnectEnd}
               connectionMode={ConnectionMode.Loose}
               nodeTypes={nodeTypes}
               onNodeDoubleClick={(_, node) => setSelectedNodeId(node.id)}
-              onPaneClick={() => setSelectedNodeId(null)}
+              onPaneClick={() => {
+                setSelectedNodeId(null)
+                setPendingConnection(null)
+              }}
               fitView
               fitViewOptions={{ padding: 0.3 }}
               edgeTypes={edgeTypes}
@@ -485,22 +539,42 @@ export function CampaignFlowBuilder({
               />
             </ReactFlow>
           </ReactFlowProvider>
+
+          {pendingConnection && (
+            <div
+              className="absolute z-10 w-48 -translate-x-1/2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg py-1"
+              style={{ left: pendingConnection.screenPosition.x, top: pendingConnection.screenPosition.y }}
+            >
+              {stepPaletteItems.map((item) => (
+                <button
+                  key={item.kind}
+                  onClick={() => createNodeFromConnection(item.kind)}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  <item.icon className="size-3.5 text-gray-400" />
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        {selectedNode && (
-          <div className="w-80 shrink-0 overflow-y-auto border-l border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 p-4">
-            <div className="flex items-center justify-between">
-              <div className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Step settings</div>
-              {selectedNode.data.kind !== 'trigger' && (
-                <button onClick={deleteSelected} className="text-gray-400 hover:text-red-600 dark:hover:text-red-400">
-                  <Trash2 className="size-3.5" />
-                </button>
-              )}
-            </div>
-            <Separator className="my-3" />
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <Label className="text-xs">Title</Label>
+        <Dialog open={!!selectedNode} onOpenChange={(open) => !open && setSelectedNodeId(null)}>
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <div className="flex items-center justify-between pr-6">
+                <DialogTitle>Step settings</DialogTitle>
+                {selectedNode && selectedNode.data.kind !== 'trigger' && (
+                  <button onClick={deleteSelected} className="text-gray-400 hover:text-red-600 dark:hover:text-red-400">
+                    <Trash2 className="size-3.5" />
+                  </button>
+                )}
+              </div>
+            </DialogHeader>
+            {selectedNode && (
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Label className="text-xs">Title</Label>
                 <Input value={selectedNode.data.title ?? ''} onChange={(e) => updateSelectedData({ title: e.target.value })} />
               </div>
 
@@ -519,6 +593,7 @@ export function CampaignFlowBuilder({
                                 ...(defaultConfigFor(p.kind) as DispatchNodeConfig),
                                 message: dispatchConfig.message,
                                 retryRules: dispatchConfig.retryRules,
+                                whatsappTemplate: p.kind === 'whatsapp' ? dispatchConfig.whatsappTemplate ?? (defaultConfigFor('whatsapp') as DispatchNodeConfig).whatsappTemplate : undefined,
                               },
                             })
                           }
@@ -533,10 +608,20 @@ export function CampaignFlowBuilder({
                       ))}
                     </div>
                   </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label className="text-xs">Message</Label>
-                    <Textarea rows={3} value={dispatchConfig.message} onChange={(e) => updateSelectedConfig({ message: e.target.value })} placeholder="What gets sent or said" />
-                  </div>
+                  {dispatchConfig.channel === 'whatsapp' && dispatchConfig.whatsappTemplate ? (
+                    <div>
+                      <Label className="text-xs mb-2 block">WhatsApp template</Label>
+                      <WhatsAppTemplateEditor
+                        config={dispatchConfig.whatsappTemplate}
+                        onChange={(whatsappTemplate) => updateSelectedConfig({ whatsappTemplate })}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-1.5">
+                      <Label className="text-xs">Message</Label>
+                      <Textarea rows={3} value={dispatchConfig.message} onChange={(e) => updateSelectedConfig({ message: e.target.value })} placeholder="What gets said" />
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 px-3 py-2">
                     <ShieldCheck className="size-3.5 shrink-0 text-gray-400" />
                     <span className="flex-1 text-[11.5px] text-gray-500 dark:text-gray-400">Checked against opt-outs first</span>
@@ -547,7 +632,7 @@ export function CampaignFlowBuilder({
                     <Label className="text-xs mb-2 block">Retry when…</Label>
                     <p className="mb-2 text-[11px] leading-snug text-gray-500 dark:text-gray-400">
                       These rules control retrying <em>this same step</em> — e.g. call again if it rings out. To route
-                      to different next steps based on how it went, add a <strong>Branch</strong> block after this one.
+                      to different next steps based on how it went, add a <strong>Condition</strong> block after this one.
                       {!agentId && ' Attach an agent above to pick field-extractor fields by name instead of typing them.'}
                     </p>
                     <RetryRuleEditor
@@ -575,105 +660,106 @@ export function CampaignFlowBuilder({
 
               <Separator />
 
-              {branchConfig ? (
+              {conditionConfig ? (
                 <div className="flex flex-col gap-3">
                   <div>
-                    <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Branches</div>
+                    <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Condition</div>
                     <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-gray-400">
-                      Send different contacts down different paths based on what actually happened on the call —
-                      a metric like <code className="text-[10.5px]">transcription_metrics</code>, a call failure reason, or
-                      something the agent extracted. The first matching branch wins; anything that matches none of
-                      them falls to "Otherwise".
+                      One yes/no question, built from what actually happened — a metric like{' '}
+                      <code className="text-[10.5px]">transcription_metrics</code>, a call failure reason, or something
+                      the agent extracted. Need more than one check (e.g. opt-out guard AND no 500 failure)? Add more
+                      rules below — they combine into a single Yes/No. For multi-way logic, chain another Condition
+                      block after this one, same as n8n's own <code className="text-[10.5px]">if</code> node.
                     </p>
                   </div>
 
-                  {branchConfig.branches.map((branch) => {
-                    const target = branchTarget(branch.id)
-                    return (
-                      <div key={branch.id} className="rounded-md border border-gray-200 dark:border-gray-700 p-2.5">
-                        <BranchConditionEditor
-                          condition={branch.condition}
-                          onChange={(condition) => updateBranch(branch.id, { condition })}
-                          onRemove={() => removeBranch(branch.id)}
-                          fieldExtractorKeys={fieldExtractorKeys}
-                        />
-                        <Input
-                          className="mt-2 h-7 text-[12px]"
-                          placeholder={summarizeCondition(branch.condition)}
-                          value={branch.label}
-                          onChange={(e) => updateBranch(branch.id, { label: e.target.value })}
-                        />
-                        <div className="mt-2 flex items-center justify-between gap-2 border-t border-gray-100 dark:border-gray-800 pt-2">
-                          {target ? (
-                            <>
-                              <span className="text-xs text-gray-900 dark:text-gray-100 truncate">→ {target.data.title}</span>
-                              <button
-                                onClick={() => unlinkOutcome(`branch-${branch.id}`)}
-                                className="shrink-0 text-[11px] text-gray-400 hover:text-red-600 dark:hover:text-red-400"
-                              >
-                                Remove
-                              </button>
-                            </>
-                          ) : (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 justify-start text-xs -ml-2"
-                              onClick={() => addOutcomeStep(`branch-${branch.id}`, 'whatsapp', branch.label || summarizeCondition(branch.condition))}
-                            >
-                              <Plus className="size-3.5" />
-                              Add step
-                            </Button>
-                          )}
-                        </div>
+                  {conditionConfig.rules.length > 1 && (
+                    <div className="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400">
+                      Match
+                      <div className="inline-flex rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden">
+                        {(['and', 'or'] as const).map((c) => (
+                          <button
+                            key={c}
+                            onClick={() => updateSelectedConfig({ combinator: c })}
+                            className={`px-2 py-0.5 text-[11px] font-medium uppercase ${
+                              conditionConfig.combinator === c
+                                ? 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-400'
+                                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                            }`}
+                          >
+                            {c}
+                          </button>
+                        ))}
                       </div>
-                    )
-                  })}
+                      of the rules below
+                    </div>
+                  )}
 
-                  <Button variant="outline" size="sm" onClick={addBranch} className="h-7 justify-start gap-1.5 text-[12px]">
+                  {conditionConfig.rules.map((rule) => (
+                    <div key={rule.id} className="rounded-md border border-gray-200 dark:border-gray-700 p-2.5">
+                      <BranchConditionEditor
+                        condition={rule.condition}
+                        onChange={(condition) => updateConditionRule(rule.id, { condition })}
+                        onRemove={() => removeConditionRule(rule.id)}
+                        fieldExtractorKeys={fieldExtractorKeys}
+                      />
+                    </div>
+                  ))}
+
+                  <Button variant="outline" size="sm" onClick={addConditionRule} className="h-7 justify-start gap-1.5 text-[12px]">
                     <Plus className="size-3" />
-                    Add branch
+                    Add {conditionConfig.rules.length > 0 ? 'another rule' : 'a condition'}
                   </Button>
 
-                  <OutcomeSlot
-                    label="Otherwise"
-                    dotClassName="bg-gray-300 dark:bg-gray-600"
-                    targetTitle={defaultTarget?.data.title}
-                    onAdd={() => addOutcomeStep('default', 'whatsapp', 'Otherwise')}
-                    onUnlink={() => unlinkOutcome('default')}
-                  />
+                  <Separator />
+
+                  <div>
+                    <div className="text-xs font-medium text-gray-700 dark:text-gray-300">What happens next</div>
+                    <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-gray-400">
+                      Drag from the Yes/No handle below the block on the canvas to add or change a step.
+                    </p>
+                  </div>
+                  <OutcomeSlot label="Yes" dotClassName="bg-emerald-400 dark:bg-emerald-500" targetTitle={yesTarget?.data.title} onUnlink={() => unlinkOutcome('yes')} />
+                  <OutcomeSlot label="No" dotClassName="bg-red-400 dark:bg-red-500" targetTitle={noTarget?.data.title} onUnlink={() => unlinkOutcome('no')} />
                 </div>
               ) : (
-                <div className="flex flex-col gap-2">
-                  <Button variant="outline" size="sm" className="justify-start h-8 text-xs" onClick={() => addNextStep('whatsapp')}>
-                    <Plus className="size-3.5" />
-                    Add next step
-                  </Button>
-                  <Button variant="outline" size="sm" className="justify-start h-8 text-xs" onClick={() => addNextStep('branch')}>
-                    <GitBranch className="size-3.5" />
-                    Add branch
-                  </Button>
-                </div>
+                <p className="text-[11px] leading-snug text-gray-500 dark:text-gray-400">
+                  Drag from the handle below this block on the canvas to add the next step.
+                </p>
               )}
-            </div>
-          </div>
-        )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )
+}
+
+function ScreenToFlowPositionBridge({
+  targetRef,
+}: {
+  targetRef: React.MutableRefObject<((pos: { x: number; y: number }) => { x: number; y: number }) | null>
+}) {
+  const { screenToFlowPosition } = useReactFlow()
+  React.useEffect(() => {
+    targetRef.current = screenToFlowPosition
+    return () => {
+      targetRef.current = null
+    }
+  }, [screenToFlowPosition, targetRef])
+  return null
 }
 
 function OutcomeSlot({
   label,
   dotClassName,
   targetTitle,
-  onAdd,
   onUnlink,
 }: {
   label: string
   dotClassName: string
   targetTitle?: string
-  onAdd: () => void
   onUnlink: () => void
 }) {
   return (
@@ -690,10 +776,7 @@ function OutcomeSlot({
           </button>
         </div>
       ) : (
-        <Button variant="ghost" size="sm" className="h-7 justify-start text-xs -ml-2" onClick={onAdd}>
-          <Plus className="size-3.5" />
-          Add step
-        </Button>
+        <span className="text-[11px] text-gray-400 dark:text-gray-500">Not connected</span>
       )}
     </div>
   )
