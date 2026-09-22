@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   buildAgentEnvelope,
+  buildInboundVariablesPayload,
   serializeVoicemailDetectionTool,
   serializeAssistantToolFull,
   serializeAssistantToolBasic,
@@ -26,6 +27,46 @@ describe('buildAgentEnvelope', () => {
     const assistants = [{ prompt: 'a' }, { prompt: 'b' }]
     const result = buildAgentEnvelope('Agent', 'pipecat', assistants)
     expect(result.agent.assistant).toHaveLength(2)
+  })
+})
+
+describe('buildInboundVariablesPayload', () => {
+  // This is the bug that shipped: the settings saved fine into the dashboard's
+  // own config, but the payload sent to the backend dropped them, so every real
+  // call ran with the feature off and greeted people with the stale default.
+  const settings = {
+    advancedSettings: {
+      inboundVariables: {
+        enabled: true,
+        url: 'https://crm.test/lookup',
+        authHeader: 'Bearer abc',
+        timeoutMs: 1000,
+        cacheTtlS: 90,
+      },
+    },
+  }
+
+  it('sends the settings in the shape the agent reads', () => {
+    expect(buildInboundVariablesPayload(settings)).toEqual({
+      inbound_variables: {
+        enabled: true,
+        url: 'https://crm.test/lookup',
+        auth_header: 'Bearer abc',
+        timeout_ms: 1000,
+        cache_ttl_s: 90,
+      },
+    })
+  })
+
+  it('sends nothing when the agent has no settings', () => {
+    expect(buildInboundVariablesPayload({})).toEqual({})
+    expect(buildInboundVariablesPayload(undefined)).toEqual({})
+  })
+
+  it('rides along in the envelope, beside assistant and not inside it', () => {
+    const result = buildAgentEnvelope('A', 'livekit', [{ prompt: 'hi' }], 'id-1', buildInboundVariablesPayload(settings))
+    expect(result.agent.inbound_variables.enabled).toBe(true)
+    expect(result.agent.assistant[0]).toEqual({ prompt: 'hi' })
   })
 })
 

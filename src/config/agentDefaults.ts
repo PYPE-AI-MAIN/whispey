@@ -288,6 +288,15 @@ export const AGENT_DEFAULT_CONFIG = {
       contextMemory: {
         enabled: AGENT_DEFAULT_CONFIG.context_memory.enabled
       },
+      // Inbound calls carry no variables, so we can fetch them from the customer's
+      // system keyed on the caller's number. Off until someone turns it on.
+      inboundVariables: {
+        enabled: false,
+        url: '',
+        authHeader: '',
+        timeoutMs: 1000,
+        cacheTtlS: 90
+      },
       backgroundAudio: {
         mode: 'dual' as 'disabled' | 'single' | 'dual',
         singleType: 'keyboard',

@@ -55,7 +55,7 @@ import TalkToAssistant from '@/components/agents/TalkToAssistant'
 import { useMultiAssistantState } from '@/hooks/useMultiAssistantState'
 import { VariableTextarea } from '@/components/agents/variables/VariableTextarea'
 import { VariableValidationIndicator } from '@/components/agents/variables/VariableErrorDisplay'
-import { ValidationResult } from '@/utils/variableValidator'
+import { ValidationResult, validateVariables } from '@/utils/variableValidator'
 import {
   Tooltip,
   TooltipContent,
@@ -514,7 +514,7 @@ export default function AgentConfig() {
   const formik = useFormik({
     initialValues: useMemo(() => {
       if (agentConfigData?.agent?.assistant?.[0]) {
-        return buildFormValuesFromAgent(agentConfigData.agent.assistant[0])
+        return buildFormValuesFromAgent(agentConfigData.agent.assistant[0], agentConfigData.agent)
       }
       return getDefaultFormValues()
     }, [agentConfigData]),
@@ -576,7 +576,7 @@ export default function AgentConfig() {
     if (agentConfigData?.agent?.assistant?.[0]) {
       const assistant = agentConfigData.agent.assistant[0]
       
-      const formValues = buildFormValuesFromAgent(assistant)
+      const formValues = buildFormValuesFromAgent(assistant, agentConfigData?.agent)
       
       setTtsConfig({
         provider: formValues.ttsProvider,
@@ -1022,6 +1022,26 @@ const unmappedVariablesCount = useMemo(() => {
   })
   return unmapped.length
 }, [promptValidation.validVariables, formik.values.variables])
+
+// The variable names an inbound lookup has to return: the ones the prompt and the
+// greeting actually use, plus any set up in the sheet, minus the predefined ones we
+// fill in ourselves. Uses the same validator as the prompt editor, so the names shown
+// here are exactly the names the backend will accept.
+const inboundLookupVariables = useMemo(() => {
+  const names = new Set<string>()
+  // Only strings are variable names. Anything else (an object from a malformed
+  // variables entry) would stringify to "[object Object]" and be offered to the
+  // customer as a name their API must return.
+  const add = (name: unknown) => {
+    if (typeof name !== 'string') return
+    const normalized = name.toLowerCase().trim()
+    if (normalized && !PREDEFINED_VARIABLE_NAMES.has(normalized)) names.add(normalized)
+  }
+  promptValidation.validVariables.forEach(add)
+  validateVariables(formik.values.customFirstMessage || '').validVariables.forEach(add)
+  ;(Array.isArray(formik.values.variables) ? formik.values.variables : []).forEach((v: any) => add(v?.name))
+  return [...names]
+}, [promptValidation.validVariables, formik.values.customFirstMessage, formik.values.variables])
 
   // View-only toggle: controls which selectors are displayed.
   // NEVER clears the fallbackXxxEnabled Formik flags — that was the root bug:
@@ -1695,6 +1715,8 @@ const unmappedVariablesCount = useMemo(() => {
             <AgentAdvancedSettings
               advancedSettings={formik.values.advancedSettings}
               onFieldChange={formik.setFieldValue}
+              promptVariables={inboundLookupVariables}
+              agentName={activeAgentName}
               onWebhookDataLoaded={(data) => loadSupplementalSetting('webhook', data)}
               onDropoffDataLoaded={(data) => loadSupplementalSetting('dropoff', data)}
               onCallbackDataLoaded={(data) => loadSupplementalSetting('callbackScheduling', data)}
@@ -1768,6 +1790,8 @@ const unmappedVariablesCount = useMemo(() => {
             <AgentAdvancedSettings
               advancedSettings={formik.values.advancedSettings}
               onFieldChange={formik.setFieldValue}
+              promptVariables={inboundLookupVariables}
+              agentName={activeAgentName}
               onWebhookDataLoaded={(data) => loadSupplementalSetting('webhook', data)}
               onDropoffDataLoaded={(data) => loadSupplementalSetting('dropoff', data)}
               onCallbackDataLoaded={(data) => loadSupplementalSetting('callbackScheduling', data)}

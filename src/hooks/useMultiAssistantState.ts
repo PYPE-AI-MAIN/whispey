@@ -102,8 +102,23 @@ function serializeLanguageSwitchTTS(tts: any): any {
   return { name: tts.name }
 }
 
-export function buildAgentEnvelope(name: string, type: string, assistant: any[], agentId?: string) {
-  return { agent: { name, type, ...(agentId ? { agent_id: agentId } : {}), assistant } }
+/** Agent-level settings that sit beside `assistant`, not inside it. */
+export function buildInboundVariablesPayload(formValues: any) {
+  const cfg = formValues?.advancedSettings?.inboundVariables
+  if (!cfg) return {}
+  return {
+    inbound_variables: {
+      enabled: cfg.enabled ?? false,
+      url: cfg.url ?? '',
+      auth_header: cfg.authHeader ?? '',
+      timeout_ms: cfg.timeoutMs ?? 1000,
+      cache_ttl_s: cfg.cacheTtlS ?? 90,
+    },
+  }
+}
+
+export function buildAgentEnvelope(name: string, type: string, assistant: any[], agentId?: string, agentLevel: Record<string, any> = {}) {
+  return { agent: { name, type, ...(agentId ? { agent_id: agentId } : {}), ...agentLevel, assistant } }
 }
 
 function buildFallbackTtsPayload(formValues: any) {
@@ -841,7 +856,7 @@ export function useMultiAssistantState({
         useBackgroundAudioFallbacks: true,
       })
 
-      return buildAgentEnvelope(agentName, agentType, [assistant], agentId)
+      return buildAgentEnvelope(agentName, agentType, [assistant], agentId, buildInboundVariablesPayload(formValues))
     }
 
     // For multiple assistants (future implementation)
@@ -878,9 +893,17 @@ export function useMultiAssistantState({
       })
     })
 
-    return buildAgentEnvelope(agentName, agentType, assistants)
+    // inbound_variables is agent-level, so it comes from the live form, not from
+    // any one assistant's payload.
+    return buildAgentEnvelope(
+      agentName,
+      agentType,
+      assistants,
+      agentId,
+      buildInboundVariablesPayload(currentFormik?.values),
+    )
   }, [
-    assistantNames, 
+    assistantNames,
     assistantsData,
     getAssistantData,
     agentName,
@@ -889,7 +912,8 @@ export function useMultiAssistantState({
     currentTtsConfig,
     currentSttConfig,
     currentAzureConfig,
-    fallbackAzureConfig
+    fallbackAzureConfig,
+    agentId
   ])
 
   const registerFormikRef = useCallback((assistantName: string, formikRef: FormikProps<any>) => {

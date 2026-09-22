@@ -3,14 +3,13 @@
 
 import React, { useState } from 'react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { ChevronDownIcon, SettingsIcon, MicIcon, UserIcon, WrenchIcon, MessageSquareIcon, BugIcon, PhoneOff, Zap, Copy, Check, PhoneCall } from 'lucide-react'
+import { ChevronDownIcon, SettingsIcon, MicIcon, UserIcon, WrenchIcon, MessageSquareIcon, BugIcon, PhoneOff, Zap, Copy, Check, PhoneCall, Volume2, Webhook, ArrowRightLeft, BookOpen, PhoneIncoming } from 'lucide-react'
 import InterruptionSettings from './ConfigParents/InterruptionSettings'
 import VoiceActivitySettings from './ConfigParents/VoiceActivitySettings'
 import SessionBehaviourSettings from './ConfigParents/SessionBehaviourSettings'
 import ToolsActionsSettings from './ConfigParents/ToolsActionsSettingsProps'
 import FillerWordsSettings from './ConfigParents/FillerWordSettings'
 import BugReportSettings from './ConfigParents/BugReportSettings'
-import { Volume2, Webhook, ArrowRightLeft, BookOpen } from 'lucide-react'
 import BackgroundAudioSettings from '../BackgroundAudioSettings.tsx'
 import WebhookSettings from './ConfigParents/WebhookSettings'
 import DropOffCallSettings from './ConfigParents/DropOffCallSettings'
@@ -18,6 +17,7 @@ import CallbackSettings from '@/components/projects/CallbackSettings'
 import DynamicTTSSwitch from '../DynamicTTSSwitch'
 import KnowledgeBaseRAGSettings from './ConfigParents/KnowledgeBaseRAGSettings'
 import ContextMemorySettings from './ConfigParents/ContextMemorySettings'
+import InboundVariablesSettings, { InboundVariablesConfig, INBOUND_VARIABLES_DEFAULTS } from './ConfigParents/InboundVariablesSettings'
 import { WebhookConfig, DropoffConfig, CallbackConfig } from '@/lib/supplementalSettings'
 
 interface AgentAdvancedSettingsProps {
@@ -118,8 +118,12 @@ interface AgentAdvancedSettingsProps {
       contextMemory?: {
         enabled: boolean
       }
+      inboundVariables?: InboundVariablesConfig
     }
     onFieldChange: (field: string, value: any) => void
+    /** Variable names used in the prompt/greeting — the names an inbound lookup must return. */
+    promptVariables?: string[]
+    agentName?: string
     onWebhookDataLoaded?: (data: WebhookConfig) => void
     onDropoffDataLoaded?: (data: DropoffConfig) => void
     onCallbackDataLoaded?: (data: CallbackConfig) => void
@@ -142,7 +146,7 @@ function GroupLabel({ children, first = false }: Readonly<{ children: React.Reac
   )
 }
 
-function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataLoaded, onDropoffDataLoaded, projectId, agentId, dynamicTTSList = [], onDynamicTTSChange }: Readonly<AgentAdvancedSettingsProps>) {
+function AgentAdvancedSettings({ advancedSettings, onFieldChange, promptVariables = [], agentName, onWebhookDataLoaded, onDropoffDataLoaded, projectId, agentId, dynamicTTSList = [], onDynamicTTSChange }: Readonly<AgentAdvancedSettingsProps>) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     interruption: false,
     vad: false,
@@ -157,7 +161,8 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
     callbackScheduling: false,
     ttsSwitcher: false,
     knowledgeBase: false,
-    contextMemory: false
+    contextMemory: false,
+    inboundVariables: false
   })
   const [eodCopied, setEodCopied] = useState(false)
 
@@ -555,6 +560,32 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, onWebhookDataL
               onDataLoaded={onWebhookDataLoaded ?? (() => {})}
               agentId={agentId}
               projectId={projectId}
+            />
+          </CollapsibleContent>
+        </Collapsible>
+
+        <div className="h-px bg-gray-200 dark:bg-gray-700 my-3"></div>
+
+        {/* Inbound Variable Fetch */}
+        <Collapsible open={openSections.inboundVariables} onOpenChange={() => toggleSection('inboundVariables')}>
+          <CollapsibleTrigger className="group flex items-center justify-between w-full p-2 rounded transition-colors hover:bg-blue-50/60 dark:hover:bg-blue-500/10">
+            <div className="flex items-center gap-2">
+              <PhoneIncoming className="w-3.5 h-3.5 text-gray-500 transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+              <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 transition-colors group-hover:text-blue-700 dark:group-hover:text-blue-300">Inbound Variables</span>
+            </div>
+            <ChevronDownIcon className={`w-3.5 h-3.5 text-gray-400 transition-transform group-hover:text-blue-500 dark:group-hover:text-blue-400 ${chevronClass(openSections.inboundVariables)}`} />
+          </CollapsibleTrigger>
+
+          <CollapsibleContent className="mt-2 ml-5 space-y-2">
+            <InboundVariablesSettings
+              enabled={advancedSettings.inboundVariables?.enabled ?? INBOUND_VARIABLES_DEFAULTS.enabled}
+              url={advancedSettings.inboundVariables?.url ?? INBOUND_VARIABLES_DEFAULTS.url}
+              authHeader={advancedSettings.inboundVariables?.authHeader ?? INBOUND_VARIABLES_DEFAULTS.authHeader}
+              timeoutMs={advancedSettings.inboundVariables?.timeoutMs ?? INBOUND_VARIABLES_DEFAULTS.timeoutMs}
+              cacheTtlS={advancedSettings.inboundVariables?.cacheTtlS ?? INBOUND_VARIABLES_DEFAULTS.cacheTtlS}
+              promptVariables={promptVariables}
+              agentName={agentName}
+              onFieldChange={onFieldChange}
             />
           </CollapsibleContent>
         </Collapsible>

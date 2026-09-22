@@ -548,7 +548,16 @@ function transformFormDataToAgentConfig(formData: any) {
           first_message_mode: firstMessageModeConfig
         }
       ],
-      agent_id: metadata.agentId
+      agent_id: metadata.agentId,
+      // Read on every inbound call by utils/inbound_variables.py. Nothing is
+      // called unless enabled is true and a url is set.
+      inbound_variables: {
+        enabled: formikValues.advancedSettings.inboundVariables?.enabled ?? false,
+        url: formikValues.advancedSettings.inboundVariables?.url ?? '',
+        auth_header: formikValues.advancedSettings.inboundVariables?.authHeader ?? '',
+        timeout_ms: formikValues.advancedSettings.inboundVariables?.timeoutMs ?? 1000,
+        cache_ttl_s: formikValues.advancedSettings.inboundVariables?.cacheTtlS ?? 90
+      }
     }
   }
 }
