@@ -205,6 +205,13 @@ function autoBucket(days: number): 'hour' | 'day' | 'week' | 'month' {
 // buildQuery.test.ts) is the actual safety net for this function; treat a
 // mechanical Sonar-driven fragmentation of it as a task for its own reviewed
 // PR, not a side effect of a lint pass.
+/** A field whose values are phone numbers, by the name it is stored under. */
+const PHONE_FIELD = /(^|_)(phone|mobile|number|msisdn)($|_)/i
+function isPhoneField(ref: { col: string; path?: string[] }): boolean {
+  const leaf = ref.path?.at(-1) ?? ref.col
+  return PHONE_FIELD.test(leaf)
+}
+
 export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts = {}): Built { // NOSONAR
   if (ctx.agentIds.length === 0) throw new SpecError('no readable agents')
 
@@ -254,6 +261,34 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
   const cleanText = (ref: Ref, t: string) => {
     const raw = rawText(ref, t)
     return `(CASE WHEN lower(btrim(${raw})) = ANY(${sentinels()}::text[]) THEN NULL ELSE btrim(${raw}) END)`
+  }
+
+  /**
+   * The same person, however their number was written down.
+   *
+   * Prod holds `+917012224839`, `917012224839` and `+91-8951539819` for
+   * numbers that are one patient each, because every writer of a call log
+   * formats them its own way. Counting or deduplicating on the raw text makes
+   * those two or three different people — in a 3,000-row sample, 84 rows were
+   * in the minority format and three numbers appeared written more than one
+   * way. So compare phone-shaped values by their digits.
+   *
+   * Only values that look like a phone number are touched: `customer_number`
+   * also holds 43-47 character web session ids on some agents, and those must
+   * stay whole and distinct rather than be crushed into their last ten digits.
+   *
+   * ponytail: last ten digits, which is right for +91 and +1. A country whose
+   * national numbers are longer than ten would over-merge; compare full E.164
+   * when one turns up.
+   */
+  const identity = (ref: Ref, t: string) => {
+    const text = cleanText(ref, t)
+    if (!isPhoneField(ref)) return text
+    return (
+      String.raw`(CASE WHEN ${text} ~ '^[+0-9()\s-]{10,15}$'` +
+      String.raw` THEN right(regexp_replace(${text}, '\D', '', 'g'), 10)` +
+      ` ELSE ${text} END)`
+    )
   }
 
   /**
@@ -402,7 +437,7 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
   let stage = 'scanned'
   if (spec.grain === 'entity') {
     const d = spec.dedupe!
-    const key = cleanText(d.key.field, 's')
+    const key = identity(d.key.field, 's')
     const partition =
       d.key.fallback === 'call_id'
         ? `s.agent_id, COALESCE(${key}, 'no-key-' || s.call_id)`
@@ -514,7 +549,7 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
         value = `count(*)${filter()}`
         break
       case 'count_distinct':
-        value = `count(DISTINCT ${cleanText(requireField(agg.fn), t)})${filter()}`
+        value = `count(DISTINCT ${identity(requireField(agg.fn), t)})${filter()}`
         break
       case 'rate': {
         const hit = boolean(requireField(agg.fn), t, agg.match)
