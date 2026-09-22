@@ -765,7 +765,7 @@ function deriveKnowledgeBaseConfig(assistant: any): any {
   }
 }
 
-export const buildFormValuesFromAgent = (assistant: any) => {
+export const buildFormValuesFromAgent = (assistant: any, agent?: any) => {
   const llmConfig = assistant.llm || {}
   const modelValue = llmConfig.model || getFallback(null, 'llm.model')
   const providerValue = llmConfig.provider || llmConfig.name || getFallback(null, 'llm.name')
@@ -889,6 +889,15 @@ export const buildFormValuesFromAgent = (assistant: any) => {
       },
       contextMemory: {
         enabled: assistant.context_memory?.enabled ?? false,
+      },
+      // Agent-level, not per-assistant — so it comes from `agent`, not `assistant`.
+      // Without this the settings save correctly but come back empty on reload.
+      inboundVariables: {
+        enabled: agent?.inbound_variables?.enabled ?? false,
+        url: agent?.inbound_variables?.url ?? '',
+        authHeader: agent?.inbound_variables?.auth_header ?? '',
+        timeoutMs: agent?.inbound_variables?.timeout_ms ?? 1000,
+        cacheTtlS: agent?.inbound_variables?.cache_ttl_s ?? 90,
       },
       backgroundAudio: {
         mode: backgroundAudioMode,

@@ -514,7 +514,7 @@ export default function AgentConfig() {
   const formik = useFormik({
     initialValues: useMemo(() => {
       if (agentConfigData?.agent?.assistant?.[0]) {
-        return buildFormValuesFromAgent(agentConfigData.agent.assistant[0])
+        return buildFormValuesFromAgent(agentConfigData.agent.assistant[0], agentConfigData.agent)
       }
       return getDefaultFormValues()
     }, [agentConfigData]),
@@ -576,7 +576,7 @@ export default function AgentConfig() {
     if (agentConfigData?.agent?.assistant?.[0]) {
       const assistant = agentConfigData.agent.assistant[0]
       
-      const formValues = buildFormValuesFromAgent(assistant)
+      const formValues = buildFormValuesFromAgent(assistant, agentConfigData?.agent)
       
       setTtsConfig({
         provider: formValues.ttsProvider,
