@@ -208,7 +208,7 @@ function autoBucket(days: number): 'hour' | 'day' | 'week' | 'month' {
 /** A field whose values are phone numbers, by the name it is stored under. */
 const PHONE_FIELD = /(^|_)(phone|mobile|number|msisdn)($|_)/i
 function isPhoneField(ref: { col: string; path?: string[] }): boolean {
-  const leaf = ref.path?.length ? ref.path[ref.path.length - 1] : ref.col
+  const leaf = ref.path?.at(-1) ?? ref.col
   return PHONE_FIELD.test(leaf)
 }
 
@@ -285,8 +285,8 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
     const text = cleanText(ref, t)
     if (!isPhoneField(ref)) return text
     return (
-      `(CASE WHEN ${text} ~ '^[+0-9()\\s-]{10,15}$'` +
-      ` THEN right(regexp_replace(${text}, '\\D', '', 'g'), 10)` +
+      String.raw`(CASE WHEN ${text} ~ '^[+0-9()\s-]{10,15}$'` +
+      String.raw` THEN right(regexp_replace(${text}, '\D', '', 'g'), 10)` +
       ` ELSE ${text} END)`
     )
   }
