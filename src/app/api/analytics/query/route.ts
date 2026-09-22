@@ -26,7 +26,13 @@ export const dynamic = 'force-dynamic'
 
 /** Vercel allows 60s. Stop starting new charts before then and say so, rather than returning a 504 with nothing. */
 const BATCH_DEADLINE_MS = 45_000
-const PER_CHART_TIMEOUT_MS = 10_000
+// 10s was set against a dev table of 1,911 rows. On prod, NH_Add_Fam has
+// 45,441 calls in 30 days, and reading those heap rows costs 3–8s there before
+// a single aggregate is computed — measured through the pooler, warm and cold.
+// So the ceiling was cutting off queries that were working, not runaway ones,
+// and every chart sharing that statement failed with it. 25s still sits well
+// inside the 45s batch deadline and the 55s statement_timeout cap.
+const PER_CHART_TIMEOUT_MS = 25_000
 
 const Body = z.object({
   agentId: z.string().uuid(),
@@ -146,7 +152,17 @@ async function runPlan(
     })
   } catch (err) {
     if (isTimeout(err)) {
-      fail('timeout', 'This chart took too long. Try a shorter date range.')
+      // "try a shorter date range" is advice that cannot work on a card that
+      // deduplicates: to pick one row per patient it reads the whole lookback
+      // window whatever range is showing, so a one-day view scans the same 90
+      // days as a 90-day one. Saying otherwise sends people to re-pick dates
+      // over and over on the one card where dates are not the problem.
+      fail(
+        'timeout',
+        plan.meta.lookbackDays > 0
+          ? `This card took too long. It reads ${plan.meta.lookbackDays} days to pick one row per patient, whatever date range is showing — switch it to "Every call" to only read the range.`
+          : 'This chart took too long. Try a shorter date range.'
+      )
       return
     }
     console.error('[analytics/query]', plan.members, err)
