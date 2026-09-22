@@ -1029,8 +1029,12 @@ const unmappedVariablesCount = useMemo(() => {
 // here are exactly the names the backend will accept.
 const inboundLookupVariables = useMemo(() => {
   const names = new Set<string>()
+  // Only strings are variable names. Anything else (an object from a malformed
+  // variables entry) would stringify to "[object Object]" and be offered to the
+  // customer as a name their API must return.
   const add = (name: unknown) => {
-    const normalized = String(name ?? '').toLowerCase().trim()
+    if (typeof name !== 'string') return
+    const normalized = name.toLowerCase().trim()
     if (normalized && !PREDEFINED_VARIABLE_NAMES.has(normalized)) names.add(normalized)
   }
   promptValidation.validVariables.forEach(add)
