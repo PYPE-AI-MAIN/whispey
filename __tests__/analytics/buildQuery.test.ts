@@ -799,3 +799,46 @@ describe('the drill list reports a length the chart would recognise', () => {
     expect(buildQuery(spec, ctx, 'aggregate').sql).not.toContain('AS duration_seconds')
   })
 })
+
+describe('the same phone number written three ways is one person', () => {
+  const base: SpecInput = { spec_version: 1, agg: { fn: 'count' }, range: { days: 30 } }
+
+  it('counts unique callers by digits, not by however the number was typed', () => {
+    const { sql } = buildQuery(
+      parse({ ...base, agg: { fn: 'count_distinct', field: { col: 'customer_number' } } }),
+      ctx, 'aggregate'
+    )
+    // prod holds +917012224839 and 917012224839 for one patient
+    expect(sql).toMatch(/count\(DISTINCT .*regexp_replace/s)
+    expect(sql).toContain("right(regexp_replace")
+  })
+
+  it('leaves a web session id whole — customer_number is not always a phone', () => {
+    const { sql } = buildQuery(
+      parse({ ...base, agg: { fn: 'count_distinct', field: { col: 'customer_number' } } }),
+      ctx, 'aggregate'
+    )
+    // the guard: only phone-shaped text is reduced to its digits
+    expect(sql).toContain("~ '^[+0-9()\\s-]{10,15}$'")
+  })
+
+  it('deduplicates one-per-patient on the same normalised key', () => {
+    const { sql } = buildQuery(
+      parse({
+        ...base,
+        grain: 'entity',
+        dedupe: { key: { field: { col: 'customer_number' }, fallback: 'call_id' }, winner: 'most_recent', lookback_days: 30 },
+      }),
+      ctx, 'aggregate'
+    )
+    expect(sql).toMatch(/PARTITION BY .*regexp_replace/s)
+  })
+
+  it('does not touch a field that is not a phone number', () => {
+    const { sql } = buildQuery(
+      parse({ ...base, agg: { fn: 'count_distinct', field: { col: 'call_ended_reason' } } }),
+      ctx, 'aggregate'
+    )
+    expect(sql).not.toContain('regexp_replace')
+  })
+})
