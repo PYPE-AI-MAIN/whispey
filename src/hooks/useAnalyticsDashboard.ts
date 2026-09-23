@@ -89,7 +89,29 @@ export function useAnalyticsDashboard(agentId: string | undefined, enabled: bool
  * card while the other eleven keep the numbers they already had. Changing the
  * date range, the filters or the hours invalidates everything, because it
  * genuinely does.
+ *
+ * This is not a `useQuery` — it can't be, cleanly. `useQuery` gives one cache
+ * entry to one query key; what this needs is one request that answers many
+ * keys (per-widget) and lets each one keep its own stale/fresh state
+ * independently. Two things that pattern was missing, now fixed:
+ *
+ *   - The request itself now streams (`/api/analytics/query` returns
+ *     newline-delimited JSON, one WidgetResult per line) instead of one
+ *     response body that only resolves once every chart in the batch is done.
+ *     A card renders the moment its own line arrives, not when the slowest
+ *     card in the batch finishes.
+ *   - Results and the per-widget "already answered this spec" bookkeeping are
+ *     mirrored into the query client under `['analytics','chartdata',agentId]`
+ *     instead of living only in this component's local state. Switching tabs
+ *     away and back remounts this component; without that mirror, `answered`
+ *     and `byWidget` reset to empty and everything refetches even though
+ *     nothing changed. Reading it back on mount is the caching this was
+ *     missing — the query client is used as the shared store, even though the
+ *     fetch itself is still this hand-rolled batch-and-merge, not `useQuery`.
  */
+type ChartCache = { byWidget: Map<string, WidgetResult>; answered: Map<string, string>; lastContext: string | null }
+const chartCacheKey = (agentId: string | undefined) => ['analytics', 'chartdata', agentId] as const
+
 export function useChartData(
   agentId: string | undefined,
   widgets: Widget[],
@@ -98,12 +120,54 @@ export function useChartData(
   when: { timeOfDay: { from: string; to: string } | null; days: number[] },
   enabled: boolean
 ) {
-  const [byWidget, setByWidget] = useState<Map<string, WidgetResult>>(new Map())
+  const queryClient = useQueryClient()
+  const initialCache = agentId ? queryClient.getQueryData<ChartCache>(chartCacheKey(agentId)) : undefined
+
+  const [byWidget, setByWidgetState] = useState<Map<string, WidgetResult>>(() => initialCache?.byWidget ?? new Map())
   const [isFetching, setIsFetching] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   /** widget id → the spec we last have an answer for. */
-  const answered = useRef(new Map<string, string>())
-  const lastContext = useRef<string | null>(null)
+  const answered = useRef(new Map<string, string>(initialCache?.answered))
+  const lastContext = useRef<string | null>(initialCache?.lastContext ?? null)
+  const byWidgetRef = useRef(byWidget)
+
+  const persist = useCallback(
+    (next: Map<string, WidgetResult>) => {
+      byWidgetRef.current = next
+      if (agentId) {
+        queryClient.setQueryData<ChartCache>(chartCacheKey(agentId), {
+          byWidget: next,
+          answered: new Map(answered.current),
+          lastContext: lastContext.current,
+        })
+      }
+    },
+    [agentId, queryClient]
+  )
+
+  const setByWidget = useCallback(
+    (updater: (prev: Map<string, WidgetResult>) => Map<string, WidgetResult>) => {
+      setByWidgetState((prev) => {
+        const next = updater(prev)
+        persist(next)
+        return next
+      })
+    },
+    [persist]
+  )
+
+  // switching which agent this canvas shows (or first mount) — reload that
+  // agent's own cached answers instead of starting from an empty map
+  const prevAgentId = useRef(agentId)
+  useEffect(() => {
+    if (prevAgentId.current === agentId) return
+    prevAgentId.current = agentId
+    const cached = agentId ? queryClient.getQueryData<ChartCache>(chartCacheKey(agentId)) : undefined
+    byWidgetRef.current = cached?.byWidget ?? new Map()
+    setByWidgetState(byWidgetRef.current)
+    answered.current = new Map(cached?.answered)
+    lastContext.current = cached?.lastContext ?? null
+  }, [agentId, queryClient])
 
   const context = JSON.stringify({ agentId, range, filters, when })
   const signature = useMemo(() => widgets.map((w) => `${w.id}:${JSON.stringify(w.spec)}`).join('|'), [widgets])
@@ -125,8 +189,9 @@ export function useChartData(
       setIsFetching(true)
       setError(null)
       try {
-        const body = await json<{ widgets: WidgetResult[] }>(`/api/analytics/query`, {
+        const res = await fetch('/api/analytics/query', {
           method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             agentId,
             range,
@@ -136,20 +201,50 @@ export function useChartData(
             widgets: stale.map((w) => ({ id: w.id, spec: w.spec })),
           }),
         })
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          throw new Error(body?.error ?? `Something went wrong (${res.status})`)
+        }
+
+        // a context change (date range, filters, When) makes every card's old
+        // number wrong for the new context — clear immediately rather than
+        // leaving stale-context numbers on screen for the whole batch
+        if (contextChanged) setByWidget(() => new Map())
+
+        const reader = res.body?.getReader()
+        if (!reader) throw new Error('Could not read the response')
+        const decoder = new TextDecoder()
+        let buffer = ''
+        for (;;) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          let newline: number
+          while ((newline = buffer.indexOf('\n')) >= 0) {
+            const line = buffer.slice(0, newline)
+            buffer = buffer.slice(newline + 1)
+            if (!line.trim()) continue
+            const result = JSON.parse(line) as WidgetResult
+            // each line renders its own card the moment it arrives, instead of
+            // waiting for every chart in the batch to finish
+            setByWidget((prev) => {
+              const next = new Map(prev)
+              next.set(result.widget_id, result)
+              return prune(next, widgets)
+            })
+          }
+        }
+
         lastContext.current = context
         for (const w of stale) answered.current.set(w.id, specOf(w))
-        setByWidget((prev) => {
-          const next = contextChanged ? new Map<string, WidgetResult>() : new Map(prev)
-          for (const r of body.widgets) next.set(r.widget_id, r)
-          return prune(next, widgets)
-        })
+        persist(byWidgetRef.current)
       } catch (err) {
         setError(err as Error)
       } finally {
         setIsFetching(false)
       }
     },
-    [agentId, context, enabled, filters, range, when, widgets]
+    [agentId, context, enabled, filters, persist, range, when, widgets]
   )
 
   useEffect(() => {
