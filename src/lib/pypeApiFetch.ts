@@ -71,6 +71,37 @@ export function pypeAgentControlHeaders(): Record<string, string> {
   }
 }
 
+/**
+ * fetch() with a couple of quick retries on connection-level failure (refused,
+ * DNS, socket reset) — NOT on a real HTTP error response, which is returned
+ * as-is on the first try. This exists because a local/dev backend running
+ * under a file-watching auto-reloader (e.g. `uvicorn --reload`) is briefly
+ * unreachable — sub-second, usually under 1-2s — every time its own source
+ * changes, restarting the process. Without a retry, a request landing in
+ * that exact window was being reported to the user as "voice backend
+ * unreachable" even though the backend was back up a moment later; a config
+ * fetch would then permanently show a degraded/read-only page for that load
+ * instead of just quietly working after a brief retry.
+ */
+export async function fetchPypeApiWithRetry(
+  url: string,
+  init: RequestInit,
+  { retries = 2, delayMs = 400, timeoutMs = PYPE_API_FETCH_TIMEOUT_MS }: { retries?: number; delayMs?: number; timeoutMs?: number } = {},
+): Promise<Response> {
+  let lastErr: unknown
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fetch(url, { ...init, signal: init.signal ?? pypeApiAbortSignal(timeoutMs) })
+    } catch (err) {
+      lastErr = err
+      if (!isPypeUpstreamUnreachable(err) || attempt === retries) throw err
+      await new Promise((r) => setTimeout(r, delayMs))
+    }
+  }
+  // Unreachable in practice (loop always returns or throws), but keeps TS happy.
+  throw lastErr
+}
+
 /** True when fetch failed due to timeout, DNS, or refused connection (not HTTP 4xx/5xx). */
 export function isPypeUpstreamUnreachable(err: unknown): boolean {
   if (err == null || typeof err !== "object") return false

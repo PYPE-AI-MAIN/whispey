@@ -122,6 +122,27 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
     return () => { if (connectionTimeInterval.current) clearInterval(connectionTimeInterval.current) }
   }, [isConnected])
 
+  // Warn if the room connects but no agent shows up within 20s.
+  const WATCHDOG_MESSAGE =
+    "The agent hasn't joined the call after a while — it may still be starting up (e.g. right after " +
+    "an Update Config). You can end the call and try again in a few seconds."
+
+  useEffect(() => {
+    if (!isConnected || agentState !== 'initializing') return
+
+    const timeout = setTimeout(() => setConnectionError(WATCHDOG_MESSAGE), 20000)
+
+    return () => clearTimeout(timeout)
+  }, [isConnected, agentState])
+
+  // Clear the watchdog banner once the agent actually shows up (a slow-but-
+  // fine start looks identical to a stuck one until then).
+  useEffect(() => {
+    if (agentState !== 'initializing') {
+      setConnectionError(prev => (prev === WATCHDOG_MESSAGE ? null : prev))
+    }
+  }, [agentState])
+
   const cleanupAudioElements = useCallback(() => {
     audioElementsRef.current.forEach(audio => { try { audio.pause(); audio.remove() } catch {} })
     audioElementsRef.current.clear()
@@ -255,6 +276,15 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
       if (!sessionData.url) throw new Error('No LiveKit URL. Check NEXT_PUBLIC_LIVEKIT_URL.')
       if (!sessionData.token && !sessionData.user_token) throw new Error('No token in session response.')
       await liveKitRoom.connect(sessionData.url, sessionData.token || sessionData.user_token!, { autoSubscribe: true })
+      // Agent may already be in the room by now — ParticipantConnected only
+      // fires for joins AFTER this point, so check existing participants too.
+      for (const p of liveKitRoom.remoteParticipants.values()) {
+        if (isAgentParticipant(p.identity, p.metadata ?? '')) {
+          setAgentParticipant(p)
+          setAgentState('listening')
+          break
+        }
+      }
       if (mode === 'voice') {
         // Swallowing this used to mean: room connects fine, transcript panel
         // shows the agent's greeting, everything LOOKS connected — but no

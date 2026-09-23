@@ -2,6 +2,7 @@
 'use client'
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { agentDisplayName } from '@/lib/agentDisplayName'
 import { useParams, useRouter } from 'next/navigation'
@@ -46,7 +47,7 @@ import SelectSTT from '@/components/agents/AgentConfig/SelectSTTDialog'
 import AgentAdvancedSettings from '@/components/agents/AgentConfig/AgentAdvancedSettings'
 import PromptSettingsSheet from '@/components/agents/AgentConfig/PromptSettingsSheet'
 import { usePromptSettings } from '@/hooks/usePromptSettings'
-import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgentMutations, useResumeInProgressUpdate } from '@/hooks/useAgentConfig'
+import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgentMutations, useResumeInProgressUpdate, useUpdateProgressLabel } from '@/hooks/useAgentConfig'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -385,13 +386,34 @@ export default function AgentConfig() {
   // the backend update this page kicked off is genuinely still in progress.
   const isResumingUpdate = useResumeInProgressUpdate(activeAgentName)
   const isPublishing = isSavingVersion || isResumingUpdate
+  // Live backend stage ("Stopping current worker…", "Verifying…", etc.) instead
+  // of a static "Publishing..." that never changes for however long the
+  // restart cycle takes — was previously fetched every 2s and thrown away.
+  const publishProgressLabel = useUpdateProgressLabel(activeAgentName, isPublishing)
+
+  // Single source of truth for "is this agent running": both this page's
+  // header badge and the Agent List page's badge must reflect the same
+  // backend check. They call different endpoints (this page needs pid/error
+  // detail from /api/agents/status/{name}; the list needs all agents at once
+  // from /api/agents/running_agents), so instead of merging the endpoints we
+  // share one React Query cache key ('runningAgents', projectId) and
+  // explicitly invalidate it here on every status-changing action. Without
+  // this, the two pages only ever resync on an incidental focus/remount,
+  // which is exactly how "Agent Running" here and "Stopped" on the list page
+  // could disagree after a publish, start, or stop.
+  const queryClient = useQueryClient()
+  const invalidateSharedRunningAgents = useCallback(() => {
+    if (!projectId) return
+    queryClient.invalidateQueries({ queryKey: ['runningAgents', projectId] })
+  }, [queryClient, projectId])
 
   const checkAgentStatus = useCallback(async () => {
     if (!activeAgentName) return
 
     const status = await agentStatusService.checkAgentStatus(activeAgentName, deploymentTarget)
     setAgentStatus(status)
-  }, [activeAgentName, deploymentTarget])
+    invalidateSharedRunningAgents()
+  }, [activeAgentName, deploymentTarget, invalidateSharedRunningAgents])
 
   // Check agent status on load
   useEffect(() => {
@@ -452,6 +474,7 @@ export default function AgentConfig() {
       setAgentStatus({ status: 'error' as const, error: 'Failed to start agent' })
     } finally {
       setIsAgentLoading(false)
+      invalidateSharedRunningAgents()
     }
   }
 
@@ -471,6 +494,7 @@ export default function AgentConfig() {
       }
     } finally {
       setIsAgentLoading(false)
+      invalidateSharedRunningAgents()
     }
   }
 
@@ -631,8 +655,13 @@ export default function AgentConfig() {
       // Rebase the dirty-check baseline to the just-saved values (resetForm's `values`
       // option updates initialValues too, unlike setValues which only touches values).
       formik.resetForm({ values: formik.values })
+      // Publishing to a running agent restarts its backend worker — the
+      // status badge shown here was never refreshed after that restart
+      // finished, so it could keep showing "Agent Running" from before the
+      // publish even if the restart actually failed. Re-check now.
+      checkAgentStatus()
     }
-  }, [saveAndDeploy.isSuccess, resetUnsavedChanges])
+  }, [saveAndDeploy.isSuccess, resetUnsavedChanges, checkAgentStatus])
 
   const handleApplyPastedConfig = (config: DeserializedConfig) => {
     console.log('📋 Applying pasted configuration:', config)
@@ -1361,7 +1390,7 @@ const inboundLookupVariables = useMemo(() => {
               title={isProdLocked ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
             >
               {isPublishing
-                ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Publishing...</>
+                ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />{publishProgressLabel ?? 'Publishing...'}</>
                 : 'Update Config'
               }
             </Button>
@@ -1920,7 +1949,7 @@ const inboundLookupVariables = useMemo(() => {
                 disabled={isPublishing || !commitMessage.trim()}
               >
                 {isPublishing
-                  ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Publishing...</>
+                  ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />{publishProgressLabel ?? 'Publishing...'}</>
                   : 'Publish'
                 }
               </Button>
