@@ -19,6 +19,7 @@ import { ChartFilters } from './FilterBar'
 import { CALCULATIONS, explainSpec } from './explain'
 import { FieldPicker, FieldShape } from './FieldPicker'
 import { identityFields, outcomeField } from './suggest'
+import type { OutcomeRanking } from './OutcomeOrderEditor'
 import type { FilterNodeInput, SpecInput } from '@/server/analytics/spec'
 
 /** What a chart-type tile puts on the drag event, and what the grid reads off it. */
@@ -124,10 +125,15 @@ function ChartTypeTile({
 }
 
 export function SidePanel({
-  selected, fields, canEdit, onAddChart, onDragChartType, onChange, onChangeKind, onChangeTitle, onBack,
+  selected, fields, ranking, canEdit, onAddChart, onDragChartType, onChange, onChangeKind, onChangeTitle, onBack,
 }: Readonly<{
   selected: Widget | null
   fields: CatalogField[]
+  /** The agent's saved outcome order — so a chart built here ranks by the same
+   * field the agent's own disposition order means, not a guess (§ once was
+   * "the first enum field with a path", which for one agent was a yes/no
+   * quality flag that has nothing to do with disposition). */
+  ranking?: OutcomeRanking
   canEdit: boolean
   /** Leaves the chart's settings and puts the chart types back (§10.4). */
   onBack: () => void
@@ -191,6 +197,7 @@ export function SidePanel({
     <ChartSettings
       widget={selected as ChartWidget}
       fields={fields}
+      ranking={ranking}
       canEdit={canEdit}
       onBack={onBack}
       onChange={onChange}
@@ -390,10 +397,11 @@ function MiniAggEditor({
 }
 
 function ChartSettings({
-  widget, fields, canEdit, onBack, onChange, onChangeKind, onChangeTitle,
+  widget, fields, ranking, canEdit, onBack, onChange, onChangeKind, onChangeTitle,
 }: Readonly<{
   widget: ChartWidget
   fields: CatalogField[]
+  ranking?: OutcomeRanking
   canEdit: boolean
   onBack: () => void
   onChange: (spec: SpecInput) => void
@@ -419,7 +427,7 @@ function ChartSettings({
     ? fields.find((f) => fieldKey(f) === fieldKey(spec.dimension!.field))
     : undefined
   const identities = useMemo(() => identityFields(fields), [fields])
-  const outcome = useMemo(() => outcomeField(fields), [fields])
+  const outcome = useMemo(() => outcomeField(fields, ranking?.field), [fields, ranking])
 
   const setSpec = (patch: Partial<SpecInput>) => onChange({ ...spec, ...patch })
 
