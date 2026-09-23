@@ -566,6 +566,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
           <SidePanel
             selected={selected}
             fields={catalog}
+            ranking={ranking}
             canEdit={canEdit}
             onBack={() => setSelectedId(null)}
             onAddChart={(kind) => addChart(kind)}
