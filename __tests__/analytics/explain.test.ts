@@ -19,6 +19,7 @@ const fields = [
   field({ path: ['final_disposition'], label: 'Final disposition' }),
   field({ path: ['is_confirmation'], label: 'Is confirmation', value_type: 'boolean', boolean_encoding: 'one_zero' }),
   field({ col: 'avg_latency', path: [], label: 'Response time', value_type: 'number' }),
+  field({ col: 'billing_duration_seconds', path: [], label: 'Billed length (seconds)', value_type: 'number' }),
 ]
 
 describe('a card says what it counted', () => {
@@ -169,5 +170,26 @@ describe('a percentage card says what it divided', () => {
         fields
       )
     ).toBe('Count of calls · only where why the call ended is completed \u00f7 Count of calls')
+  })
+})
+
+describe('a card\'s definition matches what the number is actually shown in', () => {
+  it('says minutes when the Seconds/Minutes toggle is set to minutes', () => {
+    const spec: SpecInput = {
+      spec_version: 1,
+      agg: { fn: 'sum', field: { col: 'billing_duration_seconds' } },
+      range: { days: 30 },
+      display: { unit: 'm', round: 2, scale: 1 / 60 },
+    }
+    expect(explainSpec(spec, fields)).toBe('Sum of billed length (minutes)')
+  })
+
+  it('leaves it as seconds when no minutes override is set', () => {
+    const spec: SpecInput = {
+      spec_version: 1,
+      agg: { fn: 'sum', field: { col: 'billing_duration_seconds' } },
+      range: { days: 30 },
+    }
+    expect(explainSpec(spec, fields)).toBe('Sum of billed length (seconds)')
   })
 })
