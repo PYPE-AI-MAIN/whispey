@@ -7,7 +7,7 @@ interface SarvamVoice {
   id: string;
   name: string;
   language: string;
-  gender: 'Male' | 'Female';
+  gender?: 'Male' | 'Female';
   style: string;
   accent: string;
   description: string;

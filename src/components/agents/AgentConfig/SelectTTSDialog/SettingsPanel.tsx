@@ -6,16 +6,17 @@ import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Settings, ChevronDown, Copy, Check } from 'lucide-react'
+import { BULBUL_V4_LANGUAGE_CODES, isBulbulV4Model } from './bulbulV4Voices'
 
 // IMPORTANT: field is `pace` not `speed` — matches livekit-plugins-sarvam 1.4.2 TTS.__init__
 // `temperature` is NOT a valid param in 1.4.2 — removed entirely
 // All params (pitch, pace, loudness, enable_preprocessing) are valid for ALL models in __init__
 // The plugin internally drops pitch/loudness from the API payload for non-v2 models
 // Valid ranges enforced by plugin: pace 0.5–2.0, loudness 0.5–2.0, pitch -20.0–20.0
-// Model strings: "bulbul:v2" | "bulbul:v3-beta"  (NOT "bulbul:v3" — not in SarvamTTSModels)
+// Model strings: "bulbul:v2" | "bulbul:v3-beta" | "bulbul:v4-flash"
 export interface SarvamConfig {
   target_language_code: string
-  model: string       // "bulbul:v2" | "bulbul:v3-beta"
+  model: string       // "bulbul:v2" | "bulbul:v3-beta" | "bulbul:v4-flash"
   speaker: string
   pace: number        // 0.5–2.0
   loudness: number    // 0.5–2.0
@@ -102,9 +103,13 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 }) => {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const normalizedProvider = selectedProvider === 'sarvam_tts' ? 'sarvam' : selectedProvider
-  // v3-beta: pitch/loudness/enable_preprocessing are accepted by __init__ but
-  // silently ignored by the Sarvam API — show them disabled with a note
-  const isV3 = sarvamConfig.model === 'bulbul:v3-beta'
+  // The LiveKit plugin only sends pitch/loudness/enable_preprocessing for
+  // bulbul:v2, so for every other model show them disabled with a note
+  const v2OnlyControlsIgnored = sarvamConfig.model !== 'bulbul:v2'
+  const isV4 = isBulbulV4Model(sarvamConfig.model)
+  const languageOptions = Object.entries(languageDisplayMap).filter(
+    ([code]) => !isV4 || BULBUL_V4_LANGUAGE_CODES.includes(code),
+  )
 
   return (
     <div className="w-1/2 flex flex-col">
@@ -147,13 +152,18 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(languageDisplayMap).map(([code, label]) => (
+                    {languageOptions.map(([code, label]) => (
                       <SelectItem key={code} value={code}>
                         {label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {isV4 && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Set from the selected v4 voice. Only change it if you&apos;ve auditioned the voice in that language.
+                  </p>
+                )}
               </div>
             </ConfigSection>
 
@@ -178,15 +188,15 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 </div>
 
                 {/* Loudness — 0.5–2.0.
-                    Accepted by __init__ for all models; API ignores it for v3-beta. */}
+                    Only sent to Sarvam for bulbul:v2. */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label className={isV3 ? 'text-gray-400 dark:text-gray-600' : ''}>
+                    <Label className={v2OnlyControlsIgnored ? 'text-gray-400 dark:text-gray-600' : ''}>
                       Loudness: {sarvamConfig.loudness.toFixed(1)}
                     </Label>
-                    {isV3 && (
+                    {v2OnlyControlsIgnored && (
                       <span className="text-xs text-amber-500 dark:text-amber-400">
-                        ignored by API for v3-beta
+                        not applied for this model
                       </span>
                     )}
                   </div>
@@ -197,7 +207,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     max={2.0}
                     step={0.1}
                     className="w-full"
-                    disabled={isV3}
+                    disabled={v2OnlyControlsIgnored}
                   />
                   <div className="flex justify-between text-xs text-gray-500">
                     <span>Quiet (0.5)</span>
@@ -206,15 +216,15 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 </div>
 
                 {/* Pitch — -20 to 20.
-                    Accepted by __init__ for all models; API ignores it for v3-beta. */}
+                    Only sent to Sarvam for bulbul:v2. */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label className={isV3 ? 'text-gray-400 dark:text-gray-600' : ''}>
+                    <Label className={v2OnlyControlsIgnored ? 'text-gray-400 dark:text-gray-600' : ''}>
                       Pitch: {sarvamConfig.pitch.toFixed(1)}
                     </Label>
-                    {isV3 && (
+                    {v2OnlyControlsIgnored && (
                       <span className="text-xs text-amber-500 dark:text-amber-400">
-                        ignored by API for v3-beta
+                        not applied for this model
                       </span>
                     )}
                   </div>
@@ -225,7 +235,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                     max={20.0}
                     step={0.5}
                     className="w-full"
-                    disabled={isV3}
+                    disabled={v2OnlyControlsIgnored}
                   />
                   <div className="flex justify-between text-xs text-gray-500">
                     <span>Low (−20)</span>
@@ -243,13 +253,13 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   <div className="flex items-center gap-2">
                     <Label
                       htmlFor="preprocessing"
-                      className={isV3 ? 'text-gray-400 dark:text-gray-600' : ''}
+                      className={v2OnlyControlsIgnored ? 'text-gray-400 dark:text-gray-600' : ''}
                     >
                       Enable Preprocessing
                     </Label>
-                    {isV3 && (
+                    {v2OnlyControlsIgnored && (
                       <span className="text-xs text-amber-500 dark:text-amber-400">
-                        ignored by API for v3-beta
+                        not applied for this model
                       </span>
                     )}
                   </div>
@@ -263,7 +273,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   onCheckedChange={(checked) =>
                     setSarvamConfig((prev) => ({ ...prev, enable_preprocessing: checked }))
                   }
-                  disabled={isV3}
+                  disabled={v2OnlyControlsIgnored}
                 />
               </div>
             </ConfigSection>
