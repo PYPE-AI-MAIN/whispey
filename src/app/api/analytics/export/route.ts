@@ -19,6 +19,10 @@ import { csvPage } from '@/server/analytics/csv'
 import { guarded } from '@/server/analytics/guard'
 
 export const runtime = 'nodejs'
+// the pooler is aws-1-ap-south-1 (Mumbai); without this the function runs
+// wherever Vercel's project default is, which can add a cross-region round
+// trip to every statement in runQuery (BEGIN, SET LOCAL, the query, COMMIT)
+export const preferredRegion = 'bom1'
 export const dynamic = 'force-dynamic'
 
 export const POST = guarded('analytics/export', async (req: NextRequest) => {
