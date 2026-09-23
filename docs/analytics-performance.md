@@ -8,23 +8,31 @@ column, or touching `buildQuery.ts` / `db.ts`.
 
 The pooler is `aws-1-ap-south-1` (Mumbai). Every analytics route declares:
 
-```ts
-export const runtime = 'nodejs'
-export const preferredRegion = 'bom1'
-```
+`export const preferredRegion` does **not** work here — do not add it back.
+Next.js docs: on Vercel it was only ever honored for `runtime = 'edge'`, and
+it is now deprecated outright. These routes use `runtime = 'nodejs'`
+(required — `pg` is not edge-compatible), so it was always a no-op.
+
+The real mechanism is project-level: a `regions` key in `vercel.json`, or
+Project Settings → Functions → Function Regions in the dashboard. Hobby
+plans get exactly one region for the *whole project* (all functions, not
+just analytics) — Pro gets up to 5, with a `functions` block in
+`vercel.json` to scope regions per route.
 
 `runQuery()` opens a transaction and sends BEGIN, `SET LOCAL` ×2, the query,
-and COMMIT — five statements per chart, minimum. If the function runs in a
-different region than the pooler, every one of those five pays a
-cross-region round trip. That cost is invisible in local testing (you're
-always "far" from prod) and invisible in `EXPLAIN ANALYZE` (it only measures
-time inside Postgres) — it only shows up as "slower than a tool that queries
-from the right region," e.g. Metabase, Supabase's own SQL editor, or a script
-run from a nearby box.
+and COMMIT — five statements per chart, minimum. If the project's function
+region doesn't match the pooler's (new projects default to `iad1`,
+Washington D.C.; the pooler is `aws-1-ap-south-1`, Mumbai), every one of
+those five pays a cross-region round trip. That cost is invisible in local
+testing (you're always "far" from prod) and invisible in `EXPLAIN ANALYZE`
+(it only measures time inside Postgres) — it only shows up as "slower than a
+tool that queries from the right region," e.g. Metabase or the SQL editor.
 
-**Caveat:** `preferredRegion` may be a no-op on some Vercel plans. Confirm in
-the Vercel dashboard → the route's function logs, which print the executing
-region.
+**Before changing the project region:** check what else the app's other
+routes talk to (LLM APIs, auth, other third parties) — on Hobby, moving
+the whole project to Mumbai for analytics' sake also moves everything else.
+Confirm the current region first via the dashboard or a function's logs,
+which print the region it executed in.
 
 ## 2. Every dashboard column needs to be in an index, not just filterable
 
