@@ -123,7 +123,7 @@ export function useChartData(
   const queryClient = useQueryClient()
   const initialCache = agentId ? queryClient.getQueryData<ChartCache>(chartCacheKey(agentId)) : undefined
 
-  const [byWidget, setByWidgetState] = useState<Map<string, WidgetResult>>(() => initialCache?.byWidget ?? new Map())
+  const [byWidget, setByWidget] = useState<Map<string, WidgetResult>>(() => initialCache?.byWidget ?? new Map())
   const [isFetching, setIsFetching] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   /** widget id → the spec we last have an answer for. */
@@ -145,9 +145,9 @@ export function useChartData(
     [agentId, queryClient]
   )
 
-  const setByWidget = useCallback(
+  const updateByWidget = useCallback(
     (updater: (prev: Map<string, WidgetResult>) => Map<string, WidgetResult>) => {
-      setByWidgetState((prev) => {
+      setByWidget((prev) => {
         const next = updater(prev)
         persist(next)
         return next
@@ -164,7 +164,7 @@ export function useChartData(
     prevAgentId.current = agentId
     const cached = agentId ? queryClient.getQueryData<ChartCache>(chartCacheKey(agentId)) : undefined
     byWidgetRef.current = cached?.byWidget ?? new Map()
-    setByWidgetState(byWidgetRef.current)
+    setByWidget(byWidgetRef.current)
     answered.current = new Map(cached?.answered)
     lastContext.current = cached?.lastContext ?? null
   }, [agentId, queryClient])
@@ -182,7 +182,7 @@ export function useChartData(
 
       // a card that has not been touched keeps the number it already had
       if (stale.length === 0) {
-        setByWidget((prev) => prune(prev, widgets))
+        updateByWidget((prev) => prune(prev, widgets))
         return
       }
 
@@ -209,7 +209,7 @@ export function useChartData(
         // a context change (date range, filters, When) makes every card's old
         // number wrong for the new context — clear immediately rather than
         // leaving stale-context numbers on screen for the whole batch
-        if (contextChanged) setByWidget(() => new Map())
+        if (contextChanged) updateByWidget(() => new Map())
 
         const reader = res.body?.getReader()
         if (!reader) throw new Error('Could not read the response')
@@ -227,7 +227,7 @@ export function useChartData(
             const result = JSON.parse(line) as WidgetResult
             // each line renders its own card the moment it arrives, instead of
             // waiting for every chart in the batch to finish
-            setByWidget((prev) => {
+            updateByWidget((prev) => {
               const next = new Map(prev)
               next.set(result.widget_id, result)
               return prune(next, widgets)
@@ -244,7 +244,7 @@ export function useChartData(
         setIsFetching(false)
       }
     },
-    [agentId, context, enabled, filters, persist, range, when, widgets]
+    [agentId, context, enabled, filters, persist, range, updateByWidget, when, widgets]
   )
 
   useEffect(() => {
