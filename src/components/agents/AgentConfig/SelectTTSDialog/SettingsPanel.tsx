@@ -92,6 +92,164 @@ const languageDisplayMap: Record<string, string> = {
   'en-IN': 'English (en-IN)',
 }
 
+const NotAppliedBadge = () => (
+  <span className="text-xs text-amber-500 dark:text-amber-400">not applied for this model</span>
+)
+
+const PROVIDER_TITLES: Record<string, string> = {
+  sarvam: 'Sarvam',
+  elevenlabs: 'ElevenLabs',
+  google: 'Google TTS',
+}
+
+const SarvamSettings = ({
+  sarvamConfig,
+  setSarvamConfig,
+}: Pick<SettingsPanelProps, 'sarvamConfig' | 'setSarvamConfig'>) => {
+  // The LiveKit plugin only sends pitch/loudness/enable_preprocessing for
+  // bulbul:v2, so for every other model show them disabled with a note
+  const v2OnlyControlsIgnored = sarvamConfig.model !== 'bulbul:v2'
+  const mutedClass = v2OnlyControlsIgnored ? 'text-gray-400 dark:text-gray-600' : ''
+  const isV4 = isBulbulV4Model(sarvamConfig.model)
+  const languageOptions = Object.entries(languageDisplayMap).filter(
+    ([code]) => !isV4 || BULBUL_V4_LANGUAGE_CODES.includes(code),
+  )
+
+  return (
+    <>
+      <ConfigSection title="Basic Settings">
+        <div className="space-y-2">
+          <Label htmlFor="target-language">Target Language Code</Label>
+          <Select
+            value={sarvamConfig.target_language_code}
+            onValueChange={(value) =>
+              setSarvamConfig((prev) => ({ ...prev, target_language_code: value }))
+            }
+          >
+            <SelectTrigger id="target-language">
+              <SelectValue>
+                {languageDisplayMap[sarvamConfig.target_language_code] ??
+                  sarvamConfig.target_language_code}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {languageOptions.map(([code, label]) => (
+                <SelectItem key={code} value={code}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {isV4 && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Set from the selected v4 voice. Only change it if you&apos;ve auditioned the voice in that language.
+            </p>
+          )}
+        </div>
+      </ConfigSection>
+
+      <ConfigSection title="Audio Settings">
+        <div className="space-y-5">
+
+          {/* Pace — 0.5–2.0, both models */}
+          <div className="space-y-3">
+            <Label>Pace: {sarvamConfig.pace.toFixed(2)}</Label>
+            <Slider
+              value={[sarvamConfig.pace]}
+              onValueChange={([v]) => setSarvamConfig((prev) => ({ ...prev, pace: v }))}
+              min={0.5}
+              max={2.0}
+              step={0.05}
+              className="w-full"
+            />
+            <div className="flex justify-between text-xs text-gray-500">
+              <span>Slow (0.5×)</span>
+              <span>Fast (2.0×)</span>
+            </div>
+          </div>
+
+          {/* Loudness — 0.5–2.0.
+              Only sent to Sarvam for bulbul:v2. */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className={mutedClass}>
+                Loudness: {sarvamConfig.loudness.toFixed(1)}
+              </Label>
+              {v2OnlyControlsIgnored && <NotAppliedBadge />}
+            </div>
+            <Slider
+              value={[sarvamConfig.loudness]}
+              onValueChange={([v]) => setSarvamConfig((prev) => ({ ...prev, loudness: v }))}
+              min={0.5}
+              max={2.0}
+              step={0.1}
+              className="w-full"
+              disabled={v2OnlyControlsIgnored}
+            />
+            <div className="flex justify-between text-xs text-gray-500">
+              <span>Quiet (0.5)</span>
+              <span>Loud (2.0)</span>
+            </div>
+          </div>
+
+          {/* Pitch — -20 to 20.
+              Only sent to Sarvam for bulbul:v2. */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className={mutedClass}>
+                Pitch: {sarvamConfig.pitch.toFixed(1)}
+              </Label>
+              {v2OnlyControlsIgnored && <NotAppliedBadge />}
+            </div>
+            <Slider
+              value={[sarvamConfig.pitch]}
+              onValueChange={([v]) => setSarvamConfig((prev) => ({ ...prev, pitch: v }))}
+              min={-20.0}
+              max={20.0}
+              step={0.5}
+              className="w-full"
+              disabled={v2OnlyControlsIgnored}
+            />
+            <div className="flex justify-between text-xs text-gray-500">
+              <span>Low (−20)</span>
+              <span>High (+20)</span>
+            </div>
+          </div>
+
+        </div>
+      </ConfigSection>
+
+      {/* Processing — enable_preprocessing is v2 only at API level */}
+      <ConfigSection title="Processing">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Label
+                htmlFor="preprocessing"
+                className={mutedClass}
+              >
+                Enable Preprocessing
+              </Label>
+              {v2OnlyControlsIgnored && <NotAppliedBadge />}
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Normalise numbers, dates and English words in mixed-language text
+            </p>
+          </div>
+          <Switch
+            id="preprocessing"
+            checked={sarvamConfig.enable_preprocessing}
+            onCheckedChange={(checked) =>
+              setSarvamConfig((prev) => ({ ...prev, enable_preprocessing: checked }))
+            }
+            disabled={v2OnlyControlsIgnored}
+          />
+        </div>
+      </ConfigSection>
+    </>
+  )
+}
+
 const SettingsPanel: React.FC<SettingsPanelProps> = ({
   selectedProvider,
   sarvamConfig,
@@ -103,13 +261,6 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 }) => {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const normalizedProvider = selectedProvider === 'sarvam_tts' ? 'sarvam' : selectedProvider
-  // The LiveKit plugin only sends pitch/loudness/enable_preprocessing for
-  // bulbul:v2, so for every other model show them disabled with a note
-  const v2OnlyControlsIgnored = sarvamConfig.model !== 'bulbul:v2'
-  const isV4 = isBulbulV4Model(sarvamConfig.model)
-  const languageOptions = Object.entries(languageDisplayMap).filter(
-    ([code]) => !isV4 || BULBUL_V4_LANGUAGE_CODES.includes(code),
-  )
 
   return (
     <div className="w-1/2 flex flex-col">
@@ -117,13 +268,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         <div className="flex items-center gap-2">
           <Settings className="w-5 h-5 text-gray-500" />
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            {normalizedProvider === 'sarvam'
-              ? 'Sarvam'
-              : normalizedProvider === 'elevenlabs'
-              ? 'ElevenLabs'
-              : normalizedProvider === 'google'
-              ? 'Google TTS'
-              : 'TTS'}{' '}
+            {PROVIDER_TITLES[normalizedProvider] ?? 'TTS'}{' '}
             Settings
           </h3>
         </div>
@@ -134,152 +279,12 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
       <div className="flex-1 p-6 overflow-y-auto space-y-6">
         {/* ───── SARVAM ───── */}
-        {normalizedProvider === 'sarvam' ? (
-          <>
-            <ConfigSection title="Basic Settings">
-              <div className="space-y-2">
-                <Label htmlFor="target-language">Target Language Code</Label>
-                <Select
-                  value={sarvamConfig.target_language_code}
-                  onValueChange={(value) =>
-                    setSarvamConfig((prev) => ({ ...prev, target_language_code: value }))
-                  }
-                >
-                  <SelectTrigger id="target-language">
-                    <SelectValue>
-                      {languageDisplayMap[sarvamConfig.target_language_code] ??
-                        sarvamConfig.target_language_code}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {languageOptions.map(([code, label]) => (
-                      <SelectItem key={code} value={code}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {isV4 && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Set from the selected v4 voice. Only change it if you&apos;ve auditioned the voice in that language.
-                  </p>
-                )}
-              </div>
-            </ConfigSection>
+        {normalizedProvider === 'sarvam' && (
+          <SarvamSettings sarvamConfig={sarvamConfig} setSarvamConfig={setSarvamConfig} />
+        )}
 
-            <ConfigSection title="Audio Settings">
-              <div className="space-y-5">
-
-                {/* Pace — 0.5–2.0, both models */}
-                <div className="space-y-3">
-                  <Label>Pace: {sarvamConfig.pace.toFixed(2)}</Label>
-                  <Slider
-                    value={[sarvamConfig.pace]}
-                    onValueChange={([v]) => setSarvamConfig((prev) => ({ ...prev, pace: v }))}
-                    min={0.5}
-                    max={2.0}
-                    step={0.05}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>Slow (0.5×)</span>
-                    <span>Fast (2.0×)</span>
-                  </div>
-                </div>
-
-                {/* Loudness — 0.5–2.0.
-                    Only sent to Sarvam for bulbul:v2. */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label className={v2OnlyControlsIgnored ? 'text-gray-400 dark:text-gray-600' : ''}>
-                      Loudness: {sarvamConfig.loudness.toFixed(1)}
-                    </Label>
-                    {v2OnlyControlsIgnored && (
-                      <span className="text-xs text-amber-500 dark:text-amber-400">
-                        not applied for this model
-                      </span>
-                    )}
-                  </div>
-                  <Slider
-                    value={[sarvamConfig.loudness]}
-                    onValueChange={([v]) => setSarvamConfig((prev) => ({ ...prev, loudness: v }))}
-                    min={0.5}
-                    max={2.0}
-                    step={0.1}
-                    className="w-full"
-                    disabled={v2OnlyControlsIgnored}
-                  />
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>Quiet (0.5)</span>
-                    <span>Loud (2.0)</span>
-                  </div>
-                </div>
-
-                {/* Pitch — -20 to 20.
-                    Only sent to Sarvam for bulbul:v2. */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label className={v2OnlyControlsIgnored ? 'text-gray-400 dark:text-gray-600' : ''}>
-                      Pitch: {sarvamConfig.pitch.toFixed(1)}
-                    </Label>
-                    {v2OnlyControlsIgnored && (
-                      <span className="text-xs text-amber-500 dark:text-amber-400">
-                        not applied for this model
-                      </span>
-                    )}
-                  </div>
-                  <Slider
-                    value={[sarvamConfig.pitch]}
-                    onValueChange={([v]) => setSarvamConfig((prev) => ({ ...prev, pitch: v }))}
-                    min={-20.0}
-                    max={20.0}
-                    step={0.5}
-                    className="w-full"
-                    disabled={v2OnlyControlsIgnored}
-                  />
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>Low (−20)</span>
-                    <span>High (+20)</span>
-                  </div>
-                </div>
-
-              </div>
-            </ConfigSection>
-
-            {/* Processing — enable_preprocessing is v2 only at API level */}
-            <ConfigSection title="Processing">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Label
-                      htmlFor="preprocessing"
-                      className={v2OnlyControlsIgnored ? 'text-gray-400 dark:text-gray-600' : ''}
-                    >
-                      Enable Preprocessing
-                    </Label>
-                    {v2OnlyControlsIgnored && (
-                      <span className="text-xs text-amber-500 dark:text-amber-400">
-                        not applied for this model
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Normalise numbers, dates and English words in mixed-language text
-                  </p>
-                </div>
-                <Switch
-                  id="preprocessing"
-                  checked={sarvamConfig.enable_preprocessing}
-                  onCheckedChange={(checked) =>
-                    setSarvamConfig((prev) => ({ ...prev, enable_preprocessing: checked }))
-                  }
-                  disabled={v2OnlyControlsIgnored}
-                />
-              </div>
-            </ConfigSection>
-          </>
-
-        ) : /* ───── ELEVENLABS ───── */ normalizedProvider === 'elevenlabs' ? (
+        {/* ───── ELEVENLABS ───── */}
+        {normalizedProvider === 'elevenlabs' && (
           <>
             <ConfigSection title="Basic Settings">
               <div className="grid grid-cols-1 gap-4">
@@ -421,7 +426,10 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
             )}
           </>
 
-        ) : /* ───── GOOGLE ───── */ normalizedProvider === 'google' ? (
+        )}
+
+        {/* ───── GOOGLE ───── */}
+        {normalizedProvider === 'google' && (
           <ConfigSection title="Basic Settings">
             <div className="space-y-2">
               <Label htmlFor="google-voice-name">Voice Name</Label>
@@ -441,8 +449,9 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
               </p>
             </div>
           </ConfigSection>
+        )}
 
-        ) : (
+        {!PROVIDER_TITLES[normalizedProvider] && (
           <div className="flex items-center justify-center h-full">
             <div className="text-center space-y-3">
               <Settings className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto" />
