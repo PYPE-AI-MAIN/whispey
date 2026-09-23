@@ -98,3 +98,30 @@ dev can be wrong or catastrophically slow on the smallest prod agent that
 happens to be busy. Before shipping a performance-sensitive analytics
 change, run the real `EXPLAIN (ANALYZE, BUFFERS)` against prod (read-only
 key) on at least one agent with tens of thousands of rows.
+
+## 7. The connection pool is sized for Fluid Compute, not classic serverless
+
+Fluid Compute (enabled on this project) means one warm instance serves many
+concurrent requests and reuses the same `pg.Pool` — it isn't a fresh isolate
+and a fresh pool per invocation. Vercel's own guidance for that model:
+never `max: 1` (it doesn't reduce total connections, it only kills
+concurrency), keep `min: 1`, and let the pool stay warm. `db.ts` runs
+`max: 10, min: 1, idleTimeoutMillis: 5_000`.
+
+That ceiling is per running instance and shared across every dashboard any
+user has open — check the project's actual pooler client limit (Supabase
+dashboard → Database → Connection Pooling) before raising it further, and
+re-measure rather than guess.
+
+`runQuery()` logs a warning when a query waited more than 2s just to get a
+connection (`queued Nms for a pool connection`) — that's the pool being the
+bottleneck, distinct from the query itself being slow, and previously both
+looked identical from the browser as "this chart took too long."
+
+Known related failure mode, not this app's bug but worth knowing the
+symptom: Supabase's shared pooler (Supavisor) had a TLS bug where broken
+connections under Vercel Fluid Compute leaked "zombie" client slots until
+`FATAL: Max client connections reached`
+([supabase/discussions#40671](https://github.com/orgs/supabase/discussions/40671)),
+fixed server-side. If timeouts recur despite headroom in the app's own
+pool, check for that symptom before re-tuning the app.
