@@ -72,16 +72,8 @@ export function pypeAgentControlHeaders(): Record<string, string> {
 }
 
 /**
- * fetch() with a couple of quick retries on connection-level failure (refused,
- * DNS, socket reset) — NOT on a real HTTP error response, which is returned
- * as-is on the first try. This exists because a local/dev backend running
- * under a file-watching auto-reloader (e.g. `uvicorn --reload`) is briefly
- * unreachable — sub-second, usually under 1-2s — every time its own source
- * changes, restarting the process. Without a retry, a request landing in
- * that exact window was being reported to the user as "voice backend
- * unreachable" even though the backend was back up a moment later; a config
- * fetch would then permanently show a degraded/read-only page for that load
- * instead of just quietly working after a brief retry.
+ * fetch() with quick retries on connection-level failures (refused, DNS, reset),
+ * e.g. while the backend restarts. HTTP error responses are returned as-is.
  */
 export async function fetchPypeApiWithRetry(
   url: string,

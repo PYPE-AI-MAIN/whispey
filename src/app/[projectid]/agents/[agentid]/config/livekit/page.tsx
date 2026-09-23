@@ -386,21 +386,11 @@ export default function AgentConfig() {
   // the backend update this page kicked off is genuinely still in progress.
   const isResumingUpdate = useResumeInProgressUpdate(activeAgentName)
   const isPublishing = isSavingVersion || isResumingUpdate
-  // Live backend stage ("Stopping current worker…", "Verifying…", etc.) instead
-  // of a static "Publishing..." that never changes for however long the
-  // restart cycle takes — was previously fetched every 2s and thrown away.
+  // Live backend stage instead of a static "Publishing..."
   const publishProgressLabel = useUpdateProgressLabel(activeAgentName, isPublishing)
 
-  // Single source of truth for "is this agent running": both this page's
-  // header badge and the Agent List page's badge must reflect the same
-  // backend check. They call different endpoints (this page needs pid/error
-  // detail from /api/agents/status/{name}; the list needs all agents at once
-  // from /api/agents/running_agents), so instead of merging the endpoints we
-  // share one React Query cache key ('runningAgents', projectId) and
-  // explicitly invalidate it here on every status-changing action. Without
-  // this, the two pages only ever resync on an incidental focus/remount,
-  // which is exactly how "Agent Running" here and "Stopped" on the list page
-  // could disagree after a publish, start, or stop.
+  // Refresh the Agent List's cached status whenever this page's status changes,
+  // so the two badges can't disagree after a publish, start or stop.
   const queryClient = useQueryClient()
   const invalidateSharedRunningAgents = useCallback(() => {
     if (!projectId) return
@@ -655,11 +645,8 @@ export default function AgentConfig() {
       // Rebase the dirty-check baseline to the just-saved values (resetForm's `values`
       // option updates initialValues too, unlike setValues which only touches values).
       formik.resetForm({ values: formik.values })
-      // Publishing to a running agent restarts its backend worker — the
-      // status badge shown here was never refreshed after that restart
-      // finished, so it could keep showing "Agent Running" from before the
-      // publish even if the restart actually failed. Re-check now.
-      checkAgentStatus()
+      // Re-check status after a publish instead of showing the pre-publish badge.
+      checkAgentStatus().catch((err) => console.error('Status refresh after publish failed:', err))
     }
   }, [saveAndDeploy.isSuccess, resetUnsavedChanges, checkAgentStatus])
 

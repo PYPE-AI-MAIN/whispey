@@ -320,6 +320,8 @@ export class UpdateStillInProgressError extends Error {
   }
 }
 
+const updateStatusUrl = (agentName: string) => `/api/agents/update-status/${encodeURIComponent(agentName)}`
+
 async function fetchWorkerPid(agentName: string): Promise<number | null> {
   try {
     const res = await fetch(`/api/agents/status/${encodeURIComponent(agentName)}`)
@@ -346,8 +348,8 @@ async function pollUpdateStatus(agentName: string): Promise<any> {
       return { status: "completed", success: true, pid: currentPid }
     }
 
-    const res = await fetch(`/api/agents/update-status/${encodeURIComponent(agentName)}`).catch(() => null)
-    if (!res || !res.ok) continue // transient — ground truth check above keeps running regardless
+    const res = await fetch(updateStatusUrl(agentName)).catch(() => null)
+    if (!res?.ok) continue // transient — ground truth check above keeps running regardless
 
     const status = await res.json()
     if (status.status === "no_update_found" || status.status === "unreachable") continue
@@ -396,7 +398,7 @@ export function useResumeInProgressUpdate(
     if (!agentName) return
     let cancelled = false
 
-    fetch(`/api/agents/update-status/${encodeURIComponent(agentName)}`)
+    fetch(updateStatusUrl(agentName))
       .then((res) => (res.ok ? res.json() : null))
       .then((status) => {
         if (cancelled || !status) return
@@ -424,14 +426,7 @@ const UPDATE_STAGE_LABELS: Record<string, string> = {
   verifying: "Verifying it came back up…",
 }
 
-/**
- * Live label for what the backend is actually doing during a publish, instead
- * of a static "Publishing..." that never changes for up to several minutes.
- * Polls independently of pollUpdateStatus() (which gates the mutation itself)
- * so this is purely a display concern — if it fails or the request in flight
- * hasn't reached the backend's tracking dict yet, it just falls back to null
- * and the caller shows its own default label.
- */
+/** Live label for the backend's current publish stage, or null to show the default. */
 export function useUpdateProgressLabel(agentName: string | null | undefined, active: boolean) {
   const [label, setLabel] = useState<string | null>(null)
 
@@ -443,16 +438,15 @@ export function useUpdateProgressLabel(agentName: string | null | undefined, act
 
     let cancelled = false
 
-    const poll = async () => {
-      try {
-        const res = await fetch(`/api/agents/update-status/${encodeURIComponent(agentName)}`)
-        if (!res.ok || cancelled) return
-        const status = await res.json()
-        if (cancelled) return
-        setLabel(UPDATE_STAGE_LABELS[status.status] ?? null)
-      } catch {
-        // transient — keep whatever label was last shown
-      }
+    const poll = () => {
+      fetch(updateStatusUrl(agentName))
+        .then((res) => (res.ok ? res.json() : null))
+        .then((status) => {
+          if (!cancelled && status) setLabel(UPDATE_STAGE_LABELS[status.status] ?? null)
+        })
+        .catch(() => {
+          // transient — keep whatever label was last shown
+        })
     }
 
     poll()

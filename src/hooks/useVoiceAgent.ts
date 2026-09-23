@@ -85,6 +85,10 @@ function generateSecureId(prefix = 'user') {
   return `${prefix}_${Date.now()}_${getSecureRandomInt(100000)}`
 }
 
+const WATCHDOG_MESSAGE =
+  "The agent hasn't joined the call after a while — it may still be starting up (e.g. right after " +
+  "an Update Config). You can end the call and try again in a few seconds."
+
 function isAgentParticipant(identity = '', metadata = '') {
   const id = identity.toLowerCase()
   const m  = metadata.toLowerCase()
@@ -123,10 +127,6 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
   }, [isConnected])
 
   // Warn if the room connects but no agent shows up within 20s.
-  const WATCHDOG_MESSAGE =
-    "The agent hasn't joined the call after a while — it may still be starting up (e.g. right after " +
-    "an Update Config). You can end the call and try again in a few seconds."
-
   useEffect(() => {
     if (!isConnected || agentState !== 'initializing') return
 
