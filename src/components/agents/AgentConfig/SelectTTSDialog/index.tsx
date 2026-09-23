@@ -9,13 +9,14 @@ import { Volume2, Sparkles, Settings, RotateCcw, AlertTriangle } from 'lucide-re
 import VoiceSelectionPanel from './VoiceSelectionPanel'
 import SettingsPanel from './SettingsPanel'
 import HeaderVoiceDisplay from './HeaderVoiceDisplay'
+import { bulbulV4Voices, bulbulV4LanguageCode, isBulbulV4Model } from './bulbulV4Voices'
 
 // Types
 interface SarvamVoice {
   id: string;
   name: string;
   language: string;
-  gender: 'Male' | 'Female';
+  gender?: 'Male' | 'Female';
   style: string;
   accent: string;
   description: string;
@@ -132,6 +133,7 @@ const allSarvamVoices: (SarvamVoice & { compatibleModels: string[] })[] = [
   { id: 'rehan', name: 'Rehan', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
   { id: 'soham', name: 'Soham', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
   { id: 'rupali', name: 'Rupali', language: 'Multi-lingual', gender: 'Female', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  ...bulbulV4Voices,
 ]
 
 // Main Component
@@ -418,7 +420,12 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
     
     // Update appropriate config
     if (normalizedProvider === 'sarvam') {
-      setSarvamConfig(prev => ({ ...prev, speaker: voiceId }))
+      // v4 voices are tied to a language, so follow the voice's language
+      setSarvamConfig(prev => ({
+        ...prev,
+        speaker: voiceId,
+        ...(voiceId && isBulbulV4Model(prev.model) && { target_language_code: bulbulV4LanguageCode(voiceId) }),
+      }))
     } else if (normalizedProvider === 'elevenlabs') {
       setElevenLabsConfig(prev => ({ ...prev, voiceId }))
     } else if (normalizedProvider === 'google') {
