@@ -32,10 +32,12 @@ interface DailyVoiceAgentActions {
 interface DailyVoiceAgentConfig {
   agentName: string
   sessionEndpoint: string
+  /** Optional per-session variable overrides (e.g. from Agent Studio's test panel). */
+  variables?: Record<string, string>
 }
 
 export function useDailyVoiceAgent(
-  { agentName, sessionEndpoint }: DailyVoiceAgentConfig
+  { agentName, sessionEndpoint, variables }: DailyVoiceAgentConfig
 ): [DailyVoiceAgentState, DailyVoiceAgentActions] {
   const [isConnected, setIsConnected]         = useState(false)
   const [isConnecting, setIsConnecting]       = useState(false)
@@ -77,7 +79,11 @@ export function useDailyVoiceAgent(
       const res = await fetch(sessionEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agent_name: agentName, user_name: 'Web User' }),
+        body: JSON.stringify({
+          agent_name: agentName,
+          user_name: 'Web User',
+          ...(variables && Object.keys(variables).length > 0 ? { variables } : {}),
+        }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Unknown error' }))
@@ -164,7 +170,7 @@ export function useDailyVoiceAgent(
       callRef.current = null
       setRoomUrl(null)
     }
-  }, [agentName, isConnecting, isConnected, sessionEndpoint, upsertTranscript])
+  }, [agentName, isConnecting, isConnected, sessionEndpoint, variables, upsertTranscript])
 
   const cleanupAudio = useCallback(() => {
     audioElsRef.current.forEach(el => el.remove())

@@ -624,16 +624,21 @@ export default function Sidebar({
 
         {/* Navigation with Groups */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          <OrganizationSwitcher 
-            isCollapsed={isCollapsed}
-            isMobile={isMobile}
-            externalOpen={orgSwitcherOpen}
-            onExternalOpenChange={setOrgSwitcherOpen}
-            onCreateNew={() => {
-              setOrgSwitcherOpen(false)
-              setTimeout(() => { setShowCreateDialog(true) }, 150)
-            }}
-          />
+          {/* Org switcher — hidden on Agent Studio (beta): switching projects
+              is exactly the kind of "see everything else" escape hatch this
+              restricted view exists to avoid. */}
+          {config.type !== 'agent-studio' && (
+            <OrganizationSwitcher
+              isCollapsed={isCollapsed}
+              isMobile={isMobile}
+              externalOpen={orgSwitcherOpen}
+              onExternalOpenChange={setOrgSwitcherOpen}
+              onCreateNew={() => {
+                setOrgSwitcherOpen(false)
+                setTimeout(() => { setShowCreateDialog(true) }, 150)
+              }}
+            />
+          )}
 
           {groupNavigationItems(config.navigation as NavigationItem[]).map((group, groupIndex) => (
             <div key={group.id}>
@@ -680,27 +685,30 @@ export default function Sidebar({
           onSignOut={handleSignOut}
         />
 
-        {/* Help Center */}
-        <div className="border-t border-gray-100 dark:border-gray-800 p-3">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button 
-                  onClick={() => setIsSupportOpen(true)}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 w-full ${
-                    isCollapsed && !isMobile ? 'justify-center' : ''
-                  }`}
-                >
-                  <HelpCircle className="w-4 h-4 flex-shrink-0" />
-                  {(!isCollapsed || isMobile) && <span>Help Center</span>}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                <p>Help Center</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
+        {/* Help Center — hidden on Agent Studio (beta): that view intentionally
+            exposes nothing beyond its own 4 links. */}
+        {config.type !== 'agent-studio' && (
+          <div className="border-t border-gray-100 dark:border-gray-800 p-3">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setIsSupportOpen(true)}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 w-full ${
+                      isCollapsed && !isMobile ? 'justify-center' : ''
+                    }`}
+                  >
+                    <HelpCircle className="w-4 h-4 flex-shrink-0" />
+                    {(!isCollapsed || isMobile) && <span>Help Center</span>}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>Help Center</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        )}
       </aside>
 
       {/* Support Sheet */}

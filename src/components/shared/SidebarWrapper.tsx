@@ -250,6 +250,42 @@ const sidebarRoutes: SidebarRoute[] = [
     priority: 95
   },
 
+  // Agent Studio (beta) — restricted, self-contained view for a single agent.
+  // Own route subtree (/studio*) so it never shares a sidebar config with the
+  // normal agent-detail routes below; restricting nav here can't affect the
+  // internal team's view of the same agent.
+  // NOTE: matchRoute's `*` branch checks `pathname.startsWith(basePattern)`
+  // while basePattern still has literal `:projectId`/`:agentId` — that can
+  // never match a pattern combining a `:param` with a trailing `*` (no other
+  // route in this file mixes the two, so the bug hadn't surfaced). Listing
+  // the known sub-paths as exact patterns instead sidesteps it without
+  // touching the shared matcher.
+  {
+    patterns: [
+      { pattern: '/:projectId/agents/:agentId/studio' },
+      { pattern: '/:projectId/agents/:agentId/studio/overview' },
+      { pattern: '/:projectId/agents/:agentId/studio/logs' },
+      { pattern: '/:projectId/agents/:agentId/studio/knowledge-base' },
+    ],
+    getSidebarConfig: (params) => {
+      const { projectId, agentId } = params
+      const base = `/${projectId}/agents/${agentId}/studio`
+
+      return {
+        type: 'agent-studio',
+        context: { agentId, projectId },
+        navigation: [
+          { id: 'studio', name: 'Studio', icon: 'Zap', path: base, group: 'Agent Studio' },
+          { id: 'studio-overview', name: 'Overview', icon: 'Activity', path: `${base}/overview`, group: 'Agent Studio' },
+          { id: 'studio-logs', name: 'Call Logs', icon: 'List', path: `${base}/logs`, group: 'Agent Studio' },
+          { id: 'studio-knowledge', name: 'Knowledge Base', icon: 'BookOpen', path: `${base}/knowledge-base`, group: 'Agent Studio' },
+        ],
+        showBackButton: false,
+      }
+    },
+    priority: 92
+  },
+
   // Individual agent routes
   {
     patterns: [

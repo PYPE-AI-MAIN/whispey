@@ -34,6 +34,8 @@ interface DailyTalkToAssistantProps {
   onSessionActiveChange?: (active: boolean) => void
   sessionEndpoint: string
   onCallEnded?: (transcripts: DailyTranscript[]) => void
+  /** Optional per-session variable overrides (e.g. from Agent Studio's test panel). */
+  variables?: Record<string, string>
 }
 
 export default function DailyTalkToAssistant({
@@ -46,6 +48,7 @@ export default function DailyTalkToAssistant({
   onSessionActiveChange,
   sessionEndpoint,
   onCallEnded,
+  variables,
 }: DailyTalkToAssistantProps) {
   const [showDetails, setShowDetails]               = useState(false)
   const [isEndCallHighlighted, setIsEndCallHighlighted] = useState(false)
@@ -53,7 +56,7 @@ export default function DailyTalkToAssistant({
   const transcriptEndRef = useRef<HTMLDivElement>(null)
   const endCallRef       = useRef<HTMLButtonElement>(null)
 
-  const [state, actions] = useDailyVoiceAgent({ agentName, sessionEndpoint })
+  const [state, actions] = useDailyVoiceAgent({ agentName, sessionEndpoint, variables })
   const sessionActive = state.isConnected || state.isConnecting
 
   useEffect(() => { onSessionActiveChange?.(sessionActive) }, [sessionActive, onSessionActiveChange])
