@@ -460,7 +460,11 @@ export function useUpdateProgressLabel(agentName: string | null | undefined, act
   return label
 }
 
-const saveAndDeployAgent = async (data: any) => {
+// Exported for callers outside the big config form (e.g. Agent Studio's voice
+// picker) that need the same "wait for the redeploy to actually finish, not
+// just for the request to be accepted" behavior without pulling in the whole
+// useAgentMutations/form-state machinery.
+export const saveAndDeployAgent = async (data: any) => {
   const response = await fetch("/api/agents/save-and-deploy", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
