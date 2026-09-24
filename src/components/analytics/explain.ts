@@ -100,6 +100,19 @@ const CALCULATION_WORDS: Record<string, string> = {
   p90: '90th percentile of',
 }
 
+/**
+ * A duration field's catalog label bakes in its stored unit — "Billed length
+ * (seconds)" — which is the right thing to show while *picking* a field: it's
+ * a fact about what's stored. Once a chart's own "Show as" toggle overrides
+ * that to minutes (SidePanel's Seconds/Minutes control), the baked-in unit is
+ * no longer what the card means: "Sum of billed length (seconds)" under a
+ * number that reads "7,604.48m" is exactly the mismatch a viewer would flag.
+ */
+function unitAdjusted(name: string, spec: SpecInput): string {
+  if (spec.display?.unit !== 'm') return name
+  return name.replace(/\(seconds\)/i, '(minutes)')
+}
+
 export function fieldName(
   ref: { col: string; path?: string[] } | undefined,
   fields: CatalogField[]
@@ -144,7 +157,7 @@ export function explainSpec(spec: SpecInput, fields: CatalogField[]): string {
     const name = fieldName(field, fields).replace(/^is\s+/i, '')
     parts.push(`Percentage where ${name} is ${spec.agg?.match === false ? 'no' : 'yes'}`)
   }
-  else parts.push(`${CALCULATION_WORDS[fn] ?? fn} ${fieldName(field, fields)}`.trim())
+  else parts.push(`${CALCULATION_WORDS[fn] ?? fn} ${unitAdjusted(fieldName(field, fields), spec)}`.trim())
 
   if (spec.dimension?.field) parts.push(`split by ${fieldName(spec.dimension.field, fields)}`)
 

@@ -7,8 +7,17 @@
  * Connection exhaustion is the usual way a Next.js app on Vercel takes Supabase
  * down, and it is a configuration mistake rather than a code bug. Three things
  * prevent it here: the transaction pooler on port 6543 (serverless functions do
- * not keep connections alive), a pool of 2 per running instance, and a
+ * not keep connections alive), a bounded pool per running instance, and a
  * statement timeout on every query so a slow one gives its connection back.
+ *
+ * Sized for Fluid Compute, not classic serverless: one warm instance now
+ * serves many concurrent requests and reuses this same pool, rather than a
+ * fresh isolate (and a fresh pool) per invocation. Vercel's own guidance for
+ * that model is to keep a real pool (never max: 1 — it doesn't cut total
+ * connections and only kills concurrency) and let it stay warm. A pool of 4
+ * meant a twelve-chart dashboard ran in three serial rounds; one slow round
+ * held up every chart behind it, which is what "sometimes takes too long"
+ * looked like from the browser even after the query itself got fast.
  */
 import { Pool, type PoolClient } from 'pg'
 
@@ -52,13 +61,19 @@ function pool(): Pool {
     connectionString,
     // pool size is per running instance, so the ceiling is max × peak
     // instances. Through the transaction pooler these are pooler connections
-    // rather than the database's own 60, and a dashboard of twelve charts
-    // through a pool of two is six rounds of waiting.
-    max: 4,
-    idleTimeoutMillis: 10_000,
-    // a dashboard sends its charts together and the pool holds 2, so most of them
-    // queue here. Waiting is correct; statement_timeout bounds how long any one
-    // of them can make the others wait.
+    // rather than the database's own 60. 10 matches Vercel's own sizing for a
+    // warm Fluid Compute pool; check the project's pooler client limit
+    // (Supabase dashboard → Database → Connection Pooling) before raising it
+    // further — this ceiling is shared with every other agent's dashboard.
+    max: 10,
+    min: 1,
+    // short, per Vercel's Fluid Compute guidance — an idle connection held
+    // longer than it needs to be is one less slot for someone else's query
+    // against the same shared pooler limit.
+    idleTimeoutMillis: 5_000,
+    // a dashboard sends its charts together and the pool holds 10, so most of
+    // them queue here. Waiting is correct; statement_timeout bounds how long
+    // any one of them can make the others wait.
     connectionTimeoutMillis: 30_000,
     // Supabase terminates TLS at the pooler with its own certificate chain
     ssl: { rejectUnauthorized: false },
@@ -84,7 +99,13 @@ export async function runQuery<T extends Row = Row>(
   params: unknown[],
   timeoutMs: number = DEFAULT_TIMEOUT_MS
 ): Promise<T[]> {
+  const waitStarted = Date.now()
   const client: PoolClient = await pool().connect()
+  // time spent waiting for a free connection, not running the query — the
+  // one number that told us "queued behind the pool" and "the query itself
+  // is slow" apart, instead of both looking like the same timeout to a user
+  const queuedMs = Date.now() - waitStarted
+  if (queuedMs > 2_000) console.warn(`[analytics] queued ${queuedMs}ms for a pool connection`)
   try {
     // one round trip for the setup, not three: BEGIN and both SETs go together.
     // statement_timeout is bounded above so a caller cannot ask to hold a
