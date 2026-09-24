@@ -125,7 +125,14 @@ export function ChartRenderer({
     <ResponsiveContainer width="100%" height="100%">
       <Chart data={shaped.points} margin={{ top: 8, right: 12, left: -12, bottom: 4 }}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" vertical={false} />
-        <XAxis dataKey="x" tickFormatter={tickFor} tick={axisStyle} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+        {/* interval={0}: "preserveStartEnd" only guarantees the first/last tick — for
+            the rest, recharts guesses which labels would overlap using an approximate
+            width estimate, and with category labels this varied in length it sometimes
+            guesses wrong and drops a label's text while still drawing its bar. Forcing
+            every tick to render is cheap at this category count (well under a couple
+            dozen); if a chart ever needs many more categories, revisit with rotation
+            instead of reintroducing the heuristic. */}
+        <XAxis dataKey="x" tickFormatter={tickFor} tick={axisStyle} tickLine={false} axisLine={false} interval={0} />
         <YAxis tick={axisStyle} tickLine={false} axisLine={false} width={44} unit={suffix || undefined} />
         <Tooltip
           {...tooltipStyle}
