@@ -47,7 +47,7 @@ const axisStyle = { fontSize: 11, fill: 'currentColor' } as const
  * right name. Check `.payload.x` first; fall back to `.x` for shapes (Pie)
  * that do put it there directly.
  */
-const readX = (datum: unknown): string | null => {
+export const readX = (datum: unknown): string | null => {
   if (!datum || typeof datum !== 'object') return null
   const payload = (datum as { payload?: unknown }).payload
   const payloadX = payload && typeof payload === 'object' ? (payload as { x?: unknown }).x : undefined
