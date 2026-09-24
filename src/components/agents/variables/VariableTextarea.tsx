@@ -110,7 +110,11 @@ export const VariableTextarea: React.FC<VariableTextareaProps> = ({
     const handleEditorDidMount = useCallback((editor: any, monaco: any) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
-    // No onKeyDown needed anymore!
+    // The find widget's button tooltips open on top of the buttons (no room above
+    // the editor) and swallow clicks, so block them for the whole widget.
+    editor.getDomNode()?.addEventListener('mouseover', (e: MouseEvent) => {
+      if ((e.target as HTMLElement).closest?.('.find-widget')) e.stopPropagation();
+    }, true);
     }, []);
 
   // Detect dark mode
