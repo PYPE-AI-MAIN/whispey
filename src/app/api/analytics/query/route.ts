@@ -203,15 +203,70 @@ export const POST = guarded('analytics/query', async (req: NextRequest) => {
   // charts that read the same rows under the same rules answer in one statement
   const plans = runnable.length ? planDashboardQueries(runnable, ctx) : []
 
-  await Promise.all(plans.map((plan) => runPlan(plan, startedAt, results)))
+  // Streamed as newline-delimited JSON, one WidgetResult per line, instead of
+  // one JSON array returned after every plan finishes. The batching above is
+  // unchanged — still one request, still one shared scan per group of charts
+  // that read the same rows — this only changes when the browser gets to see
+  // each answer. A `Promise.all` + single `NextResponse.json` makes every card
+  // wait for the slowest one in the batch even though the server already knows
+  // the fast ones' answers; streaming lets each card render the moment its own
+  // plan (or, for a formula, both its halves) settles.
+  const encoder = new TextEncoder()
+  const sent = new Set<string>()
 
-  for (const f of formulas) results.set(f.id, combineFormula(f, results))
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send = (result: WidgetResult) => {
+        // formula halves run under suffixed ids (`${id}::a` / `${id}::b`) —
+        // internal bookkeeping only, never a real widget on the dashboard
+        if (result.widget_id.includes('::') || sent.has(result.widget_id)) return
+        sent.add(result.widget_id)
+        controller.enqueue(encoder.encode(JSON.stringify(result) + '\n'))
+      }
+      const sendReadyFormulas = () => {
+        for (const f of formulas) {
+          if (!sent.has(f.id) && results.has(f.aId) && results.has(f.bId)) {
+            const combined = combineFormula(f, results)
+            results.set(f.id, combined)
+            send(combined)
+          }
+        }
+      }
 
-  const ordered = body.widgets.map(
-    (w) => results.get(w.id) ?? { widget_id: w.id, status: 'error' as const, error: 'This chart did not run' }
-  )
+      // widgets whose spec failed validation never reach the database at all —
+      // send those immediately, they're already known
+      for (const [id, result] of results) if (!id.includes('::')) send(result)
+      sendReadyFormulas()
 
-  return NextResponse.json({ widgets: ordered, took_ms: Date.now() - startedAt, statements: plans.length })
+      await Promise.all(
+        plans.map(async (plan) => {
+          await runPlan(plan, startedAt, results)
+          for (const id of plan.members) {
+            const r = results.get(id)
+            if (r) send(r)
+          }
+          sendReadyFormulas()
+        })
+      )
+
+      // safety net — should be unreachable, but a card that never got an
+      // answer must still resolve instead of spinning forever
+      for (const w of body.widgets) {
+        if (!sent.has(w.id)) send({ widget_id: w.id, status: 'error', error: 'This chart did not run' })
+      }
+      controller.close()
+    },
+  })
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'application/x-ndjson; charset=utf-8',
+      'Cache-Control': 'no-store',
+      // some proxies (nginx, and Vercel's own edge in front of a Node function)
+      // buffer a response by default, which would defeat streaming entirely
+      'X-Accel-Buffering': 'no',
+    },
+  })
 })
 
 

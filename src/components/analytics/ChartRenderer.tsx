@@ -34,10 +34,24 @@ export const PIE_MAX_SLICES = 8
 
 const axisStyle = { fontSize: 11, fill: 'currentColor' } as const
 
-/** recharts hands its click and format callbacks a wide union; read the one field we put there. */
-const readX = (datum: unknown): string | null => {
+/**
+ * recharts hands its click callbacks a wide union; read the one field we put there.
+ *
+ * For a `<Bar onClick>`, the argument is the rectangle's own render props —
+ * which already has an `x` field of its own: the bar's pixel position on
+ * screen, a number. Our actual data point (`{ x: "general_callback", ... }`)
+ * is nested under `datum.payload`, not spread onto the top level. Reading
+ * `datum.x` directly saw the pixel number, failed the string check, and
+ * returned null — every bar drilled into "no value" and matched nothing,
+ * while the tooltip (which reads the payload correctly) kept showing the
+ * right name. Check `.payload.x` first; fall back to `.x` for shapes (Pie)
+ * that do put it there directly.
+ */
+export const readX = (datum: unknown): string | null => {
   if (!datum || typeof datum !== 'object') return null
-  const x = (datum as { x?: unknown }).x
+  const payload = (datum as { payload?: unknown }).payload
+  const payloadX = payload && typeof payload === 'object' ? (payload as { x?: unknown }).x : undefined
+  const x = typeof payloadX === 'string' ? payloadX : (datum as { x?: unknown }).x
   if (typeof x !== 'string') return null
   return x === '(empty)' ? null : x
 }
@@ -125,7 +139,14 @@ export function ChartRenderer({
     <ResponsiveContainer width="100%" height="100%">
       <Chart data={shaped.points} margin={{ top: 8, right: 12, left: -12, bottom: 4 }}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" vertical={false} />
-        <XAxis dataKey="x" tickFormatter={tickFor} tick={axisStyle} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+        {/* interval={0}: "preserveStartEnd" only guarantees the first/last tick — for
+            the rest, recharts guesses which labels would overlap using an approximate
+            width estimate, and with category labels this varied in length it sometimes
+            guesses wrong and drops a label's text while still drawing its bar. Forcing
+            every tick to render is cheap at this category count (well under a couple
+            dozen); if a chart ever needs many more categories, revisit with rotation
+            instead of reintroducing the heuristic. */}
+        <XAxis dataKey="x" tickFormatter={tickFor} tick={axisStyle} tickLine={false} axisLine={false} interval={0} />
         <YAxis tick={axisStyle} tickLine={false} axisLine={false} width={44} unit={suffix || undefined} />
         <Tooltip
           {...tooltipStyle}
