@@ -34,10 +34,24 @@ export const PIE_MAX_SLICES = 8
 
 const axisStyle = { fontSize: 11, fill: 'currentColor' } as const
 
-/** recharts hands its click and format callbacks a wide union; read the one field we put there. */
-const readX = (datum: unknown): string | null => {
+/**
+ * recharts hands its click callbacks a wide union; read the one field we put there.
+ *
+ * For a `<Bar onClick>`, the argument is the rectangle's own render props —
+ * which already has an `x` field of its own: the bar's pixel position on
+ * screen, a number. Our actual data point (`{ x: "general_callback", ... }`)
+ * is nested under `datum.payload`, not spread onto the top level. Reading
+ * `datum.x` directly saw the pixel number, failed the string check, and
+ * returned null — every bar drilled into "no value" and matched nothing,
+ * while the tooltip (which reads the payload correctly) kept showing the
+ * right name. Check `.payload.x` first; fall back to `.x` for shapes (Pie)
+ * that do put it there directly.
+ */
+export const readX = (datum: unknown): string | null => {
   if (!datum || typeof datum !== 'object') return null
-  const x = (datum as { x?: unknown }).x
+  const payload = (datum as { payload?: unknown }).payload
+  const payloadX = payload && typeof payload === 'object' ? (payload as { x?: unknown }).x : undefined
+  const x = typeof payloadX === 'string' ? payloadX : (datum as { x?: unknown }).x
   if (typeof x !== 'string') return null
   return x === '(empty)' ? null : x
 }
