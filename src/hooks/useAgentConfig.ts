@@ -309,6 +309,7 @@ const saveAgentDraft = async (data: any) => {
 // a terminal state — no request-timeout risk from one long blocking call.
 const UPDATE_POLL_INTERVAL_MS = 2000
 const UPDATE_POLL_HARD_MS = 15 * 60 * 1000
+const UNTRACKED_POLLS_LIMIT = 5 // ~10s of "no_update_found" in a row
 
 const TERMINAL_UPDATE_STATUSES = new Set(["completed", "failed", "rolled_back"])
 
@@ -339,6 +340,7 @@ async function fetchWorkerPid(agentName: string): Promise<number | null> {
 async function pollUpdateStatus(agentName: string): Promise<any> {
   const hardDeadline = Date.now() + UPDATE_POLL_HARD_MS
   const baselinePid = await fetchWorkerPid(agentName)
+  let untrackedPolls = 0
 
   while (Date.now() < hardDeadline) {
     await new Promise((r) => setTimeout(r, UPDATE_POLL_INTERVAL_MS))
@@ -352,7 +354,15 @@ async function pollUpdateStatus(agentName: string): Promise<any> {
     if (!res?.ok) continue // transient — ground truth check above keeps running regardless
 
     const status = await res.json()
-    if (status.status === "no_update_found" || status.status === "unreachable") continue
+    // Updates apply in place now, so the PID may never change. If the backend has
+    // no record of the update for a while, it isn't running it — stop waiting.
+    if (status.status === "no_update_found") {
+      if (++untrackedPolls < UNTRACKED_POLLS_LIMIT) continue
+      if (currentPid) return { status: "completed", success: true, pid: currentPid }
+      break
+    }
+    untrackedPolls = 0
+    if (status.status === "unreachable") continue
     if (TERMINAL_UPDATE_STATUSES.has(status.status)) {
       if (status.status === "completed" && status.success !== false) return status
       // A live-tracked failure (not a restart artifact — those come back as
@@ -368,8 +378,7 @@ async function pollUpdateStatus(agentName: string): Promise<any> {
   }
 
   throw new UpdateStillInProgressError(
-    "This update is taking much longer than usual. It's likely still running in the background — " +
-    "check back in a minute or refresh to see the latest status, rather than assuming it failed."
+    "Couldn't confirm the update finished. Refresh to check, or test and publish again."
   )
 }
 
@@ -426,17 +435,17 @@ const UPDATE_STAGE_LABELS: Record<string, string> = {
   verifying: "Verifying it came back up…",
 }
 
-// What each stage means, for the hover on the disabled "Publishing" button.
+// Short, friendly text shown in the Update Config button while publishing.
 const UPDATE_STAGE_DETAILS: Record<string, string> = {
   [UPDATE_STAGE_LABELS.pending]: "Getting ready…",
   [UPDATE_STAGE_LABELS.validating]: "Checking your changes…",
-  [UPDATE_STAGE_LABELS.stopping]: "Wrapping up the old version…",
+  [UPDATE_STAGE_LABELS.stopping]: "Wrapping up…",
   [UPDATE_STAGE_LABELS.updating]: "Applying your changes…",
   [UPDATE_STAGE_LABELS.starting]: "Warming up…",
   [UPDATE_STAGE_LABELS.verifying]: "Finishing up…",
 }
 
-/** One-line explanation of a stage label, for tooltips. */
+/** Friendly button text for a stage label. */
 export function updateStageDetail(label: string | null | undefined): string {
   return (label && UPDATE_STAGE_DETAILS[label]) || "Publishing…"
 }

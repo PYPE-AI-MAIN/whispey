@@ -47,7 +47,7 @@ import SelectSTT from '@/components/agents/AgentConfig/SelectSTTDialog'
 import AgentAdvancedSettings from '@/components/agents/AgentConfig/AgentAdvancedSettings'
 import PromptSettingsSheet from '@/components/agents/AgentConfig/PromptSettingsSheet'
 import { usePromptSettings } from '@/hooks/usePromptSettings'
-import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgentMutations, useResumeInProgressUpdate, useUpdateProgressLabel, updateStageDetail } from '@/hooks/useAgentConfig'
+import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgentMutations, useResumeInProgressUpdate, useUpdateProgressLabel, updateStageDetail, UpdateStillInProgressError } from '@/hooks/useAgentConfig'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -795,6 +795,12 @@ export default function AgentConfig() {
       setPendingCheckpoint(null)
       setShowMergePrompt(true)
     } catch (err: any) {
+      if (err instanceof UpdateStillInProgressError) {
+        // Not a failure — we just couldn't confirm it. Controls come back and the
+        // changes stay unsaved, so the user can test and publish again.
+        toast(err.message, { icon: '⏳', duration: 8000 })
+        return
+      }
       failPublish(err.message ?? 'Save failed')
     } finally {
       setIsSavingVersion(false)
@@ -1089,9 +1095,6 @@ const inboundLookupVariables = useMemo(() => {
   const isBackendUnavailable = !!agentConfigData?.backendUnavailable
 
   const getUpdateConfigHint = (): string | undefined => {
-    if (isPublishing) {
-      return updateStageDetail(publishProgressLabel)
-    }
     if (isProdLocked) return 'Production agent — read only'
     if (isBackendUnavailable) return 'Voice backend unreachable — cannot save'
     return undefined
@@ -1398,15 +1401,16 @@ const inboundLookupVariables = useMemo(() => {
               <Tooltip delayDuration={150} open={updateConfigHint ? undefined : false}>
                 <TooltipTrigger asChild>
                   {/* span: a disabled button fires no hover events */}
-                  <span tabIndex={isPublishing ? 0 : -1}>
+                  <span>
                     <Button
                       size="sm"
-                      className="h-8 text-xs"
+                      // Fixed width while publishing so the stage text can change without the header jumping
+                      className={`h-8 text-xs ${isPublishing ? 'w-44 justify-start' : ''}`}
                       onClick={handleOpenCommitModal}
                       disabled={isPublishing || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable || isProdLocked}
                     >
                       {isPublishing
-                        ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />{publishProgressLabel ?? 'Publishing...'}</>
+                        ? <><Loader2 className="w-3 h-3 mr-1 shrink-0 animate-spin" /><span key={publishProgressLabel} className="truncate animate-in fade-in duration-300">{updateStageDetail(publishProgressLabel)}</span></>
                         : 'Update Config'
                       }
                     </Button>
