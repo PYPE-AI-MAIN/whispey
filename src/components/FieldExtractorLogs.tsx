@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef } from "react"
 import { Plus, X, AlertCircle, Maximize2, Minimize2, Copy, Check, ClipboardPaste } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -47,6 +47,14 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
   const [enabled, setEnabled] = useState(isEnabled)
   const [isOpen, setIsOpen] = useState(false)
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
+  // Stable per-row keys: keying on the field's text remounted the row on every
+  // keystroke, so the autofocused textarea jumped its cursor back to the start.
+  const rowIds = useRef<string[]>([])
+  const nextRowId = useRef(0)
+  const rowId = (index: number) => {
+    while (rowIds.current.length <= index) rowIds.current.push(`field-row-${nextRowId.current++}`)
+    return rowIds.current[index]
+  }
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
   const [copiedAll, setCopiedAll] = useState(false)
   const [pastedAll, setPastedAll] = useState(false)
@@ -117,6 +125,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
   const removeField = (index: number) => {
     const updated = [...fields]
     updated.splice(index, 1)
+    rowIds.current.splice(index, 1)
     setFields(updated)
   }
 
@@ -227,7 +236,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
                   const expanded = expandedIndex === index
                   return (
                   <div
-                    key={`field-${field.key}-${field.description}`}
+                    key={rowId(index)}
                     className="rounded-lg border border-border p-3 space-y-2"
                   >
                     <div className="grid grid-cols-12 gap-2 items-end">
