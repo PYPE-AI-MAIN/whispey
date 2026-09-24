@@ -279,8 +279,16 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
     const moved = applyGridLayout(widgets, next)
     if (!settled.current) {
       settled.current = true
-      // the first callback is the grid reporting what we gave it
-      if (JSON.stringify(moved.map((w) => w.layout)) === JSON.stringify(widgets.map((w) => w.layout))) return
+      // the first callback is the grid reporting what we gave it — but a
+      // save round-trips widgets through the database's jsonb `layout`
+      // column first, which does not promise to preserve key order. Two
+      // layouts that are identical field-by-field can come back with their
+      // keys in a different order, so JSON.stringify equality used to see
+      // them as "different", call setDraft, and flip the dashboard back to
+      // dirty right after a successful save — the Save button reappeared,
+      // looked like the click hadn't worked, and needed a second click to
+      // actually stick. Compare fields, not serialized text.
+      if (moved.length === widgets.length && moved.every((w, i) => layoutsEqual(w.layout, widgets[i].layout))) return
     }
     setDraft(moved)
   }
@@ -566,6 +574,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
           <SidePanel
             selected={selected}
             fields={catalog}
+            ranking={ranking}
             canEdit={canEdit}
             onBack={() => setSelectedId(null)}
             onAddChart={(kind) => addChart(kind)}
@@ -638,6 +647,14 @@ function categoriesFor(
   const ranked = ranking.order.filter((v) => values.includes(v))
   const rest = values.filter((v) => !ranked.includes(v))
   return [...ranked, ...rest]
+}
+
+/** Field-by-field, not `JSON.stringify` — a jsonb round-trip through the database doesn't promise key order. */
+function layoutsEqual(a: Widget['layout'], b: Widget['layout']): boolean {
+  const ak = a as Record<string, unknown>
+  const bk = b as Record<string, unknown>
+  const keys = new Set([...Object.keys(ak), ...Object.keys(bk)])
+  return [...keys].every((k) => ak[k] === bk[k])
 }
 
 const asRef = (f: { col: string; path: string[] }) => ({ col: f.col, ...(f.path.length ? { path: f.path } : {}) })
