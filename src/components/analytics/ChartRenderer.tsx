@@ -135,18 +135,33 @@ export function ChartRenderer({
   }
 
   const Chart = kind === 'line' ? LineChart : BarChart
+  // Horizontal category labels only have as much width as one bar's slot —
+  // fine for a handful of short categories, but a real breakdown (final
+  // disposition, why-the-call-ended, ...) mixes short and long values and
+  // horizontal text collides with its neighbor. Angling only the category
+  // axis (never the time axis, whose labels are already short and evenly
+  // sized) buys each label its own diagonal strip instead of a fixed-width
+  // horizontal one, and needs a taller axis to have room to descend into.
+  const angleTicks = shaped.axis === 'category'
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <Chart data={shaped.points} margin={{ top: 8, right: 12, left: -12, bottom: 4 }}>
+      <Chart data={shaped.points} margin={{ top: 8, right: 12, left: -12, bottom: angleTicks ? 28 : 4 }}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" vertical={false} />
         {/* interval={0}: "preserveStartEnd" only guarantees the first/last tick — for
             the rest, recharts guesses which labels would overlap using an approximate
             width estimate, and with category labels this varied in length it sometimes
             guesses wrong and drops a label's text while still drawing its bar. Forcing
-            every tick to render is cheap at this category count (well under a couple
-            dozen); if a chart ever needs many more categories, revisit with rotation
-            instead of reintroducing the heuristic. */}
-        <XAxis dataKey="x" tickFormatter={tickFor} tick={axisStyle} tickLine={false} axisLine={false} interval={0} />
+            every tick to render, combined with angling category labels below, is what
+            actually avoids both the missing label and the overlap. */}
+        <XAxis
+          dataKey="x"
+          tickFormatter={tickFor}
+          tick={axisStyle}
+          tickLine={false}
+          axisLine={false}
+          interval={0}
+          {...(angleTicks ? { angle: -35, textAnchor: 'end' as const, height: 56 } : {})}
+        />
         <YAxis tick={axisStyle} tickLine={false} axisLine={false} width={44} unit={suffix || undefined} />
         <Tooltip
           {...tooltipStyle}
