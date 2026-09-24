@@ -305,35 +305,72 @@ const saveAgentDraft = async (data: any) => {
   return response.json()
 }
 
-// Poll interval and max wait for the background update to finish. The
-// backend runs the actual stop/start cycle in a thread and returns progress
-// immediately on each poll, so this loop just waits for a terminal state —
-// it never risks a request timeout the way the old single blocking call did.
+// Backend runs the update in a background thread, so this just polls until
+// a terminal state — no request-timeout risk from one long blocking call.
 const UPDATE_POLL_INTERVAL_MS = 2000
-const UPDATE_POLL_MAX_MS = 3 * 60 * 1000
+const UPDATE_POLL_HARD_MS = 15 * 60 * 1000
 
 const TERMINAL_UPDATE_STATUSES = new Set(["completed", "failed", "rolled_back"])
 
-async function pollUpdateStatus(agentName: string): Promise<any> {
-  const deadline = Date.now() + UPDATE_POLL_MAX_MS
+/** Thrown when we stop polling without a terminal answer — distinct from a real failure. */
+export class UpdateStillInProgressError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "UpdateStillInProgressError"
+  }
+}
 
-  while (Date.now() < deadline) {
+const updateStatusUrl = (agentName: string) => `/api/agents/update-status/${encodeURIComponent(agentName)}`
+
+async function fetchWorkerPid(agentName: string): Promise<number | null> {
+  try {
+    const res = await fetch(`/api/agents/status/${encodeURIComponent(agentName)}`)
+    if (!res.ok) return null
+    const data = await res.json()
+    return data?.is_active && data?.worker_pid ? data.worker_pid : null
+  } catch {
+    return null
+  }
+}
+
+// The backend's update tracker gets wiped by any backend restart, so instead
+// of trusting it we poll ground truth: has the agent's PID actually changed?
+// update_status is only used for the progress label, not for pass/fail.
+async function pollUpdateStatus(agentName: string): Promise<any> {
+  const hardDeadline = Date.now() + UPDATE_POLL_HARD_MS
+  const baselinePid = await fetchWorkerPid(agentName)
+
+  while (Date.now() < hardDeadline) {
     await new Promise((r) => setTimeout(r, UPDATE_POLL_INTERVAL_MS))
 
-    const res = await fetch(`/api/agents/update-status/${encodeURIComponent(agentName)}`)
-    if (!res.ok) continue // transient — keep polling until the deadline
+    const currentPid = await fetchWorkerPid(agentName)
+    if (currentPid && currentPid !== baselinePid) {
+      return { status: "completed", success: true, pid: currentPid }
+    }
+
+    const res = await fetch(updateStatusUrl(agentName)).catch(() => null)
+    if (!res?.ok) continue // transient — ground truth check above keeps running regardless
 
     const status = await res.json()
     if (status.status === "no_update_found" || status.status === "unreachable") continue
     if (TERMINAL_UPDATE_STATUSES.has(status.status)) {
-      if (status.status !== "completed" || status.success === false) {
-        throw new Error(status.error || `Agent update ended with status: ${status.status}`)
-      }
-      return status
+      if (status.status === "completed" && status.success !== false) return status
+      // A live-tracked failure (not a restart artifact — those come back as
+      // "no_update_found" now) — a real validation/update error, surface it.
+      throw new Error(status.error || `Agent update ended with status: ${status.status}`)
     }
   }
 
-  throw new Error("Timed out waiting for agent update to complete")
+  // Last chance: the agent may have come back up in the final poll interval.
+  const finalPid = await fetchWorkerPid(agentName)
+  if (finalPid && finalPid !== baselinePid) {
+    return { status: "completed", success: true, pid: finalPid }
+  }
+
+  throw new UpdateStillInProgressError(
+    "This update is taking much longer than usual. It's likely still running in the background — " +
+    "check back in a minute or refresh to see the latest status, rather than assuming it failed."
+  )
 }
 
 function extractAgentName(data: any): string | undefined {
@@ -361,7 +398,7 @@ export function useResumeInProgressUpdate(
     if (!agentName) return
     let cancelled = false
 
-    fetch(`/api/agents/update-status/${encodeURIComponent(agentName)}`)
+    fetch(updateStatusUrl(agentName))
       .then((res) => (res.ok ? res.json() : null))
       .then((status) => {
         if (cancelled || !status) return
@@ -378,6 +415,49 @@ export function useResumeInProgressUpdate(
   }, [agentName])
 
   return isResuming
+}
+
+const UPDATE_STAGE_LABELS: Record<string, string> = {
+  pending: "Queued…",
+  validating: "Validating config…",
+  stopping: "Stopping current worker…",
+  updating: "Applying new config…",
+  starting: "Starting worker with new config…",
+  verifying: "Verifying it came back up…",
+}
+
+/** Live label for the backend's current publish stage, or null to show the default. */
+export function useUpdateProgressLabel(agentName: string | null | undefined, active: boolean) {
+  const [label, setLabel] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!active || !agentName) {
+      setLabel(null)
+      return
+    }
+
+    let cancelled = false
+
+    const poll = () => {
+      fetch(updateStatusUrl(agentName))
+        .then((res) => (res.ok ? res.json() : null))
+        .then((status) => {
+          if (!cancelled && status) setLabel(UPDATE_STAGE_LABELS[status.status] ?? null)
+        })
+        .catch(() => {
+          // transient — keep whatever label was last shown
+        })
+    }
+
+    poll()
+    const interval = setInterval(poll, UPDATE_POLL_INTERVAL_MS)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [agentName, active])
+
+  return label
 }
 
 const saveAndDeployAgent = async (data: any) => {

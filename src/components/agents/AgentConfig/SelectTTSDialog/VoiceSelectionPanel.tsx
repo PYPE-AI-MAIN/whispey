@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import toast from 'react-hot-toast'
+import { BULBUL_V4_MODEL, bulbulV4LanguageCode } from './bulbulV4Voices'
 import {
   Search,
   Loader2,
@@ -26,7 +27,7 @@ interface SarvamVoice {
   id: string
   name: string
   language: string
-  gender: 'Male' | 'Female'
+  gender?: 'Male' | 'Female'
   style: string
   accent: string
   description: string
@@ -127,8 +128,12 @@ const SarvamVoiceCard = ({
           <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-600 dark:text-gray-300">
             {voice.style}
           </span>
-          <span className="text-xs text-gray-500 dark:text-gray-400">{voice.gender}</span>
-          <span className="text-xs text-gray-400">•</span>
+          {voice.gender && (
+            <>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{voice.gender}</span>
+              <span className="text-xs text-gray-400">•</span>
+            </>
+          )}
           <span className="text-xs text-gray-500 dark:text-gray-400">{voice.language}</span>
         </div>
       </div>
@@ -361,6 +366,7 @@ const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
             text: 'Hi there! This is how I sound.',
             speaker: extra.speaker || voiceId,
             model: extra.model || sarvamConfig.model,
+            languageCode: bulbulV4LanguageCode(extra.speaker || voiceId),
           }),
         })
       } else if (provider === 'elevenlabs') {
@@ -598,6 +604,7 @@ const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
                   <SelectValue placeholder="Select model" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value={BULBUL_V4_MODEL}>bulbul:v4 flash (beta)</SelectItem>
                   <SelectItem value="bulbul:v3-beta">bulbul:v3 (beta)</SelectItem>
                   <SelectItem value="bulbul:v2">bulbul:v2</SelectItem>
                 </SelectContent>
