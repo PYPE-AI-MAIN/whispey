@@ -47,7 +47,7 @@ import SelectSTT from '@/components/agents/AgentConfig/SelectSTTDialog'
 import AgentAdvancedSettings from '@/components/agents/AgentConfig/AgentAdvancedSettings'
 import PromptSettingsSheet from '@/components/agents/AgentConfig/PromptSettingsSheet'
 import { usePromptSettings } from '@/hooks/usePromptSettings'
-import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgentMutations, useResumeInProgressUpdate, useUpdateProgressLabel } from '@/hooks/useAgentConfig'
+import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgentMutations, useResumeInProgressUpdate, useUpdateProgressLabel, updateStageDetail } from '@/hooks/useAgentConfig'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -323,6 +323,9 @@ export default function AgentConfig() {
   // update calls hit the right backend without the user manually re-toggling
   // it every time they open this page.
   const deploymentTargetInitialized = useRef(false)
+  // Form values at the moment Publish was clicked. The dialog closes while the
+  // update runs, so edits made meanwhile must stay unsaved, not count as published.
+  const publishedValuesRef = useRef<any>(null)
   useEffect(() => {
     if (deploymentTargetInitialized.current) return
     const persisted = agentDataResponse?.[0]?.configuration?.deployment_target
@@ -644,7 +647,11 @@ export default function AgentConfig() {
       setIsFallbackView(false)
       // Rebase the dirty-check baseline to the just-saved values (resetForm's `values`
       // option updates initialValues too, unlike setValues which only touches values).
-      formik.resetForm({ values: formik.values })
+      const current = formik.values
+      const published = publishedValuesRef.current ?? current
+      formik.resetForm({ values: published })
+      if (published !== current) formik.setValues(current)
+      publishedValuesRef.current = null
       // Re-check status after a publish instead of showing the pre-publish badge.
       checkAgentStatus().catch((err) => console.error('Status refresh after publish failed:', err))
     }
@@ -731,6 +738,15 @@ export default function AgentConfig() {
     if (!pendingCheckpoint || !commitMessage.trim()) return
     setIsSavingVersion(true)
     setVersionSaveError(null)
+    // Close right away so publishing feels instant; the header shows progress,
+    // and a failure reopens the dialog with the error and the commit message kept.
+    setIsCommitModalOpen(false)
+    publishedValuesRef.current = formik.values
+    const failPublish = (message: string) => {
+      setVersionSaveError(message)
+      setIsCommitModalOpen(true)
+      toast.error(`Publish failed: ${message}`)
+    }
     try {
       // Step 1: Deploy config to backend
       // Read the agent's REAL persisted target directly from loaded data instead of
@@ -771,16 +787,15 @@ export default function AgentConfig() {
       })
       if (!res.ok) {
         const err = await res.json()
-        setVersionSaveError(err.message ?? 'Failed to save version')
+        failPublish(err.message ?? 'Failed to save version')
         return
       }
-      const data = await res.json()
-      setIsCommitModalOpen(false)
+      toast.success('Changes published')
       setCommitMessage('')
       setPendingCheckpoint(null)
       setShowMergePrompt(true)
     } catch (err: any) {
-      setVersionSaveError(err.message ?? 'Save failed')
+      failPublish(err.message ?? 'Save failed')
     } finally {
       setIsSavingVersion(false)
     }
@@ -1073,6 +1088,16 @@ const inboundLookupVariables = useMemo(() => {
   const isFormDirty = formik.dirty || hasExternalChanges || hasMultiAssistantChanges 
   const isBackendUnavailable = !!agentConfigData?.backendUnavailable
 
+  const getUpdateConfigHint = (): string | undefined => {
+    if (isPublishing) {
+      return updateStageDetail(publishProgressLabel)
+    }
+    if (isProdLocked) return 'Production agent — read only'
+    if (isBackendUnavailable) return 'Voice backend unreachable — cannot save'
+    return undefined
+  }
+  const updateConfigHint = getUpdateConfigHint()
+
   // Loading state
   if (agentLoading || isConfigLoading) {
     return (
@@ -1193,7 +1218,7 @@ const inboundLookupVariables = useMemo(() => {
                 className="h-8 px-3"
                 onClick={handleOpenCommitModal}
                 disabled={isPublishing || isConfigFetching || !promptValidation.isValid || isBackendUnavailable || isProdLocked}
-                title={isProdLocked ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
+                title={updateConfigHint}
               >
                 {isPublishing ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -1223,7 +1248,7 @@ const inboundLookupVariables = useMemo(() => {
                 <DropdownMenuGroup>
                   <DropdownMenuItem 
                     onSelect={() => setIsTalkToAssistantOpen(true)}
-                    disabled={!activeAgentName || !promptValidation.isValid}
+                    disabled={!activeAgentName || !promptValidation.isValid || isPublishing}
                   >
                     <PhoneIcon className="w-4 h-4 mr-2" />
                     Talk to Assistant
@@ -1266,7 +1291,7 @@ const inboundLookupVariables = useMemo(() => {
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuGroup>
-                      <DropdownMenuItem onSelect={handleCancel}>
+                      <DropdownMenuItem onSelect={handleCancel} disabled={isPublishing}>
                         <X className="w-4 h-4 mr-2" />
                         Cancel Changes
                       </DropdownMenuItem>
@@ -1322,7 +1347,7 @@ const inboundLookupVariables = useMemo(() => {
                   variant="outline"
                   size="sm"
                   className="h-8 text-xs"
-                  disabled={!activeAgentName || !promptValidation.isValid}
+                  disabled={!activeAgentName || !promptValidation.isValid || isPublishing}
                 >
                   <PhoneIcon className="w-3 h-3 mr-1" />
                   Talk to Assistant
@@ -1364,23 +1389,34 @@ const inboundLookupVariables = useMemo(() => {
             </Sheet>
 
             {isFormDirty && (
-              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleCancel}>
+              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleCancel} disabled={isPublishing}>
                 Discard Changes
               </Button>
             )}
             
-            <Button
-              size="sm"
-              className="h-8 text-xs"
-              onClick={handleOpenCommitModal}
-              disabled={isPublishing || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable || isProdLocked}
-              title={isProdLocked ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
-            >
-              {isPublishing
-                ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />{publishProgressLabel ?? 'Publishing...'}</>
-                : 'Update Config'
-              }
-            </Button>
+            <TooltipProvider>
+              <Tooltip delayDuration={150} open={updateConfigHint ? undefined : false}>
+                <TooltipTrigger asChild>
+                  {/* span: a disabled button fires no hover events */}
+                  <span tabIndex={isPublishing ? 0 : -1}>
+                    <Button
+                      size="sm"
+                      className="h-8 text-xs"
+                      onClick={handleOpenCommitModal}
+                      disabled={isPublishing || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable || isProdLocked}
+                    >
+                      {isPublishing
+                        ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />{publishProgressLabel ?? 'Publishing...'}</>
+                        : 'Update Config'
+                      }
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  {updateConfigHint}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
             <Button
               variant="outline"

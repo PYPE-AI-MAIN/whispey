@@ -426,6 +426,21 @@ const UPDATE_STAGE_LABELS: Record<string, string> = {
   verifying: "Verifying it came back up…",
 }
 
+// What each stage means, for the hover on the disabled "Publishing" button.
+const UPDATE_STAGE_DETAILS: Record<string, string> = {
+  [UPDATE_STAGE_LABELS.pending]: "Getting ready…",
+  [UPDATE_STAGE_LABELS.validating]: "Checking your changes…",
+  [UPDATE_STAGE_LABELS.stopping]: "Wrapping up the old version…",
+  [UPDATE_STAGE_LABELS.updating]: "Applying your changes…",
+  [UPDATE_STAGE_LABELS.starting]: "Warming up…",
+  [UPDATE_STAGE_LABELS.verifying]: "Finishing up…",
+}
+
+/** One-line explanation of a stage label, for tooltips. */
+export function updateStageDetail(label: string | null | undefined): string {
+  return (label && UPDATE_STAGE_DETAILS[label]) || "Publishing…"
+}
+
 /** Live label for the backend's current publish stage, or null to show the default. */
 export function useUpdateProgressLabel(agentName: string | null | undefined, active: boolean) {
   const [label, setLabel] = useState<string | null>(null)
