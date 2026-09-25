@@ -61,11 +61,20 @@ export function FeatureAccessProvider({ children }: FeatureAccessProviderProps) 
     if (isLoaded) {
       const email = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase()
       setUserEmail(email || null)
-      
+
       // Check agent creation whitelist
       const agentWhitelist = getAgentCreationWhitelist()
       const canCreateAgent = email ? agentWhitelist.includes(email) : false
       setCanCreatePypeAgent(canCreateAgent)
+
+      // TEMP DEBUG — remove once the "Create Agent not showing" investigation is done.
+      console.log('[FeatureAccessProvider debug]', {
+        rawEnvValue: process.env.NEXT_PUBLIC_AGENT_CREATION_WHITELIST,
+        parsedWhitelist: agentWhitelist,
+        userEmail: email,
+        canCreateAgent,
+        isLoaded,
+      })
 
       // Check phone calls whitelist (from PostHog blacklist)
       const phoneCallsWhitelist = getPhoneCallsWhitelist()
