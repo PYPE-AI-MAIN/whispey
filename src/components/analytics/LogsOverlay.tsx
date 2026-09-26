@@ -1,10 +1,9 @@
 /**
  * The calls behind a bar — Confluence "Analytics Phase 1 and 2 — Build Spec"
- * §10.7, and the thing people actually use on a phone.
+ * §10.7.
  *
- * The line under the title is the point of it: somebody who expected 1,847 and
- * sees 340 needs to be told why on the screen that shows the 340, not in a
- * document.
+ * The line under the title matters: if someone expected 1,847 and sees 340,
+ * they need to be told why right here, not sent to a document.
  */
 'use client'
 import React, { useEffect, useState } from 'react'
@@ -44,11 +43,10 @@ export function LogsOverlay({
   downloadDisabled: boolean
   chartTotal?: number
   /**
-   * The Period control, filter chips and When above the canvas — without
-   * these the rows here were the chart's own saved defaults (a starter chart
-   * says 7 days) instead of what the card on screen is actually showing, and
-   * "the row count under a bar always equals the bar" stopped being true the
-   * moment anyone touched the Period control.
+   * The Period control, filter chips and When above the canvas. Without these,
+   * rows would come back using the chart's own saved defaults (e.g. 7 days)
+   * instead of what's on screen — breaking "the row count under a bar always
+   * equals the bar" as soon as someone touches the Period control.
    */
   dashboard: DashboardContext
 }>) {
@@ -115,11 +113,10 @@ export function LogsOverlay({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      {/* both max-w-6xl AND sm:max-w-6xl: the base DialogContent sets
-          sm:max-w-lg, and tailwind-merge only dedupes within the same
-          variant bucket — a bare max-w-6xl doesn't touch an sm: one, so
-          without this the dialog stayed capped at 32rem on every real
-          screen no matter what unprefixed max-w- class was added here */}
+      {/* Need both max-w-6xl AND sm:max-w-6xl: DialogContent's base class is
+          sm:max-w-lg, and tailwind-merge only dedupes classes in the same
+          variant bucket — a plain max-w-6xl doesn't override an sm: one. Without
+          the sm: variant here the dialog stayed capped at 32rem on any real screen. */}
       <DialogContent className="max-h-[85vh] max-w-6xl sm:max-w-6xl overflow-hidden p-0">
         <DialogHeader className="border-b border-gray-200 px-5 py-4 dark:border-gray-800">
           <DialogTitle className="text-base">
@@ -131,11 +128,11 @@ export function LogsOverlay({
             )}
           </DialogTitle>
 
-          {/* stops somebody asking why they expected 1,847 */}
+          {/* explains why the count here can differ from the chart's number */}
           <p className="text-xs text-gray-500 dark:text-gray-400">
             {grain === 'entity' ? `${grainLabel}, ${winnerLabel}` : grainLabel}
-            {/* only when it actually collapsed something: "54 calls became 54
-                rows" reads like a bug, because it is telling you nothing */}
+            {/* only show this when dedupe actually collapsed something —
+                "54 calls became 54 rows" just looks like a bug */}
             {grain === 'entity' && chartTotal && chartTotal !== rows.length
               ? ` — ${chartTotal.toLocaleString()} calls became ${rows.length.toLocaleString()} rows`
               : ''}
@@ -171,15 +168,13 @@ export function LogsOverlay({
             // thead's box doesn't cover that gap, so a sliver of the row above
             // kept peeking through above the header as you scrolled.
             <table className="w-full border-collapse text-sm">
-              {/* z-10: a sticky element with no z-index still paints in DOM
-                  order, so the rows scrolling underneath it — later in the
-                  document — were painting on TOP of it instead of behind it */}
-              {/* bg-background, not bg-white/dark:bg-gray-950: the dialog's own
-                  surface is the theme's `--background` token (DialogContent
-                  uses `bg-background`), and gray-950 is a close but NOT
-                  identical shade — a fixed hue vs. the theme's own hue. That
-                  seam is subtle but is exactly what reads as the header being
-                  a separate floating panel instead of part of the table. */}
+              {/* z-10: without a z-index, a sticky element still paints in DOM order,
+                  so rows scrolling underneath it (later in the document) painted on
+                  top of it instead of behind it. */}
+              {/* bg-background, not bg-white/dark:bg-gray-950: the dialog's surface
+                  uses the theme's `--background` token, and gray-950 is close but not
+                  an exact match — that tiny hue mismatch is what made the header look
+                  like a separate floating panel instead of part of the table. */}
               <thead className="sticky top-0 z-10 bg-background text-left text-xs uppercase tracking-wide text-gray-400">
                 <tr className="border-b border-gray-200 dark:border-gray-800">
                   <th className="py-2 font-medium">When</th>
@@ -202,9 +197,9 @@ export function LogsOverlay({
                     <td className="whitespace-nowrap py-2 pr-4 text-gray-700 dark:text-gray-300">
                       {r.started_at ? new Date(r.started_at).toLocaleString() : '—'}
                     </td>
-                    {/* about 250 of this agent's rows hold a 40-character web
-                        session id here instead of a number, and unbounded it
-                        pushed every other column off the dialog */}
+                    {/* Some rows hold a long web-session id here instead of a
+                        phone number; left unbounded it pushed every other
+                        column off the dialog. */}
                     <td
                       className="max-w-[10rem] truncate py-2 pr-4 tabular-nums text-gray-700 dark:text-gray-300"
                       title={r.customer_number ?? undefined}
