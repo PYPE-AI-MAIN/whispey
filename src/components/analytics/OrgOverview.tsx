@@ -113,7 +113,10 @@ function RangePicker({ range, onChange }: Readonly<{ range: OverviewRange; onCha
           <button
             key={days}
             onClick={() => onChange({ days })}
-            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+            // h-8 matches the Button component's own "sm" size (button.tsx) so
+            // this pill group lines up with the Custom range button beside it
+            // instead of sitting a few px shorter
+            className={`flex h-8 items-center justify-center rounded-md px-3 text-sm font-medium transition-colors ${
               !isCustom && 'days' in range && range.days === days
                 ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
                 : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
@@ -149,7 +152,7 @@ export function OrgOverview({ projectId, isActive }: Readonly<{ projectId: strin
   return (
     <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900">
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-8 md:px-10">
-        <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-50">Overview</h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Summed across every agent in this project.</p>
