@@ -137,6 +137,70 @@ function grainAction(
   return { type: 'edit', spec: entitySpec(w.spec, catalog, ranking, Boolean(agentId)) }
 }
 
+/**
+ * The dropped card's kind, or null for a drag that didn't carry one — pulled
+ * out of the grid's `onDrop` so this check scores separately from the
+ * component's.
+ */
+function droppedKind(event: unknown): ChartKind | null {
+  const kind = (event as DragEvent).dataTransfer?.getData(CHART_TYPE_DRAG_TYPE) as ChartKind
+  return kind && DEFAULT_SIZE[kind] ? kind : null
+}
+
+/**
+ * `next` is react-grid-layout's own compacted layout for this drop — it
+ * already placed the card where the cursor released and nudged any cards in
+ * the way. Recomputing from each widget's pre-drop (x, y) instead (what
+ * toGridLayout does on every render) is what sent every dropped card to the
+ * bottom: the drop spot almost always overlaps some other card's stale saved
+ * position, so toGridLayout's overlap guard falls back to appending after
+ * everything else.
+ */
+function droppedWidgets(next: Layout, card: Widget, widgets: Widget[]): Widget[] {
+  const resolved = next.map((l) => (l.i === '__dropping-elem__' ? { ...l, i: card.id } : l))
+  return applyGridLayout([...widgets, card], resolved)
+}
+
+/** The toolbar's right-hand buttons — pulled out so their conditionals score separately from the component's. */
+function CanvasToolbarActions({
+  isFetching, canEdit, agentId, dirty, saving, onRefetch, onEditOutcomeOrder, onDiscard, onSave,
+}: Readonly<{
+  isFetching: boolean
+  canEdit: boolean
+  agentId: string | undefined
+  dirty: boolean
+  saving: boolean
+  onRefetch: () => void
+  onEditOutcomeOrder: () => void
+  onDiscard: () => void
+  onSave: () => void
+}>) {
+  return (
+    <div className="flex items-center gap-1">
+      {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />}
+      <Button size="sm" variant="ghost" title="Run every chart again" onClick={onRefetch} disabled={isFetching} className="h-7 px-2 text-xs">
+        <RefreshCw className="h-3.5 w-3.5" />
+      </Button>
+      {canEdit && agentId && (
+        <Button size="sm" variant="ghost" onClick={onEditOutcomeOrder} className="h-7 text-xs">
+          <SlidersHorizontal className="mr-1 h-3.5 w-3.5" /> Outcome order
+        </Button>
+      )}
+      {dirty && (
+        <>
+          <Button size="sm" variant="ghost" onClick={onDiscard} className="h-7 text-xs">
+            <RotateCcw className="mr-1 h-3.5 w-3.5" /> Discard
+          </Button>
+          <Button size="sm" onClick={onSave} disabled={saving} className="h-7 text-xs">
+            {saving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1 h-3.5 w-3.5" />}
+            Save
+          </Button>
+        </>
+      )}
+    </div>
+  )
+}
+
 /** One dashboard card, by kind — pulled out of the grid's `.map` so that if/else chain scores on its own. */
 function widgetCard(w: Widget, ctx: CardContext): React.ReactNode {
   const onRemove = () => ctx.removeWidget(w)
@@ -468,35 +532,17 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
             />
           </div>
 
-          <div className="flex items-center gap-1">
-            {charts.isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />}
-            <Button
-              size="sm"
-              variant="ghost"
-              title="Run every chart again"
-              onClick={() => charts.refetch()}
-              disabled={charts.isFetching}
-              className="h-7 px-2 text-xs"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-            </Button>
-            {canEdit && agentId && (
-              <Button size="sm" variant="ghost" onClick={() => setOrderEditor(true)} className="h-7 text-xs">
-                <SlidersHorizontal className="mr-1 h-3.5 w-3.5" /> Outcome order
-              </Button>
-            )}
-            {dirty && (
-              <>
-                <Button size="sm" variant="ghost" onClick={() => setDraft(null)} className="h-7 text-xs">
-                  <RotateCcw className="mr-1 h-3.5 w-3.5" /> Discard
-                </Button>
-                <Button size="sm" onClick={persist} disabled={save.isPending} className="h-7 text-xs">
-                  {save.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1 h-3.5 w-3.5" />}
-                  Save
-                </Button>
-              </>
-            )}
-          </div>
+          <CanvasToolbarActions
+            isFetching={charts.isFetching}
+            canEdit={canEdit}
+            agentId={agentId}
+            dirty={dirty}
+            saving={save.isPending}
+            onRefetch={() => charts.refetch()}
+            onEditOutcomeOrder={() => setOrderEditor(true)}
+            onDiscard={() => setDraft(null)}
+            onSave={persist}
+          />
         </div>
 
         {save.isError && <Banner onDismiss={() => save.reset()}>{(save.error as Error).message}</Banner>}
@@ -537,19 +583,11 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
               }}
               onLayoutChange={onLayoutChange}
               onDrop={(next, item, event) => {
-                const kind = (event as DragEvent).dataTransfer?.getData(CHART_TYPE_DRAG_TYPE) as ChartKind
                 setDroppingKind(null)
-                if (!kind || !DEFAULT_SIZE[kind]) return
+                const kind = droppedKind(event)
+                if (!kind) return
                 const card = makeChart(kind, { x: item?.x ?? 0, y: item?.y ?? 0 })
-                // `next` is react-grid-layout's own compacted layout for this drop — it
-                // already placed the card where the cursor released and nudged any
-                // cards in the way. Recomputing from each widget's pre-drop (x, y)
-                // instead (what toGridLayout does on every render) is what sent every
-                // dropped card to the bottom: the drop spot almost always overlaps some
-                // other card's stale saved position, so toGridLayout's overlap guard
-                // falls back to appending after everything else.
-                const resolved = next.map((l) => (l.i === '__dropping-elem__' ? { ...l, i: card.id } : l))
-                setDraft(applyGridLayout([...(draft ?? widgets), card], resolved))
+                setDraft(droppedWidgets(next, card, draft ?? widgets))
                 selectChart(card.id)
               }}
             >
