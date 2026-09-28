@@ -161,6 +161,14 @@ function droppedWidgets(next: Layout, card: Widget, widgets: Widget[]): Widget[]
   return applyGridLayout([...widgets, card], resolved)
 }
 
+/** The `af`/`at`/`dow` URL params for a new When filter — pulled out so its ternaries score separately from the component's. */
+function whenParams(next: { timeOfDay: TimeOfDay; days: number[] }): { at: string | null; dow: string | null } {
+  return {
+    at: next.timeOfDay ? `${next.timeOfDay.from}-${next.timeOfDay.to}` : null,
+    dow: next.days.length && next.days.length < 7 ? next.days.join(',') : null,
+  }
+}
+
 /** The toolbar's right-hand buttons — pulled out so their conditionals score separately from the component's. */
 function CanvasToolbarActions({
   isFetching, canEdit, agentId, dirty, saving, onRefetch, onEditOutcomeOrder, onDiscard, onSave,
@@ -518,12 +526,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
             <WhenFilter
               timeOfDay={when.timeOfDay}
               days={when.days}
-              onChange={(next) =>
-                setParam({
-                  at: next.timeOfDay ? `${next.timeOfDay.from}-${next.timeOfDay.to}` : null,
-                  dow: next.days.length && next.days.length < 7 ? next.days.join(',') : null,
-                })
-              }
+              onChange={(next) => setParam(whenParams(next))}
             />
             <FilterBar
               filters={filters}
