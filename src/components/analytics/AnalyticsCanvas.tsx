@@ -50,6 +50,8 @@ type Props = {
   isLoading?: boolean
   /** The tab stays mounted while hidden; do not fetch for a screen nobody is looking at. */
   isActive?: boolean
+  /** The org view's own "Agents: All ▾" filter (§3.5) — only meaningful without `agent`. undefined/null means every agent in the project. */
+  selectedAgentIds?: string[] | null
 }
 
 /**
@@ -64,7 +66,7 @@ type Props = {
 const BREAKPOINTS = { lg: 640, sm: 0 }
 const COLUMNS = { lg: GRID_COLUMNS, sm: 1 }
 
-export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, isActive = true }: Readonly<Props>) {
+export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, isActive = true, selectedAgentIds }: Readonly<Props>) {
   const agentId = agent?.id
   // No agent means this is the org-wide Explore canvas (§3.5.2) — every agent
   // in the project instead of one. Never both: `resolveProjectAnalyticsContext`
@@ -72,7 +74,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
   const scope: AnalyticsScope | undefined = agentId
     ? { kind: 'agent', id: agentId }
     : project?.id
-      ? { kind: 'project', id: project.id }
+      ? { kind: 'project', id: project.id, agentIds: selectedAgentIds ?? undefined }
       : undefined
   const { isMobile } = useMobile()
   const router = useRouter()
@@ -588,6 +590,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
       <LogsOverlay
         agentId={agentId}
         projectId={project?.id ?? ''}
+        agentIds={agentId ? undefined : selectedAgentIds}
         agentNames={agentId ? undefined : agentNameMap}
         widget={logs?.widget ?? null}
         grainLabel={logs ? grainLabel(logs.widget, catalog) : 'Every call'}

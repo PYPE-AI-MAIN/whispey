@@ -139,7 +139,7 @@ export type ProjectAnalyticsContext = {
  */
 export async function resolveProjectAnalyticsContext(
   projectId: string,
-  opts: { forDownload?: boolean } = {}
+  opts: { forDownload?: boolean; agentIds?: string[] } = {}
 ): Promise<ProjectAnalyticsContext | { errorResponse: NextResponse }> {
   const deny = (status: number, error: string) => ({ errorResponse: NextResponse.json({ error }, { status }) })
 
@@ -157,7 +157,13 @@ export async function resolveProjectAnalyticsContext(
 
   // a member can be limited to particular agents; an empty list means none
   const visibleAgentIds = access.visibility.org.visibleAgentIds
-  const visibleAgents = visibleAgentIds === null ? agents : agents.filter((a) => visibleAgentIds.includes(a.id))
+  let visibleAgents = visibleAgentIds === null ? agents : agents.filter((a) => visibleAgentIds.includes(a.id))
+  // the org view's own "Agents: All ▾" filter — a caller narrowing to a
+  // subset it can already see, never a way to see more than visibleAgentIds allows
+  if (opts.agentIds) {
+    const requested = new Set(opts.agentIds)
+    visibleAgents = visibleAgents.filter((a) => requested.has(a.id))
+  }
   if (visibleAgents.length === 0) return deny(403, 'No visible agents in this project')
 
   const user = await currentUser()

@@ -27,7 +27,7 @@ type Row = {
 }
 
 export function LogsOverlay({
-  agentId, projectId, agentNames, widget, dimensionValue, open, onClose, downloadDisabled, chartTotal, grainLabel, seriesLabel, dashboard,
+  agentId, projectId, agentIds, agentNames, widget, dimensionValue, open, onClose, downloadDisabled, chartTotal, grainLabel, seriesLabel, dashboard,
 }: Readonly<{
   /** The single agent this canvas is scoped to — absent for the org-wide
    * Explore canvas, whose rows can each come from a different agent (see
@@ -36,6 +36,8 @@ export function LogsOverlay({
   agentId?: string
   /** Always required: it's how every row's own call links to its own agent's observability page. */
   projectId: string
+  /** The org view's "Agents: All ▾" filter — only meaningful without `agentId`. undefined/null means every agent in the project. */
+  agentIds?: string[] | null
   /** Only meaningful without `agentId` (rows can come from several agents) —
    * resolves each row's agent_id to a name, so a mixed list isn't just
    * unlabeled rows nobody can tell apart. */
@@ -63,7 +65,9 @@ export function LogsOverlay({
   const [cursor, setCursor] = useState<{ startedAt: string; id: string } | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const csv = useCsvExport(agentId ? { kind: 'agent', id: agentId } : { kind: 'project', id: projectId })
+  const csv = useCsvExport(
+    agentId ? { kind: 'agent', id: agentId } : { kind: 'project', id: projectId, agentIds: agentIds ?? undefined }
+  )
 
   const load = React.useCallback(
     async (next: { startedAt: string; id: string } | null) => {
@@ -78,7 +82,7 @@ export function LogsOverlay({
             // exactly one of these: the route trusts projectId over agentId
             // when both are present, so sending both here would silently
             // widen a single-agent canvas's drill-through to the whole project
-            ...(agentId ? { agentId } : { projectId }),
+            ...(agentId ? { agentId } : { projectId, agentIds: agentIds ?? undefined }),
             spec: widget.spec,
             dimensionValue,
             cursor: next,
@@ -100,7 +104,7 @@ export function LogsOverlay({
         setLoading(false)
       }
     },
-    [agentId, projectId, widget, dimensionValue, dashboard]
+    [agentId, projectId, agentIds, widget, dimensionValue, dashboard]
   )
 
   useEffect(() => {

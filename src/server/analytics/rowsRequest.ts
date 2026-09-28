@@ -17,6 +17,8 @@ import { outcomeOrderFor } from './context'
 export const RowsBody = z.object({
   agentId: z.string().uuid().optional(),
   projectId: z.string().uuid().optional(),
+  /** The org view's "Agents: All ▾" filter — narrows an already-visible project scope to a subset. Meaningless with agentId. */
+  agentIds: z.array(z.string().uuid()).max(200).optional(),
   spec: z.unknown(),
   /** Which bar was clicked. null means the empty bucket, which is a real answer. */
   dimensionValue: z.string().nullable().optional(),

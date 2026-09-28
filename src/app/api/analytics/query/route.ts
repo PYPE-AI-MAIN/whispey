@@ -37,6 +37,8 @@ const PER_CHART_TIMEOUT_MS = 25_000
 const Body = z.object({
   agentId: z.string().uuid().optional(),
   projectId: z.string().uuid().optional(),
+  /** The org view's "Agents: All ▾" filter — narrows an already-visible project scope to a subset. Meaningless with agentId. */
+  agentIds: z.array(z.string().uuid()).max(200).optional(),
   dashboardId: z.string().uuid().optional(),
   /** The filter chips above the canvas. They narrow every chart; a chart can never widen past them. */
   filters: z.array(FilterNode).max(50).default([]),
@@ -179,7 +181,9 @@ export const POST = guarded('analytics/query', async (req: NextRequest) => {
   const body = parsed.data
   if (!body.agentId && !body.projectId) return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
 
-  const resolved = body.projectId ? await resolveProjectAnalyticsContext(body.projectId) : await resolveAnalyticsContext(body.agentId!)
+  const resolved = body.projectId
+    ? await resolveProjectAnalyticsContext(body.projectId, { agentIds: body.agentIds })
+    : await resolveAnalyticsContext(body.agentId!)
   if (isDenied(resolved)) return resolved.errorResponse
   const { ctx } = resolved
 

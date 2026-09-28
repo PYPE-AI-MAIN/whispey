@@ -43,9 +43,12 @@ type DashboardPayload = {
  * `projectId` — this is just the one place that distinction gets made, so it
  * can't drift between the three hooks that each need to make it.
  */
-export type AnalyticsScope = { kind: 'agent'; id: string } | { kind: 'project'; id: string }
-const scopeParam = (scope: AnalyticsScope): { agentId: string } | { projectId: string } =>
-  scope.kind === 'agent' ? { agentId: scope.id } : { projectId: scope.id }
+export type AnalyticsScope =
+  | { kind: 'agent'; id: string }
+  /** `agentIds` is the org view's "Agents: All ▾" filter — a subset of an already-visible project, undefined/empty means "all of them." */
+  | { kind: 'project'; id: string; agentIds?: string[] }
+const scopeParam = (scope: AnalyticsScope): { agentId: string } | { projectId: string; agentIds?: string[] } =>
+  scope.kind === 'agent' ? { agentId: scope.id } : { projectId: scope.id, agentIds: scope.agentIds }
 
 export function useAnalyticsDashboard(scope: AnalyticsScope | undefined, enabled: boolean) {
   const queryClient = useQueryClient()

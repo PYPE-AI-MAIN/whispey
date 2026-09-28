@@ -29,7 +29,7 @@ export const POST = guarded('analytics/export', async (req: NextRequest) => {
     return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
   }
   const resolved = parsed.data.projectId
-    ? await resolveProjectAnalyticsContext(parsed.data.projectId, { forDownload: true })
+    ? await resolveProjectAnalyticsContext(parsed.data.projectId, { forDownload: true, agentIds: parsed.data.agentIds })
     : await resolveAnalyticsContext(parsed.data.agentId!, { forDownload: true })
   if (isDenied(resolved)) return resolved.errorResponse
   if (resolved.downloadDisabled) {

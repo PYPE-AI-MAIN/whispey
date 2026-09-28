@@ -150,9 +150,13 @@ export function RangePicker({ range, onChange }: Readonly<{ range: OverviewRange
   )
 }
 
-export function OrgOverview({ projectId, isActive }: Readonly<{ projectId: string; isActive: boolean }>) {
+export function OrgOverview({
+  projectId,
+  isActive,
+  selectedAgentIds,
+}: Readonly<{ projectId: string; isActive: boolean; selectedAgentIds: string[] | null }>) {
   const [range, setRange] = useState<OverviewRange>({ days: 30 })
-  const { data, isLoading, error } = useOrgOverview(projectId, range, isActive)
+  const { data, isLoading, error } = useOrgOverview(projectId, range, selectedAgentIds, isActive)
   // the full skeleton only for the first paint — once real numbers are on
   // screen, switching the date range shows the small spinner instead, so
   // changing "30 days" to "90 days" doesn't blank the whole page every time

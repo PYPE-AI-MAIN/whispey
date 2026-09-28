@@ -21,7 +21,7 @@ export const POST = guarded('analytics/drill', async (req: NextRequest) => {
     return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
   }
   const resolved = parsed.data.projectId
-    ? await resolveProjectAnalyticsContext(parsed.data.projectId)
+    ? await resolveProjectAnalyticsContext(parsed.data.projectId, { agentIds: parsed.data.agentIds })
     : await resolveAnalyticsContext(parsed.data.agentId!)
   if (isDenied(resolved)) return resolved.errorResponse
   const outcomeRanking = 'agent' in resolved ? resolved.agent.outcomeRanking : undefined

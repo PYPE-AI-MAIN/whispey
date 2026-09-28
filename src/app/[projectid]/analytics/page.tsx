@@ -21,6 +21,7 @@ import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { OrgOverview, RangePicker } from '@/components/analytics/OrgOverview'
 import AnalyticsCanvas from '@/components/analytics/AnalyticsCanvas'
 import { JourneysTab } from '@/components/analytics/JourneysTab'
+import { AgentMultiSelect } from '@/components/analytics/AgentMultiSelect'
 import type { OverviewRange } from '@/hooks/useOrgOverview'
 
 type Tab = 'overview' | 'explore' | 'journeys'
@@ -40,7 +41,11 @@ const TABS: { id: Tab; label: string }[] = [
  * canvas reads it, the page around it owns it) — so this reuses the exact
  * same RangePicker the Overview tab already has, instead of a second one.
  */
-function ExploreTab({ projectId, isActive }: Readonly<{ projectId: string; isActive: boolean }>) {
+function ExploreTab({
+  projectId,
+  isActive,
+  selectedAgentIds,
+}: Readonly<{ projectId: string; isActive: boolean; selectedAgentIds: string[] | null }>) {
   const [range, setRange] = useState<OverviewRange>({ days: 30 })
   const dateRange = useMemo(() => {
     if ('from' in range) return range
@@ -57,7 +62,13 @@ function ExploreTab({ projectId, isActive }: Readonly<{ projectId: string; isAct
         <RangePicker range={range} onChange={setRange} />
       </div>
       <div className="min-h-0 flex-1">
-        <AnalyticsCanvas project={{ id: projectId }} agent={null} dateRange={dateRange} isActive={isActive} />
+        <AnalyticsCanvas
+          project={{ id: projectId }}
+          agent={null}
+          dateRange={dateRange}
+          isActive={isActive}
+          selectedAgentIds={selectedAgentIds}
+        />
       </div>
     </div>
   )
@@ -84,6 +95,15 @@ function OrgAnalyticsPageContent() {
   })
   const project = projects?.[0]
 
+  // shared across all three tabs (§3.5's "Agents: All ▾") — null means every
+  // agent, which is also what keeps a newly added agent included by default
+  const { data: agents } = useSupabaseQuery<{ id: string; name: string; display_name: string | null }>('pype_voice_agents', {
+    select: 'id, name, display_name',
+    filters: [{ column: 'project_id', operator: 'eq', value: projectId }],
+    orderBy: { column: 'created_at', ascending: true },
+  })
+  const [selectedAgentIds, setSelectedAgentIds] = useState<string[] | null>(null)
+
   const handleTabChange = (tab: Tab) => {
     router.push(`/${projectId}/analytics?tab=${tab}`)
   }
@@ -107,21 +127,29 @@ function OrgAnalyticsPageContent() {
       </div>
 
       <div className="flex-none border-b border-gray-200 bg-white px-6 dark:border-gray-800 dark:bg-gray-900 md:px-8">
-        <div className="flex items-center gap-1 py-3">
-          <BarChart3 className="mr-2 h-4 w-4 text-gray-400" />
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => handleTabChange(tab.id)}
-              className={`rounded-md px-3 py-1.5 text-sm ${
-                activeTab === tab.id
-                  ? 'bg-gray-100 font-medium text-gray-900 dark:bg-gray-800 dark:text-gray-50'
-                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="flex items-center justify-between py-3">
+          <div className="flex items-center gap-1">
+            <BarChart3 className="mr-2 h-4 w-4 text-gray-400" />
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => handleTabChange(tab.id)}
+                className={`rounded-md px-3 py-1.5 text-sm ${
+                  activeTab === tab.id
+                    ? 'bg-gray-100 font-medium text-gray-900 dark:bg-gray-800 dark:text-gray-50'
+                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          {/* shared across all three tabs, per §3.5's wireframe — not per-tab state */}
+          <AgentMultiSelect
+            agents={(agents ?? []).map((a) => ({ id: a.id, name: a.display_name || a.name }))}
+            selected={selectedAgentIds}
+            onChange={setSelectedAgentIds}
+          />
         </div>
       </div>
 
@@ -129,10 +157,10 @@ function OrgAnalyticsPageContent() {
         {/* every panel stays mounted; hidden ones just don't fetch, matching
             AnalyticsCanvas's own isActive convention on the agent page */}
         <div className={activeTab === 'overview' ? 'block h-full' : 'hidden'}>
-          <OrgOverview projectId={projectId} isActive={activeTab === 'overview'} />
+          <OrgOverview projectId={projectId} isActive={activeTab === 'overview'} selectedAgentIds={selectedAgentIds} />
         </div>
         <div className={activeTab === 'explore' ? 'block h-full' : 'hidden'}>
-          <ExploreTab projectId={projectId} isActive={activeTab === 'explore'} />
+          <ExploreTab projectId={projectId} isActive={activeTab === 'explore'} selectedAgentIds={selectedAgentIds} />
         </div>
         <div className={activeTab === 'journeys' ? 'block h-full' : 'hidden'}>
           <JourneysTab projectId={projectId} isActive={activeTab === 'journeys'} />
