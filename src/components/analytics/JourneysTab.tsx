@@ -9,14 +9,86 @@
  * yet" — not an error, just nothing to show.
  */
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { RangePicker } from './OrgOverview'
-import { useCampaigns, useFunnel, useRecentJourneys, type JourneyEvent, type JourneySummary } from '@/hooks/useJourneys'
+import {
+  useCampaigns,
+  useFunnel,
+  useJourneyFilterOptions,
+  useRecentJourneys,
+  type JourneyEvent,
+  type JourneyFilters,
+  type JourneySummary,
+} from '@/hooks/useJourneys'
 import type { OverviewRange } from '@/hooks/useOrgOverview'
+
+const ALL = '__all__'
+
+/**
+ * §3.6.3's Channel / Outcome-status / Agent filters. Options are real values
+ * seen for this campaign (`useJourneyFilterOptions`), not a fixed enum — any
+ * source can send any channel or outcome string (§3.3).
+ */
+function FilterBar({
+  projectId,
+  campaignId,
+  filters,
+  onChange,
+}: Readonly<{ projectId: string; campaignId: string; filters: JourneyFilters; onChange: (f: JourneyFilters) => void }>) {
+  const { data: options } = useJourneyFilterOptions(projectId, campaignId, true)
+  const { data: agents } = useSupabaseQuery<{ id: string; name: string }>('pype_voice_agents', {
+    select: 'id, name',
+    filters: [{ column: 'project_id', operator: 'eq', value: projectId }],
+  })
+
+  const set = (key: keyof JourneyFilters) => (value: string) => onChange({ ...filters, [key]: value === ALL ? undefined : value })
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Select value={filters.channel ?? ALL} onValueChange={set('channel')}>
+        <SelectTrigger className="w-36"><SelectValue placeholder="Channel" /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL}>All channels</SelectItem>
+          {options?.channels.map((c) => (
+            <SelectItem key={c} value={c}>{c}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select value={filters.status ?? ALL} onValueChange={set('status')}>
+        <SelectTrigger className="w-36"><SelectValue placeholder="Status" /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL}>All statuses</SelectItem>
+          {options?.statuses.map((s) => (
+            <SelectItem key={s} value={s}>{s}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select value={filters.outcome ?? ALL} onValueChange={set('outcome')}>
+        <SelectTrigger className="w-36"><SelectValue placeholder="Outcome" /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL}>All outcomes</SelectItem>
+          {options?.outcomes.map((o) => (
+            <SelectItem key={o} value={o}>{o}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select value={filters.agentId ?? ALL} onValueChange={set('agentId')}>
+        <SelectTrigger className="w-40"><SelectValue placeholder="Agent" /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL}>All agents</SelectItem>
+          {agents?.map((a) => (
+            <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  )
+}
 
 function EmptyState() {
   return (
@@ -30,8 +102,13 @@ function EmptyState() {
   )
 }
 
-function Funnel({ projectId, campaignId, range }: Readonly<{ projectId: string; campaignId: string; range: OverviewRange }>) {
-  const { data, isLoading } = useFunnel(projectId, campaignId, range, true)
+function Funnel({
+  projectId,
+  campaignId,
+  range,
+  filters,
+}: Readonly<{ projectId: string; campaignId: string; range: OverviewRange; filters: JourneyFilters }>) {
+  const { data, isLoading } = useFunnel(projectId, campaignId, range, filters, true)
   const steps = data?.steps ?? []
   const max = Math.max(1, ...steps.map((s) => s.reached_count))
 
@@ -102,14 +179,21 @@ export function JourneysTab({ projectId, isActive }: Readonly<{ projectId: strin
   const { data: campaigns, isLoading: campaignsLoading } = useCampaigns(projectId, isActive)
   const [campaignId, setCampaignId] = useState<string | null>(null)
   const [range, setRange] = useState<OverviewRange>({ days: 30 })
+  const [filters, setFilters] = useState<JourneyFilters>({})
   const {
     data: journeyPages,
     isLoading: journeysLoading,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useRecentJourneys(projectId, campaignId, isActive)
-  const journeys = journeyPages?.pages.flatMap((p) => p.journeys) ?? []
+  } = useRecentJourneys(projectId, campaignId, filters, isActive)
+  const journeys = useMemo(() => journeyPages?.pages.flatMap((p) => p.journeys) ?? [], [journeyPages])
+
+  // filter options (channels/outcomes/agents) are per-campaign — a filter picked for one campaign is meaningless on another
+  const handleCampaignChange = (id: string) => {
+    setCampaignId(id)
+    setFilters({})
+  }
 
   useEffect(() => {
     if (!campaignId && campaigns && campaigns.length > 0) setCampaignId(campaigns[0].id)
@@ -134,8 +218,8 @@ export function JourneysTab({ projectId, isActive }: Readonly<{ projectId: strin
   return (
     <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900">
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-8 md:px-10">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <Select value={campaignId ?? undefined} onValueChange={setCampaignId}>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <Select value={campaignId ?? undefined} onValueChange={handleCampaignChange}>
             <SelectTrigger className="w-64">
               <SelectValue placeholder="Select a campaign" />
             </SelectTrigger>
@@ -152,9 +236,13 @@ export function JourneysTab({ projectId, isActive }: Readonly<{ projectId: strin
 
         {campaignId && (
           <>
+            <div className="mb-6">
+              <FilterBar projectId={projectId} campaignId={campaignId} filters={filters} onChange={setFilters} />
+            </div>
+
             <div className="mb-8">
               <h2 className="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">Funnel</h2>
-              <Funnel projectId={projectId} campaignId={campaignId} range={range} />
+              <Funnel projectId={projectId} campaignId={campaignId} range={range} filters={filters} />
             </div>
 
             <div>

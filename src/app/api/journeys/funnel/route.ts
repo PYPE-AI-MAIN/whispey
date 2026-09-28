@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { guarded } from '@/server/analytics/guard'
 import { resolveProjectAnalyticsContext, isDenied } from '@/server/analytics/context'
-import { getFunnel } from '@/server/analytics/journeys'
+import { getFunnel, parseJourneyFilters } from '@/server/analytics/journeys'
 import { isTimeout } from '@/server/analytics/db'
 
 export const runtime = 'nodejs'
@@ -26,7 +26,7 @@ export const GET = guarded('journeys/funnel', async (req: NextRequest) => {
   const range = from && to ? { from, to } : null
 
   try {
-    const funnel = await getFunnel(projectId, campaignId, range)
+    const funnel = await getFunnel(projectId, campaignId, range, parseJourneyFilters(req.nextUrl.searchParams))
     return NextResponse.json(funnel)
   } catch (err) {
     if (isTimeout(err)) return NextResponse.json({ error: 'This funnel took too long to compute' }, { status: 504 })

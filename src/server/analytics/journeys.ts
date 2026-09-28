@@ -41,6 +41,24 @@ export type JourneySummary = {
   events: JourneyEvent[]
 }
 
+/** §3.6.3's filters — channel/agent narrow to matching events, status/outcome narrow which journeys are in scope at all. */
+export type JourneyFilters = {
+  channel?: string
+  status?: string
+  outcome?: string
+  agentId?: string
+}
+
+/** Shared by the funnel and recent-journeys routes so query-param parsing doesn't drift between them. */
+export function parseJourneyFilters(searchParams: URLSearchParams): JourneyFilters {
+  return {
+    channel: searchParams.get('channel') ?? undefined,
+    status: searchParams.get('status') ?? undefined,
+    outcome: searchParams.get('outcome') ?? undefined,
+    agentId: searchParams.get('agentId') ?? undefined,
+  }
+}
+
 export async function listCampaigns(projectId: string): Promise<Campaign[]> {
   return runQuery<Campaign>(
     `select id, key, name, steps, created_at
@@ -59,15 +77,20 @@ export async function listCampaigns(projectId: string): Promise<Campaign[]> {
 export async function getFunnel(
   projectId: string,
   campaignId: string,
-  range: { from: string; to: string } | null
+  range: { from: string; to: string } | null,
+  filters: JourneyFilters = {}
 ): Promise<{ steps: FunnelStep[]; journeyCount: number }> {
+  const journeyScope = `project_id = $1 and campaign_id = $2
+    and ($3::timestamptz is null or created_at >= $3)
+    and ($4::timestamptz is null or created_at < $4)
+    and ($5::text is null or status = $5)
+    and ($6::text is null or outcome = $6)`
+  const scopeParams = [projectId, campaignId, range?.from ?? null, range?.to ?? null, filters.status ?? null, filters.outcome ?? null]
+
   const [steps, journeyCount] = await Promise.all([
     runQuery<{ ordinality: number; step_key: string; label: string; reached_count: string }>(
       `with in_range_journeys as (
-         select id from pype_journeys
-         where project_id = $1 and campaign_id = $2
-           and ($3::timestamptz is null or created_at >= $3)
-           and ($4::timestamptz is null or created_at < $4)
+         select id from pype_journeys where ${journeyScope}
        ),
        steps as (
          -- "with ordinality as s" (one alias, two output columns) makes s a
@@ -82,20 +105,16 @@ export async function getFunnel(
          select e.step as step_key, count(distinct e.journey_id) as n
          from pype_journey_events e
          join in_range_journeys j on j.id = e.journey_id
+         where ($7::text is null or e.channel = $7)
+           and ($8::uuid is null or e.agent_id = $8)
          group by e.step
        )
        select steps.ordinality, steps.step_key, steps.label, coalesce(reached.n, 0) as reached_count
        from steps left join reached using (step_key)
        order by steps.ordinality`,
-      [projectId, campaignId, range?.from ?? null, range?.to ?? null]
+      [...scopeParams, filters.channel ?? null, filters.agentId ?? null]
     ),
-    runQuery<{ n: string }>(
-      `select count(*) as n from pype_journeys
-       where project_id = $1 and campaign_id = $2
-         and ($3::timestamptz is null or created_at >= $3)
-         and ($4::timestamptz is null or created_at < $4)`,
-      [projectId, campaignId, range?.from ?? null, range?.to ?? null]
-    ),
+    runQuery<{ n: string }>(`select count(*) as n from pype_journeys where ${journeyScope}`, scopeParams),
   ])
 
   return {
@@ -104,21 +123,57 @@ export async function getFunnel(
   }
 }
 
+/** What the filter dropdowns offer for a campaign — real values seen so far, not a fixed enum. */
+export async function getFilterOptions(
+  projectId: string,
+  campaignId: string
+): Promise<{ channels: string[]; statuses: string[]; outcomes: string[] }> {
+  const [channels, statuses, outcomes] = await Promise.all([
+    runQuery<{ channel: string }>(
+      `select distinct e.channel from pype_journey_events e
+       join pype_journeys j on j.id = e.journey_id
+       where j.project_id = $1 and j.campaign_id = $2
+       order by e.channel`,
+      [projectId, campaignId]
+    ),
+    runQuery<{ status: string }>(
+      `select distinct status from pype_journeys where project_id = $1 and campaign_id = $2 order by status`,
+      [projectId, campaignId]
+    ),
+    runQuery<{ outcome: string }>(
+      `select distinct outcome from pype_journeys where project_id = $1 and campaign_id = $2 and outcome is not null order by outcome`,
+      [projectId, campaignId]
+    ),
+  ])
+  return { channels: channels.map((c) => c.channel), statuses: statuses.map((s) => s.status), outcomes: outcomes.map((o) => o.outcome) }
+}
+
 /** Most recently updated journeys for a campaign, each with its full event history for the milestone chips. */
 export async function getRecentJourneys(
   projectId: string,
   campaignId: string,
   limit: number,
-  offset: number
+  offset: number,
+  filters: JourneyFilters = {}
 ): Promise<{ journeys: JourneySummary[]; hasMore: boolean }> {
   // fetch one extra row to know whether another page exists, without a separate count query
   const rows = await runQuery<Omit<JourneySummary, 'events'>>(
     `select id, identity_key, status, current_step, outcome, created_at, updated_at
-     from pype_journeys
+     from pype_journeys j
      where project_id = $1 and campaign_id = $2
+       and ($5::text is null or status = $5)
+       and ($6::text is null or outcome = $6)
+       and (
+         ($7::text is null and $8::uuid is null) or exists (
+           select 1 from pype_journey_events e
+           where e.journey_id = j.id
+             and ($7::text is null or e.channel = $7)
+             and ($8::uuid is null or e.agent_id = $8)
+         )
+       )
      order by updated_at desc
      limit $3 offset $4`,
-    [projectId, campaignId, limit + 1, offset]
+    [projectId, campaignId, limit + 1, offset, filters.status ?? null, filters.outcome ?? null, filters.channel ?? null, filters.agentId ?? null]
   )
   const hasMore = rows.length > limit
   const journeys = rows.slice(0, limit)

@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { guarded } from '@/server/analytics/guard'
 import { resolveProjectAnalyticsContext, isDenied } from '@/server/analytics/context'
-import { getRecentJourneys } from '@/server/analytics/journeys'
+import { getRecentJourneys, parseJourneyFilters } from '@/server/analytics/journeys'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -25,6 +25,6 @@ export const GET = guarded('journeys/recent', async (req: NextRequest) => {
   const offsetParam = Number(req.nextUrl.searchParams.get('offset') ?? '0')
   const offset = Number.isFinite(offsetParam) ? Math.max(0, offsetParam) : 0
 
-  const result = await getRecentJourneys(projectId, campaignId, limit, offset)
+  const result = await getRecentJourneys(projectId, campaignId, limit, offset, parseJourneyFilters(req.nextUrl.searchParams))
   return NextResponse.json(result)
 })
