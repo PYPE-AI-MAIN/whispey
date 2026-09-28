@@ -20,6 +20,7 @@ import { NextRequest } from 'next/server'
 import { z } from 'zod'
 import OpenAI from 'openai'
 import { resolveAnalyticsContext, isDenied } from '@/server/analytics/context'
+import { streamChatCompletionRounds } from '@/lib/streamOpenAiChat'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -57,11 +58,6 @@ const Body = z.object({
 /** Keeps the prompt bounded on an agent with a very large catalog — the best-covered fields are also the ones worth building a chart from. */
 const MAX_FIELDS_IN_PROMPT = 150
 
-const enc = new TextEncoder()
-function sse(data: string) {
-  return enc.encode(`data: ${data}\n\n`)
-}
-
 const MODEL = process.env.OPENAI_MODEL || 'gpt-5.6-luna'
 const MAX_TOKENS = 4000
 
@@ -71,54 +67,11 @@ function getClient(): OpenAI {
   return new OpenAI({ apiKey })
 }
 
-function errorMessage(err: unknown): string {
-  if (err instanceof OpenAI.APIError) return err.message
-  if (err instanceof Error) return err.message
-  return 'Unknown error'
-}
-
 // A chart JSON is small; this is a safety net against a cut-off reply, not
 // an expected path — see /api/workflow/chat for the pattern this mirrors.
 const MAX_ROUNDS = 3
-
-async function streamChart(client: OpenAI, convo: OpenAI.Chat.ChatCompletionMessageParam[], writer: WritableStreamDefaultWriter<Uint8Array>) {
-  try {
-    let finishReason: string | null | undefined
-    let round = 0
-    do {
-      const stream = await client.chat.completions.create({
-        model: MODEL,
-        messages: convo,
-        stream: true,
-        max_completion_tokens: MAX_TOKENS,
-      })
-      let roundContent = ''
-      finishReason = undefined
-      for await (const chunk of stream) {
-        const content = chunk.choices?.[0]?.delta?.content
-        if (content) {
-          roundContent += content
-          await writer.write(sse(JSON.stringify({ content })))
-        }
-        if (chunk.choices?.[0]?.finish_reason) finishReason = chunk.choices[0].finish_reason
-      }
-      if (finishReason !== 'length') break
-      convo.push(
-        { role: 'assistant', content: roundContent },
-        { role: 'user', content: 'Continue exactly where you stopped. Do not repeat anything already written and do not restart the JSON — just emit the remaining characters.' }
-      )
-    } while (++round < MAX_ROUNDS)
-
-    if (finishReason === 'length') {
-      await writer.write(sse(JSON.stringify({ truncated: true })))
-    }
-    await writer.write(sse('[DONE]'))
-  } catch (err) {
-    await writer.write(sse(JSON.stringify({ error: errorMessage(err) })))
-  } finally {
-    await writer.close()
-  }
-}
+const CONTINUE_PROMPT =
+  'Continue exactly where you stopped. Do not repeat anything already written and do not restart the JSON — just emit the remaining characters.'
 
 function systemPrompt(
   fields: z.infer<typeof FieldIn>[],
@@ -215,7 +168,7 @@ export async function POST(req: NextRequest) {
   const { readable, writable } = new TransformStream()
   const writer = writable.getWriter()
 
-  streamChart(client, convo, writer)
+  streamChatCompletionRounds({ client, convo, writer, model: MODEL, maxTokens: MAX_TOKENS, maxRounds: MAX_ROUNDS, continuePrompt: CONTINUE_PROMPT })
 
   return new Response(readable, {
     headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' },

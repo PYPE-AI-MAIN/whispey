@@ -9,6 +9,7 @@
  */
 import { Spec, type Condition, type SpecInput } from '@/server/analytics/spec'
 import type { CatalogField, ChartKind } from '@/types/analytics'
+import { extractJsonFence, stripJsonFencesForHistory } from '@/lib/jsonFence'
 
 export const AI_CHART_KINDS = ['kpi', 'bar', 'line', 'pie', 'table'] as const
 
@@ -16,45 +17,17 @@ export type AiChart = { title: string; kind: ChartKind; spec: SpecInput }
 
 /** The model's most recent fenced ```json block, or null if it hasn't written one (yet, if still streaming). */
 export function extractChartJson(text: string): unknown {
-  const start = text.lastIndexOf('```json')
-  if (start === -1) return null
-  const end = text.indexOf('```', start + 7)
-  if (end === -1) return null
-  const raw = text.slice(start + 7, end).trim()
-  if (!raw) return null
-  try {
-    return JSON.parse(raw)
-  } catch {
-    return null
-  }
+  return extractJsonFence(text)
 }
 
 /**
  * A past assistant turn's chart JSON is already summarized by its own status
  * badge in the UI, and the CURRENT draft is resent separately every request —
  * repeating the raw block in history just makes every later request bigger
- * for no benefit. ponytail: walk fences with indexOf, not a backtracking
- * regex, same trick `WorkflowChat` uses for the identical reason.
+ * for no benefit. Same trick `WorkflowChat` uses for the identical reason.
  */
 export function stripJsonBlocksForHistory(text: string): string {
-  const placeholder = '[chart JSON omitted — see the draft above]'
-  let result = ''
-  let pos = 0
-  while (pos < text.length) {
-    const start = text.indexOf('```json', pos)
-    if (start === -1) {
-      result += text.slice(pos)
-      break
-    }
-    const end = text.indexOf('```', start + 7)
-    if (end === -1) {
-      result += text.slice(pos)
-      break
-    }
-    result += text.slice(pos, start) + placeholder
-    pos = end + 3
-  }
-  return result
+  return stripJsonFencesForHistory(text, '[chart JSON omitted — see the draft above]')
 }
 
 function fieldRefs(spec: Record<string, unknown>): { col: string; path?: string[] }[] {
