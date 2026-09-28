@@ -20,6 +20,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/logs/call-logs(.*)',
   '/api/logs/failure-report(.*)',
   '/api/send-logs(.*)',
+  '/api/journeys/events(.*)',
   // Public playground needs these without a Clerk session
   '/api/agents/status(.*)',
   '/api/agent-config(.*)',
