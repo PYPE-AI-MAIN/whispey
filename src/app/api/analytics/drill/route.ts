@@ -5,7 +5,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { RowsBody, fetchRowPage } from '@/server/analytics/rowsRequest'
-import { resolveAnalyticsContext, isDenied } from '@/server/analytics/context'
+import { resolveAnalyticsContext, resolveProjectAnalyticsContext, isDenied } from '@/server/analytics/context'
 import { isTimeout } from '@/server/analytics/db'
 import { SpecError, InternalSpecError } from '@/server/analytics/buildQuery'
 import { guarded } from '@/server/analytics/guard'
@@ -17,11 +17,17 @@ export const POST = guarded('analytics/drill', async (req: NextRequest) => {
   const parsed = RowsBody.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'Bad request' }, { status: 400 })
 
-  const resolved = await resolveAnalyticsContext(parsed.data.agentId)
+  if (!parsed.data.agentId && !parsed.data.projectId) {
+    return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
+  }
+  const resolved = parsed.data.projectId
+    ? await resolveProjectAnalyticsContext(parsed.data.projectId)
+    : await resolveAnalyticsContext(parsed.data.agentId!)
   if (isDenied(resolved)) return resolved.errorResponse
+  const outcomeRanking = 'agent' in resolved ? resolved.agent.outcomeRanking : undefined
 
   try {
-    const page = await fetchRowPage(parsed.data, resolved.ctx, resolved.agent.outcomeRanking, 'drill')
+    const page = await fetchRowPage(parsed.data, resolved.ctx, outcomeRanking, 'drill')
     return NextResponse.json(page)
   } catch (err) {
     if (isTimeout(err)) return NextResponse.json({ error: 'That took too long. Try a shorter date range.' }, { status: 504 })

@@ -17,7 +17,7 @@ import { z } from 'zod'
 import { Spec, FilterNode } from '@/server/analytics/spec'
 import { planDashboardQueries, SpecError, InternalSpecError } from '@/server/analytics/buildQuery'
 import { runQuery, isTimeout } from '@/server/analytics/db'
-import { resolveAnalyticsContext, isDenied, outcomeOrderFor } from '@/server/analytics/context'
+import { resolveAnalyticsContext, resolveProjectAnalyticsContext, isDenied, outcomeOrderFor } from '@/server/analytics/context'
 import { guarded } from '@/server/analytics/guard'
 import { asFormulaSpec, combineFormula, type WidgetResult } from '@/server/analytics/formula'
 
@@ -35,7 +35,8 @@ const BATCH_DEADLINE_MS = 45_000
 const PER_CHART_TIMEOUT_MS = 25_000
 
 const Body = z.object({
-  agentId: z.string().uuid(),
+  agentId: z.string().uuid().optional(),
+  projectId: z.string().uuid().optional(),
   dashboardId: z.string().uuid().optional(),
   /** The filter chips above the canvas. They narrow every chart; a chart can never widen past them. */
   filters: z.array(FilterNode).max(50).default([]),
@@ -176,12 +177,16 @@ export const POST = guarded('analytics/query', async (req: NextRequest) => {
     return NextResponse.json({ error: 'Bad request', detail: parsed.error.flatten() }, { status: 400 })
   }
   const body = parsed.data
+  if (!body.agentId && !body.projectId) return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
 
-  const resolved = await resolveAnalyticsContext(body.agentId)
+  const resolved = body.projectId ? await resolveProjectAnalyticsContext(body.projectId) : await resolveAnalyticsContext(body.agentId!)
   if (isDenied(resolved)) return resolved.errorResponse
-  const { ctx, agent } = resolved
+  const { ctx } = resolved
 
-  const agentOutcomeOrder = outcomeOrderFor(agent.outcomeRanking)
+  // a project spans agents with potentially different outcome orders, so a
+  // 'ranking_ref: agent' dedupe chart has nothing single to resolve here —
+  // it reports "no outcome order set" the same way an agent with none does
+  const agentOutcomeOrder = 'agent' in resolved ? outcomeOrderFor(resolved.agent.outcomeRanking) : undefined
   const startedAt = Date.now()
 
   // validate first, so an invalid chart is reported against itself rather than

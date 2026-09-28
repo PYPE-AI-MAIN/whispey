@@ -15,7 +15,8 @@ import { runQuery } from './db'
 import { outcomeOrderFor } from './context'
 
 export const RowsBody = z.object({
-  agentId: z.string().uuid(),
+  agentId: z.string().uuid().optional(),
+  projectId: z.string().uuid().optional(),
   spec: z.unknown(),
   /** Which bar was clicked. null means the empty bucket, which is a real answer. */
   dimensionValue: z.string().nullable().optional(),

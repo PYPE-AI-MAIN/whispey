@@ -12,7 +12,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { RowsBody, fetchRowPage, ROW_COLUMNS } from '@/server/analytics/rowsRequest'
-import { resolveAnalyticsContext, isDenied } from '@/server/analytics/context'
+import { resolveAnalyticsContext, resolveProjectAnalyticsContext, isDenied } from '@/server/analytics/context'
 import { isTimeout } from '@/server/analytics/db'
 import { SpecError, InternalSpecError } from '@/server/analytics/buildQuery'
 import { csvPage } from '@/server/analytics/csv'
@@ -25,14 +25,20 @@ export const POST = guarded('analytics/export', async (req: NextRequest) => {
   const parsed = RowsBody.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'Bad request' }, { status: 400 })
 
-  const resolved = await resolveAnalyticsContext(parsed.data.agentId, { forDownload: true })
+  if (!parsed.data.agentId && !parsed.data.projectId) {
+    return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
+  }
+  const resolved = parsed.data.projectId
+    ? await resolveProjectAnalyticsContext(parsed.data.projectId, { forDownload: true })
+    : await resolveAnalyticsContext(parsed.data.agentId!, { forDownload: true })
   if (isDenied(resolved)) return resolved.errorResponse
   if (resolved.downloadDisabled) {
     return NextResponse.json({ error: 'Downloads are turned off for your account' }, { status: 403 })
   }
+  const outcomeRanking = 'agent' in resolved ? resolved.agent.outcomeRanking : undefined
 
   try {
-    const { rows, nextCursor } = await fetchRowPage(parsed.data, resolved.ctx, resolved.agent.outcomeRanking, 'export')
+    const { rows, nextCursor } = await fetchRowPage(parsed.data, resolved.ctx, outcomeRanking, 'export')
     const columns = [...ROW_COLUMNS, ...(rows[0] && 'series' in rows[0] ? ['series'] : [])]
     const isFirstPage = !parsed.data.cursor
 
