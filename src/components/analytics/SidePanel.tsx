@@ -21,6 +21,7 @@ import { FieldPicker, FieldShape } from './FieldPicker'
 import { identityFields, outcomeField } from './suggest'
 import type { OutcomeRanking } from './OutcomeOrderEditor'
 import type { FilterNodeInput, SpecInput } from '@/server/analytics/spec'
+import { AiChartBuilderDialog } from './AiChartBuilderDialog'
 
 /** What a chart-type tile puts on the drag event, and what the grid reads off it. */
 export const CHART_TYPE_DRAG_TYPE = 'application/x-whispey-chart-type'
@@ -125,9 +126,11 @@ function ChartTypeTile({
 }
 
 export function SidePanel({
-  selected, fields, ranking, canEdit, onAddChart, onDragChartType, onChange, onChangeKind, onChangeTitle, onBack,
+  selected, agentId, fields, ranking, canEdit, onAddChart, onDragChartType, onChange, onChangeKind, onChangeTitle, onBack, onGenerateChart,
 }: Readonly<{
   selected: Widget | null
+  /** For the AI Chart Builder's request only — which agent's fields it's allowed to reference. */
+  agentId: string
   fields: CatalogField[]
   /** The agent's saved outcome order — so a chart built here ranks by the same
    * field the agent's own disposition order means, not a guess (§ once was
@@ -143,10 +146,15 @@ export function SidePanel({
   onChange: (spec: SpecInput | TextContent | FormulaContent) => void
   onChangeKind: (kind: ChartKind) => void
   onChangeTitle: (title: string) => void
+  /** Drops an AI-built chart on the canvas, already configured — same shape the SUGGESTED strip applies. */
+  onGenerateChart: (title: string, kind: ChartKind, spec: SpecInput) => void
 }>) {
   if (!selected) {
     return (
       <Panel title="Chart types">
+        {canEdit && (
+          <AiChartBuilderDialog agentId={agentId} fields={fields} ranking={ranking} canEdit={canEdit} onAdd={onGenerateChart} />
+        )}
         <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
           {canEdit
             ? 'Drag one onto the dashboard, or click to add it at the end.'
