@@ -197,6 +197,11 @@ export function ChartRenderer({
   )
 }
 
+function sizeClass(short: boolean | undefined, compact: boolean | undefined): string {
+  if (!short) return 'text-3xl'
+  return compact ? 'text-xl' : 'text-2xl'
+}
+
 function Kpi({ rows, spec, short, compact }: Readonly<{ rows: ResultRow[]; spec: SpecInput; short?: boolean; compact?: boolean }>) {
   const value = displayNumber(rows[0], spec)
   return (
@@ -212,7 +217,7 @@ function Kpi({ rows, spec, short, compact }: Readonly<{ rows: ResultRow[]; spec:
           // number's own line-height, clipped top and bottom by the
           // `overflow-hidden` above. One size further down guarantees room
           // even when that second header line shows up.
-          short && compact ? 'text-xl' : short ? 'text-2xl' : 'text-3xl',
+          sizeClass(short, compact),
           value === null && 'text-gray-400 dark:text-gray-500'
         )}
       >

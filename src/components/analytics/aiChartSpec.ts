@@ -15,7 +15,7 @@ export const AI_CHART_KINDS = ['kpi', 'bar', 'line', 'pie', 'table'] as const
 export type AiChart = { title: string; kind: ChartKind; spec: SpecInput }
 
 /** The model's most recent fenced ```json block, or null if it hasn't written one (yet, if still streaming). */
-export function extractChartJson(text: string): unknown | null {
+export function extractChartJson(text: string): unknown {
   const start = text.lastIndexOf('```json')
   if (start === -1) return null
   const end = text.indexOf('```', start + 7)

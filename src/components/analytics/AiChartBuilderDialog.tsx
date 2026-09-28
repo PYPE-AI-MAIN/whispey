@@ -256,7 +256,7 @@ export function AiChartBuilderDialog({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      void handleSend()
+      handleSend()
     }
   }
 
@@ -310,7 +310,7 @@ export function AiChartBuilderDialog({
                 <button
                   key={s}
                   type="button"
-                  onClick={() => void handleSend(s)}
+                  onClick={() => handleSend(s)}
                   className="w-full rounded-lg bg-muted px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-accent"
                 >
                   {s}
@@ -381,7 +381,7 @@ export function AiChartBuilderDialog({
               type="button"
               size="icon"
               className="absolute bottom-2 right-2 h-7 w-7 rounded-full disabled:opacity-40"
-              onClick={() => void handleSend()}
+              onClick={() => handleSend()}
               disabled={!input.trim() || isStreaming}
             >
               {isStreaming ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowUp className="h-3.5 w-3.5" />}
@@ -432,7 +432,7 @@ function AssistantBubble({
   const jsonStart = content.lastIndexOf('```json')
   const hasOpenJsonBlock = jsonStart !== -1 && !content.slice(jsonStart + 7).includes('```')
   const visibleContent = streaming && hasOpenJsonBlock ? content.slice(0, jsonStart) : content
-  const textOnly = visibleContent.replace(/```json[\s\S]*?```/g, '').trim()
+  const textOnly = visibleContent.replaceAll(/```json[\s\S]*?```/g, '').trim()
 
   return (
     <div className="space-y-1.5">

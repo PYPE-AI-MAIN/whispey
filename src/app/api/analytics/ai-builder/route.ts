@@ -71,6 +71,55 @@ function getClient(): OpenAI {
   return new OpenAI({ apiKey })
 }
 
+function errorMessage(err: unknown): string {
+  if (err instanceof OpenAI.APIError) return err.message
+  if (err instanceof Error) return err.message
+  return 'Unknown error'
+}
+
+// A chart JSON is small; this is a safety net against a cut-off reply, not
+// an expected path — see /api/workflow/chat for the pattern this mirrors.
+const MAX_ROUNDS = 3
+
+async function streamChart(client: OpenAI, convo: OpenAI.Chat.ChatCompletionMessageParam[], writer: WritableStreamDefaultWriter<Uint8Array>) {
+  try {
+    let finishReason: string | null | undefined
+    let round = 0
+    do {
+      const stream = await client.chat.completions.create({
+        model: MODEL,
+        messages: convo,
+        stream: true,
+        max_completion_tokens: MAX_TOKENS,
+      })
+      let roundContent = ''
+      finishReason = undefined
+      for await (const chunk of stream) {
+        const content = chunk.choices?.[0]?.delta?.content
+        if (content) {
+          roundContent += content
+          await writer.write(sse(JSON.stringify({ content })))
+        }
+        if (chunk.choices?.[0]?.finish_reason) finishReason = chunk.choices[0].finish_reason
+      }
+      if (finishReason !== 'length') break
+      convo.push(
+        { role: 'assistant', content: roundContent },
+        { role: 'user', content: 'Continue exactly where you stopped. Do not repeat anything already written and do not restart the JSON — just emit the remaining characters.' }
+      )
+    } while (++round < MAX_ROUNDS)
+
+    if (finishReason === 'length') {
+      await writer.write(sse(JSON.stringify({ truncated: true })))
+    }
+    await writer.write(sse('[DONE]'))
+  } catch (err) {
+    await writer.write(sse(JSON.stringify({ error: errorMessage(err) })))
+  } finally {
+    await writer.close()
+  }
+}
+
 function systemPrompt(
   fields: z.infer<typeof FieldIn>[],
   ranking: z.infer<typeof Body>['ranking'],
@@ -92,6 +141,13 @@ function systemPrompt(
       group: f.group ?? undefined,
       from_field_extractor: f.declared || undefined,
     }))
+
+  const rankingSection = ranking?.order?.length
+    ? `\n## This agent's outcome order, best first (context only, rarely needed directly)\n${JSON.stringify(ranking.order)}`
+    : ''
+  const currentChartSection = currentChart
+    ? `\n## The current draft chart (change this in place unless asked to start over)\n\`\`\`json\n${JSON.stringify(currentChart, null, 2)}\n\`\`\``
+    : ''
 
   return `You build ONE chart for a voice-agent call analytics dashboard called Whispey, chatting with the person building it.
 
@@ -130,8 +186,8 @@ When asked specifically what the Field Extractor (or "extracted fields") can bui
 
 ## This agent's fields (best-covered first; "means" is what it actually captures, when known)
 ${JSON.stringify(catalog)}
-${ranking?.order?.length ? `\n## This agent's outcome order, best first (context only, rarely needed directly)\n${JSON.stringify(ranking.order)}` : ''}
-${currentChart ? `\n## The current draft chart (change this in place unless asked to start over)\n\`\`\`json\n${JSON.stringify(currentChart, null, 2)}\n\`\`\`` : ''}`
+${rankingSection}
+${currentChartSection}`
 }
 
 export async function POST(req: NextRequest) {
@@ -159,49 +215,7 @@ export async function POST(req: NextRequest) {
   const { readable, writable } = new TransformStream()
   const writer = writable.getWriter()
 
-  // A chart JSON is small; this is a safety net against a cut-off reply, not
-  // an expected path — see /api/workflow/chat for the pattern this mirrors.
-  const MAX_ROUNDS = 3
-
-  ;(async () => {
-    try {
-      let finishReason: string | null | undefined
-      let round = 0
-      do {
-        const stream = await client.chat.completions.create({
-          model: MODEL,
-          messages: convo,
-          stream: true,
-          max_completion_tokens: MAX_TOKENS,
-        })
-        let roundContent = ''
-        finishReason = undefined
-        for await (const chunk of stream) {
-          const content = chunk.choices?.[0]?.delta?.content
-          if (content) {
-            roundContent += content
-            await writer.write(sse(JSON.stringify({ content })))
-          }
-          if (chunk.choices?.[0]?.finish_reason) finishReason = chunk.choices[0].finish_reason
-        }
-        if (finishReason !== 'length') break
-        convo.push(
-          { role: 'assistant', content: roundContent },
-          { role: 'user', content: 'Continue exactly where you stopped. Do not repeat anything already written and do not restart the JSON — just emit the remaining characters.' }
-        )
-      } while (++round < MAX_ROUNDS)
-
-      if (finishReason === 'length') {
-        await writer.write(sse(JSON.stringify({ truncated: true })))
-      }
-      await writer.write(sse('[DONE]'))
-    } catch (err) {
-      const message = err instanceof OpenAI.APIError ? err.message : err instanceof Error ? err.message : 'Unknown error'
-      await writer.write(sse(JSON.stringify({ error: message })))
-    } finally {
-      await writer.close()
-    }
-  })()
+  streamChart(client, convo, writer)
 
   return new Response(readable, {
     headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' },
