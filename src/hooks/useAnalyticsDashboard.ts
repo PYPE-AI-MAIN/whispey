@@ -30,25 +30,44 @@ async function json<T>(url: string, init?: RequestInit): Promise<T> {
 type DashboardPayload = {
   dashboard: Dashboard
   widgets: Widget[]
-  agent: { id: string; name: string }
+  /** null on the org-wide canvas — there is no single agent to name there. */
+  agent: { id: string; name: string } | null
   can_edit: boolean
   download_disabled: boolean
 }
 
-export function useAnalyticsDashboard(agentId: string | undefined, enabled: boolean) {
+/**
+ * Which canvas this is: one agent's own dashboard, or the org-wide one
+ * spanning every agent in a project (Confluence "Analytics Phase 3 and 4 —
+ * Build Spec" §3.4). Every route below already accepts `agentId` XOR
+ * `projectId` — this is just the one place that distinction gets made, so it
+ * can't drift between the three hooks that each need to make it.
+ */
+export type AnalyticsScope = { kind: 'agent'; id: string } | { kind: 'project'; id: string }
+const scopeParam = (scope: AnalyticsScope): { agentId: string } | { projectId: string } =>
+  scope.kind === 'agent' ? { agentId: scope.id } : { projectId: scope.id }
+
+export function useAnalyticsDashboard(scope: AnalyticsScope | undefined, enabled: boolean) {
   const queryClient = useQueryClient()
+  const dashboardKey = ['analytics', 'dashboard', scope?.kind, scope?.id] as const
 
   const dashboard = useQuery({
-    queryKey: ['analytics', 'dashboard', agentId],
-    queryFn: () => json<DashboardPayload>(`/api/analytics/dashboard?agentId=${agentId}`),
-    enabled: Boolean(agentId) && enabled,
+    queryKey: dashboardKey,
+    queryFn: () => {
+      const [key, id] = [scope!.kind === 'agent' ? 'agentId' : 'projectId', scope!.id]
+      return json<DashboardPayload>(`/api/analytics/dashboard?${key}=${id}`)
+    },
+    enabled: Boolean(scope) && enabled,
     staleTime: 60_000,
   })
 
   const fields = useQuery({
-    queryKey: ['analytics', 'fields', agentId],
-    queryFn: () => json<{ fields: CatalogField[]; outcome_ranking: unknown }>(`/api/analytics/fields?agentId=${agentId}`),
-    enabled: Boolean(agentId) && enabled,
+    queryKey: ['analytics', 'fields', scope?.kind, scope?.id],
+    queryFn: () => {
+      const [key, id] = [scope!.kind === 'agent' ? 'agentId' : 'projectId', scope!.id]
+      return json<{ fields: CatalogField[]; outcome_ranking: unknown }>(`/api/analytics/fields?${key}=${id}`)
+    },
+    enabled: Boolean(scope) && enabled,
     // the catalog changes when an agent's extractor changes, which is rare
     staleTime: 10 * 60_000,
   })
@@ -58,13 +77,13 @@ export function useAnalyticsDashboard(agentId: string | undefined, enabled: bool
       json<{ version: number; widgets: Widget[] }>(`/api/analytics/dashboard`, {
         method: 'PUT',
         body: JSON.stringify({
-          agentId,
+          ...scopeParam(scope!),
           dashboardId: dashboard.data?.dashboard.id,
           version: dashboard.data?.dashboard.version,
           widgets: payload.widgets,
         }),
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['analytics', 'dashboard', agentId] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: dashboardKey }),
   })
 
   return { dashboard, fields, save }
@@ -110,10 +129,10 @@ export function useAnalyticsDashboard(agentId: string | undefined, enabled: bool
  *     fetch itself is still this hand-rolled batch-and-merge, not `useQuery`.
  */
 type ChartCache = { byWidget: Map<string, WidgetResult>; answered: Map<string, string>; lastContext: string | null }
-const chartCacheKey = (agentId: string | undefined) => ['analytics', 'chartdata', agentId] as const
+const chartCacheKey = (scope: AnalyticsScope | undefined) => ['analytics', 'chartdata', scope?.kind, scope?.id] as const
 
 export function useChartData(
-  agentId: string | undefined,
+  scope: AnalyticsScope | undefined,
   widgets: Widget[],
   range: { from: string; to: string } | { days: number } | undefined,
   filters: FilterNodeInput[],
@@ -121,7 +140,7 @@ export function useChartData(
   enabled: boolean
 ) {
   const queryClient = useQueryClient()
-  const initialCache = agentId ? queryClient.getQueryData<ChartCache>(chartCacheKey(agentId)) : undefined
+  const initialCache = scope ? queryClient.getQueryData<ChartCache>(chartCacheKey(scope)) : undefined
 
   const [byWidget, setByWidget] = useState<Map<string, WidgetResult>>(() => initialCache?.byWidget ?? new Map())
   const [isFetching, setIsFetching] = useState(false)
@@ -134,15 +153,15 @@ export function useChartData(
   const persist = useCallback(
     (next: Map<string, WidgetResult>) => {
       byWidgetRef.current = next
-      if (agentId) {
-        queryClient.setQueryData<ChartCache>(chartCacheKey(agentId), {
+      if (scope) {
+        queryClient.setQueryData<ChartCache>(chartCacheKey(scope), {
           byWidget: next,
           answered: new Map(answered.current),
           lastContext: lastContext.current,
         })
       }
     },
-    [agentId, queryClient]
+    [scope, queryClient]
   )
 
   const updateByWidget = useCallback(
@@ -156,25 +175,26 @@ export function useChartData(
     [persist]
   )
 
-  // switching which agent this canvas shows (or first mount) — reload that
-  // agent's own cached answers instead of starting from an empty map
-  const prevAgentId = useRef(agentId)
+  // switching which agent (or project) this canvas shows (or first mount) —
+  // reload that scope's own cached answers instead of starting from an empty map
+  const prevScopeKey = useRef(`${scope?.kind}:${scope?.id}`)
   useEffect(() => {
-    if (prevAgentId.current === agentId) return
-    prevAgentId.current = agentId
-    const cached = agentId ? queryClient.getQueryData<ChartCache>(chartCacheKey(agentId)) : undefined
+    const key = `${scope?.kind}:${scope?.id}`
+    if (prevScopeKey.current === key) return
+    prevScopeKey.current = key
+    const cached = scope ? queryClient.getQueryData<ChartCache>(chartCacheKey(scope)) : undefined
     byWidgetRef.current = cached?.byWidget ?? new Map()
     setByWidget(byWidgetRef.current)
     answered.current = new Map(cached?.answered)
     lastContext.current = cached?.lastContext ?? null
-  }, [agentId, queryClient])
+  }, [scope, queryClient])
 
-  const context = JSON.stringify({ agentId, range, filters, when })
+  const context = JSON.stringify({ scope, range, filters, when })
   const signature = useMemo(() => widgets.map((w) => `${w.id}:${JSON.stringify(w.spec)}`).join('|'), [widgets])
 
   const run = useCallback(
     async (force: boolean) => {
-      if (!enabled || !agentId || widgets.length === 0) return
+      if (!enabled || !scope || widgets.length === 0) return
 
       const contextChanged = lastContext.current !== context
       const specOf = (w: Widget) => JSON.stringify(w.spec)
@@ -193,7 +213,7 @@ export function useChartData(
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            agentId,
+            ...scopeParam(scope),
             range,
             filters,
             time_of_day: when.timeOfDay,
@@ -244,7 +264,7 @@ export function useChartData(
         setIsFetching(false)
       }
     },
-    [agentId, context, enabled, filters, persist, range, updateByWidget, when, widgets]
+    [scope, context, enabled, filters, persist, range, updateByWidget, when, widgets]
   )
 
   useEffect(() => {
@@ -278,12 +298,12 @@ export type DashboardContext = {
   days_of_week: number[] | null
 }
 
-export function useCsvExport(agentId: string | undefined) {
+export function useCsvExport(scope: AnalyticsScope | undefined) {
   const [state, setState] = useState<{ busy: boolean; rows: number; error?: string }>({ busy: false, rows: 0 })
 
   const run = useCallback(
     async (spec: unknown, dimensionValue: string | null | undefined, filename: string, dashboard?: DashboardContext) => {
-      if (!agentId) return
+      if (!scope) return
       setState({ busy: true, rows: 0 })
       const parts: string[] = []
       let cursor: unknown = null
@@ -295,7 +315,7 @@ export function useCsvExport(agentId: string | undefined) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              agentId,
+              ...scopeParam(scope),
               spec,
               dimensionValue,
               cursor,
@@ -324,7 +344,7 @@ export function useCsvExport(agentId: string | undefined) {
         setState({ busy: false, rows: 0, error: (err as Error).message })
       }
     },
-    [agentId]
+    [scope]
   )
 
   return { ...state, run }

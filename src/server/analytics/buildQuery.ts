@@ -610,7 +610,7 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
       rowFilters.push(`(${t}.started_at, ${t}.id) < (${bind(opts.cursor.startedAt)}::timestamp, ${bind(opts.cursor.id)}::uuid)`)
     }
     const cols = [
-      `${t}.id`, `${t}.call_id`, `${t}.customer_number`, `${t}.started_at`,
+      `${t}.id`, `${t}.call_id`, `${t}.agent_id`, `${t}.customer_number`, `${t}.started_at`,
       `${t}.call_ended_at`,
       // duration_seconds is a DDL default computed at INSERT, when the call has
       // not ended — so it is NULL on most rows, and the drill list showed "—"

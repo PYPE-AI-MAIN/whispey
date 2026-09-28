@@ -94,8 +94,12 @@ function AgentRow({ agent, projectId }: Readonly<{ agent: OrgAgentRow; projectId
   )
 }
 
-/** Quick-pick day pills plus a custom-range calendar popover — same pattern as the per-agent Period control in Dashboard.tsx. */
-function RangePicker({ range, onChange }: Readonly<{ range: OverviewRange; onChange: (r: OverviewRange) => void }>) {
+/**
+ * Quick-pick day pills plus a custom-range calendar popover — same pattern as
+ * the per-agent Period control in Dashboard.tsx. Exported: the Explore tab
+ * reuses this exact control rather than a second copy of the same UI.
+ */
+export function RangePicker({ range, onChange }: Readonly<{ range: OverviewRange; onChange: (r: OverviewRange) => void }>) {
   const isCustom = 'from' in range
   const [draft, setDraft] = useState<DayPickerRange | undefined>(
     isCustom ? { from: parseLocalDate(range.from), to: parseLocalDate(range.to) } : undefined

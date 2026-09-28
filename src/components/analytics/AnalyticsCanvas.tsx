@@ -19,7 +19,8 @@ import { ChevronRight, Loader2, PanelRightOpen, RefreshCw, RotateCcw, Save, Slid
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useMobile } from '@/hooks/use-mobile'
-import { useAnalyticsDashboard, useChartData, useCsvExport, type DashboardContext } from '@/hooks/useAnalyticsDashboard'
+import { useAnalyticsDashboard, useChartData, useCsvExport, type AnalyticsScope, type DashboardContext } from '@/hooks/useAnalyticsDashboard'
+import { useSupabaseQuery } from '@/hooks/useSupabase'
 import type { CatalogField, ChartKind, FormulaContent, Widget } from '@/types/analytics'
 import type { FilterNodeInput, SpecInput } from '@/server/analytics/spec'
 import { ChartCard, DRAG_HANDLE_CLASS, type ChartWidget } from './ChartCard'
@@ -83,10 +84,32 @@ const COLUMNS = { lg: GRID_COLUMNS, sm: 1 }
 
 export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, isActive = true }: Readonly<Props>) {
   const agentId = agent?.id
+  // No agent means this is the org-wide Explore canvas (§3.5.2) — every agent
+  // in the project instead of one. Never both: `resolveProjectAnalyticsContext`
+  // wins over `resolveAnalyticsContext` server-side if a caller ever sent both.
+  const scope: AnalyticsScope | undefined = agentId
+    ? { kind: 'agent', id: agentId }
+    : project?.id
+      ? { kind: 'project', id: project.id }
+      : undefined
   const { isMobile } = useMobile()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { dashboard, fields, save } = useAnalyticsDashboard(agentId, Boolean(isActive))
+  const { dashboard, fields, save } = useAnalyticsDashboard(scope, Boolean(isActive))
+
+  // Only fetched for the org-wide canvas, and only for labelling the
+  // drill-through's mixed-agent rows (LogsOverlay's `agentNames`) — nothing
+  // else here needs a name, just `Ctx.agentIds`, which the server resolves.
+  const agentNames = useSupabaseQuery<{ id: string; name: string; display_name: string | null }>(
+    'pype_voice_agents',
+    scope?.kind === 'project'
+      ? { select: 'id, name, display_name', filters: [{ column: 'project_id', operator: 'eq', value: scope.id }] }
+      : null
+  )
+  const agentNameMap = useMemo(
+    () => new Map((agentNames.data ?? []).map((a) => [a.id, a.display_name || a.name])),
+    [agentNames.data]
+  )
 
   const [draft, setDraft] = useState<Widget[] | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -167,7 +190,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
   const dirty = draft !== null
   const catalog = useMemo(() => fields.data?.fields ?? [], [fields.data])
   const ranking = (fields.data?.outcome_ranking ?? null) as OutcomeRanking
-  const csv = useCsvExport(agentId)
+  const csv = useCsvExport(scope)
 
   // a filtered view is a link somebody can send (§10.3)
   const filters = useMemo(() => decodeFilters(searchParams.get('af')), [searchParams])
@@ -191,7 +214,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
   )
 
   const range = useMemo(() => ({ from: dateRange.from.slice(0, 10), to: dateRange.to.slice(0, 10) }), [dateRange])
-  const charts = useChartData(agentId, queryableWidgets, range, filters, when, Boolean(isActive))
+  const charts = useChartData(scope, queryableWidgets, range, filters, when, Boolean(isActive))
   // the same Period/filters/When merge /api/analytics/query does, so the logs
   // overlay and CSV export read what the card on screen is showing rather than
   // the widget's own saved defaults — memoized, or a new object every render
@@ -311,11 +334,16 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
       edit(w.id, { spec: { ...w.spec, grain: 'interaction', dedupe: undefined } as SpecInput })
       return
     }
-    if (!ranking?.order?.length) {
+    // outcome ranking is a single-agent concept — OutcomeOrderEditor edits one
+    // agent's pype_voice_agents.outcome_ranking, and the org-wide canvas has
+    // no agent for that editor to open on. entitySpec already tolerates a
+    // null ranking (falls back to 'most_recent'), so project scope just uses
+    // that instead of asking for an order that has nowhere to be saved.
+    if (agentId && !ranking?.order?.length) {
       setOrderEditor(true)
       return
     }
-    edit(w.id, { spec: entitySpec(w.spec, catalog, ranking) })
+    edit(w.id, { spec: entitySpec(w.spec, catalog, ranking, Boolean(agentId)) })
   }
 
   const persist = () => {
@@ -341,7 +369,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
     )
   }
 
-  if (!agentId) return null
+  if (!scope) return null
 
   if (dashboard.isLoading || isLoading) return <DashboardSkeleton />
 
@@ -409,7 +437,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </Button>
-            {canEdit && (
+            {canEdit && agentId && (
               <Button size="sm" variant="ghost" onClick={() => setOrderEditor(true)} className="h-7 text-xs">
                 <SlidersHorizontal className="mr-1 h-3.5 w-3.5" /> Outcome order
               </Button>
@@ -605,6 +633,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
       <LogsOverlay
         agentId={agentId}
         projectId={project?.id ?? ''}
+        agentNames={agentId ? undefined : agentNameMap}
         widget={logs?.widget ?? null}
         grainLabel={logs ? grainLabel(logs.widget, catalog) : 'Every call'}
         seriesLabel={logs?.widget.spec.dimension?.field ? fieldName(logs.widget.spec.dimension.field, catalog) : null}
@@ -617,7 +646,10 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
       />
 
       <OutcomeOrderEditor
-        agentId={agentId}
+        // `open` can only become true where agentId is truthy (the toolbar
+        // button and setGrain's fallback are both gated on it above) — this
+        // empty string is never actually used, same convention as projectId below
+        agentId={agentId ?? ''}
         fields={catalog}
         current={ranking}
         open={orderEditor}
@@ -680,9 +712,16 @@ const asRef = (f: { col: string; path: string[] }) => ({ col: f.col, ...(f.path.
  * set the winner and never set the field to rank by. With no outcome to rank,
  * the honest fallback is the most recent attempt, not a broken chart.
  */
-function entitySpec(spec: SpecInput, fields: CatalogField[], ranking: OutcomeRanking): SpecInput {
+function entitySpec(spec: SpecInput, fields: CatalogField[], ranking: OutcomeRanking, allowAgentRanking: boolean): SpecInput {
   const key = identityFields(fields)[0]
-  const outcome = outcomeField(fields, ranking?.field)
+  // outcomeField() guesses a plausible outcome field even with no ranking
+  // configured (`usable(fields, 'enum')[0]`) — fine on the per-agent canvas,
+  // where that guess only ever fires with a real ranking.field to match
+  // against (setGrain gates on `ranking?.order?.length` first). On the
+  // org-wide canvas there is no agent's outcome_ranking to resolve
+  // `ranking_ref: 'agent'` against server-side, so skip the guess entirely
+  // rather than emit a spec the query engine can only reject.
+  const outcome = allowAgentRanking ? outcomeField(fields, ranking?.field) : undefined
   return {
     ...spec,
     grain: 'entity',

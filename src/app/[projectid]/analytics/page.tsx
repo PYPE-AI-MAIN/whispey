@@ -15,10 +15,12 @@
  */
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { Suspense } from 'react'
+import { Suspense, useMemo, useState } from 'react'
 import { BarChart3, ChevronRight } from 'lucide-react'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
-import { OrgOverview } from '@/components/analytics/OrgOverview'
+import { OrgOverview, RangePicker } from '@/components/analytics/OrgOverview'
+import AnalyticsCanvas from '@/components/analytics/AnalyticsCanvas'
+import type { OverviewRange } from '@/hooks/useOrgOverview'
 
 type Tab = 'overview' | 'explore' | 'journeys'
 const TABS: { id: Tab; label: string }[] = [
@@ -31,6 +33,39 @@ function ComingSoon({ label }: Readonly<{ label: string }>) {
   return (
     <div className="flex h-full items-center justify-center text-sm text-gray-500 dark:text-gray-400">
       {label} is on its way.
+    </div>
+  )
+}
+
+/**
+ * Explore — Confluence "Analytics Phase 3 and 4 — Build Spec" §3.5.2. The
+ * identical canvas the per-agent page uses, just with no single `agent` — the
+ * canvas itself already generalizes to an org-wide `Ctx.agentIds` from that.
+ *
+ * `AnalyticsCanvas` takes an already-resolved `{ from, to }` as a prop rather
+ * than owning its own Period control (Dashboard.tsx's own convention: the
+ * canvas reads it, the page around it owns it) — so this reuses the exact
+ * same RangePicker the Overview tab already has, instead of a second one.
+ */
+function ExploreTab({ projectId, isActive }: Readonly<{ projectId: string; isActive: boolean }>) {
+  const [range, setRange] = useState<OverviewRange>({ days: 30 })
+  const dateRange = useMemo(() => {
+    if ('from' in range) return range
+    const to = new Date()
+    const from = new Date(to)
+    from.setDate(to.getDate() - range.days)
+    const fmt = (d: Date) => d.toISOString().slice(0, 10)
+    return { from: fmt(from), to: fmt(to) }
+  }, [range])
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-end border-b border-gray-200 bg-white px-4 py-2 dark:border-gray-800 dark:bg-gray-900">
+        <RangePicker range={range} onChange={setRange} />
+      </div>
+      <div className="min-h-0 flex-1">
+        <AnalyticsCanvas project={{ id: projectId }} agent={null} dateRange={dateRange} isActive={isActive} />
+      </div>
     </div>
   )
 }
@@ -104,7 +139,7 @@ function OrgAnalyticsPageContent() {
           <OrgOverview projectId={projectId} isActive={activeTab === 'overview'} />
         </div>
         <div className={activeTab === 'explore' ? 'block h-full' : 'hidden'}>
-          <ComingSoon label="Explore" />
+          <ExploreTab projectId={projectId} isActive={activeTab === 'explore'} />
         </div>
         <div className={activeTab === 'journeys' ? 'block h-full' : 'hidden'}>
           <ComingSoon label="Journeys" />
