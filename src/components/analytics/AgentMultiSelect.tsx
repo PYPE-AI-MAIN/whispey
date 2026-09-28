@@ -17,6 +17,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 
 export type Agent = { id: string; name: string }
 
+function selectionLabel(agents: Agent[], selectedSet: Set<string>): string {
+  if (selectedSet.size === 0) return 'Agents: None'
+  if (selectedSet.size === 1) return `Agent: ${agents.find((a) => selectedSet.has(a.id))?.name ?? '1 selected'}`
+  return `Agents: ${selectedSet.size} selected`
+}
+
 export function AgentMultiSelect({
   agents,
   selected,
@@ -35,13 +41,7 @@ export function AgentMultiSelect({
     onChange(next.size === agents.length ? null : [...next])
   }
 
-  const label = allSelected
-    ? 'Agents: All'
-    : selectedSet.size === 0
-      ? 'Agents: None'
-      : selectedSet.size === 1
-        ? `Agent: ${agents.find((a) => selectedSet.has(a.id))?.name ?? '1 selected'}`
-        : `Agents: ${selectedSet.size} selected`
+  const label = allSelected ? 'Agents: All' : selectionLabel(agents, selectedSet)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

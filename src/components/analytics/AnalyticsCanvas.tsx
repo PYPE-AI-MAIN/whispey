@@ -66,16 +66,88 @@ type Props = {
 const BREAKPOINTS = { lg: 640, sm: 0 }
 const COLUMNS = { lg: GRID_COLUMNS, sm: 1 }
 
+/** No agent means this is the org-wide Explore canvas (§3.5.2) — every agent in the project instead of one. */
+function scopeFor(agentId: string | undefined, projectId: string | undefined, selectedAgentIds: string[] | null | undefined): AnalyticsScope | undefined {
+  if (agentId) return { kind: 'agent', id: agentId }
+  if (projectId) return { kind: 'project', id: projectId, agentIds: selectedAgentIds ?? undefined }
+  return undefined
+}
+
+type CardContext = {
+  selectedId: string | null
+  canEdit: boolean
+  isMobile: boolean
+  charts: ReturnType<typeof useChartData>
+  catalog: CatalogField[]
+  ranking: OutcomeRanking
+  catalogReady: boolean
+  downloadDisabled: boolean
+  dashboardContext: DashboardContext
+  csv: ReturnType<typeof useCsvExport>
+  selectChart: (id: string) => void
+  setLogs: (v: { widget: ChartWidget; value: string | null | undefined } | null) => void
+  duplicate: (w: Widget) => void
+  setGrain: (w: ChartWidget, grain: 'interaction' | 'entity') => void
+  removeWidget: (w: Widget) => void
+}
+
+/** One dashboard card, by kind — pulled out of the grid's `.map` so that if/else chain scores on its own. */
+function widgetCard(w: Widget, ctx: CardContext): React.ReactNode {
+  const onRemove = () => ctx.removeWidget(w)
+  const onSelect = () => ctx.selectChart(w.id)
+  const selected = ctx.selectedId === w.id
+  const draggable = !ctx.isMobile
+
+  if (w.kind === 'text') {
+    return <TextBlockCard widget={w} selected={selected} canEdit={ctx.canEdit} draggable={draggable} onSelect={onSelect} onRemove={onRemove} />
+  }
+  if (w.kind === 'formula') {
+    return (
+      <FormulaCard
+        widget={w}
+        result={ctx.charts.byWidget.get(w.id)}
+        isLoading={ctx.charts.isLoading}
+        selected={selected}
+        canEdit={ctx.canEdit}
+        draggable={draggable}
+        definition={explainFormula(w.spec as FormulaContent, ctx.catalog)}
+        onSelect={onSelect}
+        onRemove={onRemove}
+      />
+    )
+  }
+  const cw = w as ChartWidget
+  return (
+    <ChartCard
+      widget={cw}
+      result={ctx.charts.byWidget.get(w.id)}
+      isLoading={ctx.charts.isLoading}
+      selected={selected}
+      canEdit={ctx.canEdit}
+      // dragging off on a phone: the canvas is for reading there
+      draggable={draggable}
+      categories={categoriesFor(cw, ctx.catalog, ctx.ranking)}
+      catalog={ctx.catalog}
+      catalogReady={ctx.catalogReady}
+      grainLabel={grainLabel(cw, ctx.catalog)}
+      definition={explainSpec(w.spec as SpecInput, ctx.catalog)}
+      onSelect={onSelect}
+      onOpenLogs={(value) => ctx.setLogs({ widget: cw, value })}
+      onEdit={onSelect}
+      onDuplicate={() => ctx.duplicate(w)}
+      onRemove={onRemove}
+      onExport={() => !ctx.downloadDisabled && ctx.csv.run(w.spec as SpecInput, undefined, w.title, ctx.dashboardContext)}
+      onChangeGrain={(grain) => ctx.setGrain(cw, grain)}
+    />
+  )
+}
+
 export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, isActive = true, selectedAgentIds }: Readonly<Props>) {
   const agentId = agent?.id
   // No agent means this is the org-wide Explore canvas (§3.5.2) — every agent
   // in the project instead of one. Never both: `resolveProjectAnalyticsContext`
   // wins over `resolveAnalyticsContext` server-side if a caller ever sent both.
-  const scope: AnalyticsScope | undefined = agentId
-    ? { kind: 'agent', id: agentId }
-    : project?.id
-      ? { kind: 'project', id: project.id, agentIds: selectedAgentIds ?? undefined }
-      : undefined
+  const scope: AnalyticsScope | undefined = scopeFor(agentId, project?.id, selectedAgentIds)
   const { isMobile } = useMobile()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -467,71 +539,33 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
                 selectChart(card.id)
               }}
             >
-              {widgets.map((w) => {
-                const removeWidget = () => {
-                  setDraft((draft ?? widgets).filter((x) => x.id !== w.id))
-                  if (selectedId === w.id) setSelectedId(null)
-                }
-
-                let card: React.ReactNode
-                if (w.kind === 'text') {
-                  card = (
-                    <TextBlockCard
-                      widget={w}
-                      selected={selectedId === w.id}
-                      canEdit={canEdit}
-                      draggable={!isMobile}
-                      onSelect={() => selectChart(w.id)}
-                      onRemove={removeWidget}
-                    />
-                  )
-                } else if (w.kind === 'formula') {
-                  card = (
-                    <FormulaCard
-                      widget={w}
-                      result={charts.byWidget.get(w.id)}
-                      isLoading={charts.isLoading}
-                      selected={selectedId === w.id}
-                      canEdit={canEdit}
-                      draggable={!isMobile}
-                      definition={explainFormula(w.spec as FormulaContent, catalog)}
-                      onSelect={() => selectChart(w.id)}
-                      onRemove={removeWidget}
-                    />
-                  )
-                } else {
-                  card = (
-                    <ChartCard
-                      widget={w as ChartWidget}
-                      result={charts.byWidget.get(w.id)}
-                      isLoading={charts.isLoading}
-                      selected={selectedId === w.id}
-                      canEdit={canEdit}
-                      // dragging off on a phone: the canvas is for reading there
-                      draggable={!isMobile}
-                      categories={categoriesFor(w as ChartWidget, catalog, ranking)}
-                      catalog={catalog}
-                      catalogReady={fields.isSuccess}
-                      grainLabel={grainLabel(w as ChartWidget, catalog)}
-                      definition={explainSpec(w.spec as SpecInput, catalog)}
-                      onSelect={() => selectChart(w.id)}
-                      onOpenLogs={(value) => setLogs({ widget: w as ChartWidget, value })}
-                      onEdit={() => selectChart(w.id)}
-                      onDuplicate={() => duplicate(w)}
-                      onRemove={removeWidget}
-                      onExport={() => !downloadDisabled && csv.run(w.spec as SpecInput, undefined, w.title, dashboardContext)}
-                      onChangeGrain={(grain) => setGrain(w as ChartWidget, grain)}
-                    />
-                  )
-                }
-
-                return (
-                  <div key={w.id}>
-                    {/* the eleven cards beside this one keep working */}
-                    <ChartErrorBoundary label={w.title}>{card}</ChartErrorBoundary>
-                  </div>
-                )
-              })}
+              {widgets.map((w) => (
+                <div key={w.id}>
+                  {/* the eleven cards beside this one keep working */}
+                  <ChartErrorBoundary label={w.title}>
+                    {widgetCard(w, {
+                      selectedId,
+                      canEdit,
+                      isMobile,
+                      charts,
+                      catalog,
+                      ranking,
+                      catalogReady: fields.isSuccess,
+                      downloadDisabled,
+                      dashboardContext,
+                      csv,
+                      selectChart,
+                      setLogs,
+                      duplicate,
+                      setGrain,
+                      removeWidget: (widget) => {
+                        setDraft((draft ?? widgets).filter((x) => x.id !== widget.id))
+                        if (selectedId === widget.id) setSelectedId(null)
+                      },
+                    })}
+                  </ChartErrorBoundary>
+                </div>
+              ))}
               </ResponsiveGridLayout>
             )}
           </div>

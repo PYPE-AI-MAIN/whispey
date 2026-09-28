@@ -9,7 +9,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import crypto from 'crypto'
+import crypto from 'node:crypto'
 import { verifyToken } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { guarded } from '@/server/analytics/guard'

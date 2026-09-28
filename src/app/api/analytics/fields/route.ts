@@ -115,7 +115,7 @@ async function getProjectFields(projectId: string) {
   // several agents can produce the same field; keep the one with the best coverage
   const byIdentity = new Map<string, (typeof described)[number]>()
   for (const f of described) {
-    const key = `${f.col}.${((f.path ?? []) as string[]).join('.')}`
+    const key = `${f.col}.${(f.path ?? []).join('.')}`
     const prior = byIdentity.get(key)
     if (!prior || Number(f.coverage_pct) > Number(prior.coverage_pct)) byIdentity.set(key, f)
   }

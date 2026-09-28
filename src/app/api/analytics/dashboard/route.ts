@@ -198,7 +198,7 @@ export const PUT = guarded('analytics/dashboard', async (req: NextRequest) => {
     .from('pype_analytics_dashboards')
     .update({ version: body.version + 1, ...(body.defaults ? { defaults: body.defaults } : {}) })
     .eq('id', body.dashboardId)
-  update = body.projectId ? update.eq('project_id', body.projectId) : update.eq('agent_id', body.agentId!)
+  update = body.projectId ? update.eq('project_id', body.projectId) : update.eq('agent_id', body.agentId)
   const bumped = await update
     .eq('version', body.version)
     .select('id, version')

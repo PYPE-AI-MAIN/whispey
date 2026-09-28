@@ -13,10 +13,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { RowsBody, fetchRowPage, ROW_COLUMNS } from '@/server/analytics/rowsRequest'
 import { resolveAnalyticsContext, resolveProjectAnalyticsContext, isDenied } from '@/server/analytics/context'
-import { isTimeout } from '@/server/analytics/db'
-import { SpecError, InternalSpecError } from '@/server/analytics/buildQuery'
 import { csvPage } from '@/server/analytics/csv'
-import { guarded } from '@/server/analytics/guard'
+import { guarded, specErrorResponse } from '@/server/analytics/guard'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -51,13 +49,6 @@ export const POST = guarded('analytics/export', async (req: NextRequest) => {
       },
     })
   } catch (err) {
-    if (isTimeout(err)) return NextResponse.json({ error: 'That took too long. Try a shorter date range.' }, { status: 504 })
-    if (err instanceof SpecError) return NextResponse.json({ error: err.message }, { status: 400 })
-    if (err instanceof InternalSpecError) {
-      console.error('[analytics/export] compiler bug', err.message)
-      return NextResponse.json({ error: 'Could not load this. The problem has been logged.' }, { status: 500 })
-    }
-    console.error('[analytics/export]', err)
-    return NextResponse.json({ error: 'Could not build the export' }, { status: 500 })
+    return specErrorResponse('analytics/export', err, 'Could not build the export')
   }
 })
