@@ -515,7 +515,7 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
     suffix: string
   ): string[] => {
     const aggField = agg.field
-    const numericFn = ['sum', 'avg', 'min', 'max', 'stddev', 'p50', 'p90', 'p95'].includes(agg.fn)
+    const numericFn = ['sum', 'avg', 'min', 'max', 'stddev', 'p50', 'p90', 'p95', 'sum_ceil_minutes'].includes(agg.fn)
     let present: string
     if (!aggField) present = 'TRUE'
     else if (agg.fn === 'rate') present = `(${boolean(aggField, t, true)} OR ${boolean(aggField, t, false)})`
@@ -564,6 +564,12 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
         value = `percentile_cont(${q}) WITHIN GROUP (ORDER BY ${numeric(requireField(agg.fn), t)})${filter()}`
         break
       }
+      // billing rounds a call up to the next full minute before totalling —
+      // 61s bills as 2 minutes, not 1.02. The field is assumed to be seconds;
+      // the result is already in minutes, so display needs no further `scale`.
+      case 'sum_ceil_minutes':
+        value = `sum(ceil(${numeric(requireField(agg.fn), t)} / 60.0))${filter()}`
+        break
       default:
         value = `${agg.fn}(${numeric(requireField(agg.fn), t)})${filter()}`
     }

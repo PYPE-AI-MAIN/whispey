@@ -7,22 +7,29 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
-import { useOrgOverview, type OrgAgentRow } from '@/hooks/useOrgOverview'
+import type { DateRange as DayPickerRange } from 'react-day-picker'
+import { CalendarDays, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useOrgOverview, type OrgAgentRow, type OverviewRange } from '@/hooks/useOrgOverview'
 import { formatValue } from './chartData'
 import type { SpecInput } from '@/server/analytics/spec'
 
-const RANGE_OPTIONS = [
-  { label: '7 days', days: 7 },
-  { label: '30 days', days: 30 },
-  { label: '90 days', days: 90 },
-]
+const DAY_OPTIONS = [7, 30, 90]
 
-const KPI_SPECS: Record<'calls' | 'success' | 'latency' | 'cost', SpecInput> = {
+const KPI_SPECS: Record<'calls' | 'pickup' | 'latency' | 'billing', SpecInput> = {
   calls: { spec_version: 1, agg: { fn: 'count' }, range: { days: 30 }, display: { round: 0 } },
-  success: { spec_version: 1, agg: { fn: 'count' }, range: { days: 30 }, display: { round: 1, unit: '%' } },
+  pickup: { spec_version: 1, agg: { fn: 'count' }, range: { days: 30 }, display: { round: 1, unit: '%' } },
   latency: { spec_version: 1, agg: { fn: 'avg', field: { col: 'avg_latency' } }, range: { days: 30 }, display: { round: 2, unit: 's' } },
-  cost: { spec_version: 1, agg: { fn: 'sum', field: { col: 'total_cost' } }, range: { days: 30 }, display: { round: 2, unit: '₹' } },
+  billing: { spec_version: 1, agg: { fn: 'sum_ceil_minutes', field: { col: 'billing_duration_seconds' } }, range: { days: 30 }, display: { round: 0, unit: 'm' } },
+}
+
+const formatDateISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const formatShort = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+const parseLocalDate = (s: string) => {
+  const [y, mo, d] = s.split('-').map(Number)
+  return new Date(y, mo - 1, d)
 }
 
 function Kpi({ label, value, spec }: Readonly<{ label: string; value: number | null; spec: SpecInput }>) {
@@ -46,7 +53,7 @@ function AgentRow({ agent, projectId }: Readonly<{ agent: OrgAgentRow; projectId
       <td className="py-3.5 pr-4 font-medium text-gray-900 dark:text-gray-100">{agent.name}</td>
       <td className="py-3.5 pr-4 tabular-nums text-gray-700 dark:text-gray-300">{agent.calls?.toLocaleString() ?? '—'}</td>
       <td className="py-3.5 pr-4 tabular-nums text-gray-700 dark:text-gray-300">
-        {agent.successPct === null ? '—' : `${agent.successPct.toFixed(0)}%`}
+        {agent.pickupPct === null ? '—' : `${agent.pickupPct.toFixed(0)}%`}
       </td>
       <td className="py-3.5 pr-4 tabular-nums text-gray-700 dark:text-gray-300">
         {agent.latency === null ? '—' : `${agent.latency.toFixed(1)}s`}
@@ -61,35 +68,69 @@ function AgentRow({ agent, projectId }: Readonly<{ agent: OrgAgentRow; projectId
   )
 }
 
+/** Quick-pick day pills plus a custom-range calendar popover — same pattern as the per-agent Period control in Dashboard.tsx. */
+function RangePicker({ range, onChange }: Readonly<{ range: OverviewRange; onChange: (r: OverviewRange) => void }>) {
+  const isCustom = 'from' in range
+  const [draft, setDraft] = useState<DayPickerRange | undefined>(
+    isCustom ? { from: parseLocalDate(range.from), to: parseLocalDate(range.to) } : undefined
+  )
+
+  const handleSelect = (picked: DayPickerRange | undefined) => {
+    setDraft(picked)
+    if (picked?.from && picked?.to) onChange({ from: formatDateISO(picked.from), to: formatDateISO(picked.to) })
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex gap-1 rounded-lg border border-gray-200 p-1 dark:border-gray-800">
+        {DAY_OPTIONS.map((days) => (
+          <button
+            key={days}
+            onClick={() => onChange({ days })}
+            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+              !isCustom && 'days' in range && range.days === days
+                ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
+                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
+            }`}
+          >
+            {days} days
+          </button>
+        ))}
+      </div>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className={isCustom ? 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300' : ''}
+          >
+            <CalendarDays className="mr-2 h-3.5 w-3.5 shrink-0" />
+            {isCustom ? `${formatShort(parseLocalDate(range.from))} – ${formatShort(parseLocalDate(range.to))}` : 'Custom range'}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto rounded-xl border-gray-200 p-0 shadow-xl dark:border-gray-700" align="end">
+          <Calendar mode="range" defaultMonth={draft?.from} selected={draft} onSelect={handleSelect} numberOfMonths={2} className="rounded-xl" />
+        </PopoverContent>
+      </Popover>
+    </div>
+  )
+}
+
 export function OrgOverview({ projectId, isActive }: Readonly<{ projectId: string; isActive: boolean }>) {
-  const [days, setDays] = useState(30)
-  const { data, isLoading, error } = useOrgOverview(projectId, days, isActive)
+  const [range, setRange] = useState<OverviewRange>({ days: 30 })
+  const { data, isLoading, error } = useOrgOverview(projectId, range, isActive)
 
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-6xl px-6 py-6 md:px-8">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-50">Overview</h1>
             <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">Summed across every agent in this project.</p>
           </div>
           <div className="flex items-center gap-3">
             {isLoading && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
-            <div className="flex gap-1 rounded-lg border border-gray-200 p-1 dark:border-gray-800">
-              {RANGE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.days}
-                  onClick={() => setDays(opt.days)}
-                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                    days === opt.days
-                      ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
-                      : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+            <RangePicker range={range} onChange={setRange} />
           </div>
         </div>
 
@@ -101,9 +142,9 @@ export function OrgOverview({ projectId, isActive }: Readonly<{ projectId: strin
 
         <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Kpi label="Total Calls" value={data.totalCalls} spec={KPI_SPECS.calls} />
-          <Kpi label="Success %" value={data.successPct} spec={KPI_SPECS.success} />
+          <Kpi label="Pickup %" value={data.pickupPct} spec={KPI_SPECS.pickup} />
           <Kpi label="Avg Latency" value={data.avgLatency} spec={KPI_SPECS.latency} />
-          <Kpi label="Cost" value={data.totalCost} spec={KPI_SPECS.cost} />
+          <Kpi label="Billing Minutes" value={data.billingMinutes} spec={KPI_SPECS.billing} />
         </div>
 
         <div>
@@ -114,7 +155,7 @@ export function OrgOverview({ projectId, isActive }: Readonly<{ projectId: strin
                 <tr className="border-b border-gray-200 dark:border-gray-800">
                   <th className="px-5 py-3 font-medium">Agent</th>
                   <th className="px-5 py-3 font-medium">Calls</th>
-                  <th className="px-5 py-3 font-medium">Success %</th>
+                  <th className="px-5 py-3 font-medium">Pickup %</th>
                   <th className="px-5 py-3 font-medium">Latency</th>
                   <th className="px-5 py-3 font-medium">Status</th>
                 </tr>

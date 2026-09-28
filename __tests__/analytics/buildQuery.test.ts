@@ -842,3 +842,20 @@ describe('the same phone number written three ways is one person', () => {
     expect(sql).not.toContain('regexp_replace')
   })
 })
+
+describe('sum_ceil_minutes rounds each row up before totalling, not the total', () => {
+  it('ceils per row to the next full minute, in SQL, rather than rounding the sum', () => {
+    const { sql } = buildQuery(
+      parse({
+        spec_version: 1,
+        agg: { fn: 'sum_ceil_minutes', field: { col: 'billing_duration_seconds' } },
+        range: { days: 30 },
+      }),
+      ctx,
+      'aggregate'
+    )
+    // a 61s call must bill as 2 minutes, not 1.02 — that only holds if ceil()
+    // wraps each row's own value before sum() adds them up, not the other way
+    expect(sql).toMatch(/sum\(ceil\([^)]*billing_duration_seconds[^)]*\/\s*60\.0\)\)/)
+  })
+})

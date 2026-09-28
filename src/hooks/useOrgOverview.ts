@@ -11,56 +11,64 @@ import { useSupabaseQuery } from '@/hooks/useSupabase'
 import type { ResultRow, WidgetResult } from '@/types/analytics'
 import type { SpecInput } from '@/server/analytics/spec'
 
+export type OverviewRange = { days: number } | { from: string; to: string }
+
 export type OrgAgentRow = {
   id: string
   name: string
   is_active: boolean
   calls: number | null
-  successPct: number | null
+  pickupPct: number | null
   latency: number | null
 }
 
 export type OrgOverviewData = {
   totalCalls: number | null
-  successPct: number | null
+  pickupPct: number | null
   avgLatency: number | null
-  totalCost: number | null
+  billingMinutes: number | null
   agents: OrgAgentRow[]
 }
 
 const WIDGET_IDS = {
   totalCalls: 'total_calls',
-  completedCalls: 'completed_calls',
+  pickupRate: 'pickup_rate',
   avgLatency: 'avg_latency',
-  totalCost: 'total_cost',
+  billingMinutes: 'billing_minutes',
   callsByAgent: 'calls_by_agent',
-  completedByAgent: 'completed_by_agent',
+  pickupByAgent: 'pickup_by_agent',
   latencyByAgent: 'latency_by_agent',
 } as const
 
-function specsFor(days: number): { id: string; spec: SpecInput }[] {
-  const range = { days }
+/**
+ * "Success" is not `call_ended_reason = 'completed'` — the dialler reports
+ * that even for calls where nobody actually spoke, which reads ~3x too high
+ * (Confluence "NHIC - Metric Definitions and Source of Truth"). Pickup is
+ * whether a person was actually on the call, `transcription_metrics
+ * ->> 'is_user_in_call'`, stored as the text '1'/'0'.
+ */
+const PICKUP_FIELD: { col: string; path: string[]; boolean_encoding: 'one_zero' } = {
+  col: 'transcription_metrics',
+  path: ['is_user_in_call'],
+  boolean_encoding: 'one_zero',
+}
+
+function specsFor(range: OverviewRange): { id: string; spec: SpecInput }[] {
   return [
     { id: WIDGET_IDS.totalCalls, spec: { spec_version: 1, agg: { fn: 'count' }, range } },
-    {
-      id: WIDGET_IDS.completedCalls,
-      spec: { spec_version: 1, agg: { fn: 'count' }, having: [{ field: { col: 'call_ended_reason' }, op: 'eq', value: 'completed' }], range },
-    },
+    { id: WIDGET_IDS.pickupRate, spec: { spec_version: 1, agg: { fn: 'rate', field: PICKUP_FIELD }, range } },
     { id: WIDGET_IDS.avgLatency, spec: { spec_version: 1, agg: { fn: 'avg', field: { col: 'avg_latency' } }, range } },
-    { id: WIDGET_IDS.totalCost, spec: { spec_version: 1, agg: { fn: 'sum', field: { col: 'total_cost' } }, range } },
+    {
+      id: WIDGET_IDS.billingMinutes,
+      spec: { spec_version: 1, agg: { fn: 'sum_ceil_minutes', field: { col: 'billing_duration_seconds' } }, range },
+    },
     {
       id: WIDGET_IDS.callsByAgent,
       spec: { spec_version: 1, agg: { fn: 'count' }, dimension: { field: { col: 'agent_id' } }, range },
     },
     {
-      id: WIDGET_IDS.completedByAgent,
-      spec: {
-        spec_version: 1,
-        agg: { fn: 'count' },
-        dimension: { field: { col: 'agent_id' } },
-        having: [{ field: { col: 'call_ended_reason' }, op: 'eq', value: 'completed' }],
-        range,
-      },
+      id: WIDGET_IDS.pickupByAgent,
+      spec: { spec_version: 1, agg: { fn: 'rate', field: PICKUP_FIELD }, dimension: { field: { col: 'agent_id' } }, range },
     },
     {
       id: WIDGET_IDS.latencyByAgent,
@@ -83,7 +91,7 @@ function byAgent(rows: ResultRow[] | undefined): Map<string, number> {
   return out
 }
 
-export function useOrgOverview(projectId: string | undefined, days: number, enabled: boolean) {
+export function useOrgOverview(projectId: string | undefined, range: OverviewRange, enabled: boolean) {
   const [results, setResults] = useState<Map<string, WidgetResult>>(new Map())
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
@@ -99,6 +107,8 @@ export function useOrgOverview(projectId: string | undefined, days: number, enab
       : null
   )
 
+  const rangeKey = 'days' in range ? `d:${range.days}` : `r:${range.from}:${range.to}`
+
   useEffect(() => {
     if (!enabled || !projectId) return
     let cancelled = false
@@ -109,7 +119,7 @@ export function useOrgOverview(projectId: string | undefined, days: number, enab
         const res = await fetch('/api/analytics/query', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ projectId, widgets: specsFor(days) }),
+          body: JSON.stringify({ projectId, widgets: specsFor(range) }),
         })
         if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error ?? `Something went wrong (${res.status})`)
         const reader = res.body?.getReader()
@@ -140,34 +150,32 @@ export function useOrgOverview(projectId: string | undefined, days: number, enab
     return () => {
       cancelled = true
     }
-  }, [projectId, days, enabled])
-
-  const totalCalls = firstValue(results.get(WIDGET_IDS.totalCalls)?.data)
-  const completedCalls = firstValue(results.get(WIDGET_IDS.completedCalls)?.data)
-  const successPct = totalCalls ? ((completedCalls ?? 0) / totalCalls) * 100 : null
+    // `range` is a fresh object per render; `rangeKey` is the real dependency
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, rangeKey, enabled])
 
   const callsByAgent = byAgent(results.get(WIDGET_IDS.callsByAgent)?.data)
-  const completedByAgent = byAgent(results.get(WIDGET_IDS.completedByAgent)?.data)
+  const pickupByAgent = byAgent(results.get(WIDGET_IDS.pickupByAgent)?.data)
   const latencyByAgent = byAgent(results.get(WIDGET_IDS.latencyByAgent)?.data)
 
   const agents: OrgAgentRow[] = (agentsQuery.data ?? []).map((a) => {
-    const calls = callsByAgent.get(a.id) ?? null
-    const completed = completedByAgent.get(a.id) ?? null
+    const pickup = pickupByAgent.get(a.id)
     return {
       id: a.id,
       name: a.display_name || a.name,
       is_active: a.is_active,
-      calls,
-      successPct: calls ? ((completed ?? 0) / calls) * 100 : null,
+      calls: callsByAgent.get(a.id) ?? null,
+      pickupPct: pickup === undefined ? null : pickup * 100,
       latency: latencyByAgent.get(a.id) ?? null,
     }
   })
 
+  const pickupRate = firstValue(results.get(WIDGET_IDS.pickupRate)?.data)
   const data: OrgOverviewData = {
-    totalCalls,
-    successPct,
+    totalCalls: firstValue(results.get(WIDGET_IDS.totalCalls)?.data),
+    pickupPct: pickupRate === null ? null : pickupRate * 100,
     avgLatency: firstValue(results.get(WIDGET_IDS.avgLatency)?.data),
-    totalCost: firstValue(results.get(WIDGET_IDS.totalCost)?.data),
+    billingMinutes: firstValue(results.get(WIDGET_IDS.billingMinutes)?.data),
     agents,
   }
 
