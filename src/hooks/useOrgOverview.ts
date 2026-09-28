@@ -95,7 +95,12 @@ function byAgent(rows: ResultRow[] | undefined): Map<string, number> {
   return out
 }
 
-export function useOrgOverview(projectId: string | undefined, range: OverviewRange, enabled: boolean) {
+export function useOrgOverview(
+  projectId: string | undefined,
+  range: OverviewRange,
+  selectedAgentIds: string[] | null,
+  enabled: boolean
+) {
   const [results, setResults] = useState<Map<string, WidgetResult>>(new Map())
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
@@ -112,6 +117,7 @@ export function useOrgOverview(projectId: string | undefined, range: OverviewRan
   )
 
   const rangeKey = 'days' in range ? `d:${range.days}` : `r:${range.from}:${range.to}`
+  const agentIdsKey = selectedAgentIds?.join(',') ?? ''
 
   useEffect(() => {
     if (!enabled || !projectId) return
@@ -123,7 +129,7 @@ export function useOrgOverview(projectId: string | undefined, range: OverviewRan
         const res = await fetch('/api/analytics/query', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ projectId, widgets: specsFor(range) }),
+          body: JSON.stringify({ projectId, widgets: specsFor(range), agentIds: selectedAgentIds ?? undefined }),
         })
         if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error ?? `Something went wrong (${res.status})`)
         const reader = res.body?.getReader()
@@ -156,13 +162,16 @@ export function useOrgOverview(projectId: string | undefined, range: OverviewRan
     }
     // `range` is a fresh object per render; `rangeKey` is the real dependency
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, rangeKey, enabled])
+  }, [projectId, rangeKey, agentIdsKey, enabled])
 
   const callsByAgent = byAgent(results.get(WIDGET_IDS.callsByAgent)?.data)
   const pickedUpByAgent = byAgent(results.get(WIDGET_IDS.pickedUpByAgent)?.data)
   const latencyByAgent = byAgent(results.get(WIDGET_IDS.latencyByAgent)?.data)
 
-  const agents: OrgAgentRow[] = (agentsQuery.data ?? []).map((a) => {
+  const agentIdSet = selectedAgentIds ? new Set(selectedAgentIds) : null
+  const agents: OrgAgentRow[] = (agentsQuery.data ?? [])
+    .filter((a) => !agentIdSet || agentIdSet.has(a.id))
+    .map((a) => {
     const calls = callsByAgent.get(a.id) ?? null
     const pickedUp = pickedUpByAgent.get(a.id) ?? null
     return {
