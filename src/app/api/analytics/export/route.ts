@@ -12,11 +12,9 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { RowsBody, fetchRowPage, ROW_COLUMNS } from '@/server/analytics/rowsRequest'
-import { resolveAnalyticsContext, isDenied } from '@/server/analytics/context'
-import { isTimeout } from '@/server/analytics/db'
-import { SpecError, InternalSpecError } from '@/server/analytics/buildQuery'
+import { resolveScope, isDenied } from '@/server/analytics/context'
 import { csvPage } from '@/server/analytics/csv'
-import { guarded } from '@/server/analytics/guard'
+import { guarded, specErrorResponse } from '@/server/analytics/guard'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -25,14 +23,16 @@ export const POST = guarded('analytics/export', async (req: NextRequest) => {
   const parsed = RowsBody.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'Bad request' }, { status: 400 })
 
-  const resolved = await resolveAnalyticsContext(parsed.data.agentId, { forDownload: true })
+  const resolved = await resolveScope(parsed.data, { forDownload: true })
+  if (!resolved) return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
   if (isDenied(resolved)) return resolved.errorResponse
   if (resolved.downloadDisabled) {
     return NextResponse.json({ error: 'Downloads are turned off for your account' }, { status: 403 })
   }
+  const outcomeRanking = 'agent' in resolved ? resolved.agent.outcomeRanking : undefined
 
   try {
-    const { rows, nextCursor } = await fetchRowPage(parsed.data, resolved.ctx, resolved.agent.outcomeRanking, 'export')
+    const { rows, nextCursor } = await fetchRowPage(parsed.data, resolved.ctx, outcomeRanking, 'export')
     const columns = [...ROW_COLUMNS, ...(rows[0] && 'series' in rows[0] ? ['series'] : [])]
     const isFirstPage = !parsed.data.cursor
 
@@ -45,13 +45,6 @@ export const POST = guarded('analytics/export', async (req: NextRequest) => {
       },
     })
   } catch (err) {
-    if (isTimeout(err)) return NextResponse.json({ error: 'That took too long. Try a shorter date range.' }, { status: 504 })
-    if (err instanceof SpecError) return NextResponse.json({ error: err.message }, { status: 400 })
-    if (err instanceof InternalSpecError) {
-      console.error('[analytics/export] compiler bug', err.message)
-      return NextResponse.json({ error: 'Could not load this. The problem has been logged.' }, { status: 500 })
-    }
-    console.error('[analytics/export]', err)
-    return NextResponse.json({ error: 'Could not build the export' }, { status: 500 })
+    return specErrorResponse('analytics/export', err, 'Could not build the export')
   }
 })

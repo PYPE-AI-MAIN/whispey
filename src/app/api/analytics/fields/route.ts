@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { JSON_COLS } from '@/server/analytics/spec'
 import { scanColumn, scanBuiltins, inferField, catalogIsStale, type FieldStats } from '@/server/analytics/catalog'
-import { resolveAnalyticsContext, isDenied } from '@/server/analytics/context'
+import { resolveAnalyticsContext, resolveProjectAnalyticsContext, isDenied } from '@/server/analytics/context'
 import { applyDeclarations } from '@/server/analytics/extractor'
 import { guarded } from '@/server/analytics/guard'
 
@@ -22,8 +22,13 @@ const supabase = createServiceRoleClient()
 
 export const GET = guarded('analytics/fields', async (req: NextRequest) => {
   const agentId = req.nextUrl.searchParams.get('agentId')
+  const projectId = req.nextUrl.searchParams.get('projectId')
   const force = req.nextUrl.searchParams.get('refresh') === '1'
-  if (!agentId) return NextResponse.json({ error: 'agentId is required' }, { status: 400 })
+  if (!agentId && !projectId) return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
+
+  if (projectId) return getProjectFields(projectId)
+  // unreachable — the guard above requires at least one of agentId/projectId
+  if (!agentId) return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
 
   const resolved = await resolveAnalyticsContext(agentId)
   if (isDenied(resolved)) return resolved.errorResponse
@@ -74,6 +79,55 @@ export const GET = guarded('analytics/fields', async (req: NextRequest) => {
     fields: described,
   })
 })
+
+/**
+ * Confluence "Analytics Phase 3 and 4 — Build Spec" §3.4: union the field
+ * catalogs of every agent in scope, rather than scanning per agent (a rescan
+ * already happens whenever that agent's own page is opened; the org view only
+ * reads what's already there).
+ *
+ * There is no single agent's outcome_ranking here, so it's returned null —
+ * ranking a project's outcomes stays an agent-page concept, not an org one.
+ */
+async function getProjectFields(projectId: string) {
+  const resolved = await resolveProjectAnalyticsContext(projectId)
+  if (isDenied(resolved)) return resolved.errorResponse
+  const { ctx } = resolved
+
+  const [{ data: rows }, { data: agents }] = await Promise.all([
+    supabase.from('pype_analytics_fields').select('*').in('agent_id', ctx.agentIds).order('coverage_pct', { ascending: false }),
+    supabase.from('pype_voice_agents').select('id, field_extractor_prompt').in('id', ctx.agentIds),
+  ])
+  const extractorPromptByAgent = new Map((agents ?? []).map((a) => [a.id, a.field_extractor_prompt ?? null]))
+
+  const visible = (rows ?? []).filter(
+    (r) => !ctx.deniedFields.has(r.col) && !ctx.deniedFields.has(`${r.col}.${(r.path ?? []).join('.')}`)
+  )
+
+  // each agent's rows get that agent's own extractor declarations before
+  // merging, since two agents can extract the same column differently
+  const described = ctx.agentIds.flatMap((id) =>
+    applyDeclarations(
+      visible.filter((r) => r.agent_id === id),
+      extractorPromptByAgent.get(id) ?? null,
+      { includeDescription: resolved.role !== 'viewer' }
+    )
+  )
+
+  // several agents can produce the same field; keep the one with the best coverage
+  const byIdentity = new Map<string, (typeof described)[number]>()
+  for (const f of described) {
+    const key = `${f.col}.${(f.path ?? []).join('.')}`
+    const prior = byIdentity.get(key)
+    if (!prior || Number(f.coverage_pct) > Number(prior.coverage_pct)) byIdentity.set(key, f)
+  }
+
+  return NextResponse.json({
+    agent: null,
+    outcome_ranking: null,
+    fields: [...byIdentity.values()].sort((a, b) => Number(b.coverage_pct) - Number(a.coverage_pct)),
+  })
+}
 
 /** One row for a real column — every call has a duration and a reason it ended, so it is measured, not discovered. */
 function builtinFieldRow(

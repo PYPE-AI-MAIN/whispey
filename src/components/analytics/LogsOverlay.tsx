@@ -17,6 +17,7 @@ import { useCsvExport, type DashboardContext } from '@/hooks/useAnalyticsDashboa
 type Row = {
   id: string
   call_id: string
+  agent_id: string
   customer_number: string | null
   started_at: string | null
   call_ended_at: string | null
@@ -26,11 +27,21 @@ type Row = {
 }
 
 export function LogsOverlay({
-  agentId, projectId, widget, dimensionValue, open, onClose, downloadDisabled, chartTotal, grainLabel, seriesLabel, dashboard,
+  agentId, projectId, agentIds, agentNames, widget, dimensionValue, open, onClose, downloadDisabled, chartTotal, grainLabel, seriesLabel, dashboard,
 }: Readonly<{
-  agentId: string
-  /** Needed to link a row to its call. */
+  /** The single agent this canvas is scoped to — absent for the org-wide
+   * Explore canvas, whose rows can each come from a different agent (see
+   * `openCall`, which reads the row's own agent_id, never this prop). When
+   * absent, `projectId` alone drives the drill/export request instead. */
+  agentId?: string
+  /** Always required: it's how every row's own call links to its own agent's observability page. */
   projectId: string
+  /** The org view's "Agents: All ▾" filter — only meaningful without `agentId`. undefined/null means every agent in the project. */
+  agentIds?: string[] | null
+  /** Only meaningful without `agentId` (rows can come from several agents) —
+   * resolves each row's agent_id to a name, so a mixed list isn't just
+   * unlabeled rows nobody can tell apart. */
+  agentNames?: Map<string, string>
   /** "Every call", or "One per patient" — whatever this chart is counting one of. */
   grainLabel: string
   /** What the chart splits by, for the column heading. */
@@ -54,7 +65,9 @@ export function LogsOverlay({
   const [cursor, setCursor] = useState<{ startedAt: string; id: string } | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const csv = useCsvExport(agentId)
+  const csv = useCsvExport(
+    agentId ? { kind: 'agent', id: agentId } : { kind: 'project', id: projectId, agentIds: agentIds ?? undefined }
+  )
 
   const load = React.useCallback(
     async (next: { startedAt: string; id: string } | null) => {
@@ -66,7 +79,10 @@ export function LogsOverlay({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            agentId,
+            // exactly one of these: the route trusts projectId over agentId
+            // when both are present, so sending both here would silently
+            // widen a single-agent canvas's drill-through to the whole project
+            ...(agentId ? { agentId } : { projectId, agentIds: agentIds ?? undefined }),
             spec: widget.spec,
             dimensionValue,
             cursor: next,
@@ -88,7 +104,7 @@ export function LogsOverlay({
         setLoading(false)
       }
     },
-    [agentId, widget, dimensionValue, dashboard]
+    [agentId, projectId, agentIds, widget, dimensionValue, dashboard]
   )
 
   useEffect(() => {
@@ -107,9 +123,15 @@ export function LogsOverlay({
   /**
    * The call itself, in a new tab — the dashboard you were reading is still
    * there when you come back, filters, scroll position and all.
+   *
+   * Always the ROW's own agent_id, never the canvas-level `agentId` prop: on
+   * the org-wide Explore canvas one drill-through list can mix rows from
+   * several agents, and opening every row through whichever single agent the
+   * canvas happened to be scoped to (or, in that canvas, no agent at all)
+   * would send most of them to the wrong agent's observability page.
    */
-  const openCall = (id: string) =>
-    window.open(`/${projectId}/agents/${agentId}/observability?session_id=${id}`, '_blank', 'noopener')
+  const openCall = (row: Row) =>
+    window.open(`/${projectId}/agents/${row.agent_id}/observability?session_id=${row.id}`, '_blank', 'noopener')
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -178,6 +200,9 @@ export function LogsOverlay({
               <thead className="sticky top-0 z-10 bg-background text-left text-xs uppercase tracking-wide text-gray-400">
                 <tr className="border-b border-gray-200 dark:border-gray-800">
                   <th className="py-2 font-medium">When</th>
+                  {/* only on the org-wide canvas — a single-agent list has one
+                      answer for every row, which the dialog title already gives */}
+                  {!agentId && <th className="py-2 pr-4 font-medium">Agent</th>}
                   <th className="py-2 font-medium">Number</th>
                   <th className="py-2 font-medium">Length</th>
                   <th className="py-2 font-medium">Ended</th>
@@ -191,12 +216,17 @@ export function LogsOverlay({
                 {rows.map((r) => (
                   <tr
                     key={r.id}
-                    onClick={() => openCall(r.id)}
+                    onClick={() => openCall(r)}
                     className="group cursor-pointer border-b border-gray-100 last:border-0 hover:bg-gray-50 dark:border-gray-800/70 dark:hover:bg-gray-800/40"
                   >
                     <td className="whitespace-nowrap py-2 pr-4 text-gray-700 dark:text-gray-300">
                       {r.started_at ? new Date(r.started_at).toLocaleString() : '—'}
                     </td>
+                    {!agentId && (
+                      <td className="max-w-[8rem] truncate py-2 pr-4 text-gray-700 dark:text-gray-300" title={agentNames?.get(r.agent_id) ?? r.agent_id}>
+                        {agentNames?.get(r.agent_id) ?? r.agent_id}
+                      </td>
+                    )}
                     {/* Some rows hold a long web-session id here instead of a
                         phone number; left unbounded it pushed every other
                         column off the dialog. */}

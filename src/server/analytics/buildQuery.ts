@@ -515,7 +515,7 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
     suffix: string
   ): string[] => {
     const aggField = agg.field
-    const numericFn = ['sum', 'avg', 'min', 'max', 'stddev', 'p50', 'p90', 'p95'].includes(agg.fn)
+    const numericFn = ['sum', 'avg', 'min', 'max', 'stddev', 'p50', 'p90', 'p95', 'sum_ceil_minutes'].includes(agg.fn)
     let present: string
     if (!aggField) present = 'TRUE'
     else if (agg.fn === 'rate') present = `(${boolean(aggField, t, true)} OR ${boolean(aggField, t, false)})`
@@ -564,6 +564,12 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
         value = `percentile_cont(${q}) WITHIN GROUP (ORDER BY ${numeric(requireField(agg.fn), t)})${filter()}`
         break
       }
+      // billing rounds a call up to the next full minute before totalling —
+      // 61s bills as 2 minutes, not 1.02. The field is assumed to be seconds;
+      // the result is already in minutes, so display needs no further `scale`.
+      case 'sum_ceil_minutes':
+        value = `sum(ceil(${numeric(requireField(agg.fn), t)} / 60.0))${filter()}`
+        break
       default:
         value = `${agg.fn}(${numeric(requireField(agg.fn), t)})${filter()}`
     }
@@ -604,7 +610,7 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
       rowFilters.push(`(${t}.started_at, ${t}.id) < (${bind(opts.cursor.startedAt)}::timestamp, ${bind(opts.cursor.id)}::uuid)`)
     }
     const cols = [
-      `${t}.id`, `${t}.call_id`, `${t}.customer_number`, `${t}.started_at`,
+      `${t}.id`, `${t}.call_id`, `${t}.agent_id`, `${t}.customer_number`, `${t}.started_at`,
       `${t}.call_ended_at`,
       // duration_seconds is a DDL default computed at INSERT, when the call has
       // not ended — so it is NULL on most rows, and the drill list showed "—"

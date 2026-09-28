@@ -4,7 +4,7 @@
  * next to it shows the correct name, since it reads a separate code path.
  */
 import { describe, it, expect } from 'vitest'
-import { readX } from '@/components/analytics/ChartRenderer'
+import { readX, timeTickInterval } from '@/components/analytics/ChartRenderer'
 
 describe('reading the clicked category off a recharts click event', () => {
   it('reads the category from a Bar click, where it is nested under .payload', () => {
@@ -34,5 +34,21 @@ describe('reading the clicked category off a recharts click event', () => {
     expect(readX(null)).toBeNull()
     expect(readX(undefined)).toBeNull()
     expect(readX('general_callback')).toBeNull()
+  })
+})
+
+describe('spacing time-axis ticks so a long series is still readable', () => {
+  it('shows every tick when there are few enough already', () => {
+    expect(timeTickInterval(5)).toBe(0)
+    expect(timeTickInterval(10)).toBe(0)
+  })
+
+  it('skips down to roughly 10 labels for a long daily series', () => {
+    // 90 daily buckets at interval=0 is 90 overlapping date labels
+    expect(timeTickInterval(90)).toBe(8)
+  })
+
+  it('respects a custom max', () => {
+    expect(timeTickInterval(20, 5)).toBe(3)
   })
 })

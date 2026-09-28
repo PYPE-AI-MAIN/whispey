@@ -153,6 +153,8 @@ export const FilterNode: z.ZodType<FilterNode, z.ZodTypeDef, FilterNodeInput> = 
 
 export const AGG_FNS = [
   'count', 'count_distinct', 'rate', 'sum', 'avg', 'min', 'max', 'stddev', 'p50', 'p90', 'p95',
+  /** Telecom billing rule: each row rounds up to the next full minute before summing — a 61s call bills as 2 minutes, not 1.02. */
+  'sum_ceil_minutes',
 ] as const
 
 const Agg = z.object({

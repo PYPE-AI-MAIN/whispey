@@ -842,3 +842,43 @@ describe('the same phone number written three ways is one person', () => {
     expect(sql).not.toContain('regexp_replace')
   })
 })
+
+describe('sum_ceil_minutes rounds each row up before totalling, not the total', () => {
+  it('ceils per row to the next full minute, in SQL, rather than rounding the sum', () => {
+    const { sql } = buildQuery(
+      parse({
+        spec_version: 1,
+        agg: { fn: 'sum_ceil_minutes', field: { col: 'billing_duration_seconds' } },
+        range: { days: 30 },
+      }),
+      ctx,
+      'aggregate'
+    )
+    // a 61s call must bill as 2 minutes, not 1.02 — that only holds if ceil()
+    // wraps each row's own value before sum() adds them up, not the other way
+    expect(sql).toMatch(/sum\(ceil\([^)]*billing_duration_seconds[^)]*\/\s*60\.0\)\)/)
+  })
+})
+
+describe('a drill/export row always carries its own agent_id', () => {
+  it('selects agent_id on a drill query, not just a single-agent context', () => {
+    const { sql } = buildQuery(
+      parse({ spec_version: 1, agg: { fn: 'count' }, range: { days: 30 } }),
+      ctx,
+      'drill'
+    )
+    // the org-wide canvas mixes rows from several agents in ctx.agentIds; without
+    // this, LogsOverlay has no way to tell which agent a given row belongs to,
+    // and would open every row through whichever agent happened to be on screen
+    expect(sql).toMatch(/SELECT[^;]*\bagent_id\b/)
+  })
+
+  it('selects agent_id on an export query too', () => {
+    const { sql } = buildQuery(
+      parse({ spec_version: 1, agg: { fn: 'count' }, range: { days: 30 } }),
+      ctx,
+      'export'
+    )
+    expect(sql).toMatch(/SELECT[^;]*\bagent_id\b/)
+  })
+})

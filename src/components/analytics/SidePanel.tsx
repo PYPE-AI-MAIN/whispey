@@ -129,8 +129,10 @@ export function SidePanel({
   selected, agentId, fields, ranking, canEdit, onAddChart, onDragChartType, onChange, onChangeKind, onChangeTitle, onBack, onGenerateChart,
 }: Readonly<{
   selected: Widget | null
-  /** For the AI Chart Builder's request only — which agent's fields it's allowed to reference. */
-  agentId: string
+  /** For the AI Chart Builder's request only — which agent's fields it's allowed
+   * to reference. Absent on the org-wide canvas, which has no single agent's
+   * fields to hand the model — the builder just doesn't offer there yet. */
+  agentId?: string
   fields: CatalogField[]
   /** The agent's saved outcome order — so a chart built here ranks by the same
    * field the agent's own disposition order means, not a guess (§ once was
@@ -152,7 +154,7 @@ export function SidePanel({
   if (!selected) {
     return (
       <Panel title="Chart types">
-        {canEdit && (
+        {canEdit && agentId && (
           <AiChartBuilderDialog agentId={agentId} fields={fields} ranking={ranking} canEdit={canEdit} onAdd={onGenerateChart} />
         )}
         <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">

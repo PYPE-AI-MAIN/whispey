@@ -19,7 +19,8 @@ import { ChevronRight, Loader2, PanelRightOpen, RefreshCw, RotateCcw, Save, Slid
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { useMobile } from '@/hooks/use-mobile'
-import { useAnalyticsDashboard, useChartData, useCsvExport, type DashboardContext } from '@/hooks/useAnalyticsDashboard'
+import { useAnalyticsDashboard, useChartData, useCsvExport, type AnalyticsScope, type DashboardContext } from '@/hooks/useAnalyticsDashboard'
+import { useSupabaseQuery } from '@/hooks/useSupabase'
 import type { CatalogField, ChartKind, FormulaContent, Widget } from '@/types/analytics'
 import type { FilterNodeInput, SpecInput } from '@/server/analytics/spec'
 import { ChartCard, DRAG_HANDLE_CLASS, type ChartWidget } from './ChartCard'
@@ -49,25 +50,9 @@ type Props = {
   isLoading?: boolean
   /** The tab stays mounted while hidden; do not fetch for a screen nobody is looking at. */
   isActive?: boolean
+  /** The org view's own "Agents: All ▾" filter (§3.5) — only meaningful without `agent`. undefined/null means every agent in the project. */
+  selectedAgentIds?: string[] | null
 }
-
-/**
- * The channels — Confluence "Analytics Phase 1 and 2 — Build Spec" §10.2.
- *
- * One row is a call on Voice, a message thread on WhatsApp, and one patient
- * chasing one goal across every channel on Journeys. A chart belongs to its
- * tab, so these cannot merge later; they are separate tabs from the start.
- *
- * §10.2 says not to ship an empty Journeys tab because it looks broken — and
- * the section's own mockup draws "[ Voice ] [ WhatsApp ·soon ]". The thing that
- * looks broken is a tab you can click that then shows nothing. One that is
- * plainly switched off says what is coming without pretending it is here.
- */
-const SOURCES = [
-  { id: 'voice', label: 'Voice', ready: true },
-  { id: 'whatsapp', label: 'WhatsApp', ready: false },
-  { id: 'journeys', label: 'Journeys', ready: false },
-] as const
 
 /**
  * Cards stack into one column below this (§10.9).
@@ -81,12 +66,273 @@ const SOURCES = [
 const BREAKPOINTS = { lg: 640, sm: 0 }
 const COLUMNS = { lg: GRID_COLUMNS, sm: 1 }
 
-export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, isActive = true }: Readonly<Props>) {
+/** No agent means this is the org-wide Explore canvas (§3.5.2) — every agent in the project instead of one. */
+function scopeFor(agentId: string | undefined, projectId: string | undefined, selectedAgentIds: string[] | null | undefined): AnalyticsScope | undefined {
+  if (agentId) return { kind: 'agent', id: agentId }
+  if (projectId) return { kind: 'project', id: projectId, agentIds: selectedAgentIds ?? undefined }
+  return undefined
+}
+
+type CardContext = {
+  selectedId: string | null
+  canEdit: boolean
+  isMobile: boolean
+  charts: ReturnType<typeof useChartData>
+  catalog: CatalogField[]
+  ranking: OutcomeRanking
+  catalogReady: boolean
+  downloadDisabled: boolean
+  dashboardContext: DashboardContext
+  csv: ReturnType<typeof useCsvExport>
+  selectChart: (id: string) => void
+  setLogs: (v: { widget: ChartWidget; value: string | null | undefined } | null) => void
+  duplicate: (w: Widget) => void
+  setGrain: (w: ChartWidget, grain: 'interaction' | 'entity') => void
+  removeWidget: (w: Widget) => void
+}
+
+/**
+ * `onLayoutChange`'s decision, pulled out so its own branching scores
+ * separately from the component's:
+ * - 'skip': the 'sm' breakpoint's layout is `{ ...l, x: 0, w: 1 }` for every
+ *   widget — a deliberately flattened, read-only view for a narrow screen,
+ *   never a real desktop arrangement. On refresh the grid can briefly measure
+ *   under 640px before the sidebar/chrome finishes laying out and report ITS
+ *   OWN single-column fallback here; below the breakpoint nothing reported is
+ *   real data, so it must never reach `draft`/`widgets`.
+ * - 'unchanged': the first callback is the grid reporting what we gave it —
+ *   but a save round-trips widgets through the database's jsonb `layout`
+ *   column first, which does not promise to preserve key order, so comparing
+ *   fields (not serialized text) is what keeps that round-trip from looking
+ *   like a real, unsaved change.
+ */
+function nextLayoutFor(
+  next: Layout,
+  widgets: Widget[],
+  canEdit: boolean,
+  gridWidth: number,
+  wasSettled: boolean
+): Widget[] | 'skip' | 'unchanged' {
+  if (!canEdit || next.length !== widgets.length || gridWidth < BREAKPOINTS.lg) return 'skip'
+  const moved = applyGridLayout(widgets, next)
+  if (!wasSettled && moved.every((w, i) => layoutsEqual(w.layout, widgets[i].layout))) return 'unchanged'
+  return moved
+}
+
+/** Where `setGrain` lands — pulled out so its branching scores separately from the component's. */
+function grainAction(
+  w: ChartWidget,
+  grain: 'interaction' | 'entity',
+  catalog: CatalogField[],
+  ranking: OutcomeRanking,
+  agentId: string | undefined
+): { type: 'edit'; spec: SpecInput } | { type: 'needsOrderEditor' } {
+  if (grain === 'interaction') return { type: 'edit', spec: { ...w.spec, grain: 'interaction', dedupe: undefined } as SpecInput }
+  // outcome ranking is a single-agent concept — OutcomeOrderEditor edits one
+  // agent's pype_voice_agents.outcome_ranking, and the org-wide canvas has
+  // no agent for that editor to open on. entitySpec already tolerates a
+  // null ranking (falls back to 'most_recent'), so project scope just uses
+  // that instead of asking for an order that has nowhere to be saved.
+  if (agentId && !ranking?.order?.length) return { type: 'needsOrderEditor' }
+  return { type: 'edit', spec: entitySpec(w.spec, catalog, ranking, Boolean(agentId)) }
+}
+
+/**
+ * The dropped card's kind, or null for a drag that didn't carry one — pulled
+ * out of the grid's `onDrop` so this check scores separately from the
+ * component's.
+ */
+function droppedKind(event: unknown): ChartKind | null {
+  const kind = (event as DragEvent).dataTransfer?.getData(CHART_TYPE_DRAG_TYPE) as ChartKind
+  return kind && DEFAULT_SIZE[kind] ? kind : null
+}
+
+/**
+ * `next` is react-grid-layout's own compacted layout for this drop — it
+ * already placed the card where the cursor released and nudged any cards in
+ * the way. Recomputing from each widget's pre-drop (x, y) instead (what
+ * toGridLayout does on every render) is what sent every dropped card to the
+ * bottom: the drop spot almost always overlaps some other card's stale saved
+ * position, so toGridLayout's overlap guard falls back to appending after
+ * everything else.
+ */
+function droppedWidgets(next: Layout, card: Widget, widgets: Widget[]): Widget[] {
+  const resolved = next.map((l) => (l.i === '__dropping-elem__' ? { ...l, i: card.id } : l))
+  return applyGridLayout([...widgets, card], resolved)
+}
+
+/** The `af`/`at`/`dow` URL params for a new When filter — pulled out so its ternaries score separately from the component's. */
+function whenParams(next: { timeOfDay: TimeOfDay; days: number[] }): { at: string | null; dow: string | null } {
+  return {
+    at: next.timeOfDay ? `${next.timeOfDay.from}-${next.timeOfDay.to}` : null,
+    dow: next.days.length && next.days.length < 7 ? next.days.join(',') : null,
+  }
+}
+
+/** The toolbar's right-hand buttons — pulled out so their conditionals score separately from the component's. */
+function CanvasToolbarActions({
+  isFetching, canEdit, agentId, dirty, saving, onRefetch, onEditOutcomeOrder, onDiscard, onSave,
+}: Readonly<{
+  isFetching: boolean
+  canEdit: boolean
+  agentId: string | undefined
+  dirty: boolean
+  saving: boolean
+  onRefetch: () => void
+  onEditOutcomeOrder: () => void
+  onDiscard: () => void
+  onSave: () => void
+}>) {
+  return (
+    <div className="flex items-center gap-1">
+      {isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />}
+      <Button size="sm" variant="ghost" title="Run every chart again" onClick={onRefetch} disabled={isFetching} className="h-7 px-2 text-xs">
+        <RefreshCw className="h-3.5 w-3.5" />
+      </Button>
+      {canEdit && agentId && (
+        <Button size="sm" variant="ghost" onClick={onEditOutcomeOrder} className="h-7 text-xs">
+          <SlidersHorizontal className="mr-1 h-3.5 w-3.5" /> Outcome order
+        </Button>
+      )}
+      {dirty && (
+        <>
+          <Button size="sm" variant="ghost" onClick={onDiscard} className="h-7 text-xs">
+            <RotateCcw className="mr-1 h-3.5 w-3.5" /> Discard
+          </Button>
+          <Button size="sm" onClick={onSave} disabled={saving} className="h-7 text-xs">
+            {saving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1 h-3.5 w-3.5" />}
+            Save
+          </Button>
+        </>
+      )}
+    </div>
+  )
+}
+
+/**
+ * The grid itself — pulled out with its `widgets.length > 0 && measured`
+ * guard, `onDrop` and `.map` so all of that scores separately from the
+ * component's own complexity. Renders nothing before the real width is
+ * measured (see `measured`'s own comment at the call site).
+ */
+function DashboardGrid({
+  widgets, measured, gridWidth, layout, canEdit, isMobile, droppingKind, onLayoutChange, onDrop, cardCtx,
+}: Readonly<{
+  widgets: Widget[]
+  measured: boolean
+  gridWidth: number
+  layout: Layout
+  canEdit: boolean
+  isMobile: boolean
+  droppingKind: ChartKind | null
+  onLayoutChange: (next: Layout) => void
+  onDrop: (next: Layout, item: { x?: number; y?: number } | undefined, event: unknown) => void
+  cardCtx: CardContext
+}>) {
+  if (!(widgets.length > 0 && measured)) return null
+  return (
+    <ResponsiveGridLayout
+      width={gridWidth}
+      layouts={{ lg: layout, sm: layout.map((l) => ({ ...l, x: 0, w: 1 })) }}
+      breakpoints={BREAKPOINTS}
+      cols={COLUMNS}
+      rowHeight={ROW_HEIGHT}
+      margin={GRID_MARGIN}
+      containerPadding={[0, 0]}
+      // a click anywhere on a card selects it, so a drag starts from the grip
+      dragConfig={{ enabled: canEdit && !isMobile, handle: `.${DRAG_HANDLE_CLASS}` }}
+      resizeConfig={{ enabled: canEdit && !isMobile, handles: ['se'] }}
+      dropConfig={{ enabled: canEdit && !isMobile, defaultItem: DEFAULT_SIZE[droppingKind ?? 'bar'] }}
+      onLayoutChange={onLayoutChange}
+      onDrop={onDrop}
+    >
+      {widgets.map((w) => (
+        <div key={w.id}>
+          {/* the eleven cards beside this one keep working */}
+          <ChartErrorBoundary label={w.title}>
+            {widgetCard(w, cardCtx)}
+          </ChartErrorBoundary>
+        </div>
+      ))}
+    </ResponsiveGridLayout>
+  )
+}
+
+/** One dashboard card, by kind — pulled out of the grid's `.map` so that if/else chain scores on its own. */
+function widgetCard(w: Widget, ctx: CardContext): React.ReactNode {
+  const onRemove = () => ctx.removeWidget(w)
+  const onSelect = () => ctx.selectChart(w.id)
+  const selected = ctx.selectedId === w.id
+  const draggable = !ctx.isMobile
+
+  if (w.kind === 'text') {
+    return <TextBlockCard widget={w} selected={selected} canEdit={ctx.canEdit} draggable={draggable} onSelect={onSelect} onRemove={onRemove} />
+  }
+  if (w.kind === 'formula') {
+    return (
+      <FormulaCard
+        widget={w}
+        result={ctx.charts.byWidget.get(w.id)}
+        isLoading={ctx.charts.isLoading}
+        selected={selected}
+        canEdit={ctx.canEdit}
+        draggable={draggable}
+        definition={explainFormula(w.spec as FormulaContent, ctx.catalog)}
+        onSelect={onSelect}
+        onRemove={onRemove}
+      />
+    )
+  }
+  const cw = w as ChartWidget
+  return (
+    <ChartCard
+      widget={cw}
+      result={ctx.charts.byWidget.get(w.id)}
+      isLoading={ctx.charts.isLoading}
+      selected={selected}
+      canEdit={ctx.canEdit}
+      // dragging off on a phone: the canvas is for reading there
+      draggable={draggable}
+      categories={categoriesFor(cw, ctx.catalog, ctx.ranking)}
+      catalog={ctx.catalog}
+      catalogReady={ctx.catalogReady}
+      grainLabel={grainLabel(cw, ctx.catalog)}
+      definition={explainSpec(w.spec as SpecInput, ctx.catalog)}
+      onSelect={onSelect}
+      onOpenLogs={(value) => ctx.setLogs({ widget: cw, value })}
+      onEdit={onSelect}
+      onDuplicate={() => ctx.duplicate(w)}
+      onRemove={onRemove}
+      onExport={() => !ctx.downloadDisabled && ctx.csv.run(w.spec as SpecInput, undefined, w.title, ctx.dashboardContext)}
+      onChangeGrain={(grain) => ctx.setGrain(cw, grain)}
+    />
+  )
+}
+
+export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, isActive = true, selectedAgentIds }: Readonly<Props>) {
   const agentId = agent?.id
+  // No agent means this is the org-wide Explore canvas (§3.5.2) — every agent
+  // in the project instead of one. Never both: `resolveProjectAnalyticsContext`
+  // wins over `resolveAnalyticsContext` server-side if a caller ever sent both.
+  const scope: AnalyticsScope | undefined = scopeFor(agentId, project?.id, selectedAgentIds)
   const { isMobile } = useMobile()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { dashboard, fields, save } = useAnalyticsDashboard(agentId, Boolean(isActive))
+  const { dashboard, fields, save } = useAnalyticsDashboard(scope, Boolean(isActive))
+
+  // Only fetched for the org-wide canvas, and only for labelling the
+  // drill-through's mixed-agent rows (LogsOverlay's `agentNames`) — nothing
+  // else here needs a name, just `Ctx.agentIds`, which the server resolves.
+  const agentNames = useSupabaseQuery<{ id: string; name: string; display_name: string | null }>(
+    'pype_voice_agents',
+    scope?.kind === 'project'
+      ? { select: 'id, name, display_name', filters: [{ column: 'project_id', operator: 'eq', value: scope.id }] }
+      : null
+  )
+  const agentNameMap = useMemo(
+    () => new Map((agentNames.data ?? []).map((a) => [a.id, a.display_name || a.name])),
+    [agentNames.data]
+  )
 
   const [draft, setDraft] = useState<Widget[] | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -167,7 +413,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
   const dirty = draft !== null
   const catalog = useMemo(() => fields.data?.fields ?? [], [fields.data])
   const ranking = (fields.data?.outcome_ranking ?? null) as OutcomeRanking
-  const csv = useCsvExport(agentId)
+  const csv = useCsvExport(scope)
 
   // a filtered view is a link somebody can send (§10.3)
   const filters = useMemo(() => decodeFilters(searchParams.get('af')), [searchParams])
@@ -191,7 +437,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
   )
 
   const range = useMemo(() => ({ from: dateRange.from.slice(0, 10), to: dateRange.to.slice(0, 10) }), [dateRange])
-  const charts = useChartData(agentId, queryableWidgets, range, filters, when, Boolean(isActive))
+  const charts = useChartData(scope, queryableWidgets, range, filters, when, Boolean(isActive))
   // the same Period/filters/When merge /api/analytics/query does, so the logs
   // overlay and CSV export read what the card on screen is showing rather than
   // the widget's own saved defaults — memoized, or a new object every render
@@ -266,31 +512,10 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
   }, [dashboard.data])
 
   const onLayoutChange = (next: Layout) => {
-    // the 'sm' breakpoint's layout is `{ ...l, x: 0, w: 1 }` for every widget —
-    // a deliberately flattened, read-only view for a narrow screen, never a
-    // real desktop arrangement. On refresh the grid can briefly measure under
-    // 640px before the sidebar/chrome finishes laying out, report ITS OWN
-    // single-column fallback here, and this handler used to accept it at face
-    // value — permanently collapsing every card into one column and marking
-    // the dashboard dirty, because the corrupted layout got written into
-    // `draft`/`widgets`, which `gridWidth` correcting itself afterward can't
-    // undo. Below the breakpoint, nothing reported here is real data.
-    if (!canEdit || next.length !== widgets.length || gridWidth < BREAKPOINTS.lg) return
-    const moved = applyGridLayout(widgets, next)
-    if (!settled.current) {
-      settled.current = true
-      // the first callback is the grid reporting what we gave it — but a
-      // save round-trips widgets through the database's jsonb `layout`
-      // column first, which does not promise to preserve key order. Two
-      // layouts that are identical field-by-field can come back with their
-      // keys in a different order, so JSON.stringify equality used to see
-      // them as "different", call setDraft, and flip the dashboard back to
-      // dirty right after a successful save — the Save button reappeared,
-      // looked like the click hadn't worked, and needed a second click to
-      // actually stick. Compare fields, not serialized text.
-      if (moved.length === widgets.length && moved.every((w, i) => layoutsEqual(w.layout, widgets[i].layout))) return
-    }
-    setDraft(moved)
+    const result = nextLayoutFor(next, widgets, canEdit, gridWidth, settled.current)
+    if (result === 'skip') return
+    settled.current = true
+    if (result !== 'unchanged') setDraft(result)
   }
 
   const duplicate = (w: Widget) => {
@@ -307,15 +532,9 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
 
   /** One per patient needs an order to rank by, so ask for one instead of failing. */
   const setGrain = (w: ChartWidget, grain: 'interaction' | 'entity') => {
-    if (grain === 'interaction') {
-      edit(w.id, { spec: { ...w.spec, grain: 'interaction', dedupe: undefined } as SpecInput })
-      return
-    }
-    if (!ranking?.order?.length) {
-      setOrderEditor(true)
-      return
-    }
-    edit(w.id, { spec: entitySpec(w.spec, catalog, ranking) })
+    const action = grainAction(w, grain, catalog, ranking, agentId)
+    if (action.type === 'needsOrderEditor') setOrderEditor(true)
+    else edit(w.id, { spec: action.spec })
   }
 
   const persist = () => {
@@ -341,7 +560,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
     )
   }
 
-  if (!agentId) return null
+  if (!scope) return null
 
   if (dashboard.isLoading || isLoading) return <DashboardSkeleton />
 
@@ -352,43 +571,11 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 px-4 py-2 dark:border-gray-800">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1" role="tablist" aria-label="Channel">
-              {SOURCES.map((s) => (
-                <button
-                  key={s.id}
-                  role="tab"
-                  aria-selected={s.ready}
-                  // not `disabled`: a disabled button is skipped by the keyboard
-                  // entirely, so a screen reader never reaches the word "soon"
-                  aria-disabled={!s.ready}
-                  title={s.ready ? undefined : `${s.label} analytics is coming soon`}
-                  onClick={(e) => !s.ready && e.preventDefault()}
-                  className={cn(
-                    'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition',
-                    s.ready
-                      ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-                      : 'cursor-not-allowed text-gray-400 dark:text-gray-600'
-                  )}
-                >
-                  {s.label}
-                  {!s.ready && (
-                    <span className="rounded-full bg-gray-100 px-1.5 py-px text-[10px] font-normal uppercase tracking-wide text-gray-400 dark:bg-gray-800/80 dark:text-gray-500">
-                      Soon
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
             {/* on but hidden makes every number wrong without anyone noticing */}
             <WhenFilter
               timeOfDay={when.timeOfDay}
               days={when.days}
-              onChange={(next) =>
-                setParam({
-                  at: next.timeOfDay ? `${next.timeOfDay.from}-${next.timeOfDay.to}` : null,
-                  dow: next.days.length && next.days.length < 7 ? next.days.join(',') : null,
-                })
-              }
+              onChange={(next) => setParam(whenParams(next))}
             />
             <FilterBar
               filters={filters}
@@ -397,35 +584,17 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
             />
           </div>
 
-          <div className="flex items-center gap-1">
-            {charts.isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />}
-            <Button
-              size="sm"
-              variant="ghost"
-              title="Run every chart again"
-              onClick={() => charts.refetch()}
-              disabled={charts.isFetching}
-              className="h-7 px-2 text-xs"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-            </Button>
-            {canEdit && (
-              <Button size="sm" variant="ghost" onClick={() => setOrderEditor(true)} className="h-7 text-xs">
-                <SlidersHorizontal className="mr-1 h-3.5 w-3.5" /> Outcome order
-              </Button>
-            )}
-            {dirty && (
-              <>
-                <Button size="sm" variant="ghost" onClick={() => setDraft(null)} className="h-7 text-xs">
-                  <RotateCcw className="mr-1 h-3.5 w-3.5" /> Discard
-                </Button>
-                <Button size="sm" onClick={persist} disabled={save.isPending} className="h-7 text-xs">
-                  {save.isPending ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1 h-3.5 w-3.5" />}
-                  Save
-                </Button>
-              </>
-            )}
-          </div>
+          <CanvasToolbarActions
+            isFetching={charts.isFetching}
+            canEdit={canEdit}
+            agentId={agentId}
+            dirty={dirty}
+            saving={save.isPending}
+            onRefetch={() => charts.refetch()}
+            onEditOutcomeOrder={() => setOrderEditor(true)}
+            onDiscard={() => setDraft(null)}
+            onSave={persist}
+          />
         </div>
 
         {save.isError && <Banner onDismiss={() => save.reset()}>{(save.error as Error).message}</Banner>}
@@ -448,107 +617,44 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
                 twelve columns out at the library's guessed default and then snapping
                 to the real width is the visible jump/overlap on load. `containerRef`
                 must stay mounted either way, or it never gets measured to begin with. */}
-            {widgets.length > 0 && measured && (
-            <ResponsiveGridLayout
-              width={gridWidth}
-              layouts={{ lg: layout, sm: layout.map((l) => ({ ...l, x: 0, w: 1 })) }}
-              breakpoints={BREAKPOINTS}
-              cols={COLUMNS}
-              rowHeight={ROW_HEIGHT}
-              margin={GRID_MARGIN}
-              containerPadding={[0, 0]}
-              // a click anywhere on a card selects it, so a drag starts from the grip
-              dragConfig={{ enabled: canEdit && !isMobile, handle: `.${DRAG_HANDLE_CLASS}` }}
-              resizeConfig={{ enabled: canEdit && !isMobile, handles: ['se'] }}
-              dropConfig={{
-                enabled: canEdit && !isMobile,
-                defaultItem: DEFAULT_SIZE[droppingKind ?? 'bar'],
-              }}
+            <DashboardGrid
+              widgets={widgets}
+              measured={measured}
+              gridWidth={gridWidth}
+              layout={layout}
+              canEdit={canEdit}
+              isMobile={isMobile}
+              droppingKind={droppingKind}
               onLayoutChange={onLayoutChange}
               onDrop={(next, item, event) => {
-                const kind = (event as DragEvent).dataTransfer?.getData(CHART_TYPE_DRAG_TYPE) as ChartKind
                 setDroppingKind(null)
-                if (!kind || !DEFAULT_SIZE[kind]) return
+                const kind = droppedKind(event)
+                if (!kind) return
                 const card = makeChart(kind, { x: item?.x ?? 0, y: item?.y ?? 0 })
-                // `next` is react-grid-layout's own compacted layout for this drop — it
-                // already placed the card where the cursor released and nudged any
-                // cards in the way. Recomputing from each widget's pre-drop (x, y)
-                // instead (what toGridLayout does on every render) is what sent every
-                // dropped card to the bottom: the drop spot almost always overlaps some
-                // other card's stale saved position, so toGridLayout's overlap guard
-                // falls back to appending after everything else.
-                const resolved = next.map((l) => (l.i === '__dropping-elem__' ? { ...l, i: card.id } : l))
-                setDraft(applyGridLayout([...(draft ?? widgets), card], resolved))
+                setDraft(droppedWidgets(next, card, draft ?? widgets))
                 selectChart(card.id)
               }}
-            >
-              {widgets.map((w) => {
-                const removeWidget = () => {
-                  setDraft((draft ?? widgets).filter((x) => x.id !== w.id))
-                  if (selectedId === w.id) setSelectedId(null)
-                }
-
-                let card: React.ReactNode
-                if (w.kind === 'text') {
-                  card = (
-                    <TextBlockCard
-                      widget={w}
-                      selected={selectedId === w.id}
-                      canEdit={canEdit}
-                      draggable={!isMobile}
-                      onSelect={() => selectChart(w.id)}
-                      onRemove={removeWidget}
-                    />
-                  )
-                } else if (w.kind === 'formula') {
-                  card = (
-                    <FormulaCard
-                      widget={w}
-                      result={charts.byWidget.get(w.id)}
-                      isLoading={charts.isLoading}
-                      selected={selectedId === w.id}
-                      canEdit={canEdit}
-                      draggable={!isMobile}
-                      definition={explainFormula(w.spec as FormulaContent, catalog)}
-                      onSelect={() => selectChart(w.id)}
-                      onRemove={removeWidget}
-                    />
-                  )
-                } else {
-                  card = (
-                    <ChartCard
-                      widget={w as ChartWidget}
-                      result={charts.byWidget.get(w.id)}
-                      isLoading={charts.isLoading}
-                      selected={selectedId === w.id}
-                      canEdit={canEdit}
-                      // dragging off on a phone: the canvas is for reading there
-                      draggable={!isMobile}
-                      categories={categoriesFor(w as ChartWidget, catalog, ranking)}
-                      catalog={catalog}
-                      catalogReady={fields.isSuccess}
-                      grainLabel={grainLabel(w as ChartWidget, catalog)}
-                      definition={explainSpec(w.spec as SpecInput, catalog)}
-                      onSelect={() => selectChart(w.id)}
-                      onOpenLogs={(value) => setLogs({ widget: w as ChartWidget, value })}
-                      onEdit={() => selectChart(w.id)}
-                      onDuplicate={() => duplicate(w)}
-                      onRemove={removeWidget}
-                      onExport={() => !downloadDisabled && csv.run(w.spec as SpecInput, undefined, w.title, dashboardContext)}
-                      onChangeGrain={(grain) => setGrain(w as ChartWidget, grain)}
-                    />
-                  )
-                }
-
-                return (
-                  <div key={w.id}>
-                    {/* the eleven cards beside this one keep working */}
-                    <ChartErrorBoundary label={w.title}>{card}</ChartErrorBoundary>
-                  </div>
-                )
-              })}
-              </ResponsiveGridLayout>
-            )}
+              cardCtx={{
+                selectedId,
+                canEdit,
+                isMobile,
+                charts,
+                catalog,
+                ranking,
+                catalogReady: fields.isSuccess,
+                downloadDisabled,
+                dashboardContext,
+                csv,
+                selectChart,
+                setLogs,
+                duplicate,
+                setGrain,
+                removeWidget: (widget) => {
+                  setDraft((draft ?? widgets).filter((x) => x.id !== widget.id))
+                  if (selectedId === widget.id) setSelectedId(null)
+                },
+              }}
+            />
           </div>
 
           {widgets.length === 0 && (
@@ -605,6 +711,8 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
       <LogsOverlay
         agentId={agentId}
         projectId={project?.id ?? ''}
+        agentIds={agentId ? undefined : selectedAgentIds}
+        agentNames={agentId ? undefined : agentNameMap}
         widget={logs?.widget ?? null}
         grainLabel={logs ? grainLabel(logs.widget, catalog) : 'Every call'}
         seriesLabel={logs?.widget.spec.dimension?.field ? fieldName(logs.widget.spec.dimension.field, catalog) : null}
@@ -617,7 +725,10 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
       />
 
       <OutcomeOrderEditor
-        agentId={agentId}
+        // `open` can only become true where agentId is truthy (the toolbar
+        // button and setGrain's fallback are both gated on it above) — this
+        // empty string is never actually used, same convention as projectId below
+        agentId={agentId ?? ''}
         fields={catalog}
         current={ranking}
         open={orderEditor}
@@ -680,9 +791,16 @@ const asRef = (f: { col: string; path: string[] }) => ({ col: f.col, ...(f.path.
  * set the winner and never set the field to rank by. With no outcome to rank,
  * the honest fallback is the most recent attempt, not a broken chart.
  */
-function entitySpec(spec: SpecInput, fields: CatalogField[], ranking: OutcomeRanking): SpecInput {
+function entitySpec(spec: SpecInput, fields: CatalogField[], ranking: OutcomeRanking, allowAgentRanking: boolean): SpecInput {
   const key = identityFields(fields)[0]
-  const outcome = outcomeField(fields, ranking?.field)
+  // outcomeField() guesses a plausible outcome field even with no ranking
+  // configured (`usable(fields, 'enum')[0]`) — fine on the per-agent canvas,
+  // where that guess only ever fires with a real ranking.field to match
+  // against (setGrain gates on `ranking?.order?.length` first). On the
+  // org-wide canvas there is no agent's outcome_ranking to resolve
+  // `ranking_ref: 'agent'` against server-side, so skip the guess entirely
+  // rather than emit a spec the query engine can only reject.
+  const outcome = allowAgentRanking ? outcomeField(fields, ranking?.field) : undefined
   return {
     ...spec,
     grain: 'entity',
