@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import OpenAI from 'openai'
+import { streamChatCompletionRounds } from '@/lib/streamOpenAiChat'
 
 export const runtime = 'nodejs'
 // A large workflow can take a while just to reach the first output token,
@@ -18,8 +19,6 @@ export const maxDuration = 300
 // for short-term coherence ("do that for this node too") and drop the rest.
 const MAX_HISTORY_MESSAGES = 16
 
-const enc = new TextEncoder()
-function sse(data: string) { return enc.encode(`data: ${data}\n\n`) }
 
 const SYSTEM_PROMPT = `You are a workflow builder assistant for a voice-agent platform called Whispey.
 
@@ -253,48 +252,10 @@ export async function POST(req: NextRequest) {
   // 128K output makes this a rare safety net rather than the common path it
   // was at gpt-4.1's 32K cap.
   const MAX_ROUNDS = 6
+  const CONTINUE_PROMPT =
+    'Continue the previous response exactly where it stopped. Do not repeat anything already written and do not restart the JSON — just emit the remaining characters.'
 
-  ;(async () => {
-    try {
-      let finishReason: string | null | undefined
-      let round = 0
-      do {
-        const stream = await client.chat.completions.create({
-          model: MODEL,
-          messages: convo,
-          stream: true,
-          max_completion_tokens: MAX_TOKENS,
-        })
-        let roundContent = ''
-        finishReason = undefined
-        for await (const chunk of stream) {
-          const content = chunk.choices?.[0]?.delta?.content
-          if (content) {
-            roundContent += content
-            await writer.write(sse(JSON.stringify({ content })))
-          }
-          if (chunk.choices?.[0]?.finish_reason) finishReason = chunk.choices[0].finish_reason
-        }
-        if (finishReason !== 'length') break
-        // Cut off mid-generation — ask it to resume without repeating.
-        convo.push(
-          { role: 'assistant', content: roundContent },
-          { role: 'user', content: 'Continue the previous response exactly where it stopped. Do not repeat anything already written and do not restart the JSON — just emit the remaining characters.' },
-        )
-      } while (++round < MAX_ROUNDS)
-
-      // Still cut off after MAX_ROUNDS — the JSON is unusable; tell the client.
-      if (finishReason === 'length') {
-        await writer.write(sse(JSON.stringify({ truncated: true })))
-      }
-      await writer.write(sse('[DONE]'))
-    } catch (err: any) {
-      const message = err instanceof OpenAI.APIError ? err.message : (err.message || 'Unknown error')
-      await writer.write(sse(JSON.stringify({ error: message })))
-    } finally {
-      await writer.close()
-    }
-  })()
+  streamChatCompletionRounds({ client, convo, writer, model: MODEL, maxTokens: MAX_TOKENS, maxRounds: MAX_ROUNDS, continuePrompt: CONTINUE_PROMPT })
 
   return new Response(readable, {
     headers: {

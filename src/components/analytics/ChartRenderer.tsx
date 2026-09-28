@@ -19,10 +19,10 @@ import { shape, zeroFill, formatValue, formatBucket, shortLabel, displayNumber, 
 
 /** Distinguishable in both themes, and still distinguishable for the most common colour blindness. */
 /**
- * The dataviz skill's validated 8-slot categorical order (references/palette.md)
- * — fixed order, never cycled, worst adjacent CVD ΔE 9.1 light / 8.4 dark. Swap
- * one slot in and the safety guarantee is gone; add a 9th series by folding into
- * "Other", not by generating a new hue.
+ * Fixed 8-color order from the dataviz skill (references/palette.md), checked
+ * to stay tellable-apart even for colorblind readers. Don't reorder or swap a
+ * slot — that breaks the guarantee. A 9th series folds into "Other" instead of
+ * getting a new color.
  */
 const SERIES_COLORS = [
   'var(--analytics-series-1)', 'var(--analytics-series-2)', 'var(--analytics-series-3)', 'var(--analytics-series-4)',
@@ -35,17 +35,15 @@ export const PIE_MAX_SLICES = 8
 const axisStyle = { fontSize: 11, fill: 'currentColor' } as const
 
 /**
- * recharts hands its click callbacks a wide union; read the one field we put there.
+ * Pulls our category value out of a recharts click event.
  *
- * For a `<Bar onClick>`, the argument is the rectangle's own render props —
- * which already has an `x` field of its own: the bar's pixel position on
- * screen, a number. Our actual data point (`{ x: "general_callback", ... }`)
- * is nested under `datum.payload`, not spread onto the top level. Reading
- * `datum.x` directly saw the pixel number, failed the string check, and
- * returned null — every bar drilled into "no value" and matched nothing,
- * while the tooltip (which reads the payload correctly) kept showing the
- * right name. Check `.payload.x` first; fall back to `.x` for shapes (Pie)
- * that do put it there directly.
+ * A `<Bar onClick>` event is the bar's own render props, which already has an
+ * `x` — the bar's pixel position, a number. Our real data (`{ x: "general_callback" }`)
+ * sits nested under `datum.payload` instead. Reading `datum.x` directly picked
+ * up that pixel number, failed the string check, and returned null — every bar
+ * drilled into "no value" while the tooltip (which reads payload correctly)
+ * still showed the right name. So: check `.payload.x` first, and fall back to
+ * `.x` for shapes like Pie that put it there directly.
  */
 export const readX = (datum: unknown): string | null => {
   if (!datum || typeof datum !== 'object') return null
@@ -92,9 +90,9 @@ export function ChartRenderer({
   const shortLabelWidth = compact ? 10 : 18
   const tickFor = (x: string) => (shaped.axis === 'time' ? formatBucket(x, bucket) : shortLabel(x, shortLabelWidth))
 
-  if (kind === 'kpi') return <Kpi rows={rows} spec={spec} short={short} />
+  if (kind === 'kpi') return <Kpi rows={rows} spec={spec} short={short} compact={compact} />
   // a table with nothing to break down is just the number
-  if (kind === 'table' && shape(rows, spec).axis === 'none') return <Kpi rows={rows} spec={spec} short={short} />
+  if (kind === 'table' && shape(rows, spec).axis === 'none') return <Kpi rows={rows} spec={spec} short={short} compact={compact} />
 
   // a chart type needs a shape to draw. Say which one is missing rather than
   // leaving an empty rectangle and no explanation.
@@ -135,24 +133,21 @@ export function ChartRenderer({
   }
 
   const Chart = kind === 'line' ? LineChart : BarChart
-  // Horizontal category labels only have as much width as one bar's slot —
-  // fine for a handful of short categories, but a real breakdown (final
-  // disposition, why-the-call-ended, ...) mixes short and long values and
-  // horizontal text collides with its neighbor. Angling only the category
-  // axis (never the time axis, whose labels are already short and evenly
-  // sized) buys each label its own diagonal strip instead of a fixed-width
-  // horizontal one, and needs a taller axis to have room to descend into.
+  // A horizontal label only gets one bar's width to fit in — fine for short
+  // categories, but a real breakdown mixes short and long values and they
+  // collide. Angle category labels only (time labels are already short and
+  // even) so each gets its own diagonal space; the axis needs extra height
+  // for that.
   const angleTicks = shaped.axis === 'category'
   return (
     <ResponsiveContainer width="100%" height="100%">
       <Chart data={shaped.points} margin={{ top: 8, right: 12, left: -12, bottom: angleTicks ? 28 : 4 }}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" vertical={false} />
-        {/* interval={0}: "preserveStartEnd" only guarantees the first/last tick — for
-            the rest, recharts guesses which labels would overlap using an approximate
-            width estimate, and with category labels this varied in length it sometimes
-            guesses wrong and drops a label's text while still drawing its bar. Forcing
-            every tick to render, combined with angling category labels below, is what
-            actually avoids both the missing label and the overlap. */}
+        {/* interval={0}: "preserveStartEnd" only promises the first/last tick — for the
+            rest it guesses which labels would overlap, and with mixed-length category
+            labels it sometimes guesses wrong and drops a label while still drawing its
+            bar. Forcing every tick to render, plus angling them below, fixes both the
+            missing label and the overlap. */}
         <XAxis
           dataKey="x"
           tickFormatter={tickFor}
@@ -202,14 +197,27 @@ export function ChartRenderer({
   )
 }
 
-function Kpi({ rows, spec, short }: Readonly<{ rows: ResultRow[]; spec: SpecInput; short?: boolean }>) {
+function sizeClass(short: boolean | undefined, compact: boolean | undefined): string {
+  if (!short) return 'text-3xl'
+  return compact ? 'text-xl' : 'text-2xl'
+}
+
+function Kpi({ rows, spec, short, compact }: Readonly<{ rows: ResultRow[]; spec: SpecInput; short?: boolean; compact?: boolean }>) {
   const value = displayNumber(rows[0], spec)
   return (
     <div className="flex h-full flex-col justify-center overflow-hidden">
       <div
         className={cn(
           'truncate font-semibold tabular-nums text-gray-900 dark:text-gray-50',
-          short ? 'text-2xl' : 'text-3xl',
+          // `short` (h <= 2) alone isn't enough of a signal: on a NARROW card
+          // too, the header's grain-label + definition line wraps onto a
+          // second line (deliberately — it's allowed to wrap rather than
+          // truncate into something unreadable), which eats into the same
+          // fixed-height card's budget and left this box shorter than the
+          // number's own line-height, clipped top and bottom by the
+          // `overflow-hidden` above. One size further down guarantees room
+          // even when that second header line shows up.
+          sizeClass(short, compact),
           value === null && 'text-gray-400 dark:text-gray-500'
         )}
       >

@@ -8,6 +8,7 @@ import { useWorkflowStore } from '@/stores/workflowStore'
 import { safeParseWorkflow } from '@/lib/workflow/schema'
 import { lintWorkflow, hasErrors } from '@/lib/workflow/linter'
 import { isRetryableApplyError } from '@/lib/workflow/chatRetry'
+import { extractJsonFence, stripJsonFencesForHistory } from '@/lib/jsonFence'
 import toast from 'react-hot-toast'
 
 interface Message {
@@ -22,27 +23,8 @@ interface Message {
 // Past assistant turns embed a full workflow JSON block. Re-sending those on every
 // request balloons context linearly (the current workflow is already sent separately
 // as a system message), causing slow/hanging generations after a few turns.
-// ponytail: walk ``` fences with indexOf instead of a [\s\S]*? regex — same
-// result, no backtracking-vulnerable pattern for Sonar/CodeQL to flag.
 function stripJsonBlocksForHistory(text: string): string {
-  const placeholder = '[workflow JSON omitted — current workflow is provided above]'
-  let result = ''
-  let pos = 0
-  while (pos < text.length) {
-    const start = text.indexOf('```json', pos)
-    if (start === -1) {
-      result += text.slice(pos)
-      break
-    }
-    const end = text.indexOf('```', start + 7)
-    if (end === -1) {
-      result += text.slice(pos)
-      break
-    }
-    result += text.slice(pos, start) + placeholder
-    pos = end + 3
-  }
-  return result
+  return stripJsonFencesForHistory(text, '[workflow JSON omitted — current workflow is provided above]')
 }
 
 type ContextSummary = { nodeCount: number; startLabel: string; langCount: number; varCount: number } | null
@@ -59,17 +41,8 @@ function formatContextSummary(contextSummary: ContextSummary): string {
 }
 
 function extractWorkflowJson(text: string): object | null {
-  const start = text.indexOf('```json')
-  if (start === -1) return null
-  const end = text.indexOf('```', start + 7)
-  if (end === -1) return null
-  const raw = text.slice(start + 7, end).trim()
-  if (!raw) return null
-  try {
-    return JSON.parse(raw)
-  } catch {
-    return null
-  }
+  const parsed = extractJsonFence(text)
+  return typeof parsed === 'object' && parsed !== null ? parsed : null
 }
 
 // The system prompt tells the model to write "__KEEP__" instead of retyping a large

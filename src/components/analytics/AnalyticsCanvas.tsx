@@ -465,10 +465,21 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
                 defaultItem: DEFAULT_SIZE[droppingKind ?? 'bar'],
               }}
               onLayoutChange={onLayoutChange}
-              onDrop={(_next, item, event) => {
+              onDrop={(next, item, event) => {
                 const kind = (event as DragEvent).dataTransfer?.getData(CHART_TYPE_DRAG_TYPE) as ChartKind
                 setDroppingKind(null)
-                if (kind && DEFAULT_SIZE[kind]) addChart(kind, { x: item?.x ?? 0, y: item?.y ?? 0 })
+                if (!kind || !DEFAULT_SIZE[kind]) return
+                const card = makeChart(kind, { x: item?.x ?? 0, y: item?.y ?? 0 })
+                // `next` is react-grid-layout's own compacted layout for this drop — it
+                // already placed the card where the cursor released and nudged any
+                // cards in the way. Recomputing from each widget's pre-drop (x, y)
+                // instead (what toGridLayout does on every render) is what sent every
+                // dropped card to the bottom: the drop spot almost always overlaps some
+                // other card's stale saved position, so toGridLayout's overlap guard
+                // falls back to appending after everything else.
+                const resolved = next.map((l) => (l.i === '__dropping-elem__' ? { ...l, i: card.id } : l))
+                setDraft(applyGridLayout([...(draft ?? widgets), card], resolved))
+                selectChart(card.id)
               }}
             >
               {widgets.map((w) => {
@@ -573,6 +584,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
           </button>
           <SidePanel
             selected={selected}
+            agentId={agentId}
             fields={catalog}
             ranking={ranking}
             canEdit={canEdit}
@@ -585,6 +597,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
               selected && edit(selected.id, { kind, spec: adaptSpecToKind(selected.spec as SpecInput, kind, catalog) })
             }
             onChangeTitle={(title) => selected && edit(selected.id, { title })}
+            onGenerateChart={addSuggested}
           />
         </div>
       )}

@@ -360,12 +360,12 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, projectId, agent, se
           const a = s.attributes || {}
           // LiveKit OTEL attribute keys for function_tool spans
           const toolName = a['lk.function_tool.name'] ?? a['livekit.function.name'] ?? a['function.name'] ?? 'unknown'
-          const rawArgs = a['lk.function_tool.arguments'] ?? a['livekit.function.arguments'] ?? a['function.arguments'] ?? null
+          const rawArgs = a['lk.function_tool.arguments'] ?? a['lk.pii.function_tool.arguments'] ?? a['livekit.function.arguments'] ?? a['function.arguments'] ?? null
           let args: any = null
           if (rawArgs) {
             try { args = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs } catch { args = rawArgs }
           }
-          const result = a['lk.function_tool.output'] ?? a['livekit.function.result'] ?? a['function.result'] ?? undefined
+          const result = a['lk.function_tool.output'] ?? a['lk.pii.function_tool.output'] ?? a['livekit.function.result'] ?? a['function.result'] ?? undefined
           const isError = a['lk.function_tool.is_error'] === true || s.status?.code === 2 || s.status === 'error'
           return {
             tool_name: toolName,
