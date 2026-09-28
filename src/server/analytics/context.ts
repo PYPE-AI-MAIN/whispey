@@ -114,8 +114,83 @@ export async function resolveAnalyticsContext(
   }
 }
 
-export function isDenied(r: AnalyticsContext | { errorResponse: NextResponse }): r is { errorResponse: NextResponse } {
+export function isDenied<T extends object>(r: T | { errorResponse: NextResponse }): r is { errorResponse: NextResponse } {
   return 'errorResponse' in r
+}
+
+export type ProjectAnalyticsContext = {
+  ctx: Ctx
+  projectId: string
+  role: string
+  downloadDisabled: boolean
+}
+
+/**
+ * The project-scoped sibling of resolveAnalyticsContext — Confluence "Analytics
+ * Phase 3 and 4 — Build Spec" §3.4. `ctx.agentIds` is every agent in the project
+ * the caller may see, instead of one.
+ *
+ * There is no single agent's outcome_ranking, call_log_settings, or
+ * field_extractor_prompt to return here — those stay single-agent concepts.
+ * A column is hidden project-wide if ANY visible agent's settings hide it
+ * (an aggregate touching that agent's rows shouldn't leak the column through
+ * the sum), and the overview-visibility toggles are already project-level
+ * (`getEffectiveVisibility` is resolved from project membership, not per agent).
+ */
+export async function resolveProjectAnalyticsContext(
+  projectId: string,
+  opts: { forDownload?: boolean } = {}
+): Promise<ProjectAnalyticsContext | { errorResponse: NextResponse }> {
+  const deny = (status: number, error: string) => ({ errorResponse: NextResponse.json({ error }, { status }) })
+
+  const { userId } = await auth()
+  if (!userId) return deny(401, 'Not signed in')
+
+  const access = await getProjectRoleForApi(projectId)
+  if (!access) return deny(403, 'Not a member of this project')
+
+  const { data: agents } = await supabase
+    .from('pype_voice_agents')
+    .select('id, call_log_settings')
+    .eq('project_id', projectId)
+  if (!agents?.length) return deny(404, 'Project not found')
+
+  // a member can be limited to particular agents; an empty list means none
+  const visibleAgentIds = access.visibility.org.visibleAgentIds
+  const visibleAgents = visibleAgentIds === null ? agents : agents.filter((a) => visibleAgentIds.includes(a.id))
+  if (visibleAgents.length === 0) return deny(403, 'No visible agents in this project')
+
+  const user = await currentUser()
+  const userEmail = user?.emailAddresses?.[0]?.emailAddress ?? null
+
+  const disallowedColumns = new Set<string>()
+  for (const agent of visibleAgents) {
+    const { disallowedColumns: agentDisallowed } = await resolveColumnAccessForRequest({
+      userId,
+      userEmail,
+      callLogSettings: agent.call_log_settings as CallLogSettings | null,
+      isDownload: opts.forDownload === true,
+    })
+    agentDisallowed.forEach((c) => disallowedColumns.add(c))
+  }
+
+  const overview = access.visibility.agent.overview as unknown as Record<string, boolean>
+  for (const [key, columns] of Object.entries(COLUMNS_BEHIND_VISIBILITY)) {
+    if (overview[key] === false) columns.forEach((c) => disallowedColumns.add(c))
+  }
+
+  return {
+    ctx: {
+      projectId,
+      agentIds: visibleAgents.map((a) => a.id),
+      deniedFields: disallowedColumns,
+      tz: DEFAULT_TZ,
+      maxDays: MAX_RANGE_DAYS,
+    },
+    projectId,
+    role: access.role,
+    downloadDisabled: access.downloadDisabled,
+  }
 }
 
 /**

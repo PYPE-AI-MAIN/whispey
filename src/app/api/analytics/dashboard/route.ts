@@ -14,65 +14,93 @@ import { randomUUID } from 'node:crypto'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { Spec } from '@/server/analytics/spec'
 import { STARTER_CHARTS } from '@/server/analytics/starterCharts'
-import { resolveAnalyticsContext, isDenied } from '@/server/analytics/context'
+import { resolveAnalyticsContext, resolveProjectAnalyticsContext, isDenied } from '@/server/analytics/context'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const supabase = createServiceRoleClient()
 
+type ScopeFilter = { scope: 'agent'; agent_id: string } | { scope: 'project'; project_id: string }
+
+/**
+ * A dashboard is keyed by (agent_id, scope='agent') or (project_id,
+ * scope='project') — never both — so the lookup/create/seed dance is the same
+ * shape either way; only the filter/insert row differs.
+ */
+async function loadOrCreateDashboard(filter: ScopeFilter, insertRow: Record<string, unknown>, name: string) {
+  const selectDashboard = () => {
+    let q = supabase.from('pype_analytics_dashboards').select('*').eq('scope', filter.scope).eq('visibility', 'shared')
+    q = filter.scope === 'agent' ? q.eq('agent_id', filter.agent_id) : q.eq('project_id', filter.project_id)
+    return q.maybeSingle()
+  }
+
+  let { data: dashboard } = await selectDashboard()
+  if (dashboard) return { dashboard }
+
+  const created = await supabase
+    .from('pype_analytics_dashboards')
+    .insert({ ...insertRow, scope: filter.scope, visibility: 'shared', name })
+    .select('*')
+    .single()
+
+  // two people opening the page at once: the unique index means one insert
+  // loses, and the loser reads what the winner made
+  if (created.error) {
+    const retry = await selectDashboard()
+    if (!retry.data) {
+      console.error('[analytics/dashboard] create failed', created.error)
+      return { error: NextResponse.json({ error: 'Could not open this dashboard' }, { status: 500 }) }
+    }
+    dashboard = retry.data
+  } else {
+    dashboard = created.data
+    await supabase.from('pype_analytics_widgets').insert(
+      STARTER_CHARTS.map((c, i) => ({
+        dashboard_id: dashboard!.id,
+        title: c.title,
+        kind: c.kind,
+        spec: c.spec,
+        layout: c.layout,
+        position: i,
+        is_seeded: true,
+      }))
+    )
+  }
+  return { dashboard }
+}
+
 export const GET = guarded('analytics/dashboard', async (req: NextRequest) => {
   const agentId = req.nextUrl.searchParams.get('agentId')
-  if (!agentId) return NextResponse.json({ error: 'agentId is required' }, { status: 400 })
+  const projectId = req.nextUrl.searchParams.get('projectId')
+  if (!agentId && !projectId) return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
 
-  const resolved = await resolveAnalyticsContext(agentId)
-  if (isDenied(resolved)) return resolved.errorResponse
-  const { agent, role, downloadDisabled } = resolved
+  let role: string
+  let downloadDisabled: boolean
+  let responseAgent: { id: string; name: string } | null = null
+  let dashboardResult: Awaited<ReturnType<typeof loadOrCreateDashboard>>
 
-  let { data: dashboard } = await supabase
-    .from('pype_analytics_dashboards')
-    .select('*')
-    .eq('agent_id', agentId)
-    .eq('scope', 'agent')
-    .eq('visibility', 'shared')
-    .maybeSingle()
-
-  if (!dashboard) {
-    const created = await supabase
-      .from('pype_analytics_dashboards')
-      .insert({ project_id: agent.projectId, agent_id: agentId, scope: 'agent', visibility: 'shared', name: 'Overview' })
-      .select('*')
-      .single()
-    // two people opening the page at once: the unique index means one insert
-    // loses, and the loser reads what the winner made
-    if (created.error) {
-      const retry = await supabase
-        .from('pype_analytics_dashboards')
-        .select('*')
-        .eq('agent_id', agentId)
-        .eq('scope', 'agent')
-        .eq('visibility', 'shared')
-        .maybeSingle()
-      if (!retry.data) {
-        console.error('[analytics/dashboard] create failed', created.error)
-        return NextResponse.json({ error: 'Could not open this dashboard' }, { status: 500 })
-      }
-      dashboard = retry.data
-    } else {
-      dashboard = created.data
-      await supabase.from('pype_analytics_widgets').insert(
-        STARTER_CHARTS.map((c, i) => ({
-          dashboard_id: dashboard!.id,
-          title: c.title,
-          kind: c.kind,
-          spec: c.spec,
-          layout: c.layout,
-          position: i,
-          is_seeded: true,
-        }))
-      )
-    }
+  if (projectId) {
+    const resolved = await resolveProjectAnalyticsContext(projectId)
+    if (isDenied(resolved)) return resolved.errorResponse
+    role = resolved.role
+    downloadDisabled = resolved.downloadDisabled
+    dashboardResult = await loadOrCreateDashboard({ scope: 'project', project_id: projectId }, { project_id: projectId }, 'Explore')
+  } else {
+    const resolved = await resolveAnalyticsContext(agentId!)
+    if (isDenied(resolved)) return resolved.errorResponse
+    role = resolved.role
+    downloadDisabled = resolved.downloadDisabled
+    responseAgent = { id: resolved.agent.id, name: resolved.agent.name }
+    dashboardResult = await loadOrCreateDashboard(
+      { scope: 'agent', agent_id: agentId! },
+      { project_id: resolved.agent.projectId, agent_id: agentId },
+      'Overview'
+    )
   }
+
+  if (dashboardResult.error) return dashboardResult.error
+  const dashboard = dashboardResult.dashboard!
 
   const { data: widgets } = await supabase
     .from('pype_analytics_widgets')
@@ -83,7 +111,7 @@ export const GET = guarded('analytics/dashboard', async (req: NextRequest) => {
   return NextResponse.json({
     dashboard,
     widgets: widgets ?? [],
-    agent: { id: agent.id, name: agent.name },
+    agent: responseAgent,
     can_edit: role !== 'viewer',
     // the export route refuses anyway; this stops the button appearing at all
     download_disabled: downloadDisabled,
@@ -91,7 +119,8 @@ export const GET = guarded('analytics/dashboard', async (req: NextRequest) => {
 })
 
 const SaveBody = z.object({
-  agentId: z.string().uuid(),
+  agentId: z.string().uuid().optional(),
+  projectId: z.string().uuid().optional(),
   dashboardId: z.string().uuid(),
   /** What the browser last read. A save against an older number is refused rather than overwriting. */
   version: z.number().int().min(1),
@@ -154,8 +183,9 @@ export const PUT = guarded('analytics/dashboard', async (req: NextRequest) => {
   const parsed = SaveBody.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'Bad request', detail: parsed.error.flatten() }, { status: 400 })
   const body = parsed.data
+  if (!body.agentId && !body.projectId) return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
 
-  const resolved = await resolveAnalyticsContext(body.agentId)
+  const resolved = body.projectId ? await resolveProjectAnalyticsContext(body.projectId) : await resolveAnalyticsContext(body.agentId!)
   if (isDenied(resolved)) return resolved.errorResponse
   if (resolved.role === 'viewer') return NextResponse.json({ error: 'You can view this dashboard but not change it' }, { status: 403 })
 
@@ -164,11 +194,12 @@ export const PUT = guarded('analytics/dashboard', async (req: NextRequest) => {
     return NextResponse.json({ error: `"${invalid.title}" is not a valid chart`, detail: invalid.error.flatten() }, { status: 400 })
   }
 
-  const bumped = await supabase
+  let update = supabase
     .from('pype_analytics_dashboards')
     .update({ version: body.version + 1, ...(body.defaults ? { defaults: body.defaults } : {}) })
     .eq('id', body.dashboardId)
-    .eq('agent_id', body.agentId)
+  update = body.projectId ? update.eq('project_id', body.projectId) : update.eq('agent_id', body.agentId!)
+  const bumped = await update
     .eq('version', body.version)
     .select('id, version')
     .maybeSingle()
