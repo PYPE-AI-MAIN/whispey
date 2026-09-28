@@ -91,6 +91,52 @@ type CardContext = {
   removeWidget: (w: Widget) => void
 }
 
+/**
+ * `onLayoutChange`'s decision, pulled out so its own branching scores
+ * separately from the component's:
+ * - 'skip': the 'sm' breakpoint's layout is `{ ...l, x: 0, w: 1 }` for every
+ *   widget — a deliberately flattened, read-only view for a narrow screen,
+ *   never a real desktop arrangement. On refresh the grid can briefly measure
+ *   under 640px before the sidebar/chrome finishes laying out and report ITS
+ *   OWN single-column fallback here; below the breakpoint nothing reported is
+ *   real data, so it must never reach `draft`/`widgets`.
+ * - 'unchanged': the first callback is the grid reporting what we gave it —
+ *   but a save round-trips widgets through the database's jsonb `layout`
+ *   column first, which does not promise to preserve key order, so comparing
+ *   fields (not serialized text) is what keeps that round-trip from looking
+ *   like a real, unsaved change.
+ */
+function nextLayoutFor(
+  next: Layout,
+  widgets: Widget[],
+  canEdit: boolean,
+  gridWidth: number,
+  wasSettled: boolean
+): Widget[] | 'skip' | 'unchanged' {
+  if (!canEdit || next.length !== widgets.length || gridWidth < BREAKPOINTS.lg) return 'skip'
+  const moved = applyGridLayout(widgets, next)
+  if (!wasSettled && moved.every((w, i) => layoutsEqual(w.layout, widgets[i].layout))) return 'unchanged'
+  return moved
+}
+
+/** Where `setGrain` lands — pulled out so its branching scores separately from the component's. */
+function grainAction(
+  w: ChartWidget,
+  grain: 'interaction' | 'entity',
+  catalog: CatalogField[],
+  ranking: OutcomeRanking,
+  agentId: string | undefined
+): { type: 'edit'; spec: SpecInput } | { type: 'needsOrderEditor' } {
+  if (grain === 'interaction') return { type: 'edit', spec: { ...w.spec, grain: 'interaction', dedupe: undefined } as SpecInput }
+  // outcome ranking is a single-agent concept — OutcomeOrderEditor edits one
+  // agent's pype_voice_agents.outcome_ranking, and the org-wide canvas has
+  // no agent for that editor to open on. entitySpec already tolerates a
+  // null ranking (falls back to 'most_recent'), so project scope just uses
+  // that instead of asking for an order that has nowhere to be saved.
+  if (agentId && !ranking?.order?.length) return { type: 'needsOrderEditor' }
+  return { type: 'edit', spec: entitySpec(w.spec, catalog, ranking, Boolean(agentId)) }
+}
+
 /** One dashboard card, by kind — pulled out of the grid's `.map` so that if/else chain scores on its own. */
 function widgetCard(w: Widget, ctx: CardContext): React.ReactNode {
   const onRemove = () => ctx.removeWidget(w)
@@ -345,31 +391,10 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
   }, [dashboard.data])
 
   const onLayoutChange = (next: Layout) => {
-    // the 'sm' breakpoint's layout is `{ ...l, x: 0, w: 1 }` for every widget —
-    // a deliberately flattened, read-only view for a narrow screen, never a
-    // real desktop arrangement. On refresh the grid can briefly measure under
-    // 640px before the sidebar/chrome finishes laying out, report ITS OWN
-    // single-column fallback here, and this handler used to accept it at face
-    // value — permanently collapsing every card into one column and marking
-    // the dashboard dirty, because the corrupted layout got written into
-    // `draft`/`widgets`, which `gridWidth` correcting itself afterward can't
-    // undo. Below the breakpoint, nothing reported here is real data.
-    if (!canEdit || next.length !== widgets.length || gridWidth < BREAKPOINTS.lg) return
-    const moved = applyGridLayout(widgets, next)
-    if (!settled.current) {
-      settled.current = true
-      // the first callback is the grid reporting what we gave it — but a
-      // save round-trips widgets through the database's jsonb `layout`
-      // column first, which does not promise to preserve key order. Two
-      // layouts that are identical field-by-field can come back with their
-      // keys in a different order, so JSON.stringify equality used to see
-      // them as "different", call setDraft, and flip the dashboard back to
-      // dirty right after a successful save — the Save button reappeared,
-      // looked like the click hadn't worked, and needed a second click to
-      // actually stick. Compare fields, not serialized text.
-      if (moved.length === widgets.length && moved.every((w, i) => layoutsEqual(w.layout, widgets[i].layout))) return
-    }
-    setDraft(moved)
+    const result = nextLayoutFor(next, widgets, canEdit, gridWidth, settled.current)
+    if (result === 'skip') return
+    settled.current = true
+    if (result !== 'unchanged') setDraft(result)
   }
 
   const duplicate = (w: Widget) => {
@@ -386,20 +411,9 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
 
   /** One per patient needs an order to rank by, so ask for one instead of failing. */
   const setGrain = (w: ChartWidget, grain: 'interaction' | 'entity') => {
-    if (grain === 'interaction') {
-      edit(w.id, { spec: { ...w.spec, grain: 'interaction', dedupe: undefined } as SpecInput })
-      return
-    }
-    // outcome ranking is a single-agent concept — OutcomeOrderEditor edits one
-    // agent's pype_voice_agents.outcome_ranking, and the org-wide canvas has
-    // no agent for that editor to open on. entitySpec already tolerates a
-    // null ranking (falls back to 'most_recent'), so project scope just uses
-    // that instead of asking for an order that has nowhere to be saved.
-    if (agentId && !ranking?.order?.length) {
-      setOrderEditor(true)
-      return
-    }
-    edit(w.id, { spec: entitySpec(w.spec, catalog, ranking, Boolean(agentId)) })
+    const action = grainAction(w, grain, catalog, ranking, agentId)
+    if (action.type === 'needsOrderEditor') setOrderEditor(true)
+    else edit(w.id, { spec: action.spec })
   }
 
   const persist = () => {

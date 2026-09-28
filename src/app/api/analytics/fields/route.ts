@@ -27,8 +27,10 @@ export const GET = guarded('analytics/fields', async (req: NextRequest) => {
   if (!agentId && !projectId) return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
 
   if (projectId) return getProjectFields(projectId)
+  // unreachable — the guard above requires at least one of agentId/projectId
+  if (!agentId) return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
 
-  const resolved = await resolveAnalyticsContext(agentId!)
+  const resolved = await resolveAnalyticsContext(agentId)
   if (isDenied(resolved)) return resolved.errorResponse
   const { ctx, agent } = resolved
 
@@ -43,7 +45,7 @@ export const GET = guarded('analytics/fields', async (req: NextRequest) => {
   let rows = existing ?? []
   if (stale || force) {
     try {
-      rows = await rescan(agentId!, agent.projectId, existing ?? [])
+      rows = await rescan(agentId, agent.projectId, existing ?? [])
     } catch (err) {
       console.error('[analytics/fields] rescan failed', err)
       // a stale catalog still helps someone find a field; an empty page does not

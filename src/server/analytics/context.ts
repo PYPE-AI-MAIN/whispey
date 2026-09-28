@@ -200,6 +200,21 @@ export async function resolveProjectAnalyticsContext(
 }
 
 /**
+ * Every route here takes either an agentId or a projectId (never both, and the
+ * caller already 400s if neither is present) — this is the one place that
+ * picks which resolver to call, so TypeScript narrows `agentId` to `string`
+ * on its own and no route needs a non-null assertion to call it.
+ */
+export function resolveScope(
+  { agentId, projectId, agentIds }: { agentId?: string | null; projectId?: string | null; agentIds?: string[] },
+  opts: { forDownload?: boolean } = {}
+) {
+  if (projectId) return resolveProjectAnalyticsContext(projectId, { ...opts, agentIds })
+  if (agentId) return resolveAnalyticsContext(agentId, opts)
+  return null
+}
+
+/**
  * The agent's outcome order, best first (§10.6). A chart saves
  * `ranking_ref: 'agent'` and the order is resolved here on every request, which
  * is what makes reordering the list update every chart at once.

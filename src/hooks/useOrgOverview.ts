@@ -86,6 +86,25 @@ function firstValue(rows: ResultRow[] | undefined): number | null {
   return v === null || v === undefined ? null : Number(v)
 }
 
+/** One widget result per newline-delimited line — pulled out so its nested loop scores separately from the hook's effect. */
+async function readWidgetStream(res: Response, onResult: (r: WidgetResult) => void) {
+  const reader = res.body?.getReader()
+  if (!reader) throw new Error('Could not read the response')
+  const decoder = new TextDecoder()
+  let buffer = ''
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) return
+    buffer += decoder.decode(value, { stream: true })
+    let newline: number
+    while ((newline = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, newline)
+      buffer = buffer.slice(newline + 1)
+      if (line.trim()) onResult(JSON.parse(line) as WidgetResult)
+    }
+  }
+}
+
 /** `series` on a dimensioned result is the group's own value — here, an agent id. */
 function byAgent(rows: ResultRow[] | undefined): Map<string, number> {
   const out = new Map<string, number>()
@@ -132,25 +151,11 @@ export function useOrgOverview(
           body: JSON.stringify({ projectId, widgets: specsFor(range), agentIds: selectedAgentIds ?? undefined }),
         })
         if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error ?? `Something went wrong (${res.status})`)
-        const reader = res.body?.getReader()
-        if (!reader) throw new Error('Could not read the response')
-        const decoder = new TextDecoder()
-        let buffer = ''
         const next = new Map<string, WidgetResult>()
-        for (;;) {
-          const { done, value } = await reader.read()
-          if (done) break
-          buffer += decoder.decode(value, { stream: true })
-          let newline: number
-          while ((newline = buffer.indexOf('\n')) >= 0) {
-            const line = buffer.slice(0, newline)
-            buffer = buffer.slice(newline + 1)
-            if (!line.trim()) continue
-            const result = JSON.parse(line) as WidgetResult
-            next.set(result.widget_id, result)
-            if (!cancelled) setResults(new Map(next))
-          }
-        }
+        await readWidgetStream(res, (result) => {
+          next.set(result.widget_id, result)
+          if (!cancelled) setResults(new Map(next))
+        })
       } catch (err) {
         if (!cancelled) setError(err as Error)
       } finally {

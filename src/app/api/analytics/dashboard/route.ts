@@ -86,17 +86,20 @@ export const GET = guarded('analytics/dashboard', async (req: NextRequest) => {
     role = resolved.role
     downloadDisabled = resolved.downloadDisabled
     dashboardResult = await loadOrCreateDashboard({ scope: 'project', project_id: projectId }, { project_id: projectId }, 'Explore')
-  } else {
-    const resolved = await resolveAnalyticsContext(agentId!)
+  } else if (agentId) {
+    const resolved = await resolveAnalyticsContext(agentId)
     if (isDenied(resolved)) return resolved.errorResponse
     role = resolved.role
     downloadDisabled = resolved.downloadDisabled
     responseAgent = { id: resolved.agent.id, name: resolved.agent.name }
     dashboardResult = await loadOrCreateDashboard(
-      { scope: 'agent', agent_id: agentId! },
+      { scope: 'agent', agent_id: agentId },
       { project_id: resolved.agent.projectId, agent_id: agentId },
       'Overview'
     )
+  } else {
+    // unreachable — the guard above requires at least one of agentId/projectId
+    return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
   }
 
   if (dashboardResult.error) return dashboardResult.error
@@ -185,7 +188,14 @@ export const PUT = guarded('analytics/dashboard', async (req: NextRequest) => {
   const body = parsed.data
   if (!body.agentId && !body.projectId) return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
 
-  const resolved = body.projectId ? await resolveProjectAnalyticsContext(body.projectId) : await resolveAnalyticsContext(body.agentId!)
+  const resolveScope = () => {
+    if (body.projectId) return resolveProjectAnalyticsContext(body.projectId)
+    if (body.agentId) return resolveAnalyticsContext(body.agentId)
+    return null
+  }
+  const resolved = await resolveScope()
+  // unreachable — the guard above requires at least one of agentId/projectId
+  if (!resolved) return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
   if (isDenied(resolved)) return resolved.errorResponse
   if (resolved.role === 'viewer') return NextResponse.json({ error: 'You can view this dashboard but not change it' }, { status: 403 })
 

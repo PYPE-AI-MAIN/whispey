@@ -17,7 +17,7 @@ import { z } from 'zod'
 import { Spec, FilterNode } from '@/server/analytics/spec'
 import { planDashboardQueries, SpecError, InternalSpecError } from '@/server/analytics/buildQuery'
 import { runQuery, isTimeout } from '@/server/analytics/db'
-import { resolveAnalyticsContext, resolveProjectAnalyticsContext, isDenied, outcomeOrderFor } from '@/server/analytics/context'
+import { resolveScope, isDenied, outcomeOrderFor } from '@/server/analytics/context'
 import { guarded } from '@/server/analytics/guard'
 import { asFormulaSpec, combineFormula, type WidgetResult } from '@/server/analytics/formula'
 
@@ -179,11 +179,8 @@ export const POST = guarded('analytics/query', async (req: NextRequest) => {
     return NextResponse.json({ error: 'Bad request', detail: parsed.error.flatten() }, { status: 400 })
   }
   const body = parsed.data
-  if (!body.agentId && !body.projectId) return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
-
-  const resolved = body.projectId
-    ? await resolveProjectAnalyticsContext(body.projectId, { agentIds: body.agentIds })
-    : await resolveAnalyticsContext(body.agentId!)
+  const resolved = await resolveScope(body)
+  if (!resolved) return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
   if (isDenied(resolved)) return resolved.errorResponse
   const { ctx } = resolved
 
