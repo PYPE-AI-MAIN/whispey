@@ -107,7 +107,7 @@ function RangePicker({ range, onChange }: Readonly<{ range: OverviewRange; onCha
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <div className="flex gap-1 rounded-lg border border-gray-200 p-1 dark:border-gray-800">
         {DAY_OPTIONS.map((days) => (
           <button
@@ -148,7 +148,7 @@ export function OrgOverview({ projectId, isActive }: Readonly<{ projectId: strin
 
   return (
     <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-950">
-      <div className="mx-auto max-w-6xl px-8 py-8 md:px-10">
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-8 md:px-10">
         <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-50">Overview</h1>
@@ -166,7 +166,7 @@ export function OrgOverview({ projectId, isActive }: Readonly<{ projectId: strin
           </p>
         )}
 
-        <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Kpi label="Total Calls" value={data.totalCalls} spec={KPI_SPECS.calls} icon={KPI_ICONS.calls} />
           <Kpi label="Pickup %" value={data.pickupPct} spec={KPI_SPECS.pickup} icon={KPI_ICONS.pickup} />
           <Kpi label="Avg Latency" value={data.avgLatency} spec={KPI_SPECS.latency} icon={KPI_ICONS.latency} />
@@ -175,30 +175,37 @@ export function OrgOverview({ projectId, isActive }: Readonly<{ projectId: strin
 
         <div>
           <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-50">Agent breakdown</h2>
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800/60 dark:text-gray-400">
-                <tr className="border-b border-gray-200 dark:border-gray-800">
-                  <th className="py-3 pl-6 pr-4 font-semibold">Agent</th>
-                  <th className="py-3 pr-4 font-semibold">Calls</th>
-                  <th className="py-3 pr-4 font-semibold">Pickup %</th>
-                  <th className="py-3 pr-4 font-semibold">Latency</th>
-                  <th className="py-3 pr-6 font-semibold">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.agents.length === 0 && !isLoading && (
-                  <tr>
-                    <td colSpan={5} className="py-10 text-center text-gray-500 dark:text-gray-400">
-                      No agents in this project yet.
-                    </td>
+          <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+            {/* overflow-x-auto, not overflow-hidden: on a narrow screen the five
+                columns don't fit, and hidden would silently clip Status off the
+                edge instead of letting a finger/scrollbar reach it. min-w on the
+                table is what actually triggers that scrollbar instead of every
+                column just shrinking until the text wraps. */}
+            <div className="overflow-x-auto rounded-xl">
+              <table className="w-full min-w-[640px] text-sm">
+                <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800/60 dark:text-gray-400">
+                  <tr className="border-b border-gray-200 dark:border-gray-800">
+                    <th className="py-3 pl-6 pr-4 font-semibold">Agent</th>
+                    <th className="py-3 pr-4 font-semibold">Calls</th>
+                    <th className="py-3 pr-4 font-semibold">Pickup %</th>
+                    <th className="py-3 pr-4 font-semibold">Latency</th>
+                    <th className="py-3 pr-6 font-semibold">Status</th>
                   </tr>
-                )}
-                {data.agents.map((a) => (
-                  <AgentRow key={a.id} agent={a} projectId={projectId} />
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {data.agents.length === 0 && !isLoading && (
+                    <tr>
+                      <td colSpan={5} className="py-10 text-center text-gray-500 dark:text-gray-400">
+                        No agents in this project yet.
+                      </td>
+                    </tr>
+                  )}
+                  {data.agents.map((a) => (
+                    <AgentRow key={a.id} agent={a} projectId={projectId} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>

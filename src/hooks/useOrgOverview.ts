@@ -32,31 +32,35 @@ export type OrgOverviewData = {
 
 const WIDGET_IDS = {
   totalCalls: 'total_calls',
-  pickupRate: 'pickup_rate',
+  pickedUpCalls: 'picked_up_calls',
   avgLatency: 'avg_latency',
   billingMinutes: 'billing_minutes',
   callsByAgent: 'calls_by_agent',
-  pickupByAgent: 'pickup_by_agent',
+  pickedUpByAgent: 'picked_up_by_agent',
   latencyByAgent: 'latency_by_agent',
 } as const
 
 /**
- * "Success" is not `call_ended_reason = 'completed'` — the dialler reports
- * that even for calls where nobody actually spoke, which reads ~3x too high
- * (Confluence "NHIC - Metric Definitions and Source of Truth"). Pickup is
- * whether a person was actually on the call, `transcription_metrics
- * ->> 'is_user_in_call'`, stored as the text '1'/'0'.
+ * Checked directly against production data before picking this (a prior
+ * version of this file used `transcription_metrics->>'is_user_in_call'`,
+ * copying a rule from the NHIC campaign doc — wrong here: that field exists
+ * on only 2 of 9 agents checked in this project, near-zero coverage on the
+ * rest, which is why "Pickup %" was rendering as "—" for almost everyone).
+ *
+ * `duration_seconds` cleanly separates the two cases in real data — e.g. one
+ * agent's calls: 'completed' averages 49.9s, 'User busy'/'No answer' average
+ * exactly 0.0s — and is populated on ~99.6% of calls platform-wide over the
+ * last 90 days. `call_ended_at > call_started_at` (this file's other
+ * duration signal, `call_duration_seconds`) looked appealing but is NOT a
+ * safe substitute: it's true even for a busy/no-answer attempt, since some
+ * fractional time still elapses before the provider reports the failure.
  */
-const PICKUP_FIELD: { col: string; path: string[]; boolean_encoding: 'one_zero' } = {
-  col: 'transcription_metrics',
-  path: ['is_user_in_call'],
-  boolean_encoding: 'one_zero',
-}
+const PICKED_UP_HAVING = [{ field: { col: 'duration_seconds' }, op: 'gt' as const, value: 0 }]
 
 function specsFor(range: OverviewRange): { id: string; spec: SpecInput }[] {
   return [
     { id: WIDGET_IDS.totalCalls, spec: { spec_version: 1, agg: { fn: 'count' }, range } },
-    { id: WIDGET_IDS.pickupRate, spec: { spec_version: 1, agg: { fn: 'rate', field: PICKUP_FIELD }, range } },
+    { id: WIDGET_IDS.pickedUpCalls, spec: { spec_version: 1, agg: { fn: 'count' }, having: PICKED_UP_HAVING, range } },
     { id: WIDGET_IDS.avgLatency, spec: { spec_version: 1, agg: { fn: 'avg', field: { col: 'avg_latency' } }, range } },
     {
       id: WIDGET_IDS.billingMinutes,
@@ -67,8 +71,8 @@ function specsFor(range: OverviewRange): { id: string; spec: SpecInput }[] {
       spec: { spec_version: 1, agg: { fn: 'count' }, dimension: { field: { col: 'agent_id' } }, range },
     },
     {
-      id: WIDGET_IDS.pickupByAgent,
-      spec: { spec_version: 1, agg: { fn: 'rate', field: PICKUP_FIELD }, dimension: { field: { col: 'agent_id' } }, range },
+      id: WIDGET_IDS.pickedUpByAgent,
+      spec: { spec_version: 1, agg: { fn: 'count' }, dimension: { field: { col: 'agent_id' } }, having: PICKED_UP_HAVING, range },
     },
     {
       id: WIDGET_IDS.latencyByAgent,
@@ -155,25 +159,27 @@ export function useOrgOverview(projectId: string | undefined, range: OverviewRan
   }, [projectId, rangeKey, enabled])
 
   const callsByAgent = byAgent(results.get(WIDGET_IDS.callsByAgent)?.data)
-  const pickupByAgent = byAgent(results.get(WIDGET_IDS.pickupByAgent)?.data)
+  const pickedUpByAgent = byAgent(results.get(WIDGET_IDS.pickedUpByAgent)?.data)
   const latencyByAgent = byAgent(results.get(WIDGET_IDS.latencyByAgent)?.data)
 
   const agents: OrgAgentRow[] = (agentsQuery.data ?? []).map((a) => {
-    const pickup = pickupByAgent.get(a.id)
+    const calls = callsByAgent.get(a.id) ?? null
+    const pickedUp = pickedUpByAgent.get(a.id) ?? null
     return {
       id: a.id,
       name: a.display_name || a.name,
       is_active: a.is_active,
-      calls: callsByAgent.get(a.id) ?? null,
-      pickupPct: pickup === undefined ? null : pickup * 100,
+      calls,
+      pickupPct: calls ? ((pickedUp ?? 0) / calls) * 100 : null,
       latency: latencyByAgent.get(a.id) ?? null,
     }
   })
 
-  const pickupRate = firstValue(results.get(WIDGET_IDS.pickupRate)?.data)
+  const totalCalls = firstValue(results.get(WIDGET_IDS.totalCalls)?.data)
+  const pickedUpCalls = firstValue(results.get(WIDGET_IDS.pickedUpCalls)?.data)
   const data: OrgOverviewData = {
-    totalCalls: firstValue(results.get(WIDGET_IDS.totalCalls)?.data),
-    pickupPct: pickupRate === null ? null : pickupRate * 100,
+    totalCalls,
+    pickupPct: totalCalls ? ((pickedUpCalls ?? 0) / totalCalls) * 100 : null,
     avgLatency: firstValue(results.get(WIDGET_IDS.avgLatency)?.data),
     billingMinutes: firstValue(results.get(WIDGET_IDS.billingMinutes)?.data),
     agents,
