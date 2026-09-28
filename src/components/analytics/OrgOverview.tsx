@@ -8,7 +8,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { DateRange as DayPickerRange } from 'react-day-picker'
-import { CalendarDays, Loader2 } from 'lucide-react'
+import { CalendarDays, Clock3, Loader2, PhoneCall, PhoneIncoming, Timer } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -32,14 +32,43 @@ const parseLocalDate = (s: string) => {
   return new Date(y, mo - 1, d)
 }
 
-function Kpi({ label, value, spec }: Readonly<{ label: string; value: number | null; spec: SpecInput }>) {
+const KPI_ICONS = {
+  calls: PhoneCall,
+  pickup: PhoneIncoming,
+  latency: Clock3,
+  billing: Timer,
+} as const
+
+function Kpi({
+  label, value, spec, icon: Icon,
+}: Readonly<{ label: string; value: number | null; spec: SpecInput; icon: (typeof KPI_ICONS)[keyof typeof KPI_ICONS] }>) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
-      <div className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</div>
-      <div className="mt-2 text-3xl font-semibold tabular-nums text-gray-900 dark:text-gray-50">
+      <div className="flex items-center gap-2">
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+          <Icon className="h-3.5 w-3.5" />
+        </span>
+        <div className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</div>
+      </div>
+      <div className="mt-3 text-3xl font-semibold tabular-nums text-gray-900 dark:text-gray-50">
         {value === null ? '—' : formatValue(value, spec)}
       </div>
     </div>
+  )
+}
+
+function StatusBadge({ isActive }: Readonly<{ isActive: boolean }>) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+        isActive
+          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+          : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
+      }`}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+      {isActive ? 'Live' : 'Inactive'}
+    </span>
   )
 }
 
@@ -50,19 +79,16 @@ function AgentRow({ agent, projectId }: Readonly<{ agent: OrgAgentRow; projectId
       className="cursor-pointer border-b border-gray-100 last:border-0 hover:bg-gray-50 dark:border-gray-800/70 dark:hover:bg-gray-800/40"
       onClick={() => router.push(`/${projectId}/agents/${agent.id}`)}
     >
-      <td className="py-3.5 pr-4 font-medium text-gray-900 dark:text-gray-100">{agent.name}</td>
-      <td className="py-3.5 pr-4 tabular-nums text-gray-700 dark:text-gray-300">{agent.calls?.toLocaleString() ?? '—'}</td>
-      <td className="py-3.5 pr-4 tabular-nums text-gray-700 dark:text-gray-300">
+      <td className="py-4 pl-6 pr-4 font-medium text-gray-900 dark:text-gray-100">{agent.name}</td>
+      <td className="py-4 pr-4 tabular-nums text-gray-700 dark:text-gray-300">{agent.calls?.toLocaleString() ?? '—'}</td>
+      <td className="py-4 pr-4 tabular-nums text-gray-700 dark:text-gray-300">
         {agent.pickupPct === null ? '—' : `${agent.pickupPct.toFixed(0)}%`}
       </td>
-      <td className="py-3.5 pr-4 tabular-nums text-gray-700 dark:text-gray-300">
+      <td className="py-4 pr-4 tabular-nums text-gray-700 dark:text-gray-300">
         {agent.latency === null ? '—' : `${agent.latency.toFixed(1)}s`}
       </td>
-      <td className="py-3.5 text-gray-500 dark:text-gray-400">
-        <span className="inline-flex items-center gap-1.5">
-          <span className={`h-1.5 w-1.5 rounded-full ${agent.is_active ? 'bg-emerald-500' : 'bg-gray-400'}`} />
-          {agent.is_active ? 'live' : 'inactive'}
-        </span>
+      <td className="py-4 pr-6 text-gray-500 dark:text-gray-400">
+        <StatusBadge isActive={agent.is_active} />
       </td>
     </tr>
   )
@@ -121,12 +147,12 @@ export function OrgOverview({ projectId, isActive }: Readonly<{ projectId: strin
   const { data, isLoading, error } = useOrgOverview(projectId, range, isActive)
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-6xl px-6 py-6 md:px-8">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+    <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-950">
+      <div className="mx-auto max-w-6xl px-8 py-8 md:px-10">
+        <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-50">Overview</h1>
-            <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">Summed across every agent in this project.</p>
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-50">Overview</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Summed across every agent in this project.</p>
           </div>
           <div className="flex items-center gap-3">
             {isLoading && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
@@ -141,26 +167,26 @@ export function OrgOverview({ projectId, isActive }: Readonly<{ projectId: strin
         )}
 
         <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <Kpi label="Total Calls" value={data.totalCalls} spec={KPI_SPECS.calls} />
-          <Kpi label="Pickup %" value={data.pickupPct} spec={KPI_SPECS.pickup} />
-          <Kpi label="Avg Latency" value={data.avgLatency} spec={KPI_SPECS.latency} />
-          <Kpi label="Billing Minutes" value={data.billingMinutes} spec={KPI_SPECS.billing} />
+          <Kpi label="Total Calls" value={data.totalCalls} spec={KPI_SPECS.calls} icon={KPI_ICONS.calls} />
+          <Kpi label="Pickup %" value={data.pickupPct} spec={KPI_SPECS.pickup} icon={KPI_ICONS.pickup} />
+          <Kpi label="Avg Latency" value={data.avgLatency} spec={KPI_SPECS.latency} icon={KPI_ICONS.latency} />
+          <Kpi label="Billing Minutes" value={data.billingMinutes} spec={KPI_SPECS.billing} icon={KPI_ICONS.billing} />
         </div>
 
         <div>
           <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-50">Agent breakdown</h2>
           <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
             <table className="w-full text-sm">
-              <thead className="text-left text-xs uppercase tracking-wide text-gray-400">
+              <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800/60 dark:text-gray-400">
                 <tr className="border-b border-gray-200 dark:border-gray-800">
-                  <th className="px-5 py-3 font-medium">Agent</th>
-                  <th className="px-5 py-3 font-medium">Calls</th>
-                  <th className="px-5 py-3 font-medium">Pickup %</th>
-                  <th className="px-5 py-3 font-medium">Latency</th>
-                  <th className="px-5 py-3 font-medium">Status</th>
+                  <th className="py-3 pl-6 pr-4 font-semibold">Agent</th>
+                  <th className="py-3 pr-4 font-semibold">Calls</th>
+                  <th className="py-3 pr-4 font-semibold">Pickup %</th>
+                  <th className="py-3 pr-4 font-semibold">Latency</th>
+                  <th className="py-3 pr-6 font-semibold">Status</th>
                 </tr>
               </thead>
-              <tbody className="[&_td]:px-5">
+              <tbody>
                 {data.agents.length === 0 && !isLoading && (
                   <tr>
                     <td colSpan={5} className="py-10 text-center text-gray-500 dark:text-gray-400">
