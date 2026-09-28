@@ -20,6 +20,7 @@ import { BarChart3, ChevronRight } from 'lucide-react'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { OrgOverview, RangePicker } from '@/components/analytics/OrgOverview'
 import AnalyticsCanvas from '@/components/analytics/AnalyticsCanvas'
+import { JourneysTab } from '@/components/analytics/JourneysTab'
 import type { OverviewRange } from '@/hooks/useOrgOverview'
 
 type Tab = 'overview' | 'explore' | 'journeys'
@@ -28,14 +29,6 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'explore', label: 'Explore' },
   { id: 'journeys', label: 'Journeys' },
 ]
-
-function ComingSoon({ label }: Readonly<{ label: string }>) {
-  return (
-    <div className="flex h-full items-center justify-center text-sm text-gray-500 dark:text-gray-400">
-      {label} is on its way.
-    </div>
-  )
-}
 
 /**
  * Explore — Confluence "Analytics Phase 3 and 4 — Build Spec" §3.5.2. The
@@ -142,7 +135,7 @@ function OrgAnalyticsPageContent() {
           <ExploreTab projectId={projectId} isActive={activeTab === 'explore'} />
         </div>
         <div className={activeTab === 'journeys' ? 'block h-full' : 'hidden'}>
-          <ComingSoon label="Journeys" />
+          <JourneysTab projectId={projectId} isActive={activeTab === 'journeys'} />
         </div>
       </div>
     </div>
