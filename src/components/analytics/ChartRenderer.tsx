@@ -53,6 +53,17 @@ export const readX = (datum: unknown): string | null => {
   if (typeof x !== 'string') return null
   return x === '(empty)' ? null : x
 }
+/**
+ * How many ticks recharts' own `interval` prop should skip so a time axis
+ * shows roughly `maxTicks` evenly-spaced labels instead of one per bucket.
+ * recharts states `interval` as "render every Nth tick" (0 = every tick), so
+ * this is the N that gets from however many buckets a chart has down to a
+ * readable count — a 90-day daily chart at interval=0 crams 90 overlapping
+ * date labels into the strip.
+ */
+export const timeTickInterval = (pointCount: number, maxTicks = 10): number =>
+  Math.max(0, Math.ceil(pointCount / maxTicks) - 1)
+
 /** Legend label formatters, at module scope so recharts isn't handed a fresh component every render. */
 function pieLegendLabel(v: unknown) {
   return <span title={String(v)}>{shortLabel(String(v), 18)}</span>
@@ -139,22 +150,27 @@ export function ChartRenderer({
   // even) so each gets its own diagonal space; the axis needs extra height
   // for that.
   const angleTicks = shaped.axis === 'category'
+  // interval=0 (every tick) is right for a category axis — few values, each
+  // one meaningful, and forcing all of them is what fixed the blank-label bug
+  // above. A time axis uses timeTickInterval instead (see its own comment).
+  const tickInterval = shaped.axis === 'time' ? timeTickInterval(shaped.points.length) : 0
   return (
     <ResponsiveContainer width="100%" height="100%">
       <Chart data={shaped.points} margin={{ top: 8, right: 12, left: -12, bottom: angleTicks ? 28 : 4 }}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" vertical={false} />
-        {/* interval={0}: "preserveStartEnd" only promises the first/last tick — for the
-            rest it guesses which labels would overlap, and with mixed-length category
-            labels it sometimes guesses wrong and drops a label while still drawing its
-            bar. Forcing every tick to render, plus angling them below, fixes both the
-            missing label and the overlap. */}
+        {/* interval={0} on categories: "preserveStartEnd" only promises the first/last
+            tick — for the rest it guesses which labels would overlap, and with
+            mixed-length category labels it sometimes guesses wrong and drops a label
+            while still drawing its bar. Forcing every tick to render, plus angling them
+            below, fixes both the missing label and the overlap. A time axis instead
+            gets tickInterval, computed above from how many buckets there actually are. */}
         <XAxis
           dataKey="x"
           tickFormatter={tickFor}
           tick={axisStyle}
           tickLine={false}
           axisLine={false}
-          interval={0}
+          interval={tickInterval}
           {...(angleTicks ? { angle: -35, textAnchor: 'end' as const, height: 56 } : {})}
         />
         <YAxis tick={axisStyle} tickLine={false} axisLine={false} width={44} unit={suffix || undefined} />
