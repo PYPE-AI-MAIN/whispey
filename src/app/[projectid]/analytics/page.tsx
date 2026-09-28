@@ -69,8 +69,8 @@ function OrgAnalyticsPageContent() {
     <div className="flex h-screen flex-col bg-gray-50 dark:bg-gray-900">
       <Header breadcrumb={breadcrumb} isLoading={projectLoading} />
 
-      <div className="flex-none border-b border-gray-200 bg-white px-6 dark:border-gray-800 dark:bg-gray-900">
-        <div className="flex items-center gap-1 py-2">
+      <div className="flex-none border-b border-gray-200 bg-white px-6 dark:border-gray-800 dark:bg-gray-900 md:px-8">
+        <div className="flex items-center gap-1 py-3">
           <BarChart3 className="mr-2 h-4 w-4 text-gray-400" />
           {TABS.map((tab) => (
             <button
