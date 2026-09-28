@@ -14,6 +14,7 @@ import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useOrgOverview, type OrgAgentRow, type OverviewRange } from '@/hooks/useOrgOverview'
 import { formatValue } from './chartData'
+import { OverviewSkeleton } from './OverviewSkeleton'
 import type { SpecInput } from '@/server/analytics/spec'
 
 const DAY_OPTIONS = [7, 30, 90]
@@ -152,13 +153,27 @@ export function RangePicker({ range, onChange }: Readonly<{ range: OverviewRange
 export function OrgOverview({ projectId, isActive }: Readonly<{ projectId: string; isActive: boolean }>) {
   const [range, setRange] = useState<OverviewRange>({ days: 30 })
   const { data, isLoading, error } = useOrgOverview(projectId, range, isActive)
+  // the full skeleton only for the first paint — once real numbers are on
+  // screen, switching the date range shows the small spinner instead, so
+  // changing "30 days" to "90 days" doesn't blank the whole page every time
+  const hasData = data.totalCalls !== null || data.agents.length > 0
+
+  if (isLoading && !hasData) {
+    return (
+      <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900">
+        <OverviewSkeleton />
+      </div>
+    )
+  }
 
   return (
     <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900">
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-8 md:px-10">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-50">Overview</h1>
+            {/* text-2xl/tracking-tight matches this app's real page-title convention
+                (e.g. api-keys/page.tsx's <h1>) — text-xl read undersized next to it */}
+            <h1 className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">Overview</h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Summed across every agent in this project.</p>
           </div>
           <div className="flex items-center gap-3">
@@ -181,7 +196,7 @@ export function OrgOverview({ projectId, isActive }: Readonly<{ projectId: strin
         </div>
 
         <div>
-          <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-50">Agent breakdown</h2>
+          <h2 className="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">Agent breakdown</h2>
           <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
             {/* overflow-x-auto, not overflow-hidden: on a narrow screen the five
                 columns don't fit, and hidden would silently clip Status off the
