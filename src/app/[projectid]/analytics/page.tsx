@@ -14,9 +14,9 @@
  * reserves for small in-place toggles.
  */
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import { Suspense, useEffect, useState } from 'react'
-import { BarChart3 } from 'lucide-react'
-import Header from '@/components/shared/Header'
+import Link from 'next/link'
+import { Suspense } from 'react'
+import { BarChart3, ChevronRight } from 'lucide-react'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { OrgOverview } from '@/components/analytics/OrgOverview'
 
@@ -56,18 +56,27 @@ function OrgAnalyticsPageContent() {
   })
   const project = projects?.[0]
 
-  const [breadcrumb, setBreadcrumb] = useState<{ project?: string; item?: string }>({})
-  useEffect(() => {
-    if (project) setBreadcrumb({ project: project.name, item: 'Analytics' })
-  }, [project])
-
   const handleTabChange = (tab: Tab) => {
     router.push(`/${projectId}/analytics?tab=${tab}`)
   }
 
   return (
     <div className="flex h-screen flex-col bg-gray-50 dark:bg-gray-900">
-      <Header breadcrumb={breadcrumb} isLoading={projectLoading} />
+      {/* Just the breadcrumb — the app's own sidebar already carries the logo,
+          Docs/Help links and the signed-in user, so repeating all of that in a
+          second header bar (the shared Header component's usual job on pages
+          with no sidebar of their own) was pure duplication here. */}
+      <div className="flex-none border-b border-gray-200 bg-white px-6 py-3 dark:border-gray-800 dark:bg-gray-900 md:px-8">
+        <nav className="flex items-center gap-2 text-sm">
+          <Link href="/" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">
+            Home
+          </Link>
+          <ChevronRight className="h-4 w-4 text-gray-300 dark:text-gray-600" />
+          <span className="text-gray-900 dark:text-gray-100">{projectLoading ? 'Loading…' : project?.name ?? 'Project'}</span>
+          <ChevronRight className="h-4 w-4 text-gray-300 dark:text-gray-600" />
+          <span className="text-gray-900 dark:text-gray-100">Analytics</span>
+        </nav>
+      </div>
 
       <div className="flex-none border-b border-gray-200 bg-white px-6 dark:border-gray-800 dark:bg-gray-900 md:px-8">
         <div className="flex items-center gap-1 py-3">

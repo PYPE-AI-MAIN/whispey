@@ -147,7 +147,7 @@ export function OrgOverview({ projectId, isActive }: Readonly<{ projectId: strin
   const { data, isLoading, error } = useOrgOverview(projectId, range, isActive)
 
   return (
-    <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-950">
+    <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900">
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-8 md:px-10">
         <div className="mb-7 flex flex-wrap items-center justify-between gap-3">
           <div>
