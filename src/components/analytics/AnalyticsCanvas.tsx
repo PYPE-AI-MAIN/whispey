@@ -209,6 +209,55 @@ function CanvasToolbarActions({
   )
 }
 
+/**
+ * The grid itself — pulled out with its `widgets.length > 0 && measured`
+ * guard, `onDrop` and `.map` so all of that scores separately from the
+ * component's own complexity. Renders nothing before the real width is
+ * measured (see `measured`'s own comment at the call site).
+ */
+function DashboardGrid({
+  widgets, measured, gridWidth, layout, canEdit, isMobile, droppingKind, onLayoutChange, onDrop, cardCtx,
+}: Readonly<{
+  widgets: Widget[]
+  measured: boolean
+  gridWidth: number
+  layout: Layout
+  canEdit: boolean
+  isMobile: boolean
+  droppingKind: ChartKind | null
+  onLayoutChange: (next: Layout) => void
+  onDrop: (next: Layout, item: { x?: number; y?: number } | undefined, event: unknown) => void
+  cardCtx: CardContext
+}>) {
+  if (!(widgets.length > 0 && measured)) return null
+  return (
+    <ResponsiveGridLayout
+      width={gridWidth}
+      layouts={{ lg: layout, sm: layout.map((l) => ({ ...l, x: 0, w: 1 })) }}
+      breakpoints={BREAKPOINTS}
+      cols={COLUMNS}
+      rowHeight={ROW_HEIGHT}
+      margin={GRID_MARGIN}
+      containerPadding={[0, 0]}
+      // a click anywhere on a card selects it, so a drag starts from the grip
+      dragConfig={{ enabled: canEdit && !isMobile, handle: `.${DRAG_HANDLE_CLASS}` }}
+      resizeConfig={{ enabled: canEdit && !isMobile, handles: ['se'] }}
+      dropConfig={{ enabled: canEdit && !isMobile, defaultItem: DEFAULT_SIZE[droppingKind ?? 'bar'] }}
+      onLayoutChange={onLayoutChange}
+      onDrop={onDrop}
+    >
+      {widgets.map((w) => (
+        <div key={w.id}>
+          {/* the eleven cards beside this one keep working */}
+          <ChartErrorBoundary label={w.title}>
+            {widgetCard(w, cardCtx)}
+          </ChartErrorBoundary>
+        </div>
+      ))}
+    </ResponsiveGridLayout>
+  )
+}
+
 /** One dashboard card, by kind — pulled out of the grid's `.map` so that if/else chain scores on its own. */
 function widgetCard(w: Widget, ctx: CardContext): React.ReactNode {
   const onRemove = () => ctx.removeWidget(w)
@@ -568,22 +617,14 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
                 twelve columns out at the library's guessed default and then snapping
                 to the real width is the visible jump/overlap on load. `containerRef`
                 must stay mounted either way, or it never gets measured to begin with. */}
-            {widgets.length > 0 && measured && (
-            <ResponsiveGridLayout
-              width={gridWidth}
-              layouts={{ lg: layout, sm: layout.map((l) => ({ ...l, x: 0, w: 1 })) }}
-              breakpoints={BREAKPOINTS}
-              cols={COLUMNS}
-              rowHeight={ROW_HEIGHT}
-              margin={GRID_MARGIN}
-              containerPadding={[0, 0]}
-              // a click anywhere on a card selects it, so a drag starts from the grip
-              dragConfig={{ enabled: canEdit && !isMobile, handle: `.${DRAG_HANDLE_CLASS}` }}
-              resizeConfig={{ enabled: canEdit && !isMobile, handles: ['se'] }}
-              dropConfig={{
-                enabled: canEdit && !isMobile,
-                defaultItem: DEFAULT_SIZE[droppingKind ?? 'bar'],
-              }}
+            <DashboardGrid
+              widgets={widgets}
+              measured={measured}
+              gridWidth={gridWidth}
+              layout={layout}
+              canEdit={canEdit}
+              isMobile={isMobile}
+              droppingKind={droppingKind}
               onLayoutChange={onLayoutChange}
               onDrop={(next, item, event) => {
                 setDroppingKind(null)
@@ -593,36 +634,27 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
                 setDraft(droppedWidgets(next, card, draft ?? widgets))
                 selectChart(card.id)
               }}
-            >
-              {widgets.map((w) => (
-                <div key={w.id}>
-                  {/* the eleven cards beside this one keep working */}
-                  <ChartErrorBoundary label={w.title}>
-                    {widgetCard(w, {
-                      selectedId,
-                      canEdit,
-                      isMobile,
-                      charts,
-                      catalog,
-                      ranking,
-                      catalogReady: fields.isSuccess,
-                      downloadDisabled,
-                      dashboardContext,
-                      csv,
-                      selectChart,
-                      setLogs,
-                      duplicate,
-                      setGrain,
-                      removeWidget: (widget) => {
-                        setDraft((draft ?? widgets).filter((x) => x.id !== widget.id))
-                        if (selectedId === widget.id) setSelectedId(null)
-                      },
-                    })}
-                  </ChartErrorBoundary>
-                </div>
-              ))}
-              </ResponsiveGridLayout>
-            )}
+              cardCtx={{
+                selectedId,
+                canEdit,
+                isMobile,
+                charts,
+                catalog,
+                ranking,
+                catalogReady: fields.isSuccess,
+                downloadDisabled,
+                dashboardContext,
+                csv,
+                selectChart,
+                setLogs,
+                duplicate,
+                setGrain,
+                removeWidget: (widget) => {
+                  setDraft((draft ?? widgets).filter((x) => x.id !== widget.id))
+                  if (selectedId === widget.id) setSelectedId(null)
+                },
+              }}
+            />
           </div>
 
           {widgets.length === 0 && (
