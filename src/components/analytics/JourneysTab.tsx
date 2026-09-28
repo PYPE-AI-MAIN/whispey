@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { RangePicker } from './OrgOverview'
 import { useCampaigns, useFunnel, useRecentJourneys, type JourneyEvent, type JourneySummary } from '@/hooks/useJourneys'
@@ -30,8 +31,7 @@ function EmptyState() {
 }
 
 function Funnel({ projectId, campaignId, range }: Readonly<{ projectId: string; campaignId: string; range: OverviewRange }>) {
-  const dateRange = 'from' in range ? range : rangeFromDays(range.days)
-  const { data, isLoading } = useFunnel(projectId, campaignId, { from: dateRange.from, to: dateRange.to }, true)
+  const { data, isLoading } = useFunnel(projectId, campaignId, range, true)
   const steps = data?.steps ?? []
   const max = Math.max(1, ...steps.map((s) => s.reached_count))
 
@@ -54,14 +54,6 @@ function Funnel({ projectId, campaignId, range }: Readonly<{ projectId: string; 
       ))}
     </div>
   )
-}
-
-function rangeFromDays(days: number): { from: string; to: string } {
-  const to = new Date()
-  const from = new Date(to)
-  from.setDate(to.getDate() - days)
-  const fmt = (d: Date) => d.toISOString().slice(0, 10)
-  return { from: fmt(from), to: fmt(to) }
 }
 
 /** One milestone chip. Voice steps deep-link to the call behind them — the same URL LogsOverlay's own drill-through opens. */
@@ -110,7 +102,14 @@ export function JourneysTab({ projectId, isActive }: Readonly<{ projectId: strin
   const { data: campaigns, isLoading: campaignsLoading } = useCampaigns(projectId, isActive)
   const [campaignId, setCampaignId] = useState<string | null>(null)
   const [range, setRange] = useState<OverviewRange>({ days: 30 })
-  const { data: journeys, isLoading: journeysLoading } = useRecentJourneys(projectId, campaignId, isActive)
+  const {
+    data: journeyPages,
+    isLoading: journeysLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useRecentJourneys(projectId, campaignId, isActive)
+  const journeys = journeyPages?.pages.flatMap((p) => p.journeys) ?? []
 
   useEffect(() => {
     if (!campaignId && campaigns && campaigns.length > 0) setCampaignId(campaigns[0].id)
@@ -166,13 +165,20 @@ export function JourneysTab({ projectId, isActive }: Readonly<{ projectId: strin
                     <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
                   </div>
                 )}
-                {!journeysLoading && (journeys?.length ?? 0) === 0 && (
+                {!journeysLoading && journeys.length === 0 && (
                   <p className="py-10 text-center text-sm text-gray-500 dark:text-gray-400">No journeys for this campaign yet.</p>
                 )}
-                {journeys?.map((j) => (
+                {journeys.map((j) => (
                   <JourneyRow key={j.id} projectId={projectId} journey={j} />
                 ))}
               </div>
+              {hasNextPage && (
+                <div className="mt-4 flex justify-center">
+                  <Button variant="outline" size="sm" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
+                    {isFetchingNextPage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Load more'}
+                  </Button>
+                </div>
+              )}
             </div>
           </>
         )}

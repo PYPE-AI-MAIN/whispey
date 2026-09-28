@@ -22,7 +22,9 @@ export const GET = guarded('journeys/recent', async (req: NextRequest) => {
 
   const limitParam = Number(req.nextUrl.searchParams.get('limit') ?? '20')
   const limit = Number.isFinite(limitParam) ? Math.min(Math.max(1, limitParam), MAX_LIMIT) : 20
+  const offsetParam = Number(req.nextUrl.searchParams.get('offset') ?? '0')
+  const offset = Number.isFinite(offsetParam) ? Math.max(0, offsetParam) : 0
 
-  const journeys = await getRecentJourneys(projectId, campaignId, limit)
-  return NextResponse.json({ journeys })
+  const result = await getRecentJourneys(projectId, campaignId, limit, offset)
+  return NextResponse.json(result)
 })

@@ -70,8 +70,12 @@ export async function getFunnel(
            and ($4::timestamptz is null or created_at < $4)
        ),
        steps as (
-         select ordinality, s->>'step' as step_key, s->>'label' as label
-         from pype_campaigns, jsonb_array_elements(steps) with ordinality as s
+         -- "with ordinality as s" (one alias, two output columns) makes s a
+         -- record of (elem, ord) rather than the jsonb element itself — s->>'x'
+         -- fails with "operator does not exist: record ->> unknown". Naming
+         -- both columns explicitly avoids it.
+         select s.ord as ordinality, s.elem->>'step' as step_key, s.elem->>'label' as label
+         from pype_campaigns, jsonb_array_elements(steps) with ordinality as s(elem, ord)
          where pype_campaigns.id = $2
        ),
        reached as (
@@ -101,16 +105,24 @@ export async function getFunnel(
 }
 
 /** Most recently updated journeys for a campaign, each with its full event history for the milestone chips. */
-export async function getRecentJourneys(projectId: string, campaignId: string, limit: number): Promise<JourneySummary[]> {
-  const journeys = await runQuery<Omit<JourneySummary, 'events'>>(
+export async function getRecentJourneys(
+  projectId: string,
+  campaignId: string,
+  limit: number,
+  offset: number
+): Promise<{ journeys: JourneySummary[]; hasMore: boolean }> {
+  // fetch one extra row to know whether another page exists, without a separate count query
+  const rows = await runQuery<Omit<JourneySummary, 'events'>>(
     `select id, identity_key, status, current_step, outcome, created_at, updated_at
      from pype_journeys
      where project_id = $1 and campaign_id = $2
      order by updated_at desc
-     limit $3`,
-    [projectId, campaignId, limit]
+     limit $3 offset $4`,
+    [projectId, campaignId, limit + 1, offset]
   )
-  if (journeys.length === 0) return []
+  const hasMore = rows.length > limit
+  const journeys = rows.slice(0, limit)
+  if (journeys.length === 0) return { journeys: [], hasMore: false }
 
   const ids = journeys.map((j) => j.id)
   const events = await runQuery<JourneyEvent & { journey_id: string }>(
@@ -128,5 +140,5 @@ export async function getRecentJourneys(projectId: string, campaignId: string, l
     byJourney.set(journey_id, list)
   }
 
-  return journeys.map((j) => ({ ...j, events: byJourney.get(j.id) ?? [] }))
+  return { journeys: journeys.map((j) => ({ ...j, events: byJourney.get(j.id) ?? [] })), hasMore }
 }

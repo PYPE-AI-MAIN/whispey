@@ -4,8 +4,10 @@
  * rather than one combined endpoint, since picking a different campaign only
  * needs to re-fetch the last two.
  */
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
 import type { OverviewRange } from './useOrgOverview'
+
+const RECENT_PAGE_SIZE = 20
 
 export type Campaign = {
   id: string
@@ -38,9 +40,15 @@ export type JourneySummary = {
   events: JourneyEvent[]
 }
 
+/**
+ * The funnel route uses `created_at < to`, so `to` must be tomorrow's date —
+ * today's date would exclude every journey created today (created_at < today
+ * 00:00 is false for anything created after midnight, which is all of today).
+ */
 function toDateRange(range: OverviewRange): { from: string; to: string } {
   if ('from' in range) return range
   const to = new Date()
+  to.setDate(to.getDate() + 1)
   const from = new Date(to)
   from.setDate(to.getDate() - range.days)
   const fmt = (d: Date) => d.toISOString().slice(0, 10)
@@ -73,13 +81,16 @@ export function useFunnel(projectId: string, campaignId: string | null, range: O
   })
 }
 
+/** "Load more" pagination — each page fetches one extra row server-side to say whether another page exists. */
 export function useRecentJourneys(projectId: string, campaignId: string | null, enabled: boolean) {
-  return useQuery({
+  return useInfiniteQuery({
     queryKey: ['journeys', 'recent', projectId, campaignId],
-    queryFn: () =>
-      getJSON<{ journeys: JourneySummary[] }>(`/api/journeys/recent?projectId=${projectId}&campaignId=${campaignId}&limit=20`).then(
-        (r) => r.journeys
+    queryFn: ({ pageParam }) =>
+      getJSON<{ journeys: JourneySummary[]; hasMore: boolean }>(
+        `/api/journeys/recent?projectId=${projectId}&campaignId=${campaignId}&limit=${RECENT_PAGE_SIZE}&offset=${pageParam}`
       ),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, pages) => (lastPage.hasMore ? pages.length * RECENT_PAGE_SIZE : undefined),
     enabled: enabled && !!projectId && !!campaignId,
   })
 }
