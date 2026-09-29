@@ -123,14 +123,18 @@ function formatTotalCountLabel(
   return null
 }
 
-// The metadata/transcription/metrics distinction is now a small colored dot
-// rendered inline in the header label itself (see tableColumns.tsx's
-// renderColumnHeader) — a border-top accent here didn't work, because this
-// header row is `sticky` with a small negative top offset that clips
-// anything sitting right at its top edge.
 function getHeaderCellClassName(): string {
   return "px-6 truncate border-2 border-r-black border-b-2 border-gray-200 dark:border-gray-800 py-1.5 text-left font-semibold text-sm leading-tight text-foreground dark:text-gray-100"
 }
+
+// The metadata/transcription/metrics distinction: one short, muted, uppercase
+// label row spanning that whole contiguous block of columns (built by
+// tableColumns.tsx's column-group wrapper) — not a color repeated on every
+// column. A per-column border/dot kept either getting lost (clipped by this
+// header's sticky negative offset) or reading as "too many colors"; naming
+// the group once, in neutral text, is both more visible and more restrained.
+const groupHeaderCellClassName =
+  "px-6 truncate border-2 border-r-black border-b border-gray-200 dark:border-gray-800 py-1 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
 
 // Extracted so the mixed &&/|| chain doesn't add to CallLogs's own cognitive complexity.
 function shouldShowLoadingSkeleton(
@@ -934,18 +938,32 @@ const CallLogs: React.FC<CallLogsProps> = ({
             )}
           >
             <table className="w-full border-collapse border-spacing-0">
-              <thead className="sticky h-12 -top-1 z-20 bg-background dark:bg-gray-900 shadow-sm">
+              <thead className="sticky -top-1 z-20 bg-background dark:bg-gray-900 shadow-sm">
                 {table.getHeaderGroups().map(hg => (
                   <tr key={hg.id} className="bg-muted/80 dark:bg-gray-800/80">
-                    {hg.headers.map(h => (
-                      <th
-                        key={h.id}
-                        className={getHeaderCellClassName()}
-                        style={{ minWidth: h.column.columnDef.minSize || 200, width: h.column.columnDef.size || 'auto' }}
-                      >
-                        {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
-                      </th>
-                    ))}
+                    {hg.headers.map(h => {
+                      // A group header (e.g. "Metadata") spanning its whole
+                      // block of columns, vs. a leaf column's own name — the
+                      // real category signal now, instead of a per-column dot
+                      // or border that kept getting lost. `isPlaceholder`
+                      // entries are the duplicate row TanStack generates for a
+                      // column that's shallower than the table's max header
+                      // depth; skipped here since the rowSpan below already
+                      // reserves their spot in the row underneath.
+                      if (h.isPlaceholder) return null
+                      const isGroupLabel = h.subHeaders.length > 0
+                      return (
+                        <th
+                          key={h.id}
+                          colSpan={h.colSpan}
+                          rowSpan={table.getHeaderGroups().length - h.depth}
+                          className={isGroupLabel ? groupHeaderCellClassName : getHeaderCellClassName()}
+                          style={{ minWidth: h.column.columnDef.minSize || 200, width: h.column.columnDef.size || 'auto' }}
+                        >
+                          {flexRender(h.column.columnDef.header, h.getContext())}
+                        </th>
+                      )
+                    })}
                   </tr>
                 ))}
               </thead>
@@ -954,7 +972,9 @@ const CallLogs: React.FC<CallLogsProps> = ({
                   isLoading,
                   activeFilters,
                   handleClearFilters,
-                  columnsLength: columns.length,
+                  // leaf column count, not columns.length — a metadata/transcription/metrics
+                  // group now counts as one top-level entry representing many leaf columns
+                  columnsLength: table.getVisibleLeafColumns().length,
                   role,
                   selectedCallId,
                   navigatingCallId,
