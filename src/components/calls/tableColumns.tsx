@@ -322,63 +322,63 @@ export const createTableColumns = (
     })
   })
 
-  // Metadata, Transcription Metrics and Metrics each render as their own
-  // group — one labeled header row spanning that whole contiguous block of
-  // columns — rather than marking every individual column with its own
-  // color. The columns are always built in this order (basic, then metadata,
-  // then transcription, then metrics), so each group's columns are already
-  // adjacent; nothing needs re-sorting to make the group header contiguous.
-  const metadataCols: ColumnDef<CallLog>[] = visibleColumns.metadata.map((key) => ({
-    id: `metadata-${key}`,
-    accessorFn: (row) => row.metadata?.[key],
-    header: key,
-    cell: ({ row }) => {
-      const call = row.original
+  // Metadata columns
+  visibleColumns.metadata.forEach((key) => {
+    cols.push({
+      id: `metadata-${key}`,
+      accessorFn: (row) => row.metadata?.[key],
+      header: key,
+      cell: ({ row }) => {
+        const call = row.original
 
-      // Special rendering for voicemail-detection
-      if (key === 'voicemail-detection' && call.metadata?.['voicemail-detection'] === 'true') {
+        // Special rendering for voicemail-detection
+        if (key === 'voicemail-detection' && call.metadata?.['voicemail-detection'] === 'true') {
+          return (
+            <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+              Voicemail
+            </Badge>
+          )
+        }
+
         return (
-          <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
-            Voicemail
-          </Badge>
+          <DynamicJsonCell
+            data={call.metadata}
+            fieldKey={key}
+            maxWidth="500px"
+          />
         )
-      }
+      },
+      size: 150,
+    })
+  })
 
-      return (
+  // Transcription metrics columns
+  visibleColumns.transcription_metrics.forEach((key) => {
+    cols.push({
+      id: `transcription-${key}`,
+      accessorFn: (row) => row.transcription_metrics?.[key],
+      header: key,
+      cell: ({ row }) => (
         <DynamicJsonCell
-          data={call.metadata}
+          data={row.original.transcription_metrics}
           fieldKey={key}
-          maxWidth="500px"
+          maxWidth="300px"
         />
-      )
-    },
-    size: 150,
-  }))
-  if (metadataCols.length > 0) cols.push({ id: 'metadata-group', header: 'Metadata', columns: metadataCols })
+      ),
+      size: 150,
+    })
+  })
 
-  const transcriptionCols: ColumnDef<CallLog>[] = visibleColumns.transcription_metrics.map((key) => ({
-    id: `transcription-${key}`,
-    accessorFn: (row) => row.transcription_metrics?.[key],
-    header: key,
-    cell: ({ row }) => (
-      <DynamicJsonCell
-        data={row.original.transcription_metrics}
-        fieldKey={key}
-        maxWidth="300px"
-      />
-    ),
-    size: 150,
-  }))
-  if (transcriptionCols.length > 0) cols.push({ id: 'transcription-group', header: 'Transcription', columns: transcriptionCols })
-
-  const metricsCols: ColumnDef<CallLog>[] = visibleColumns.metrics.map((metricId) => ({
-    id: `metrics-${metricId}`,
-    accessorFn: (row) => row.metrics?.[metricId],
-    header: metricId.replaceAll('_', ' ').replaceAll(/\b\w/g, l => l.toUpperCase()),
-    cell: ({ row }) => renderMetricCell(row.original, metricId),
-    size: 150,
-  }))
-  if (metricsCols.length > 0) cols.push({ id: 'metrics-group', header: 'Metrics', columns: metricsCols })
+  // Metrics columns
+  visibleColumns.metrics.forEach((metricId) => {
+    cols.push({
+      id: `metrics-${metricId}`,
+      accessorFn: (row) => row.metrics?.[metricId],
+      header: metricId.replaceAll('_', ' ').replaceAll(/\b\w/g, l => l.toUpperCase()),
+      cell: ({ row }) => renderMetricCell(row.original, metricId),
+      size: 150,
+    })
+  })
 
   return cols
 }
