@@ -206,10 +206,15 @@ export function OrgOverview({
                 columns don't fit, and hidden would silently clip Status off the
                 edge instead of letting a finger/scrollbar reach it. min-w on the
                 table is what actually triggers that scrollbar instead of every
-                column just shrinking until the text wraps. */}
-            <div className="overflow-x-auto rounded-xl">
+                column just shrinking until the text wraps.
+                max-h + overflow-y-auto caps the list at ~10 rows instead of
+                pushing the whole page taller for a project with dozens of
+                agents; the header is sticky so it stays put while that scrolls. */}
+            <div className="max-h-[32rem] overflow-x-auto overflow-y-auto rounded-xl">
               <table className="w-full min-w-[640px] text-sm">
-                <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800/60 dark:text-gray-400">
+                {/* solid bg, not the row's translucent /60 — sticky means rows
+                    scroll underneath it, and translucency would let them ghost through */}
+                <thead className="sticky top-0 z-10 bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800 dark:text-gray-400">
                   <tr className="border-b border-gray-200 dark:border-gray-800">
                     <th className="py-3 pl-6 pr-4 font-semibold">Agent</th>
                     <th className="py-3 pr-4 font-semibold">Calls</th>
