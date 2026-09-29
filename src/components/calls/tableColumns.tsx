@@ -197,16 +197,16 @@ function renderFlagCell(
   )
 }
 
-function renderBasicCell(
-  key: string,
-  call: CallLog,
-  availableTags: string[],
-  canComment: boolean,
-  role: string | null,
-  currentUserId: string | null,
-  currentUserEmail: string | null,
+interface BasicCellContext {
+  availableTags: string[]
+  canComment: boolean
+  role: string | null
+  currentUserId: string | null
+  currentUserEmail: string | null
   onTagsUpdated?: () => void
-) {
+}
+
+function renderBasicCell(key: string, call: CallLog, ctx: BasicCellContext) {
   switch (key) {
     case "customer_number":
       return renderCustomerNumberCell(call)
@@ -225,9 +225,9 @@ function renderBasicCell(
     case "total_cost":
       return renderTotalCostCell(call)
     case "tags":
-      return renderTagsCell(call, availableTags, canComment, onTagsUpdated)
+      return renderTagsCell(call, ctx.availableTags, ctx.canComment, ctx.onTagsUpdated)
     case "flag":
-      return renderFlagCell(call, role, currentUserId, currentUserEmail, onTagsUpdated)
+      return renderFlagCell(call, ctx.role, ctx.currentUserId, ctx.currentUserEmail, ctx.onTagsUpdated)
     default:
       return <span>{call[key as keyof CallLog] ?? "-"}</span>
   }
@@ -316,7 +316,7 @@ export const createTableColumns = (
       id: key,
       accessorKey: key,
       header: col?.label ?? key,
-      cell: ({ row }) => renderBasicCell(key, row.original, availableTags, canComment, role, currentUserId, currentUserEmail, onTagsUpdated),
+      cell: ({ row }) => renderBasicCell(key, row.original, { availableTags, canComment, role, currentUserId, currentUserEmail, onTagsUpdated }),
       minSize: key === "customer_number" ? 180 : key === "tags" ? 200 : key === "flag" ? 100 : 150,
       size: key === "customer_number" ? 180 : key === "tags" ? 220 : key === "flag" ? 110 : undefined,
     })

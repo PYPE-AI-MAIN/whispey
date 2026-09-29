@@ -9,7 +9,7 @@
 'use client'
 import React from 'react'
 import {
-  Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart,
+  Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, // NOSONAR typescript:S1874 — Cell is deprecated in recharts 3.x in favor of the `shape` prop, but still fully supported until v4.0; migrating now risks changing pie-slice color rendering without a way to visually verify it here
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import { cn } from '@/lib/utils'
@@ -133,6 +133,7 @@ export function ChartRenderer({
             onClick={(slice: unknown) => onSelect?.(readX(slice))}
           >
             {shaped.points.map((p, i) => (
+              // NOSONAR typescript:S1874 — see import comment above
               <Cell key={p.x} fill={SERIES_COLORS[i % SERIES_COLORS.length]} />
             ))}
           </Pie>

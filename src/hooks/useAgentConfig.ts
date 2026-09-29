@@ -334,6 +334,33 @@ async function fetchWorkerPid(agentName: string): Promise<number | null> {
   }
 }
 
+type PollOutcome =
+  | { kind: "continue"; untrackedPolls: number }
+  | { kind: "stop"; result: any }
+  | { kind: "break" }
+
+// Decides what the poll loop does next for one status response. Pulled out of
+// pollUpdateStatus so that function's own branching stays shallow — this is
+// where all the "no_update_found vs terminal vs transient" logic lives instead.
+function nextPollOutcome(status: any, currentPid: number | null, untrackedPolls: number): PollOutcome {
+  // Updates apply in place now, so the PID may never change. If the backend has
+  // no record of the update for a while, it isn't running it — stop waiting.
+  if (status.status === "no_update_found") {
+    const count = untrackedPolls + 1
+    if (count < UNTRACKED_POLLS_LIMIT) return { kind: "continue", untrackedPolls: count }
+    if (currentPid) return { kind: "stop", result: { status: "completed", success: true, pid: currentPid } }
+    return { kind: "break" }
+  }
+  if (status.status === "unreachable") return { kind: "continue", untrackedPolls: 0 }
+  if (TERMINAL_UPDATE_STATUSES.has(status.status)) {
+    if (status.status === "completed" && status.success !== false) return { kind: "stop", result: status }
+    // A live-tracked failure (not a restart artifact — those come back as
+    // "no_update_found" now) — a real validation/update error, surface it.
+    throw new Error(status.error || `Agent update ended with status: ${status.status}`)
+  }
+  return { kind: "continue", untrackedPolls: 0 }
+}
+
 // The backend's update tracker gets wiped by any backend restart, so instead
 // of trusting it we poll ground truth: has the agent's PID actually changed?
 // update_status is only used for the progress label, not for pass/fail.
@@ -354,21 +381,13 @@ async function pollUpdateStatus(agentName: string): Promise<any> {
     if (!res?.ok) continue // transient — ground truth check above keeps running regardless
 
     const status = await res.json()
-    // Updates apply in place now, so the PID may never change. If the backend has
-    // no record of the update for a while, it isn't running it — stop waiting.
-    if (status.status === "no_update_found") {
-      if (++untrackedPolls < UNTRACKED_POLLS_LIMIT) continue
-      if (currentPid) return { status: "completed", success: true, pid: currentPid }
-      break
+    const outcome = nextPollOutcome(status, currentPid, untrackedPolls)
+    if (outcome.kind === "continue") {
+      untrackedPolls = outcome.untrackedPolls
+      continue
     }
-    untrackedPolls = 0
-    if (status.status === "unreachable") continue
-    if (TERMINAL_UPDATE_STATUSES.has(status.status)) {
-      if (status.status === "completed" && status.success !== false) return status
-      // A live-tracked failure (not a restart artifact — those come back as
-      // "no_update_found" now) — a real validation/update error, surface it.
-      throw new Error(status.error || `Agent update ended with status: ${status.status}`)
-    }
+    if (outcome.kind === "stop") return outcome.result
+    break // outcome.kind === "break"
   }
 
   // Last chance: the agent may have come back up in the final poll interval.

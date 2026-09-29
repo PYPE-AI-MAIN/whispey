@@ -397,7 +397,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
   // settling, not a one-column dashboard; draw the last real width rather than
   // reflowing every card into a strip (see usableWidth)
   const lastGood = useRef(0)
-  const viewport = typeof window === 'undefined' ? 0 : window.innerWidth
+  const viewport = typeof globalThis.window === 'undefined' ? 0 : globalThis.window.innerWidth
   const gridWidth = usableWidth(width, viewport, lastGood.current)
   if (gridWidth === width) lastGood.current = width
   // the grid's first paint has to be at a real measured width; laying twelve
@@ -564,7 +564,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
 
   if (dashboard.isLoading || isLoading) return <DashboardSkeleton />
 
-  if (dashboard.isError) return <Centered>{(dashboard.error as Error).message}</Centered>
+  if (dashboard.isError) return <Centered>{dashboard.error.message}</Centered>
 
   return (
     <div className="flex h-full min-h-0">
@@ -597,7 +597,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
           />
         </div>
 
-        {save.isError && <Banner onDismiss={() => save.reset()}>{(save.error as Error).message}</Banner>}
+        {save.isError && <Banner onDismiss={() => save.reset()}>{save.error.message}</Banner>}
         {charts.error && <Banner onDismiss={() => charts.refetch()}>{charts.error.message}</Banner>}
         {csv.error && <Banner onDismiss={() => undefined}>{csv.error}</Banner>}
 

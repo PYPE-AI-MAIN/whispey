@@ -396,7 +396,7 @@ function MiniAggEditor({
 
       <Row label="Only counting">
         <ChartFilters
-          filters={(value.having ?? []) as FilterNodeInput[]}
+          filters={value.having ?? []}
           fields={fields}
           disabled={!canEdit}
           onChange={(having) => onChange({ ...value, having })}
@@ -657,7 +657,7 @@ function ChartSettings({
           "Completed calls" stops being a number with no definition */}
       <Row label="Only counting">
         <ChartFilters
-          filters={(spec.having ?? []) as FilterNodeInput[]}
+          filters={spec.having ?? []}
           fields={fields}
           disabled={!canEdit}
           onChange={(having) => setSpec({ having })}

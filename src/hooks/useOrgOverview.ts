@@ -199,5 +199,5 @@ export function useOrgOverview(
     agents,
   }
 
-  return { data, isLoading: isLoading || agentsQuery.isLoading, error: error ?? (agentsQuery.error as Error | null) }
+  return { data, isLoading: isLoading || agentsQuery.isLoading, error: error ?? agentsQuery.error }
 }
