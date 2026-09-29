@@ -120,7 +120,16 @@ export default function CallAgainDialog({ call, projectId, agent, phoneNumbers }
           <PhoneCall className="h-3 w-3" /> Call Again
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg" onClick={(e) => e.stopPropagation()}>
+      {/* flex + max-h caps the dialog to the viewport and keeps the title/footer
+          always visible — a call can carry a dozen-plus metadata fields, and
+          the default Dialog has no height limit at all, so that variable list
+          alone can push the whole card, title included, off the top of the
+          screen with no way to scroll back up to it. Only the middle section
+          scrolls; header and footer stay put. */}
+      <DialogContent
+        className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
         <DialogHeader>
           <DialogTitle>Call {call.customer_number} again?</DialogTitle>
           <DialogDescription>
@@ -128,7 +137,7 @@ export default function CallAgainDialog({ call, projectId, agent, phoneNumbers }
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300 flex items-start gap-2">
             <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
             <span>
