@@ -1,17 +1,18 @@
 "use client"
 
 import React, { useCallback, useMemo, useRef, useState } from "react"
+import Papa from 'papaparse'
 import { Button } from "@/components/ui/button"
-import { AlertCircle, RefreshCw, Inbox, ChevronLeft, ChevronRight, Settings } from "lucide-react"
+import { AlertCircle, RefreshCw, Inbox, ChevronLeft, ChevronRight, Settings, X } from "lucide-react"
 import CallFilter, { FilterOperation } from "../CallFilter"
 import ColumnSelector from "../shared/ColumnSelector"
 import { cn } from "@/lib/utils"
 import { useUser } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
 import { useTheme } from "next-themes"
-import { useReactTable, getCoreRowModel, flexRender } from '@tanstack/react-table'
+import { useReactTable, getCoreRowModel, flexRender, type ColumnDef } from '@tanstack/react-table'
 
-import { isRowFlaggedForRole } from '@/utils/callLogsUtils'
+import { isRowFlaggedForRole, flattenCallLogForCSV, triggerCSVFileDownload } from '@/utils/callLogsUtils'
 import { useCallLogsData } from '@/hooks/useCallLogsData'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { canShowOrgSection } from '@/types/visibility'
@@ -21,18 +22,19 @@ import DownloadDialog from './DownloadDialog'
 import DownloadSettingsDialog from './DownloadSettingsDialog'
 import { useQuery } from '@tanstack/react-query'
 import { useCallLogsStore } from '@/stores/callLogsStore'
-import { agentDisplayName } from '@/lib/agentDisplayName'
 import { createTableColumns } from './tableColumns'
 import {
   FilterHeaderSkeleton,
   TableSkeleton,
   ReanalyzeDialogWrapper
 } from './sub-components'
-import BackfillDispositionDialog from '@/components/disposition/BackfillDispositionDialog'
 import FlagRulesDialog from '@/components/FlagRulesDialog'
 import { CampaignSelector } from './CampaignSelector'
 import type { Campaign } from './CampaignSelector'
 import CampaignCallLogs from './CampaignCallLogs'
+import CallAgainDialog from './CallAgainDialog'
+import type { CallLog } from '@/types/logs'
+import type { PhoneNumber } from '@/lib/callDispatch'
 
 interface CallLogsProps {
   project: any
@@ -178,6 +180,77 @@ function getCellClassName(rowIndex: number, isSelected: boolean, cellColumnId: s
     !isSelected && cellColumnId.startsWith('metrics-') && "dark:bg-blue-900/10",
     isSelected && "bg-blue-100 dark:bg-blue-900/40",
   )
+}
+
+// A checkbox column prepended to the table — not real data, so it's built
+// here rather than in tableColumns.tsx (which only ever renders CallLog
+// fields). `onClick` stops propagation so toggling a checkbox doesn't also
+// fire the row's own "open this call" navigation.
+function buildSelectionColumn(
+  currentPageCalls: CallLog[],
+  selectedIds: Set<string>,
+  setSelectedIds: React.Dispatch<React.SetStateAction<Set<string>>>
+): ColumnDef<CallLog> {
+  const allSelected = currentPageCalls.length > 0 && currentPageCalls.every((c) => selectedIds.has(c.id))
+  return {
+    id: 'select',
+    header: () => (
+      <input
+        type="checkbox"
+        aria-label="Select all calls on this page"
+        checked={allSelected}
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => setSelectedIds(e.target.checked ? new Set(currentPageCalls.map((c) => c.id)) : new Set())}
+        className="h-4 w-4 cursor-pointer accent-blue-600"
+      />
+    ),
+    cell: ({ row }) => (
+      <input
+        type="checkbox"
+        aria-label="Select this call"
+        checked={selectedIds.has(row.original.id)}
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) =>
+          setSelectedIds((prev) => {
+            const next = new Set(prev)
+            if (e.target.checked) next.add(row.original.id)
+            else next.delete(row.original.id)
+            return next
+          })
+        }
+        className="h-4 w-4 cursor-pointer accent-blue-600"
+      />
+    ),
+    size: 44,
+    minSize: 44,
+  }
+}
+
+// The redial action column — only worth showing at all when the project has
+// somewhere to dial out from and this specific row has a number to call.
+// Per-row eligibility (not just the column's existence) still gets checked
+// again by CallAgainDialog itself before anything is dispatched.
+function buildCallAgainColumn(
+  canOfferCallAgain: boolean,
+  projectId: string,
+  agent: { id: string; name: string; agent_type: string; is_active: boolean },
+  outboundPhoneNumbers: PhoneNumber[]
+): ColumnDef<CallLog> | null {
+  if (!canOfferCallAgain) return null
+  return {
+    id: 'call_again',
+    header: 'Call Again',
+    cell: ({ row }) => {
+      if (!row.original.customer_number) return <span className="text-muted-foreground">—</span>
+      return (
+        <div onClick={(e) => e.stopPropagation()}>
+          <CallAgainDialog call={row.original} projectId={projectId} agent={agent} phoneNumbers={outboundPhoneNumbers} />
+        </div>
+      )
+    },
+    size: 110,
+    minSize: 110,
+  }
 }
 
 function renderPageItem(
@@ -330,6 +403,25 @@ function useAgentDownloadSettingsQuery(agentId: string | undefined) {
       }>
     },
     enabled: !!agentId,
+    staleTime: 60_000,
+  })
+}
+
+// Whether "Call Again" can even be offered at all — a project with no active
+// outbound-capable number has nothing to dispatch through, regardless of the
+// call being retried. Fetched once for the whole page, not per row.
+function useOutboundPhoneNumbersQuery(projectId: string | undefined) {
+  return useQuery({
+    queryKey: ['outbound-phone-numbers', projectId],
+    queryFn: async () => {
+      const res = await fetch(`/api/phone-numbers/available?project_id=${projectId}`)
+      if (!res.ok) return []
+      const data: PhoneNumber[] = await res.json()
+      return data.filter(
+        (p) => (p.trunk_direction === 'outbound' || p.trunk_direction === 'bidirectional') && p.status === 'active'
+      )
+    },
+    enabled: !!projectId,
     staleTime: 60_000,
   })
 }
@@ -547,10 +639,32 @@ const CallLogs: React.FC<CallLogsProps> = ({
     return Array.from(tagSet).sort()
   }, [calls])
 
-  const columns = useMemo(
+  const baseColumns = useMemo(
     () => createTableColumns(visibleColumns, { availableTags, onTagsUpdated: refetchCurrentPage, role, currentUserId: user?.id ?? null, currentUserEmail: userEmail ?? null }),
     [visibleColumns, availableTags, refetchCurrentPage, role, user?.id, userEmail]
   )
+
+  // ── Row selection (copy / export selected) ──────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  // A selection only makes sense against what's currently on screen — a new
+  // page or a new filter set is a different result set entirely.
+  React.useEffect(() => {
+    setSelectedIds(new Set())
+  }, [currentPage, activeFilters])
+
+  const { data: outboundPhoneNumbers = [] } = useOutboundPhoneNumbersQuery(project?.id)
+  const canOfferCallAgain = agent?.agent_type === 'pype_agent' && outboundPhoneNumbers.length > 0
+
+  const columns = useMemo(() => {
+    const callAgainColumn = agent?.id
+      ? buildCallAgainColumn(canOfferCallAgain, project?.id, agent, outboundPhoneNumbers)
+      : null
+    return [
+      buildSelectionColumn(currentPageCalls, selectedIds, setSelectedIds),
+      ...baseColumns,
+      ...(callAgainColumn ? [callAgainColumn] : []),
+    ]
+  }, [baseColumns, currentPageCalls, selectedIds, canOfferCallAgain, project?.id, agent, outboundPhoneNumbers])
 
   const table = useReactTable({
     data: currentPageCalls,
@@ -559,6 +673,31 @@ const CallLogs: React.FC<CallLogsProps> = ({
   })
 
   const rows = table.getRowModel().rows
+
+  const selectedCalls = useMemo(
+    () => currentPageCalls.filter((c) => selectedIds.has(c.id)),
+    [currentPageCalls, selectedIds]
+  )
+
+  const [copyFeedback, setCopyFeedback] = useState(false)
+
+  const buildSelectedCsvRecords = useCallback(
+    () => selectedCalls.map((row) =>
+      flattenCallLogForCSV(row, visibleColumns.basic, visibleColumns.metadata, visibleColumns.transcription_metrics)
+    ),
+    [selectedCalls, visibleColumns]
+  )
+
+  const handleCopySelected = useCallback(async () => {
+    const tsv = Papa.unparse(buildSelectedCsvRecords(), { delimiter: '\t' })
+    await navigator.clipboard.writeText(tsv)
+    setCopyFeedback(true)
+    setTimeout(() => setCopyFeedback(false), 2000)
+  }, [buildSelectedCsvRecords])
+
+  const handleExportSelected = useCallback(() => {
+    triggerCSVFileDownload(buildSelectedCsvRecords())
+  }, [buildSelectedCsvRecords])
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -681,6 +820,25 @@ const CallLogs: React.FC<CallLogsProps> = ({
             >
               <RefreshCw className={cn('h-3 w-3', (isLoading || isRefetching) && 'animate-spin')} />
             </Button>
+            {selectedIds.size > 0 && (
+              <div className="flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 py-1 pl-2.5 pr-1.5 dark:border-blue-900/50 dark:bg-blue-950/30">
+                <span className="text-xs font-medium text-blue-700 dark:text-blue-300">{selectedIds.size} selected</span>
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={handleCopySelected}>
+                  {copyFeedback ? 'Copied!' : 'Copy'}
+                </Button>
+                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={handleExportSelected}>
+                  Export CSV
+                </Button>
+                <Button
+                  variant="ghost" size="sm"
+                  className="h-6 w-6 p-0"
+                  aria-label="Clear selection"
+                  onClick={() => setSelectedIds(new Set())}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center flex-wrap justify-end gap-2">
@@ -695,10 +853,6 @@ const CallLogs: React.FC<CallLogsProps> = ({
                 onSaved={onAgentUpdated}
               />
             )}
-            <BackfillDispositionDialog
-              projectId={project?.id} agentId={agent?.id}
-              agentName={agentDisplayName(agent)} projectName={project?.name}
-            />
             {canShowDownloadButton(downloadSettingsData?.canDownload, isSuperAdmin) && (
               <div className="relative flex items-center gap-1">
                 <Button
