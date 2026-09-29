@@ -281,6 +281,19 @@ function renderMetricCell(call: CallLog, metricId: string) {
   ) : value
 }
 
+// A small colored dot inline with the column label, not a border on the <th> —
+// the header row is `sticky` with a small negative top offset (see CallLogs.tsx),
+// which was clipping a border-top accent out of view. A dot in the content flow
+// can't be clipped by that.
+function renderColumnHeader(label: string, dotColorClass: string) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dotColorClass)} />
+      {label}
+    </span>
+  )
+}
+
 export const createTableColumns = (
   visibleColumns: {
     basic: string[]
@@ -327,7 +340,7 @@ export const createTableColumns = (
     cols.push({
       id: `metadata-${key}`,
       accessorFn: (row) => row.metadata?.[key],
-      header: key,
+      header: () => renderColumnHeader(key, "bg-teal-400 dark:bg-teal-500"),
       cell: ({ row }) => {
         const call = row.original
 
@@ -357,7 +370,7 @@ export const createTableColumns = (
     cols.push({
       id: `transcription-${key}`,
       accessorFn: (row) => row.transcription_metrics?.[key],
-      header: key,
+      header: () => renderColumnHeader(key, "bg-violet-400 dark:bg-violet-500"),
       cell: ({ row }) => (
         <DynamicJsonCell
           data={row.original.transcription_metrics}
@@ -374,7 +387,10 @@ export const createTableColumns = (
     cols.push({
       id: `metrics-${metricId}`,
       accessorFn: (row) => row.metrics?.[metricId],
-      header: metricId.replaceAll('_', ' ').replaceAll(/\b\w/g, l => l.toUpperCase()),
+      header: () => renderColumnHeader(
+        metricId.replaceAll('_', ' ').replaceAll(/\b\w/g, l => l.toUpperCase()),
+        "bg-sky-400 dark:bg-sky-500"
+      ),
       cell: ({ row }) => renderMetricCell(row.original, metricId),
       size: 150,
     })

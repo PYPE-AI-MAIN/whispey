@@ -123,22 +123,13 @@ function formatTotalCountLabel(
   return null
 }
 
-// A thin top-border accent, not a filled column background — enough to tell
-// metadata/transcription/metrics columns apart from a basic one and from each
-// other, without painting the whole column a saturated color (the previous
-// bg-purple-50/bg-blue-50 wash).
-function getHeaderCellClassName(headerId: string): string {
-  const base = "px-6 truncate border-2 border-r-black border-b-2 border-gray-200 dark:border-gray-800 py-1.5 text-left font-semibold text-sm leading-tight text-foreground dark:text-gray-100"
-  if (headerId.startsWith('transcription-')) {
-    return cn(base, "border-t-2 border-t-violet-400 dark:border-t-violet-600")
-  }
-  if (headerId.startsWith('metrics-')) {
-    return cn(base, "border-t-2 border-t-sky-400 dark:border-t-sky-600")
-  }
-  if (headerId.startsWith('metadata-')) {
-    return cn(base, "border-t-2 border-t-teal-400 dark:border-t-teal-600")
-  }
-  return base
+// The metadata/transcription/metrics distinction is now a small colored dot
+// rendered inline in the header label itself (see tableColumns.tsx's
+// renderColumnHeader) — a border-top accent here didn't work, because this
+// header row is `sticky` with a small negative top offset that clips
+// anything sitting right at its top edge.
+function getHeaderCellClassName(): string {
+  return "px-6 truncate border-2 border-r-black border-b-2 border-gray-200 dark:border-gray-800 py-1.5 text-left font-semibold text-sm leading-tight text-foreground dark:text-gray-100"
 }
 
 // Extracted so the mixed &&/|| chain doesn't add to CallLogs's own cognitive complexity.
@@ -949,7 +940,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
                     {hg.headers.map(h => (
                       <th
                         key={h.id}
-                        className={getHeaderCellClassName(h.id)}
+                        className={getHeaderCellClassName()}
                         style={{ minWidth: h.column.columnDef.minSize || 200, width: h.column.columnDef.size || 'auto' }}
                       >
                         {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}
