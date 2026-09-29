@@ -20,7 +20,7 @@ import { CALCULATIONS, explainSpec } from './explain'
 import { FieldPicker, FieldShape } from './FieldPicker'
 import { identityFields, outcomeField } from './suggest'
 import type { OutcomeRanking } from './OutcomeOrderEditor'
-import type { FilterNodeInput, SpecInput } from '@/server/analytics/spec'
+import type { SpecInput } from '@/server/analytics/spec'
 import { AiChartBuilderDialog } from './AiChartBuilderDialog'
 
 /** What a chart-type tile puts on the drag event, and what the grid reads off it. */

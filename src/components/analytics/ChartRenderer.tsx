@@ -132,10 +132,9 @@ export function ChartRenderer({
             paddingAngle={2}
             onClick={(slice: unknown) => onSelect?.(readX(slice))}
           >
-            {shaped.points.map((p, i) => (
-              // NOSONAR typescript:S1874 — see import comment above
-              <Cell key={p.x} fill={SERIES_COLORS[i % SERIES_COLORS.length]} />
-            ))}
+            {shaped.points.map((p, i) => {
+              return <Cell key={p.x} fill={SERIES_COLORS[i % SERIES_COLORS.length]} /> // NOSONAR typescript:S1874 — see import comment above
+            })}
           </Pie>
           <Tooltip {...tooltipStyle} formatter={(v: unknown) => formatValue(Number(v), spec)} />
           <Legend formatter={pieLegendLabel} wrapperStyle={{ fontSize: 11 }} />

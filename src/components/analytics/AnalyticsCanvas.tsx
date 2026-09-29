@@ -397,7 +397,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
   // settling, not a one-column dashboard; draw the last real width rather than
   // reflowing every card into a strip (see usableWidth)
   const lastGood = useRef(0)
-  const viewport = typeof globalThis.window === 'undefined' ? 0 : globalThis.window.innerWidth
+  const viewport = globalThis.window === undefined ? 0 : globalThis.window.innerWidth
   const gridWidth = usableWidth(width, viewport, lastGood.current)
   if (gridWidth === width) lastGood.current = width
   // the grid's first paint has to be at a real measured width; laying twelve
