@@ -427,9 +427,6 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, projectId, agent, se
   // other stage (stt/llm/tts/eou) reads as plain text like the rest of the row.
   // (Previously stt/llm/tts/eou each had their own hue, and "eou" and "tool"
   // shared the same orange — neither told you anything the icon didn't.)
-  const getOperationColor = (operation: string) => {
-    return operation === "tool" ? "text-orange-600 dark:text-orange-400" : "text-gray-600 dark:text-gray-400"
-  }
 
   const formatDuration = (ms: number) => {
     if (ms < 1000) return `${ms.toFixed(1)}ms`
@@ -818,7 +815,11 @@ const handleRowClick = (trace: TraceLog) => {
                         {/* Trace Info */}
                         <div className="col-span-3 space-y-1">
                           <div className="flex items-center gap-2">
-                            <div className={cn("text-sm", getOperationColor(mainOp))}>
+                            {/* Every operation already has its own icon shape
+                                (getOperationIcon above) and, for tool calls, its own
+                                neutral badge in the Operations column — a colored
+                                icon here too would just compete for attention. */}
+                            <div className="text-sm text-gray-600 dark:text-gray-400">
                               {getOperationIcon(mainOp)}
                             </div>
                             <div className="font-mono text-xs text-blue-600 dark:text-blue-400 font-semibold">
@@ -854,7 +855,7 @@ const handleRowClick = (trace: TraceLog) => {
 
                           {/* Tool calls — shown between user input and agent response */}
                           {trace.tool_calls && trace.tool_calls.length > 0 && (
-                            <div className="space-y-0.5 pl-1 border-l-2 border-orange-200 dark:border-orange-800 ml-1">
+                            <div className="space-y-0.5 pl-1 border-l-2 border-gray-200 dark:border-gray-700 ml-1">
                               {trace.tool_calls.map((tool: any, idx: number) => {
                                 const toolName = tool.tool_name || tool.name || 'unknown'
                                 const isError = tool.success === false || tool.status === 'error'
@@ -866,12 +867,12 @@ const handleRowClick = (trace: TraceLog) => {
                                   <div key={idx} className="flex items-start gap-1 text-xs">
                                     <Wrench className={cn(
                                       "w-3 h-3 mt-0.5 shrink-0",
-                                      isError ? "text-red-500 dark:text-red-400" : "text-orange-500 dark:text-orange-400"
+                                      isError ? "text-red-500 dark:text-red-400" : "text-gray-500 dark:text-gray-400"
                                     )} />
                                     <div className="min-w-0">
                                       <span className={cn(
                                         "font-medium",
-                                        isError ? "text-red-700 dark:text-red-300" : "text-orange-700 dark:text-orange-300"
+                                        isError ? "text-red-700 dark:text-red-300" : "text-gray-700 dark:text-gray-300"
                                       )}>
                                         {toolName}
                                       </span>
@@ -960,10 +961,13 @@ const handleRowClick = (trace: TraceLog) => {
                         {/* Operations */}
                         <div className="col-span-2 space-y-1">
                           <div className="flex items-center gap-2 flex-wrap">
+                            {/* Neutral, not orange — a tool call isn't an error, so it
+                                doesn't need to compete for attention with the red
+                                fallback-failure count right below it. */}
                             {toolInfo.total > 0 && (
                               <div className="flex items-center gap-1 text-xs">
-                                <Wrench className="w-3 h-3 text-orange-600 dark:text-orange-400" />
-                                <span className="font-medium text-orange-700 dark:text-orange-300">{toolInfo.total}</span>
+                                <Wrench className="w-3 h-3 text-gray-500 dark:text-gray-400" />
+                                <span className="font-medium text-gray-700 dark:text-gray-300">{toolInfo.total}</span>
                                 <span className="text-gray-400 dark:text-gray-500">
                                   ({toolInfo.successful}✓)
                                 </span>

@@ -248,10 +248,14 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Session Overview</h3>
+              {/* Plain inline metadata, not colored chips — this row is identifying
+                  info (which call, when), not a status to draw the eye to. Color is
+                  reserved for the things below that actually need attention (bad
+                  latency, bugs, errors). */}
               {callData?.[0]?.customer_number && (
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                    <Phone className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                    <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                  <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
+                    <Phone className="w-3 h-3" />
+                    <span className="text-xs font-medium">
                       {callData[0].customer_number.length > 15
                         ? `Web Call: ${callData[0].customer_number.slice(0, 6)}...`
                         : callData[0].customer_number}
@@ -259,9 +263,9 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({
                   </div>
                 )}
               {callData?.[0]?.call_started_at && (
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
-                  <Clock className="w-3 h-3 text-gray-500 dark:text-gray-400" />
-                  <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
+                  <Clock className="w-3 h-3" />
+                  <span className="text-xs font-medium">
                     {callStartTime}
                   </span>
                 </div>
