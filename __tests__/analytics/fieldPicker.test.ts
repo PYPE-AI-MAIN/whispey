@@ -21,10 +21,12 @@ describe('telling two fields with the same name apart', () => {
     f('call_ended_reason', [], 'Why the call ended'),
   ]
 
-  it('qualifies a label that appears more than once', () => {
+  it('qualifies a label that appears more than once, metric name first', () => {
+    // Not "Reason (hi)" — a person searches for the metric they named, not
+    // the word every metric's reason field happens to share.
     const names = disambiguate(fields)
-    expect(names.get(fieldKey(fields[0]))).toBe('Reason (hi)')
-    expect(names.get(fieldKey(fields[1]))).toBe('Reason (is task complete)')
+    expect(names.get(fieldKey(fields[0]))).toBe('Hi — Reason')
+    expect(names.get(fieldKey(fields[1]))).toBe('Is Task Complete — Reason')
   })
 
   it('leaves a label that is already unique alone', () => {
@@ -35,6 +37,15 @@ describe('telling two fields with the same name apart', () => {
     const shallow = [f('metadata', ['status'], 'Status'), f('metadata', ['x', 'status'], 'Status')]
     const names = disambiguate(shallow)
     expect(names.get(fieldKey(shallow[0]))).toBe('Status')
-    expect(names.get(fieldKey(shallow[1]))).toBe('Status (x)')
+    expect(names.get(fieldKey(shallow[1]))).toBe('X — Status')
+  })
+
+  it('title-cases a multi-word metric name', () => {
+    const scored = [
+      f('metrics', ['call_retry_required', 'score'], 'Score'),
+      f('metrics', ['patient_sentiment', 'score'], 'Score'),
+    ]
+    const names = disambiguate(scored)
+    expect(names.get(fieldKey(scored[0]))).toBe('Call Retry Required — Score')
   })
 })

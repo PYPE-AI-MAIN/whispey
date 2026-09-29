@@ -34,11 +34,23 @@ import type { CatalogField } from '@/types/analytics'
 
 export const fieldKey = (f: { col: string; path?: string[] }) => `${f.col}::${(f.path ?? []).join('.')}`
 
+function titleCase(s: string): string {
+  return s.replaceAll(/\b\w/g, (c) => c.toUpperCase())
+}
+
 /**
  * Two fields can share a label — `metrics.hi.reason` and
  * `metrics.is_task_complete.reason` are both "Reason" — and a picker showing
  * the same word five times is a picker you cannot use. Only the ambiguous ones
  * get qualified, so nothing else gets longer.
+ *
+ * The qualifier comes first — "Call Retry Required — Score", not "Score (call
+ * retry required)" — because that's what someone actually searches for: the
+ * metric they named, not the word "Score" it happens to share with four
+ * others. Putting the shared word first was also unsearchable by feel: typing
+ * the metric's own name still matched (it's in the search string either way),
+ * but a person scanning the results by eye was reading "Score" over and over
+ * with the thing they asked for stuck in parentheses at the end.
  */
 export function disambiguate(fields: CatalogField[]): Map<string, string> {
   const counts = new Map<string, number>()
@@ -50,7 +62,7 @@ export function disambiguate(fields: CatalogField[]): Map<string, string> {
     const qualifier = parent.replaceAll(/[_.]+/g, ' ').trim()
     out.set(
       fieldKey(f),
-      (counts.get(f.label) ?? 0) > 1 && qualifier ? `${f.label} (${qualifier})` : f.label
+      (counts.get(f.label) ?? 0) > 1 && qualifier ? `${titleCase(qualifier)} — ${f.label}` : f.label
     )
   }
   return out
@@ -92,12 +104,19 @@ export function FieldPicker({
       if (!byGroup.has(g)) byGroup.set(g, [])
       byGroup.get(g)!.push(f)
     }
-    // inside a group, the fields people can actually use come first
+    // inside a group, the fields people can actually use come first; ties
+    // break on the *displayed* name (e.g. "Call Retry Required — Score"), not
+    // the raw label ("Score"), so a metric's Score/Reason pair sit together
+    // under its own name instead of every "Score" clustering ahead of every
+    // "Reason" regardless of which metric they belong to.
     for (const list of byGroup.values()) {
-      list.sort((a, b) => (b.coverage_pct ?? 0) - (a.coverage_pct ?? 0) || a.label.localeCompare(b.label))
+      list.sort((a, b) =>
+        (b.coverage_pct ?? 0) - (a.coverage_pct ?? 0) ||
+        (names.get(fieldKey(a)) ?? a.label).localeCompare(names.get(fieldKey(b)) ?? b.label)
+      )
     }
     return GROUP_ORDER.filter((g) => byGroup.get(g)?.length).map((g) => ({ group: g, fields: byGroup.get(g)! }))
-  }, [fields])
+  }, [fields, names])
 
   const chosen = fields.find((f) => fieldKey(f) === value)
 
