@@ -826,29 +826,30 @@ const CallLogs: React.FC<CallLogsProps> = ({
                   {selectedIds.size} selected
                 </span>
                 <div className="mx-1 h-4 w-px bg-blue-200 dark:bg-blue-900/50" />
-                {/* No custom hover:bg-* here — the ghost variant's own hover:bg-accent
-                    already switches correctly between themes via CSS variables. A
-                    hardcoded hover color needs its own dark: override, and that
-                    override isn't guaranteed to win the cascade over the plain one,
-                    which is exactly how the Copy button briefly rendered with a
-                    light hover in dark mode. */}
+                {/* One semi-transparent hover color, not a light/dark pair — the ghost
+                    variant's own hover:bg-accent is too close in lightness to this
+                    pill's own dark:bg-blue-950/30 to read as a hover at all, and a
+                    hardcoded light/dark pair on the same element raced each other
+                    earlier (the light one won even in dark mode). A single
+                    bg-blue-500/20 overlay shows up against both the light blue-50
+                    and dark blue-950/30 backgrounds without needing a dark: variant. */}
                 <Button
                   variant="ghost" size="sm"
-                  className="h-6 px-2 text-xs font-normal text-blue-700 dark:text-blue-300"
+                  className="h-6 px-2 text-xs font-normal text-blue-700 hover:bg-blue-500/20 dark:text-blue-300"
                   onClick={handleCopySelected}
                 >
                   {copyFeedback ? 'Copied!' : 'Copy'}
                 </Button>
                 <Button
                   variant="ghost" size="sm"
-                  className="h-6 px-2 text-xs font-normal text-blue-700 dark:text-blue-300"
+                  className="h-6 px-2 text-xs font-normal text-blue-700 hover:bg-blue-500/20 dark:text-blue-300"
                   onClick={handleExportSelected}
                 >
                   Export CSV
                 </Button>
                 <Button
                   variant="ghost" size="sm"
-                  className="h-6 w-6 p-0 text-blue-700 dark:text-blue-300"
+                  className="h-6 w-6 p-0 text-blue-700 hover:bg-blue-500/20 dark:text-blue-300"
                   aria-label="Clear selection"
                   onClick={() => setSelectedIds(new Set())}
                 >
