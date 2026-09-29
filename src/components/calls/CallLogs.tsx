@@ -1,8 +1,8 @@
 "use client"
 
 import React, { useCallback, useMemo, useRef, useState } from "react"
-import Papa from 'papaparse'
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { AlertCircle, RefreshCw, Inbox, ChevronLeft, ChevronRight, Settings, X } from "lucide-react"
 import CallFilter, { FilterOperation } from "../CallFilter"
 import ColumnSelector from "../shared/ColumnSelector"
@@ -123,15 +123,18 @@ function formatTotalCountLabel(
   return null
 }
 
+// A thin top-border accent, not a filled column background — enough to tell a
+// transcription/metrics column apart from a basic one without painting the
+// whole column a saturated color (the previous bg-purple-50/bg-blue-50 wash).
 function getHeaderCellClassName(headerId: string): string {
-  const base = "px-6 truncate border-2 border-r-black border-b-2 border-gray-200 dark:border-gray-800 py-1.5 text-left font-semibold text-sm leading-tight"
+  const base = "px-6 truncate border-2 border-r-black border-b-2 border-gray-200 dark:border-gray-800 py-1.5 text-left font-semibold text-sm leading-tight text-foreground dark:text-gray-100"
   if (headerId.startsWith('transcription-')) {
-    return cn(base, "text-purple-600 dark:text-purple-400 bg-purple-50/60 dark:bg-purple-900/10")
+    return cn(base, "border-t-2 border-t-violet-400 dark:border-t-violet-600")
   }
   if (headerId.startsWith('metrics-')) {
-    return cn(base, "text-blue-600 dark:text-blue-400 bg-blue-50/60 dark:bg-blue-900/10")
+    return cn(base, "border-t-2 border-t-sky-400 dark:border-t-sky-600")
   }
-  return cn(base, "text-foreground dark:text-gray-100")
+  return base
 }
 
 // Extracted so the mixed &&/|| chain doesn't add to CallLogs's own cognitive complexity.
@@ -172,13 +175,16 @@ function getRowClassName(isNavigatingRow: boolean, isSelected: boolean, isFlagge
   )
 }
 
-function getCellClassName(rowIndex: number, isSelected: boolean, cellColumnId: string): string {
+// The header's thin top-border accent (getHeaderCellClassName) already marks a
+// transcription/metrics column — the body cells stay plain, rather than
+// tinting every row of that column with a translucent color wash. Selection
+// uses the same neutral gray the rest of the app's selected/active states do,
+// not a saturated blue.
+function getCellClassName(rowIndex: number, isSelected: boolean): string {
   return cn(
     "px-4 py-1 text-sm border-2 dark:text-gray-100 border-gray-200 dark:border-gray-800 leading-tight h-20",
     rowIndex === 0 && "border-t-0",
-    !isSelected && cellColumnId.startsWith('transcription-') && "dark:bg-purple-900/10",
-    !isSelected && cellColumnId.startsWith('metrics-') && "dark:bg-blue-900/10",
-    isSelected && "bg-blue-100 dark:bg-blue-900/40",
+    isSelected && "bg-gray-100 dark:bg-gray-800",
   )
 }
 
@@ -195,31 +201,29 @@ function buildSelectionColumn(
   return {
     id: 'select',
     header: () => (
-      <input
-        type="checkbox"
-        aria-label="Select all calls on this page"
-        checked={allSelected}
-        onClick={(e) => e.stopPropagation()}
-        onChange={(e) => setSelectedIds(e.target.checked ? new Set(currentPageCalls.map((c) => c.id)) : new Set())}
-        className="h-4 w-4 cursor-pointer accent-blue-600"
-      />
+      <div onClick={(e) => e.stopPropagation()}>
+        <Checkbox
+          aria-label="Select all calls on this page"
+          checked={allSelected}
+          onCheckedChange={(checked) => setSelectedIds(checked ? new Set(currentPageCalls.map((c) => c.id)) : new Set())}
+        />
+      </div>
     ),
     cell: ({ row }) => (
-      <input
-        type="checkbox"
-        aria-label="Select this call"
-        checked={selectedIds.has(row.original.id)}
-        onClick={(e) => e.stopPropagation()}
-        onChange={(e) =>
-          setSelectedIds((prev) => {
-            const next = new Set(prev)
-            if (e.target.checked) next.add(row.original.id)
-            else next.delete(row.original.id)
-            return next
-          })
-        }
-        className="h-4 w-4 cursor-pointer accent-blue-600"
-      />
+      <div onClick={(e) => e.stopPropagation()}>
+        <Checkbox
+          aria-label="Select this call"
+          checked={selectedIds.has(row.original.id)}
+          onCheckedChange={(checked) =>
+            setSelectedIds((prev) => {
+              const next = new Set(prev)
+              if (checked) next.add(row.original.id)
+              else next.delete(row.original.id)
+              return next
+            })
+          }
+        />
+      </div>
     ),
     size: 44,
     minSize: 44,
@@ -374,7 +378,7 @@ function renderTableRows(rows: any[], options: RenderTableRowsOptions) {
         {row.getVisibleCells().map((cell: any) => (
           <td
             key={cell.id}
-            className={getCellClassName(rowIndex, isSelected, cell.column.id)}
+            className={getCellClassName(rowIndex, isSelected)}
           >
             {flexRender(cell.column.columnDef.cell, cell.getContext())}
           </td>
@@ -681,7 +685,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
 
   const [copyFeedback, setCopyFeedback] = useState(false)
 
-  const buildSelectedCsvRecords = useCallback(
+  const buildSelectedRecords = useCallback(
     () => selectedCalls.map((row) =>
       flattenCallLogForCSV(row, visibleColumns.basic, visibleColumns.metadata, visibleColumns.transcription_metrics)
     ),
@@ -689,15 +693,14 @@ const CallLogs: React.FC<CallLogsProps> = ({
   )
 
   const handleCopySelected = useCallback(async () => {
-    const tsv = Papa.unparse(buildSelectedCsvRecords(), { delimiter: '\t' })
-    await navigator.clipboard.writeText(tsv)
+    await navigator.clipboard.writeText(JSON.stringify(buildSelectedRecords(), null, 2))
     setCopyFeedback(true)
     setTimeout(() => setCopyFeedback(false), 2000)
-  }, [buildSelectedCsvRecords])
+  }, [buildSelectedRecords])
 
   const handleExportSelected = useCallback(() => {
-    triggerCSVFileDownload(buildSelectedCsvRecords())
-  }, [buildSelectedCsvRecords])
+    triggerCSVFileDownload(buildSelectedRecords())
+  }, [buildSelectedRecords])
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -821,35 +824,28 @@ const CallLogs: React.FC<CallLogsProps> = ({
               <RefreshCw className={cn('h-3 w-3', (isLoading || isRefetching) && 'animate-spin')} />
             </Button>
             {selectedIds.size > 0 && (
-              <div className="flex h-8 items-center gap-1 rounded-md border border-blue-200 bg-blue-50 pl-3 pr-1 dark:border-blue-900/50 dark:bg-blue-950/30">
-                <span className="whitespace-nowrap text-xs font-medium text-blue-700 dark:text-blue-300">
+              <div className="flex h-8 items-center gap-1 rounded-md border border-gray-200 bg-gray-100 pl-3 pr-1 dark:border-gray-700 dark:bg-gray-800">
+                <span className="whitespace-nowrap text-xs font-medium text-gray-700 dark:text-gray-300">
                   {selectedIds.size} selected
                 </span>
-                <div className="mx-1 h-4 w-px bg-blue-200 dark:bg-blue-900/50" />
-                {/* One semi-transparent hover color, not a light/dark pair — the ghost
-                    variant's own hover:bg-accent is too close in lightness to this
-                    pill's own dark:bg-blue-950/30 to read as a hover at all, and a
-                    hardcoded light/dark pair on the same element raced each other
-                    earlier (the light one won even in dark mode). A single
-                    bg-blue-500/20 overlay shows up against both the light blue-50
-                    and dark blue-950/30 backgrounds without needing a dark: variant. */}
+                <div className="mx-1 h-4 w-px bg-gray-300 dark:bg-gray-600" />
                 <Button
                   variant="ghost" size="sm"
-                  className="h-6 px-2 text-xs font-normal text-blue-700 hover:bg-blue-500/20 dark:text-blue-300"
+                  className="h-6 px-2 text-xs font-normal text-gray-700 dark:text-gray-300"
                   onClick={handleCopySelected}
                 >
-                  {copyFeedback ? 'Copied!' : 'Copy'}
+                  {copyFeedback ? 'Copied!' : 'Copy JSON'}
                 </Button>
                 <Button
                   variant="ghost" size="sm"
-                  className="h-6 px-2 text-xs font-normal text-blue-700 hover:bg-blue-500/20 dark:text-blue-300"
+                  className="h-6 px-2 text-xs font-normal text-gray-700 dark:text-gray-300"
                   onClick={handleExportSelected}
                 >
                   Export CSV
                 </Button>
                 <Button
                   variant="ghost" size="sm"
-                  className="h-6 w-6 p-0 text-blue-700 hover:bg-blue-500/20 dark:text-blue-300"
+                  className="h-6 w-6 p-0 text-gray-700 dark:text-gray-300"
                   aria-label="Clear selection"
                   onClick={() => setSelectedIds(new Set())}
                 >
