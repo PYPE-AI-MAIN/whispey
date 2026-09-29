@@ -86,12 +86,12 @@ function EnhancedInsights({
     <div className="space-y-6">
       {/* Cost Breakdown */}
       {trace.trace_cost_usd && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+        <div className="bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 rounded-lg p-4">
           <h4 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Cost Breakdown</h4>
           <div className="space-y-3">
             <div className="flex justify-between items-center p-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
               <span className="font-medium text-gray-900 dark:text-gray-100">Total Trace Cost:</span>
-              <span className="font-mono text-lg text-green-600 dark:text-green-400">
+              <span className="font-mono text-lg text-gray-900 dark:text-gray-100">
                 {formatCost(Number.parseFloat(trace.trace_cost_usd))}
               </span>
             </div>
@@ -109,64 +109,51 @@ function EnhancedInsights({
       )}
 
       {/* Enhanced Latency Analysis */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+      <div className="bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 rounded-lg p-4">
         <div className="flex items-center justify-between mb-4">
           <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Latency Analysis</h4>
-          <Badge variant="outline" className={cn(
-            "text-xs",
-            isVapiAgent ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700" : "bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-700"
-          )}>
+          <Badge variant="outline" className="text-xs">
             {isVapiAgent ? "Vapi Pipeline" : "LiveKit Pipeline"}
           </Badge>
         </div>
-        
-        {/* Platform-specific explanation */}
-        <div className={cn(
-          "text-xs rounded-md px-3 py-2 mb-4",
-          isVapiAgent 
-            ? "text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-800/20 border border-blue-200 dark:border-blue-700" 
-            : "text-orange-700 dark:text-orange-300 bg-orange-100 dark:bg-orange-800/20 border border-orange-200 dark:border-orange-700"
-        )}>
-          {isVapiAgent 
+
+        {/* Platform-specific explanation — informational, not a warning */}
+        <div className="text-xs rounded-md px-3 py-2 mb-4 text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+          {isVapiAgent
             ? "Vapi: STT processing is sequential and included in total pipeline duration"
             : "LiveKit: STT processing runs in parallel with audio streaming, excluded from pipeline duration"}
         </div>
-        
+
         <div className="space-y-2">
           {pipelineStages
             .filter((s: any) => s.metrics)
             .map((stage: any) => {
               // Determine if this stage is included in pipeline calculation
-              const isIncludedInPipeline = 
+              const isIncludedInPipeline =
                 stage.id === "stt" ? isVapiAgent : // STT only included for Vapi
                 true; // All other stages (LLM, TTS, EOU) always included
-              
+
               return (
                 <div key={stage.id} className={cn(
-                  "flex justify-between items-center p-3 bg-white dark:bg-gray-800 rounded border",
-                  isIncludedInPipeline ? "border-blue-200 dark:border-blue-700" : "border-gray-200 dark:border-gray-600 opacity-60"
+                  "flex justify-between items-center p-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700",
+                  !isIncludedInPipeline && "opacity-60"
                 )}>
                   <div className="flex items-center gap-3">
-                    <div className={`w-4 h-4 rounded bg-${stage.color}-100 dark:bg-${stage.color}-800/50 flex items-center justify-center`}>
+                    <div className="w-4 h-4 rounded bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-400">
                       {stage.icon}
                     </div>
                     <span className="font-medium capitalize text-gray-900 dark:text-gray-100">
                       {stage.name}
                     </span>
-                    
+
                     {/* Subtle inclusion indicator */}
                     {stage.id === "stt" && !isVapiAgent && (
-                      <span className={cn(
-                        "text-xs px-2 py-1 rounded-full",
-                        isVapiAgent 
-                          ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-800" 
-                          : "text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-800"
-                      )}>
-                        {isVapiAgent ? "" : "parallel"}
+                      <span className="text-xs px-2 py-1 rounded-full text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800">
+                        parallel
                       </span>
                     )}
                   </div>
-                  
+
                   <div className="text-right">
                     <span className={cn(
                       "font-mono text-sm",

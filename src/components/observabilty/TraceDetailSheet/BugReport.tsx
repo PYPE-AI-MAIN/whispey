@@ -229,10 +229,10 @@ function BugReport({ trace }: { trace: any }) {
 
                 {/* Additional Details */}
                 {additionalDetails.length > 0 && (
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-800 overflow-hidden shadow-sm">
-                    <div className="px-6 py-4 border-b border-blue-100 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20">
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+                    <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
                     <div className="flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-800 text-blue-700 dark:text-blue-300 flex items-center justify-center text-sm font-semibold">
+                        <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 flex items-center justify-center text-sm font-semibold">
                         💬
                         </div>
                         <div className="flex items-center gap-2">
