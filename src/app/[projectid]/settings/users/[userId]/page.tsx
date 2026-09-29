@@ -125,8 +125,8 @@ function ColumnAccessRow({
           title={viewable ? 'Viewable — click to hide' : 'Hidden — click to allow viewing'}
           className={
             viewable
-              ? 'h-6 px-2 text-[10px] gap-1 bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'
-              : 'h-6 px-2 text-[10px] gap-1 text-gray-400 dark:text-gray-500 border-dashed bg-transparent'
+              ? 'h-7 px-2 text-[11px] gap-1 bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'
+              : 'h-7 px-2 text-[11px] gap-1 text-gray-400 dark:text-gray-500 border-dashed bg-transparent'
           }
         >
           {viewable ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
@@ -142,15 +142,15 @@ function ColumnAccessRow({
             title={downloadTitle}
             className={
               downloadable
-                ? 'h-6 px-2 text-[10px] gap-1 bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'
-                : 'h-6 px-2 text-[10px] gap-1 text-gray-400 dark:text-gray-500 border-dashed bg-transparent'
+                ? 'h-7 px-2 text-[11px] gap-1 bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'
+                : 'h-7 px-2 text-[11px] gap-1 text-gray-400 dark:text-gray-500 border-dashed bg-transparent'
             }
           >
             {downloadable ? <DownloadCloud className="h-3 w-3" /> : <Download className="h-3 w-3" />}
             Download
           </Button>
           {!viewable && (
-            <span className="text-[9px] text-gray-400 dark:text-gray-500 mt-0.5 leading-none">
+            <span className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 leading-none">
               Download follows View
             </span>
           )}
@@ -179,7 +179,7 @@ function ColumnAccessGroup({
   if (columns.length === 0) return null
   return (
     <div className="space-y-0.5">
-      <p className={`text-[10px] font-semibold uppercase tracking-wider px-2 ${titleClassName}`}>{title}</p>
+      <p className={`text-xs font-medium uppercase tracking-wide px-2 ${titleClassName}`}>{title}</p>
       {columns.map(col => (
         <ColumnAccessRow
           key={col}
@@ -306,20 +306,20 @@ function AgentColumnChecklist({
 
   const alwaysHiddenSection = alwaysHiddenColumns.length > 0 && (
     <div className="space-y-0.5">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 px-2 flex items-center gap-1">
+      <p className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500 px-2 flex items-center gap-1">
         <Lock className="h-2.5 w-2.5" />
         Always hidden for all non-superadmins (agent-wide setting)
       </p>
       {alwaysHiddenColumns.map(col => (
         <div key={col} className="flex items-center justify-between gap-2 text-xs text-gray-400 dark:text-gray-500 px-2 py-1.5">
           <span className="truncate">{COLUMN_LABELS[col] ?? col}</span>
-          <span className="flex items-center gap-1 text-[10px] flex-shrink-0">
+          <span className="flex items-center gap-1 text-[11px] flex-shrink-0">
             <Lock className="h-3 w-3" />
             Locked
           </span>
         </div>
       ))}
-      <p className="text-[10px] text-gray-400 dark:text-gray-500 px-2 pt-0.5">
+      <p className="text-[11px] text-gray-400 dark:text-gray-500 px-2 pt-0.5">
         Always hidden for all non-superadmins — manage this in{' '}
         <Link
           href={`/${projectId}/agents/${agent.id}?tab=logs&openDownloadSettings=1`}
@@ -377,7 +377,7 @@ function AgentColumnChecklist({
           </div>
 
           <div className="flex items-center justify-between gap-3 pt-1">
-            <div className="flex items-start gap-1.5 text-[10px] text-gray-500 dark:text-gray-400 min-w-0">
+            <div className="flex items-start gap-1.5 text-[11px] text-gray-500 dark:text-gray-400 min-w-0">
               {otherAgentIds.length > 0 && (
                 <>
                   <Copy className="h-3 w-3 mt-0.5 flex-shrink-0" />
@@ -413,7 +413,7 @@ function AgentColumnChecklist({
           <p className="text-[11px] text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
             No column restrictions — user has full access to this agent&apos;s columns.
           </p>
-          <Button size="sm" variant="outline" onClick={() => setEditingColumns(true)} className="h-6 text-[10px] gap-1 flex-shrink-0">
+          <Button size="sm" variant="outline" onClick={() => setEditingColumns(true)} className="h-7 text-[11px] gap-1 flex-shrink-0">
             <PencilLine className="h-3 w-3" />
             Restrict columns
           </Button>
@@ -449,7 +449,7 @@ function AgentRow({
         <span className="flex items-center gap-2 min-w-0">
           <span className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">{agent.name}</span>
           {downloadDisabled && (
-            <Badge className="text-[10px] px-1.5 py-0 gap-1 bg-red-100 text-red-700 border-red-300 dark:bg-red-400/10 dark:text-red-400 dark:border-red-400/20 flex-shrink-0">
+            <Badge className="text-[11px] px-1.5 py-0 gap-1 bg-red-100 text-red-700 border-red-300 dark:bg-red-400/10 dark:text-red-400 dark:border-red-400/20 flex-shrink-0">
               <ShieldOff className="h-2.5 w-2.5" />
               Downloads disabled
             </Badge>
@@ -457,7 +457,7 @@ function AgentRow({
         </span>
         <div className="flex items-center gap-2 flex-shrink-0">
           {agent.superadminOnlyColumns.length > 0 && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-700 flex items-center gap-1">
+            <span className="text-[11px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-700 flex items-center gap-1">
               <Lock className="h-2.5 w-2.5" />
               {agent.superadminOnlyColumns.length} restricted column{agent.superadminOnlyColumns.length === 1 ? '' : 's'}
             </span>
@@ -666,7 +666,7 @@ export default function UserDetailPage() {
       <div className="flex-1 overflow-y-auto px-6 pb-6">
         <div className="max-w-5xl mx-auto pt-4 space-y-4">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+            <h2 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
               Call log column access
             </h2>
             {projects.length > 0 && (

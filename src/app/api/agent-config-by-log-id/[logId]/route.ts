@@ -70,6 +70,9 @@ export async function GET(
         return NextResponse.json({ message: "Admin access required" }, { status: 403 })
       }
 
+      // .limit(1) before .maybeSingle(): an admin's match is deliberately
+      // broad (clerk_id OR email), so a legitimate multi-row match (dual
+      // accounts sharing this email) must not turn "yes, a member" into a 500.
       const { data: userAccessMapping, error: accessError } = await supabase
         .from("pype_voice_email_project_mapping")
         .select("role, is_active")

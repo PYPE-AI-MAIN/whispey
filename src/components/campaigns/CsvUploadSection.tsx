@@ -279,7 +279,7 @@ const validateCsvData = (data: RecipientRow[], headers: string[]): CsvValidation
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+        <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
           Upload Recipients
         </Label>
         <Button
@@ -322,7 +322,7 @@ const validateCsvData = (data: RecipientRow[], headers: string[]): CsvValidation
               variant="ghost"
               size="sm"
               onClick={onRemoveFile}
-              className="h-6 w-6 p-0"
+              className="h-7 w-7 p-0"
             >
               <X className="w-3 h-3" />
             </Button>

@@ -213,9 +213,9 @@ function MetricsTab() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[13px] font-medium text-gray-900 dark:text-gray-100">{t.name}</span>
-                {t.category && <Badge variant="outline" className="text-[10px] border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400">{t.category}</Badge>}
-                {t.priority === 'critical' && <Badge variant="destructive" className="text-[10px]">Critical</Badge>}
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-700">{t.default_scoring_mode}</span>
+                {t.category && <Badge variant="outline" className="text-[11px] border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400">{t.category}</Badge>}
+                {t.priority === 'critical' && <Badge variant="destructive" className="text-[11px]">Critical</Badge>}
+                <span className="text-[11px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-700">{t.default_scoring_mode}</span>
               </div>
               <p className="text-[11px] text-gray-600 dark:text-gray-400 font-mono mt-0.5">{t.metric_id}</p>
               {t.description && <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 truncate max-w-lg">{t.description}</p>}
@@ -255,8 +255,8 @@ function MetricsTab() {
               {addError && <p className="text-xs text-red-600 dark:text-red-400">{addError}</p>}
               <div>
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">Name *</Label>
-                  <span className="text-[10px] text-gray-600 dark:text-gray-400">{addForm.name.length}/30</span>
+                  <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Name *</Label>
+                  <span className="text-[11px] text-gray-600 dark:text-gray-400">{addForm.name.length}/30</span>
                 </div>
                 <Input
                   className="mt-1 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
@@ -267,16 +267,16 @@ function MetricsTab() {
                 />
               </div>
               <div>
-                <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">Description</Label>
+                <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Description</Label>
                 <Input className="mt-1 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100" placeholder="Short description" value={addForm.description} onChange={e => setAddForm(f => ({ ...f, description: e.target.value }))} />
               </div>
               <div>
-                <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">Default Criteria *</Label>
+                <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Default Criteria *</Label>
                 <Textarea className="mt-1 text-xs min-h-[80px] font-mono resize-none bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100" placeholder="Evaluation criteria prompt..." value={addForm.default_criteria} onChange={e => setAddForm(f => ({ ...f, default_criteria: e.target.value }))} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">Scoring Mode *</Label>
+                  <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Scoring Mode *</Label>
                   <Select value={addForm.default_scoring_mode} onValueChange={(v: 'continuous' | 'binary') => setAddForm(f => ({ ...f, default_scoring_mode: v }))}>
                     <SelectTrigger className="mt-1 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -286,13 +286,13 @@ function MetricsTab() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">Default Threshold</Label>
+                  <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Default Threshold</Label>
                   <Input type="number" step="0.01" min="0" max="1" className="mt-1 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100" value={addForm.default_threshold} onChange={e => setAddForm(f => ({ ...f, default_threshold: Number.parseFloat(e.target.value) || 0 }))} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">Category</Label>
+                  <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Category</Label>
                   <Select value={addForm.category} onValueChange={v => setAddForm(f => ({ ...f, category: v }))}>
                     <SelectTrigger className="mt-1 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"><SelectValue placeholder="Select category" /></SelectTrigger>
                     <SelectContent>
@@ -306,7 +306,7 @@ function MetricsTab() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs font-medium text-gray-600 dark:text-gray-400">Priority</Label>
+                  <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Priority</Label>
                   <Select value={addForm.priority} onValueChange={v => setAddForm(f => ({ ...f, priority: v }))}>
                     <SelectTrigger className="mt-1 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"><SelectValue /></SelectTrigger>
                     <SelectContent>

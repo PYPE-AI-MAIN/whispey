@@ -13,23 +13,23 @@ function AgentDashboardContent() {
   // Validate agentId immediately - no loading needed
   if (!agentId || agentId === 'undefined' || agentId.trim() === '') {
     return (
-      <div className="h-screen flex flex-col bg-gray-50">
-        <div className="bg-white border-b border-gray-200 shadow-sm">
+      <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-950">
+        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
           <div className="px-8 py-3">
             <div className="flex items-center">
-              <div className="h-8 w-32 bg-red-100 rounded flex items-center justify-center">
-                <span className="text-red-600 text-sm font-medium">Invalid Agent</span>
+              <div className="h-8 w-32 bg-red-100 dark:bg-red-900/20 rounded-md flex items-center justify-center">
+                <span className="text-red-600 dark:text-red-400 text-sm font-medium">Invalid Agent</span>
               </div>
             </div>
           </div>
         </div>
         <div className="flex-1 flex items-center justify-center">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 max-w-md text-center">
-            <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center mx-auto mb-4">
+          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-6 max-w-md text-center">
+            <div className="w-12 h-12 bg-red-50 dark:bg-red-900/20 rounded-xl flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-6 h-6 text-red-500" />
             </div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Invalid Agent ID</h2>
-            <p className="text-sm text-gray-500 mb-4">Agent ID missing or invalid</p>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Invalid Agent ID</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Agent ID missing or invalid</p>
           </div>
         </div>
       </div>

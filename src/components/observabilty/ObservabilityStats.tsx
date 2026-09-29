@@ -236,7 +236,7 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Session Overview</h3>
+              <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Session Overview</h3>
               {callData?.[0]?.customer_number && (
                   <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
                     <Phone className="w-3 h-3 text-blue-600 dark:text-blue-400" />
@@ -456,7 +456,7 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
               {!isVapiAgent && (
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-gray-50 dark:bg-gray-700 border border-dashed border-gray-300 dark:border-gray-600">
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Reference</span>
+                    <span className="text-[11px] text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Reference</span>
                     <span className="text-[6px] text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">(not included in total)</span>
                   </div>
                   <Tooltip>

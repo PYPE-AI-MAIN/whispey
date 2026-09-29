@@ -2,6 +2,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { FormikProps } from 'formik'
 import { getFallback } from '@/config/agentDefaults'
+import { getModelBaseUrl } from '@/components/agents/AgentConfig/ModelSelector'
 
 function serializeSarvamLanguageSwitchSTT(stt: any): any {
   const out: any = { name: stt.name, language: stt.language, model: stt.model }
@@ -101,8 +102,23 @@ function serializeLanguageSwitchTTS(tts: any): any {
   return { name: tts.name }
 }
 
-export function buildAgentEnvelope(name: string, type: string, assistant: any[], agentId?: string) {
-  return { agent: { name, type, ...(agentId ? { agent_id: agentId } : {}), assistant } }
+/** Agent-level settings that sit beside `assistant`, not inside it. */
+export function buildInboundVariablesPayload(formValues: any) {
+  const cfg = formValues?.advancedSettings?.inboundVariables
+  if (!cfg) return {}
+  return {
+    inbound_variables: {
+      enabled: cfg.enabled ?? false,
+      url: cfg.url ?? '',
+      auth_header: cfg.authHeader ?? '',
+      timeout_ms: cfg.timeoutMs ?? 1000,
+      cache_ttl_s: cfg.cacheTtlS ?? 90,
+    },
+  }
+}
+
+export function buildAgentEnvelope(name: string, type: string, assistant: any[], agentId?: string, agentLevel: Record<string, any> = {}) {
+  return { agent: { name, type, ...(agentId ? { agent_id: agentId } : {}), ...agentLevel, assistant } }
 }
 
 function buildFallbackTtsPayload(formValues: any) {
@@ -395,7 +411,7 @@ function buildSingleAssistantSttPayload(formValues: any, currentSttConfig: any):
   }
 }
 
-function buildSingleAssistantLlmPayload(formValues: any, currentAzureConfig: any, fallbackAzureConfig: any): any {
+export function buildSingleAssistantLlmPayload(formValues: any, currentAzureConfig: any, fallbackAzureConfig: any): any {
   return {
     name: formValues.selectedProvider || getFallback(null, 'llm.name'),
     provider: formValues.selectedProvider === 'azure_openai' ? 'azure' : formValues.selectedProvider || getFallback(null, 'llm.provider'),
@@ -410,6 +426,12 @@ function buildSingleAssistantLlmPayload(formValues: any, currentAzureConfig: any
     ...(formValues.selectedProvider === 'openai' && { api_key_env: 'OPENAI_API_KEY' }),
     ...(formValues.selectedProvider === 'groq' && { api_key_env: 'GROQ_API_KEY' }),
     ...(formValues.selectedProvider === 'cerebras' && { api_key_env: 'CEREBRAS_API_KEY' }),
+    ...(formValues.selectedProvider === 'self_hosted' && {
+      // Falls back to the backend's default GEMMA_LLM_BASE_URL/GEMMA_LLM_API_KEY env vars
+      // when a model doesn't declare its own baseUrl (see ModelSelector.getModelBaseUrl).
+      base_url: getModelBaseUrl('self_hosted', formValues.selectedModel) || getFallback(null, 'llm.base_url'),
+      api_key_env: 'GEMMA_LLM_API_KEY'
+    }),
     ...(formValues.fallbackLlmProvider && {
       fallback: {
         name: formValues.fallbackLlmProvider,
@@ -425,6 +447,10 @@ function buildSingleAssistantLlmPayload(formValues: any, currentAzureConfig: any
         ...(formValues.fallbackLlmProvider === 'openai' && { api_key_env: 'OPENAI_API_KEY' }),
         ...(formValues.fallbackLlmProvider === 'groq' && { api_key_env: 'GROQ_API_KEY' }),
         ...(formValues.fallbackLlmProvider === 'cerebras' && { api_key_env: 'CEREBRAS_API_KEY' }),
+        ...(formValues.fallbackLlmProvider === 'self_hosted' && {
+          base_url: getModelBaseUrl('self_hosted', formValues.fallbackLlmModel) || getFallback(null, 'llm.base_url'),
+          api_key_env: 'GEMMA_LLM_API_KEY'
+        }),
       }
     }),
   }
@@ -830,7 +856,7 @@ export function useMultiAssistantState({
         useBackgroundAudioFallbacks: true,
       })
 
-      return buildAgentEnvelope(agentName, agentType, [assistant], agentId)
+      return buildAgentEnvelope(agentName, agentType, [assistant], agentId, buildInboundVariablesPayload(formValues))
     }
 
     // For multiple assistants (future implementation)
@@ -867,9 +893,17 @@ export function useMultiAssistantState({
       })
     })
 
-    return buildAgentEnvelope(agentName, agentType, assistants)
+    // inbound_variables is agent-level, so it comes from the live form, not from
+    // any one assistant's payload.
+    return buildAgentEnvelope(
+      agentName,
+      agentType,
+      assistants,
+      agentId,
+      buildInboundVariablesPayload(currentFormik?.values),
+    )
   }, [
-    assistantNames, 
+    assistantNames,
     assistantsData,
     getAssistantData,
     agentName,
@@ -878,7 +912,8 @@ export function useMultiAssistantState({
     currentTtsConfig,
     currentSttConfig,
     currentAzureConfig,
-    fallbackAzureConfig
+    fallbackAzureConfig,
+    agentId
   ])
 
   const registerFormikRef = useCallback((assistantName: string, formikRef: FormikProps<any>) => {

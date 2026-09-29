@@ -150,7 +150,7 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
               <Label className="text-xs text-gray-500 dark:text-gray-400">
                 Languages — lets any conversation node switch language mid-call instead of duplicating nodes
               </Label>
-              <Button size="sm" variant="outline" className="h-6 text-[11px]" onClick={() => { setEditingLSIndex(null); setIsLSOpen(true) }}>
+              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => { setEditingLSIndex(null); setIsLSOpen(true) }}>
                 + Add
               </Button>
             </div>
@@ -162,13 +162,13 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
                   <span className="text-xs text-gray-400">{ls.language_code}</span>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { setEditingLSIndex(idx); setIsLSOpen(true) }}>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditingLSIndex(idx); setIsLSOpen(true) }}>
                     <Edit2 className="h-3 w-3" />
                   </Button>
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-6 w-6 text-red-500 hover:text-red-700"
+                    className="h-7 w-7 text-red-500 hover:text-red-700"
                     onClick={() => updateAgentConfig({ languages: languages.filter((_, i) => i !== idx) as typeof agent.languages })}
                   >
                     <Trash2 className="h-3 w-3" />

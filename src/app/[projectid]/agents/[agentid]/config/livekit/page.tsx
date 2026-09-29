@@ -2,6 +2,7 @@
 'use client'
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { agentDisplayName } from '@/lib/agentDisplayName'
 import { useParams, useRouter } from 'next/navigation'
@@ -46,7 +47,7 @@ import SelectSTT from '@/components/agents/AgentConfig/SelectSTTDialog'
 import AgentAdvancedSettings from '@/components/agents/AgentConfig/AgentAdvancedSettings'
 import PromptSettingsSheet from '@/components/agents/AgentConfig/PromptSettingsSheet'
 import { usePromptSettings } from '@/hooks/usePromptSettings'
-import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgentMutations, useResumeInProgressUpdate } from '@/hooks/useAgentConfig'
+import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgentMutations, useResumeInProgressUpdate, useUpdateProgressLabel, updateStageDetail, UpdateStillInProgressError } from '@/hooks/useAgentConfig'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -55,7 +56,7 @@ import TalkToAssistant from '@/components/agents/TalkToAssistant'
 import { useMultiAssistantState } from '@/hooks/useMultiAssistantState'
 import { VariableTextarea } from '@/components/agents/variables/VariableTextarea'
 import { VariableValidationIndicator } from '@/components/agents/variables/VariableErrorDisplay'
-import { ValidationResult } from '@/utils/variableValidator'
+import { ValidationResult, validateVariables } from '@/utils/variableValidator'
 import {
   Tooltip,
   TooltipContent,
@@ -322,6 +323,9 @@ export default function AgentConfig() {
   // update calls hit the right backend without the user manually re-toggling
   // it every time they open this page.
   const deploymentTargetInitialized = useRef(false)
+  // Form values at the moment Publish was clicked. The dialog closes while the
+  // update runs, so edits made meanwhile must stay unsaved, not count as published.
+  const publishedValuesRef = useRef<any>(null)
   useEffect(() => {
     if (deploymentTargetInitialized.current) return
     const persisted = agentDataResponse?.[0]?.configuration?.deployment_target
@@ -385,13 +389,24 @@ export default function AgentConfig() {
   // the backend update this page kicked off is genuinely still in progress.
   const isResumingUpdate = useResumeInProgressUpdate(activeAgentName)
   const isPublishing = isSavingVersion || isResumingUpdate
+  // Live backend stage instead of a static "Publishing..."
+  const publishProgressLabel = useUpdateProgressLabel(activeAgentName, isPublishing)
+
+  // Refresh the Agent List's cached status whenever this page's status changes,
+  // so the two badges can't disagree after a publish, start or stop.
+  const queryClient = useQueryClient()
+  const invalidateSharedRunningAgents = useCallback(() => {
+    if (!projectId) return
+    queryClient.invalidateQueries({ queryKey: ['runningAgents', projectId] })
+  }, [queryClient, projectId])
 
   const checkAgentStatus = useCallback(async () => {
     if (!activeAgentName) return
 
     const status = await agentStatusService.checkAgentStatus(activeAgentName, deploymentTarget)
     setAgentStatus(status)
-  }, [activeAgentName, deploymentTarget])
+    invalidateSharedRunningAgents()
+  }, [activeAgentName, deploymentTarget, invalidateSharedRunningAgents])
 
   // Check agent status on load
   useEffect(() => {
@@ -452,6 +467,7 @@ export default function AgentConfig() {
       setAgentStatus({ status: 'error' as const, error: 'Failed to start agent' })
     } finally {
       setIsAgentLoading(false)
+      invalidateSharedRunningAgents()
     }
   }
 
@@ -471,6 +487,7 @@ export default function AgentConfig() {
       }
     } finally {
       setIsAgentLoading(false)
+      invalidateSharedRunningAgents()
     }
   }
 
@@ -514,7 +531,7 @@ export default function AgentConfig() {
   const formik = useFormik({
     initialValues: useMemo(() => {
       if (agentConfigData?.agent?.assistant?.[0]) {
-        return buildFormValuesFromAgent(agentConfigData.agent.assistant[0])
+        return buildFormValuesFromAgent(agentConfigData.agent.assistant[0], agentConfigData.agent)
       }
       return getDefaultFormValues()
     }, [agentConfigData]),
@@ -576,7 +593,7 @@ export default function AgentConfig() {
     if (agentConfigData?.agent?.assistant?.[0]) {
       const assistant = agentConfigData.agent.assistant[0]
       
-      const formValues = buildFormValuesFromAgent(assistant)
+      const formValues = buildFormValuesFromAgent(assistant, agentConfigData?.agent)
       
       setTtsConfig({
         provider: formValues.ttsProvider,
@@ -630,9 +647,15 @@ export default function AgentConfig() {
       setIsFallbackView(false)
       // Rebase the dirty-check baseline to the just-saved values (resetForm's `values`
       // option updates initialValues too, unlike setValues which only touches values).
-      formik.resetForm({ values: formik.values })
+      const current = formik.values
+      const published = publishedValuesRef.current ?? current
+      formik.resetForm({ values: published })
+      if (published !== current) formik.setValues(current)
+      publishedValuesRef.current = null
+      // Re-check status after a publish instead of showing the pre-publish badge.
+      checkAgentStatus().catch((err) => console.error('Status refresh after publish failed:', err))
     }
-  }, [saveAndDeploy.isSuccess, resetUnsavedChanges])
+  }, [saveAndDeploy.isSuccess, resetUnsavedChanges, checkAgentStatus])
 
   const handleApplyPastedConfig = (config: DeserializedConfig) => {
     console.log('📋 Applying pasted configuration:', config)
@@ -715,6 +738,15 @@ export default function AgentConfig() {
     if (!pendingCheckpoint || !commitMessage.trim()) return
     setIsSavingVersion(true)
     setVersionSaveError(null)
+    // Close right away so publishing feels instant; the header shows progress,
+    // and a failure reopens the dialog with the error and the commit message kept.
+    setIsCommitModalOpen(false)
+    publishedValuesRef.current = formik.values
+    const failPublish = (message: string) => {
+      setVersionSaveError(message)
+      setIsCommitModalOpen(true)
+      toast.error(`Publish failed: ${message}`)
+    }
     try {
       // Step 1: Deploy config to backend
       // Read the agent's REAL persisted target directly from loaded data instead of
@@ -755,16 +787,21 @@ export default function AgentConfig() {
       })
       if (!res.ok) {
         const err = await res.json()
-        setVersionSaveError(err.message ?? 'Failed to save version')
+        failPublish(err.message ?? 'Failed to save version')
         return
       }
-      const data = await res.json()
-      setIsCommitModalOpen(false)
+      toast.success('Changes published')
       setCommitMessage('')
       setPendingCheckpoint(null)
       setShowMergePrompt(true)
     } catch (err: any) {
-      setVersionSaveError(err.message ?? 'Save failed')
+      if (err instanceof UpdateStillInProgressError) {
+        // Not a failure — we just couldn't confirm it. Controls come back and the
+        // changes stay unsaved, so the user can test and publish again.
+        toast(err.message, { icon: '⏳', duration: 8000 })
+        return
+      }
+      failPublish(err.message ?? 'Save failed')
     } finally {
       setIsSavingVersion(false)
     }
@@ -1023,6 +1060,26 @@ const unmappedVariablesCount = useMemo(() => {
   return unmapped.length
 }, [promptValidation.validVariables, formik.values.variables])
 
+// The variable names an inbound lookup has to return: the ones the prompt and the
+// greeting actually use, plus any set up in the sheet, minus the predefined ones we
+// fill in ourselves. Uses the same validator as the prompt editor, so the names shown
+// here are exactly the names the backend will accept.
+const inboundLookupVariables = useMemo(() => {
+  const names = new Set<string>()
+  // Only strings are variable names. Anything else (an object from a malformed
+  // variables entry) would stringify to "[object Object]" and be offered to the
+  // customer as a name their API must return.
+  const add = (name: unknown) => {
+    if (typeof name !== 'string') return
+    const normalized = name.toLowerCase().trim()
+    if (normalized && !PREDEFINED_VARIABLE_NAMES.has(normalized)) names.add(normalized)
+  }
+  promptValidation.validVariables.forEach(add)
+  validateVariables(formik.values.customFirstMessage || '').validVariables.forEach(add)
+  ;(Array.isArray(formik.values.variables) ? formik.values.variables : []).forEach((v: any) => add(v?.name))
+  return [...names]
+}, [promptValidation.validVariables, formik.values.customFirstMessage, formik.values.variables])
+
   // View-only toggle: controls which selectors are displayed.
   // NEVER clears the fallbackXxxEnabled Formik flags — that was the root bug:
   // clicking "Primary" would set all flags false and the next Save would silently
@@ -1040,6 +1097,13 @@ const unmappedVariablesCount = useMemo(() => {
 
   const isFormDirty = formik.dirty || hasExternalChanges || hasMultiAssistantChanges 
   const isBackendUnavailable = !!agentConfigData?.backendUnavailable
+
+  const getUpdateConfigHint = (): string | undefined => {
+    if (isProdLocked) return 'Production agent — read only'
+    if (isBackendUnavailable) return 'Voice backend unreachable — cannot save'
+    return undefined
+  }
+  const updateConfigHint = getUpdateConfigHint()
 
   // Loading state
   if (agentLoading || isConfigLoading) {
@@ -1161,7 +1225,7 @@ const unmappedVariablesCount = useMemo(() => {
                 className="h-8 px-3"
                 onClick={handleOpenCommitModal}
                 disabled={isPublishing || isConfigFetching || !promptValidation.isValid || isBackendUnavailable || isProdLocked}
-                title={isProdLocked ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
+                title={updateConfigHint}
               >
                 {isPublishing ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -1191,7 +1255,7 @@ const unmappedVariablesCount = useMemo(() => {
                 <DropdownMenuGroup>
                   <DropdownMenuItem 
                     onSelect={() => setIsTalkToAssistantOpen(true)}
-                    disabled={!activeAgentName || !promptValidation.isValid}
+                    disabled={!activeAgentName || !promptValidation.isValid || isPublishing}
                   >
                     <PhoneIcon className="w-4 h-4 mr-2" />
                     Talk to Assistant
@@ -1234,7 +1298,7 @@ const unmappedVariablesCount = useMemo(() => {
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuGroup>
-                      <DropdownMenuItem onSelect={handleCancel}>
+                      <DropdownMenuItem onSelect={handleCancel} disabled={isPublishing}>
                         <X className="w-4 h-4 mr-2" />
                         Cancel Changes
                       </DropdownMenuItem>
@@ -1290,7 +1354,7 @@ const unmappedVariablesCount = useMemo(() => {
                   variant="outline"
                   size="sm"
                   className="h-8 text-xs"
-                  disabled={!activeAgentName || !promptValidation.isValid}
+                  disabled={!activeAgentName || !promptValidation.isValid || isPublishing}
                 >
                   <PhoneIcon className="w-3 h-3 mr-1" />
                   Talk to Assistant
@@ -1332,23 +1396,35 @@ const unmappedVariablesCount = useMemo(() => {
             </Sheet>
 
             {isFormDirty && (
-              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleCancel}>
+              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleCancel} disabled={isPublishing}>
                 Discard Changes
               </Button>
             )}
             
-            <Button
-              size="sm"
-              className="h-8 text-xs"
-              onClick={handleOpenCommitModal}
-              disabled={isPublishing || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable || isProdLocked}
-              title={isProdLocked ? 'Production agent — read only' : isBackendUnavailable ? 'Voice backend unreachable — cannot save' : undefined}
-            >
-              {isPublishing
-                ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Publishing...</>
-                : 'Update Config'
-              }
-            </Button>
+            <TooltipProvider>
+              <Tooltip delayDuration={150} open={updateConfigHint ? undefined : false}>
+                <TooltipTrigger asChild>
+                  {/* span: a disabled button fires no hover events */}
+                  <span>
+                    <Button
+                      size="sm"
+                      // Fixed width while publishing so the stage text can change without the header jumping
+                      className={`h-8 text-xs ${isPublishing ? 'w-44 justify-start' : ''}`}
+                      onClick={handleOpenCommitModal}
+                      disabled={isPublishing || isConfigFetching || !isFormDirty || !promptValidation.isValid || isBackendUnavailable || isProdLocked}
+                    >
+                      {isPublishing
+                        ? <><Loader2 className="w-3 h-3 mr-1 shrink-0 animate-spin" /><span key={publishProgressLabel} className="truncate animate-in fade-in duration-300">{updateStageDetail(publishProgressLabel)}</span></>
+                        : 'Update Config'
+                      }
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  {updateConfigHint}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
             <Button
               variant="outline"
@@ -1408,7 +1484,7 @@ const unmappedVariablesCount = useMemo(() => {
           <div className="flex-1 min-w-0 flex flex-col space-y-3">
             
             {/* Quick Setup Row */}
-            <div className="flex-shrink-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-3">
+            <div className="flex-shrink-0 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3 space-y-3">
               {/* Pipeline mode toggle */}
               <div className="flex items-center justify-between">
 
@@ -1429,7 +1505,7 @@ const unmappedVariablesCount = useMemo(() => {
                     onClick={enterFallbackMode}
                     className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-150 ${
                       showFallback
-                        ? 'bg-yellow-100 text-black shadow-sm'
+                        ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-100 shadow-sm'
                         : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                     }`}
                   >
@@ -1520,13 +1596,13 @@ const unmappedVariablesCount = useMemo(() => {
             </div>
 
             {/* Conversation Flow */}
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-3 flex-shrink-0">
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3 space-y-3 flex-shrink-0">
               <div className="space-y-2">
-                <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                <label htmlFor="firstMessageMode" className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                   Conversation Start
                 </label>
-                <Select 
-                  value={formik.values.firstMessageMode?.mode || formik.values.firstMessageMode} 
+                <Select
+                  value={formik.values.firstMessageMode?.mode || formik.values.firstMessageMode}
                   onValueChange={(value) => {
                     if (typeof formik.values.firstMessageMode === 'object') {
                       formik.setFieldValue('firstMessageMode', {
@@ -1542,7 +1618,7 @@ const unmappedVariablesCount = useMemo(() => {
                     }
                   }}
                 >
-                  <SelectTrigger className="h-8 text-sm w-full">
+                  <SelectTrigger id="firstMessageMode" className="h-8 text-sm w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1586,10 +1662,10 @@ const unmappedVariablesCount = useMemo(() => {
             </div>
 
             {/* System Prompt */}
-            <div className="flex-1 min-h-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col">
+            <div className="flex-1 min-h-0 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 flex flex-col">
               <div className="flex items-center justify-between mb-3 flex-shrink-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-gray-600 dark:text-gray-400">System Prompt</span>
+                  <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">System Prompt</span>
                   <Popover>
                     <PopoverTrigger asChild>
                       <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
@@ -1695,6 +1771,8 @@ const unmappedVariablesCount = useMemo(() => {
             <AgentAdvancedSettings
               advancedSettings={formik.values.advancedSettings}
               onFieldChange={formik.setFieldValue}
+              promptVariables={inboundLookupVariables}
+              agentName={activeAgentName}
               onWebhookDataLoaded={(data) => loadSupplementalSetting('webhook', data)}
               onDropoffDataLoaded={(data) => loadSupplementalSetting('dropoff', data)}
               onCallbackDataLoaded={(data) => loadSupplementalSetting('callbackScheduling', data)}
@@ -1768,6 +1846,8 @@ const unmappedVariablesCount = useMemo(() => {
             <AgentAdvancedSettings
               advancedSettings={formik.values.advancedSettings}
               onFieldChange={formik.setFieldValue}
+              promptVariables={inboundLookupVariables}
+              agentName={activeAgentName}
               onWebhookDataLoaded={(data) => loadSupplementalSetting('webhook', data)}
               onDropoffDataLoaded={(data) => loadSupplementalSetting('dropoff', data)}
               onCallbackDataLoaded={(data) => loadSupplementalSetting('callbackScheduling', data)}
@@ -1900,7 +1980,7 @@ const unmappedVariablesCount = useMemo(() => {
                 disabled={isPublishing || !commitMessage.trim()}
               >
                 {isPublishing
-                  ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Publishing...</>
+                  ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />{publishProgressLabel ?? 'Publishing...'}</>
                   : 'Publish'
                 }
               </Button>

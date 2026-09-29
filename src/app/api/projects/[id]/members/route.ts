@@ -71,9 +71,11 @@ export async function POST(
       .from('pype_voice_email_project_mapping')
       .select('role, clerk_id, email, granted_via')
       .eq('project_id', projectId)
+      .or(projectMembershipMatch(userId, userEmail, isPlatformAdmin(userEmail)))
       .or('is_active.is.null,is_active.eq.true')
 
     const userMapping = allMappings?.find((m: any) => {
+      if (!['admin', 'owner'].includes(m.role)) return false
       if (m.clerk_id === userId) return true
       const emailMatches = m.email?.toLowerCase() === userEmail?.toLowerCase()
       if (!emailMatches) return false
@@ -103,12 +105,16 @@ export async function POST(
     // new-domain invite. Every row this route creates/reactivates always
     // carries granted_via='new_domain' (see below), so this only ever
     // matches rows this system itself manages.
+    // .limit(1): even scoped to granted_via='new_domain', this email can
+    // legitimately have more than one such row (e.g. two separate new-domain
+    // signup attempts for the same person) — must not 500 on that.
     const { data: existingMapping, error: existingMappingError } = await supabase
       .from('pype_voice_email_project_mapping')
       .select('id, is_active, clerk_id, invite_token')
       .eq('email', normalizedEmail)
       .eq('project_id', projectId)
       .eq('granted_via', 'new_domain')
+      .limit(1)
       .maybeSingle()
 
     if (existingMappingError) {
@@ -179,11 +185,15 @@ export async function POST(
     //     login — a silently unreachable invite — and
     // (b) once someone has BOTH an old- and new-domain row for this email,
     //     .maybeSingle() would throw on "multiple rows returned".
+    // .limit(1): even scoped this way, the same email can have more than one
+    // new-domain pype_voice_users row (repeated signup attempts) — must not
+    // 500 on that either.
     const { data: existingUser, error: existingUserError } = await supabase
       .from('pype_voice_users')
       .select('clerk_id')
       .eq('email', normalizedEmail)
       .not('approval_status', 'is', null)
+      .limit(1)
       .maybeSingle()
 
     if (existingUserError) {
@@ -321,6 +331,9 @@ export async function GET(
     const userEmail = user?.emailAddresses?.[0]?.emailAddress
 
     // ✅ FIXED: Check if user has ANY access to the project (not just admin)
+    // .limit(1) before .maybeSingle(): an admin's match is deliberately broad
+    // (clerk_id OR email), so a legitimate multi-row match (dual accounts
+    // sharing this email) must not turn "yes, a member" into a 500.
     const { data: userAccessMapping, error: accessError } = await supabase
       .from('pype_voice_email_project_mapping')
       .select('role, clerk_id, email, is_active')

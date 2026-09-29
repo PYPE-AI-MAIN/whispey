@@ -52,7 +52,7 @@ function JsonField({ label, value, onChange }: Readonly<{ label: string; value: 
           }
         }}
       />
-      {error && <p className="text-[10px] text-red-500">Invalid JSON — not saved until fixed</p>}
+      {error && <p className="text-[11px] text-red-500">Invalid JSON — not saved until fixed</p>}
     </div>
   )
 }
@@ -160,7 +160,7 @@ function NodeFields({
               <Button
                 size="sm"
                 variant="outline"
-                className="h-6 text-[11px]"
+                className="h-7 text-[11px]"
                 onClick={() => patch({ extractions: [...extractions, { variable: '', type: 'string' }] } as any)}
               >
                 + Add

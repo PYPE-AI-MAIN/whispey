@@ -9,13 +9,14 @@ import { Volume2, Sparkles, Settings, RotateCcw, AlertTriangle } from 'lucide-re
 import VoiceSelectionPanel from './VoiceSelectionPanel'
 import SettingsPanel from './SettingsPanel'
 import HeaderVoiceDisplay from './HeaderVoiceDisplay'
+import { bulbulV4Voices, bulbulV4LanguageCode, isBulbulV4Model } from './bulbulV4Voices'
 
 // Types
 interface SarvamVoice {
   id: string;
   name: string;
   language: string;
-  gender: 'Male' | 'Female';
+  gender?: 'Male' | 'Female';
   style: string;
   accent: string;
   description: string;
@@ -132,6 +133,7 @@ const allSarvamVoices: (SarvamVoice & { compatibleModels: string[] })[] = [
   { id: 'rehan', name: 'Rehan', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
   { id: 'soham', name: 'Soham', language: 'Multi-lingual', gender: 'Male', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
   { id: 'rupali', name: 'Rupali', language: 'Multi-lingual', gender: 'Female', style: 'Natural', accent: 'Indian', description: '', compatibleModels: ['bulbul:v3'] },
+  ...bulbulV4Voices,
 ]
 
 // Main Component
@@ -330,46 +332,16 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
     }
   }
 
-  // FIX 4: useEffect sync — no v3/v2 branching, pace not speed, no temperature
+  // Load the saved config when the dialog opens, not on every parent render:
+  // initialConfig is a fresh object each render, so syncing on it wiped the
+  // user's model/voice/language picks mid-edit.
   useEffect(() => {
-    if ((currentProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialConfig) {
-      const model = ((initialProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialModel)
-        ? (initialModel === 'bulbul:v3' ? 'bulbul:v3-beta' : initialModel)
-        : 'bulbul:v3-beta'
-      setSarvamConfig({
-        target_language_code: initialConfig.target_language_code ?? initialConfig.language ?? 'en-IN',
-        model,
-        speaker: selectedVoice ?? '',
-        pace: Math.max(0.5, Math.min(2.0, Number(initialConfig.pace ?? initialConfig.speed ?? 1.0))),
-        loudness: Math.max(0.5, Math.min(2.0, Number(initialConfig.loudness ?? 1.0))),
-        enable_preprocessing: initialConfig.enable_preprocessing ?? false,
-        pitch: Math.max(-20.0, Math.min(20.0, Number(initialConfig.pitch ?? 0.0))),
-      })
-    } else if (initialProvider === 'elevenlabs' && initialConfig) {
-      // Only use initialModel if provider is ElevenLabs, otherwise use default
-      const model = initialProvider === 'elevenlabs' && initialModel 
-        ? initialModel 
-        : 'eleven_multilingual_v2'
-      setElevenLabsConfig({
-        voiceId: selectedVoice || initialConfig.voiceId || '',
-        language: initialConfig.language ?? 'en',
-        model: model,
-        similarityBoost: initialConfig.similarityBoost ?? 0.75,
-        stability: initialConfig.stability ?? 0.5,
-        style: initialConfig.style ?? 0,
-        useSpeakerBoost: initialConfig.useSpeakerBoost ?? true,
-        speed: initialConfig.speed ?? 1.0
-      })
-    } else if (initialProvider === 'google' && initialConfig) {
-      setGoogleTTSConfig({
-        voice_name: selectedVoice || initialConfig.voice_name || '',
-        gender: initialConfig.gender
-      })
-    }
-  }, [currentProvider, initialProvider, initialConfig, initialModel, selectedVoice])
+    if (isOpen) handleReset()
+  }, [isOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Update internal state when props change (this is the initial sync)
   useEffect(() => {
+    if (isOpen) return // never overwrite edits in progress
     if (selectedVoice !== currentVoiceId) {
       setCurrentVoiceId(selectedVoice || '')
     }
@@ -384,7 +356,7 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
         setActiveTab('google')
       }
     }
-  }, [selectedVoice, initialProvider])
+  }, [selectedVoice, initialProvider, isOpen])
 
   const fetchElevenLabsVoices = async () => {
     if (elevenLabsFetched) return
@@ -418,7 +390,12 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
     
     // Update appropriate config
     if (normalizedProvider === 'sarvam') {
-      setSarvamConfig(prev => ({ ...prev, speaker: voiceId }))
+      // v4 voices are tied to a language, so follow the voice's language
+      setSarvamConfig(prev => ({
+        ...prev,
+        speaker: voiceId,
+        ...(voiceId && isBulbulV4Model(prev.model) && { target_language_code: bulbulV4LanguageCode(voiceId) }),
+      }))
     } else if (normalizedProvider === 'elevenlabs') {
       setElevenLabsConfig(prev => ({ ...prev, voiceId }))
     } else if (normalizedProvider === 'google') {
@@ -546,12 +523,15 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="flex flex-col justify-start min-w-7xl h-screen p-0 gap-0 bg-white dark:bg-gray-900">
-        <DialogHeader className="p-6 border-b border-gray-200 dark:border-gray-800 flex-shrink-0 h-fit">
+      {/* w-[calc(100vw-1rem)] + sm:min-w-7xl: min-w-7xl alone forced a 1280px
+          floor on every screen, including phone and tablet — its sibling
+          SelectSTTDialog already gets this right, this one didn't match it */}
+      <DialogContent className="flex flex-col justify-start w-[calc(100vw-1rem)] sm:min-w-7xl h-screen p-0 gap-0 bg-white dark:bg-gray-900 mx-2 sm:mx-auto">
+        <DialogHeader className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-800 flex-shrink-0 h-fit">
           <div className="flex items-center justify-between gap-3 pr-5">
             <div>
               <DialogTitle className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-purple-500" />
+                <Sparkles className="w-5 h-5 text-blue-500" />
                 Configure TTS Voice & Settings
               </DialogTitle>
               <p className="text-sm text-gray-500 dark:text-gray-400">Choose voice and configure speech synthesis settings</p>

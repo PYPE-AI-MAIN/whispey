@@ -346,7 +346,7 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
                             {/* Duration and metadata */}
                             <div className="w-32 text-right text-xs text-gray-500 dark:text-gray-400 pl-4">
                               <div className="font-mono">{formatDuration(span.duration_ms)}</div>
-                              <div className="text-[10px] uppercase font-medium px-1 py-0.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded mt-0.5 inline-block">
+                              <div className="text-[11px] uppercase font-medium px-1 py-0.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded mt-0.5 inline-block">
                                 {span.operation_type}
                               </div>
                             </div>
@@ -363,7 +363,7 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
 
         {/* Summary */}
         <div className="mt-8 px-6 py-4 bg-gray-50/50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
-          <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Session Summary</div>
+          <div className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">Session Summary</div>
           <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
             <div>• {traceGroups.length} distinct traces executed</div>
             <div>• {totalSpans} total operations performed</div>

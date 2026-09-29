@@ -155,6 +155,8 @@ const AgentList: React.FC<AgentListProps> = ({
     refetchOnWindowFocus: true,
     refetchOnMount: true,
     gcTime: 0, // Changed from cacheTime
+    // Status can be transiently stale during a restart; poll so it self-corrects.
+    refetchInterval: 10000,
   })
 
   // Smart start agent handler

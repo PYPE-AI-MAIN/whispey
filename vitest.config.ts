@@ -56,8 +56,6 @@ export default defineConfig({
         'src/lib/github-prompts.ts',
         // Fumadocs framework loader (6 lines, no logic)
         'src/lib/source.ts',
-        // Browser-only utilities
-        'src/utils/verifyDistinctConfig.ts',
         // Constants files — no logic to test
         'src/utils/constants.ts',
         'src/utils/campaigns/**',

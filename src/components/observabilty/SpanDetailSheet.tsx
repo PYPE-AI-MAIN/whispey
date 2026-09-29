@@ -453,8 +453,8 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
 
             {/* Key Details */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 shadow-sm p-4">
+                <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
                   <Hash className="w-4 h-4" />
                   Request ID
                 </h4>
@@ -468,7 +468,7 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
                         variant="ghost"
                         size="sm"
                         onClick={() => copyToClipboard(displaySpan.request_id)}
-                        className="h-6 w-6 p-0"
+                        className="h-7 w-7 p-0"
                       >
                         <Copy className="w-3 h-3" />
                       </Button>
@@ -479,8 +479,8 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
                 </div>
               </div>
 
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 shadow-sm p-4">
+                <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2 flex items-center gap-2">
                   <ExternalLink className="w-4 h-4" />
                   Source
                 </h4>
@@ -496,7 +496,7 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
                 <Clock className="w-4 h-4 text-green-600 dark:text-green-400" />
                 Timeline
               </h3>
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 shadow-sm p-4">
                 <div className="flex items-center gap-3">
                   <div className="w-3 h-3 bg-green-500 dark:bg-green-400 rounded-full"></div>
                   <div>
@@ -514,22 +514,22 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
         {activeTab === 'technical' && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 gap-4">
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Operation Name</h4>
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 shadow-sm p-4">
+                <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">Operation Name</h4>
                 <code className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded p-2 text-sm font-mono block text-gray-900 dark:text-gray-100">
                   {displaySpan.name || 'Not available'}
                 </code>
               </div>
 
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Operation Type</h4>
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 shadow-sm p-4">
+                <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">Operation Type</h4>
                 <Badge variant="outline" className="text-sm border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800">
                   {displaySpan.operation_type || 'unknown'}
                 </Badge>
               </div>
 
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Request Identifiers</h4>
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 shadow-sm p-4">
+                <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">Request Identifiers</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Request ID:</span>
@@ -548,8 +548,8 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
                 </div>
               </div>
 
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Timing Information</h4>
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 shadow-sm p-4">
+                <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">Timing Information</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Captured At:</span>

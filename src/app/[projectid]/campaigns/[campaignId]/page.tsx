@@ -731,7 +731,7 @@ function ViewCampaign() {
               value={downloadStatusFilter}
               onChange={(e) => setDownloadStatusFilter(e.target.value)}
               disabled={isDownloading}
-              className="h-6 px-2 text-xs border-0 focus:ring-0 focus:outline-none bg-transparent text-gray-700 dark:text-gray-300 font-medium cursor-pointer"
+              className="h-7 px-2 text-xs border-0 focus:ring-0 focus:outline-none bg-transparent text-gray-700 dark:text-gray-300 font-medium cursor-pointer"
             >
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
@@ -772,6 +772,179 @@ function ViewCampaign() {
     </div>
   )
 
+  // Campaign logs table body: loading / empty / populated. Extracted from a nested
+  // ternary into if/else so each state reads as its own branch.
+  let logsSection: React.ReactNode
+  if (loadingLogs && logs.length === 0) {
+    logsSection = (
+      <div className="p-4 sm:p-8 text-center">
+        <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-2" />
+        <p className="text-sm text-gray-600 dark:text-gray-400">Loading logs...</p>
+      </div>
+    )
+  } else if (logs.length === 0) {
+    logsSection = (
+      <div className="p-4 sm:p-8 text-center">
+        <p className="text-sm text-gray-600 dark:text-gray-400">No logs found</p>
+      </div>
+    )
+  } else {
+    logsSection = (
+      <>
+        <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
+              <tr>
+                {columns.map((column) => {
+                  // Map column names to display labels
+                  const columnLabels: { [key: string]: string } = {
+                    'status': 'Status',
+                    'retryCount': 'Retry Count',
+                    'lastCallAt': 'Last Call',
+                  }
+
+                  const label = columnLabels[column] ||
+                    column.split(/(?=[A-Z])/).map(word =>
+                      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                    ).join(' ')
+
+                  return (
+                    <th
+                      key={column}
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap"
+                    >
+                      {label}
+                    </th>
+                  )
+                })}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              {logs.map((log, index) => (
+                <tr
+                  key={log.contactId || log.id || index}
+                  className="hover:bg-gray-50 dark:hover:bg-gray-900/50"
+                >
+                  {columns.map((column) => {
+                    const value = getValue(log, column)
+                    let displayValue: React.ReactNode = value
+
+                    // Handle specific column mappings
+                    if (column === 'status') {
+                      displayValue = value ? (
+                        <Badge className={getStatusColor(value)}>
+                          {value}
+                        </Badge>
+                      ) : <span className="text-gray-400">-</span>
+                    } else if (column === 'retryCount') {
+                      displayValue = value !== undefined && value !== null ? value : 0
+                    } else if (column === 'phoneNumber' || column === 'phone') {
+                      displayValue = value ? <span className="font-mono text-xs">{value}</span> : <span className="text-gray-400">-</span>
+                    } else if (column === 'lastCallAt') {
+                      if (value) {
+                        try {
+                          displayValue = new Date(value as string).toLocaleString()
+                        } catch {
+                          displayValue = value
+                        }
+                      } else {
+                        displayValue = <span className="text-gray-400">-</span>
+                      }
+                    } else {
+                      // Format phone numbers
+                      if (column.toLowerCase().includes('phone') && typeof value === 'string') {
+                        displayValue = <span className="font-mono text-xs">{value}</span>
+                      }
+                      // Format status with badge
+                      else if (column.toLowerCase().includes('status') && typeof value === 'string') {
+                        displayValue = (
+                          <Badge className={getStatusColor(value)}>
+                            {value}
+                          </Badge>
+                        )
+                      }
+                      // Format dates - be more specific to avoid false positives
+                      else if (value && typeof value === 'string') {
+                        // Only format as date if column name explicitly indicates it's a date/time field
+                        // Exclude appointment_date and appointment_time - show them as-is
+                        const columnLower = column.toLowerCase()
+                        const isDateColumn = (columnLower.endsWith('date') && columnLower !== 'appointment_date') ||
+                                           (columnLower.endsWith('at') && columnLower !== 'appointment_time') ||
+                                           columnLower === 'createdat' ||
+                                           columnLower === 'updatedat' ||
+                                           columnLower === 'lastcallat' ||
+                                           columnLower === 'nextcallat'
+
+                        if (isDateColumn) {
+                          try {
+                            const dateValue = new Date(value)
+                            if (!isNaN(dateValue.getTime())) {
+                              displayValue = dateValue.toLocaleString()
+                            } else {
+                              displayValue = value
+                            }
+                          } catch {
+                            displayValue = value
+                          }
+                        } else {
+                          // For non-date columns (including appointment_date and appointment_time), just display the value as-is
+                          displayValue = value
+                        }
+                      }
+                      // Format numbers
+                      else if (typeof value === 'number') {
+                        displayValue = value.toLocaleString()
+                      }
+                      // Handle null/undefined
+                      else if (value === null || value === undefined) {
+                        displayValue = <span className="text-gray-400">-</span>
+                      }
+                      // Handle objects
+                      else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                        displayValue = <span className="text-xs text-gray-500">{JSON.stringify(value)}</span>
+                      }
+                    }
+
+                    return (
+                      <td
+                        key={column}
+                        className="px-4 py-3 text-xs text-gray-900 dark:text-gray-100"
+                      >
+                        {displayValue}
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Load More Button */}
+        {hasMoreLogs && (
+          <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 text-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLoadMore}
+              disabled={loadingLogs}
+              className="text-xs"
+            >
+              {loadingLogs ? (
+                <>
+                  <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                'Load More'
+              )}
+            </Button>
+          </div>
+        )}
+      </>
+    )
+  }
+
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
       {/* Header */}
@@ -782,50 +955,50 @@ function ViewCampaign() {
         <div className="max-w-7xl mx-auto p-4 space-y-4">
           {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Users className="w-4 h-4 text-gray-400" />
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Total Contacts</span>
+                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Total Contacts</span>
               </div>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {campaignDetails.callStats?.total ?? campaignDetails.totalContacts}
               </p>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Phone className="w-4 h-4 text-purple-400" />
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Processed</span>
+                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Processed</span>
               </div>
               <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                 {campaignDetails.processedContacts}
               </p>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Phone className="w-4 h-4 text-green-400" />
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Success</span>
+                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Success</span>
               </div>
               <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                 {campaignDetails.callStats?.completed ?? campaignDetails.successCalls}
               </p>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Phone className="w-4 h-4 text-red-400" />
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Failed</span>
+                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Failed</span>
               </div>
               <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                 {campaignDetails.callStats?.failed ?? campaignDetails.failedCalls}
               </p>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Phone className="w-4 h-4 text-blue-400" />
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Pending</span>
+                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Pending</span>
               </div>
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {campaignDetails.callStats?.pending ?? 0}
@@ -834,8 +1007,8 @@ function ViewCampaign() {
           </div>
 
           {/* Campaign Info */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
+            <h2 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
               Campaign Information
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
@@ -890,12 +1063,12 @@ function ViewCampaign() {
             {/* Retry Configuration */}
             {campaignDetails.schedule?.retryConfig && Array.isArray(campaignDetails.schedule.retryConfig) && campaignDetails.schedule.retryConfig.length > 0 && (
               <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <h3 className="text-xs font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-1.5">
+                <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-1.5">
                   <RefreshCw className="w-3 h-3" />
                   Retry Configuration
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {campaignDetails.schedule.retryConfig.map((config, index) => {
+                  {campaignDetails.schedule.retryConfig.map((config) => {
                     // Handle different retry types
                     let displayLabel = ''
                     if (config.type === 'sipCode' && config.errorCodes && Array.isArray(config.errorCodes) && config.errorCodes.length > 0) {
@@ -916,10 +1089,11 @@ function ViewCampaign() {
                     }
                     
                     const label = displayLabel
+                    const configKey = `${config.type}-${config.errorCodes?.[0] ?? ''}-${config.metricName ?? config.fieldName ?? ''}-${config.delayMinutes}-${config.maxRetries}`
 
                     return (
-                      <div 
-                        key={index} 
+                      <div
+                        key={configKey}
                         className="p-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-md"
                       >
                         <div className="flex items-center gap-2 mb-2">
@@ -953,176 +1127,14 @@ function ViewCampaign() {
           </div>
 
           {/* Campaign Logs Table */}
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+              <h2 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                 Campaign Logs ({logs.length})
               </h2>
             </div>
 
-            {loadingLogs && logs.length === 0 ? (
-              <div className="p-8 text-center">
-                <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">Loading logs...</p>
-              </div>
-            ) : logs.length === 0 ? (
-              <div className="p-8 text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400">No logs found</p>
-              </div>
-            ) : (
-              <>
-                <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
-                      <tr>
-                        {columns.map((column) => {
-                          // Map column names to display labels
-                          const columnLabels: { [key: string]: string } = {
-                            'status': 'Status',
-                            'retryCount': 'Retry Count',
-                            'lastCallAt': 'Last Call',
-                          }
-                          
-                          const label = columnLabels[column] || 
-                            column.split(/(?=[A-Z])/).map(word => 
-                              word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-                            ).join(' ')
-                          
-                          return (
-                            <th 
-                              key={column}
-                              className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap"
-                            >
-                              {label}
-                            </th>
-                          )
-                        })}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {logs.map((log, index) => (
-                        <tr 
-                          key={log.contactId || log.id || index}
-                          className="hover:bg-gray-50 dark:hover:bg-gray-900/50"
-                        >
-                          {columns.map((column) => {
-                            const value = getValue(log, column)
-                            let displayValue: React.ReactNode = value
-
-                            // Handle specific column mappings
-                            if (column === 'status') {
-                              displayValue = value ? (
-                                <Badge className={getStatusColor(value)}>
-                                  {value}
-                                </Badge>
-                              ) : <span className="text-gray-400">-</span>
-                            } else if (column === 'retryCount') {
-                              displayValue = value !== undefined && value !== null ? value : 0
-                            } else if (column === 'phoneNumber' || column === 'phone') {
-                              displayValue = value ? <span className="font-mono text-xs">{value}</span> : <span className="text-gray-400">-</span>
-                            } else if (column === 'lastCallAt') {
-                              if (value) {
-                                try {
-                                  displayValue = new Date(value as string).toLocaleString()
-                                } catch {
-                                  displayValue = value
-                                }
-                              } else {
-                                displayValue = <span className="text-gray-400">-</span>
-                              }
-                            } else {
-                              // Format phone numbers
-                              if (column.toLowerCase().includes('phone') && typeof value === 'string') {
-                                displayValue = <span className="font-mono text-xs">{value}</span>
-                              }
-                              // Format status with badge
-                              else if (column.toLowerCase().includes('status') && typeof value === 'string') {
-                                displayValue = (
-                                  <Badge className={getStatusColor(value)}>
-                                    {value}
-                                  </Badge>
-                                )
-                              }
-                              // Format dates - be more specific to avoid false positives
-                              else if (value && typeof value === 'string') {
-                                // Only format as date if column name explicitly indicates it's a date/time field
-                                // Exclude appointment_date and appointment_time - show them as-is
-                                const columnLower = column.toLowerCase()
-                                const isDateColumn = (columnLower.endsWith('date') && columnLower !== 'appointment_date') || 
-                                                   (columnLower.endsWith('at') && columnLower !== 'appointment_time') ||
-                                                   columnLower === 'createdat' ||
-                                                   columnLower === 'updatedat' ||
-                                                   columnLower === 'lastcallat' ||
-                                                   columnLower === 'nextcallat'
-                                
-                                if (isDateColumn) {
-                                  try {
-                                    const dateValue = new Date(value)
-                                    if (!isNaN(dateValue.getTime())) {
-                                      displayValue = dateValue.toLocaleString()
-                                    } else {
-                                      displayValue = value
-                                    }
-                                  } catch {
-                                    displayValue = value
-                                  }
-                                } else {
-                                  // For non-date columns (including appointment_date and appointment_time), just display the value as-is
-                                  displayValue = value
-                                }
-                              }
-                              // Format numbers
-                              else if (typeof value === 'number') {
-                                displayValue = value.toLocaleString()
-                              }
-                              // Handle null/undefined
-                              else if (value === null || value === undefined) {
-                                displayValue = <span className="text-gray-400">-</span>
-                              }
-                              // Handle objects
-                              else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-                                displayValue = <span className="text-xs text-gray-500">{JSON.stringify(value)}</span>
-                              }
-                            }
-
-                            return (
-                              <td 
-                                key={column}
-                                className="px-4 py-3 text-xs text-gray-900 dark:text-gray-100"
-                              >
-                                {displayValue}
-                              </td>
-                            )
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Load More Button */}
-                {hasMoreLogs && (
-                  <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 text-center">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleLoadMore}
-                      disabled={loadingLogs}
-                      className="text-xs"
-                    >
-                      {loadingLogs ? (
-                        <>
-                          <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
-                          Loading...
-                        </>
-                      ) : (
-                        'Load More'
-                      )}
-                    </Button>
-                  </div>
-                )}
-              </>
-            )}
+            {logsSection}
           </div>
         </div>
       </div>

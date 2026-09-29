@@ -85,6 +85,10 @@ function generateSecureId(prefix = 'user') {
   return `${prefix}_${Date.now()}_${getSecureRandomInt(100000)}`
 }
 
+const WATCHDOG_MESSAGE =
+  "The agent hasn't joined the call after a while — it may still be starting up (e.g. right after " +
+  "an Update Config). You can end the call and try again in a few seconds."
+
 function isAgentParticipant(identity = '', metadata = '') {
   const id = identity.toLowerCase()
   const m  = metadata.toLowerCase()
@@ -121,6 +125,23 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
     }
     return () => { if (connectionTimeInterval.current) clearInterval(connectionTimeInterval.current) }
   }, [isConnected])
+
+  // Warn if the room connects but no agent shows up within 20s.
+  useEffect(() => {
+    if (!isConnected || agentState !== 'initializing') return
+
+    const timeout = setTimeout(() => setConnectionError(WATCHDOG_MESSAGE), 20000)
+
+    return () => clearTimeout(timeout)
+  }, [isConnected, agentState])
+
+  // Clear the watchdog banner once the agent actually shows up (a slow-but-
+  // fine start looks identical to a stuck one until then).
+  useEffect(() => {
+    if (agentState !== 'initializing') {
+      setConnectionError(prev => (prev === WATCHDOG_MESSAGE ? null : prev))
+    }
+  }, [agentState])
 
   const cleanupAudioElements = useCallback(() => {
     audioElementsRef.current.forEach(audio => { try { audio.pause(); audio.remove() } catch {} })
@@ -255,8 +276,26 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
       if (!sessionData.url) throw new Error('No LiveKit URL. Check NEXT_PUBLIC_LIVEKIT_URL.')
       if (!sessionData.token && !sessionData.user_token) throw new Error('No token in session response.')
       await liveKitRoom.connect(sessionData.url, sessionData.token || sessionData.user_token!, { autoSubscribe: true })
+      // Agent may already be in the room by now — ParticipantConnected only
+      // fires for joins AFTER this point, so check existing participants too.
+      for (const p of liveKitRoom.remoteParticipants.values()) {
+        if (isAgentParticipant(p.identity, p.metadata ?? '')) {
+          setAgentParticipant(p)
+          setAgentState('listening')
+          break
+        }
+      }
       if (mode === 'voice') {
-        await liveKitRoom.localParticipant.setMicrophoneEnabled(true).catch(e => console.warn('Mic enable failed:', e))
+        // Swallowing this used to mean: room connects fine, transcript panel
+        // shows the agent's greeting, everything LOOKS connected — but no
+        // local audio track ever gets published, so the agent never receives
+        // a single frame of the caller's voice and just sits there silently.
+        // Surface it instead of only logging, so a denied/blocked mic is
+        // visible rather than indistinguishable from "STT isn't working."
+        await liveKitRoom.localParticipant.setMicrophoneEnabled(true).catch(e => {
+          console.warn('Mic enable failed:', e)
+          setConnectionError(`Microphone access failed (${e?.name || 'error'}): ${e?.message || e}. Check your browser's mic permission for this site.`)
+        })
       }
       // chat mode: mic stays off, no audio elements created
     } catch (error) {

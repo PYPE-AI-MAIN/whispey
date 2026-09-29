@@ -369,14 +369,14 @@ function WorkflowPageInner() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{agentRow?.name || 'Workflow'}</h1>
-        {isDirty && <Badge variant="secondary" className="text-[10px]">Unsaved</Badge>}
+        {isDirty && <Badge variant="secondary" className="text-[11px]">Unsaved</Badge>}
 
         <div className="flex-1" />
 
         {lintIssues.length > 0 && (
           <Badge
             variant={errorCount > 0 ? 'destructive' : 'secondary'}
-            className="text-[10px] cursor-help"
+            className="text-[11px] cursor-help"
             title={lintIssues.map((i) => `[${i.severity}] ${i.message}`).join('\n')}
           >
             {formatLintBadgeLabel(errorCount, warningCount)}
@@ -395,7 +395,7 @@ function WorkflowPageInner() {
           variant={chatOpen ? 'default' : 'outline'}
           size="sm"
           onClick={() => setChatOpen((v) => !v)}
-          className={chatOpen ? 'bg-violet-600 hover:bg-violet-700 text-white' : ''}
+          className={chatOpen ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
         >
           <Sparkles className="h-3.5 w-3.5 mr-1.5" /> AI Builder
         </Button>

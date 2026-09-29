@@ -30,7 +30,7 @@ const ToolbarSkeleton = () => (
 
 // Agent Card Skeleton (for grid view)
 const AgentCardSkeleton = () => (
-  <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4 space-y-4">
+  <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 space-y-4">
     <div className="flex items-start justify-between">
       <div className="space-y-2 flex-1">
         <Skeleton className="h-5 w-3/4" />
@@ -60,7 +60,7 @@ const AgentCardSkeleton = () => (
 
 // Agent Row Skeleton (for list view)
 const AgentRowSkeleton = () => (
-  <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+  <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-4 flex-1">
         <div className="space-y-2">
