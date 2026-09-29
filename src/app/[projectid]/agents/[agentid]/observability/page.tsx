@@ -4,11 +4,14 @@
 import { ArrowLeft, Badge, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useParams, useRouter } from "next/navigation"
+import { useUser } from "@clerk/nextjs"
 import TracesTable from "@/components/observabilty/TracesTable"
 import { useState, use } from "react"
 import { extractS3Key } from "@/utils/s3"
 import AudioPlayer from "@/components/AudioPlayer"
 import { FilterOperator, useSupabaseQuery } from "@/hooks/useSupabase"
+import { useProjectRole } from "@/hooks/useProjectRole"
+import { isViewerRole } from "@/utils/callLogsUtils"
 import ObservabilityStats from "@/components/observabilty/ObservabilityStats"
 
 interface ObservabilityPageProps {
@@ -23,20 +26,26 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
   const sessionId = resolvedSearchParams?.session_id
 
   const { projectid } = useParams()
-  
+  const projectId = Array.isArray(projectid) ? projectid[0] : projectid
+
+  const { user } = useUser()
+  const currentUserEmail = user?.emailAddresses?.[0]?.emailAddress ?? null
+  const { role } = useProjectRole(projectId)
+  const canDeleteAnyFlag = role !== null && !isViewerRole(role)
+
   const [filters, setFilters] = useState({
     search: "",
     status: "all",
     timeRange: "24h"
   })
 
-  const queryFilters: Array<{ column: string; operator: FilterOperator; value: string }> = sessionId 
+  const queryFilters: Array<{ column: string; operator: FilterOperator; value: string }> = sessionId
     ? [{ column: "id", operator: "eq", value: sessionId }]
     : [{ column: "agent_id", operator: "eq", value: resolvedParams.agentid }]
 
 
-  const { data: callData, isLoading: callLoading, error: callError } = useSupabaseQuery("pype_voice_call_logs", {
-    select: "id, call_id, agent_id, recording_url, customer_number, call_started_at, call_ended_reason, duration_seconds, metadata",
+  const { data: callData, isLoading: callLoading, error: callError, refetch: refetchCall } = useSupabaseQuery("pype_voice_call_logs", {
+    select: "id, call_id, agent_id, recording_url, customer_number, call_started_at, call_ended_reason, duration_seconds, metadata, transcription_metrics",
     filters: queryFilters,
     orderBy: { column: "created_at", ascending: false },
     limit: 1,
@@ -151,6 +160,12 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
           agentId={resolvedParams.agentid}
           callData={callData}
           agent={agent}
+          callId={callInfo?.id}
+          initialFlag={callInfo?.transcription_metrics?.flag}
+          currentUserId={user?.id ?? null}
+          currentUserEmail={currentUserEmail}
+          canDeleteAnyFlag={canDeleteAnyFlag}
+          onFlagUpdated={() => refetchCall()}
         />
       )}
 
@@ -158,7 +173,7 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
       <div className="flex-1 min-h-0 overflow-auto">
         <TracesTable
           agentId={resolvedParams.agentid}
-          projectId={Array.isArray(projectid) ? projectid[0] : projectid}
+          projectId={projectId}
           sessionId={sessionId}
           agent={agent}
           filters={filters}

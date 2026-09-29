@@ -421,15 +421,14 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, projectId, agent, se
     }
   }
 
+  // Each operation already has its own icon (see getOperationIcon above) — color
+  // doesn't need to re-encode the same distinction. Reserved for "tool" only,
+  // since a tool call is the one thing in this column worth scanning for; every
+  // other stage (stt/llm/tts/eou) reads as plain text like the rest of the row.
+  // (Previously stt/llm/tts/eou each had their own hue, and "eou" and "tool"
+  // shared the same orange — neither told you anything the icon didn't.)
   const getOperationColor = (operation: string) => {
-    switch (operation) {
-      case "tool": return "text-orange-600 dark:text-orange-400"
-      case "llm": return "text-purple-600 dark:text-purple-400"
-      case "stt": return "text-blue-600 dark:text-blue-400"
-      case "tts": return "text-green-600 dark:text-green-400"
-      case "eou": return "text-orange-600 dark:text-orange-400"
-      default: return "text-gray-600 dark:text-gray-400"
-    }
+    return operation === "tool" ? "text-orange-600 dark:text-orange-400" : "text-gray-600 dark:text-gray-400"
   }
 
   const formatDuration = (ms: number) => {
@@ -766,7 +765,7 @@ const handleRowClick = (trace: TraceLog) => {
                     className="flex items-center gap-1 text-[11px] font-normal normal-case tracking-normal text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
                   >
                     {copied
-                      ? <><Check className="w-3 h-3 text-green-500" /><span className="text-green-500">Copied</span></>
+                      ? <><Check className="w-3 h-3 text-emerald-500" /><span className="text-emerald-500">Copied</span></>
                       : <><Copy className="w-3 h-3" /><span>Copy</span></>
                     }
                   </button>
@@ -928,8 +927,8 @@ const handleRowClick = (trace: TraceLog) => {
                                 let textClass = "text-red-700 dark:text-red-300"
                                 let summary = `${fb.provider_type || 'Provider'} fallback: ${fb.provider_label || formatProviderLabel(fb.provider_name)} → ${fb.fallback_label || formatProviderLabel(fb.fallback_provider)}`
                                 if (isRecovery) {
-                                  icon = <CheckCircle className="w-3 h-3 mt-0.5 shrink-0 text-green-500 dark:text-green-400" />
-                                  textClass = "text-green-700 dark:text-green-300"
+                                  icon = <CheckCircle className="w-3 h-3 mt-0.5 shrink-0 text-emerald-500 dark:text-emerald-400" />
+                                  textClass = "text-emerald-700 dark:text-emerald-300"
                                   summary = `${fb.provider_type || 'Provider'} recovered: ${fb.provider_label || formatProviderLabel(fb.provider_name)}`
                                 } else if (isTotalFailure) {
                                   icon = <XCircle className="w-3 h-3 mt-0.5 shrink-0 text-red-500 dark:text-red-400" />
@@ -995,17 +994,21 @@ const handleRowClick = (trace: TraceLog) => {
                         <div className="col-span-1">
                           <span className={cn(
                             "text-xs font-semibold",
-                            latency === 0 ? "text-gray-400 dark:text-gray-500" : 
+                            // same good/fair/bad shades ObservabilityStats' getLatencyColor uses —
+                            // was text-green-600 here, a different green from that component's
+                            // text-emerald-600 for the same "good" meaning
+                            latency === 0 ? "text-gray-400 dark:text-gray-500" :
                             latency > 5000 ? "text-red-600 dark:text-red-400" :
-                            latency > 2000 ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"
+                            latency > 2000 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"
                           )}>
                             {latency > 0 ? formatDuration(latency) : "N/A"}
                           </span>
                         </div>
-  
-                        {/* Cost */}
+
+                        {/* Cost — plain like Turns/Duration in the stats row above; a
+                            number doesn't need its own hue unless it's signaling status */}
                         <div className="col-span-1">
-                          <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
+                          <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                             {trace.trace_cost_usd ? formatCost(parseFloat(trace.trace_cost_usd.toString())) : "N/A"}
                           </span>
                         </div>
@@ -1020,7 +1023,7 @@ const handleRowClick = (trace: TraceLog) => {
                             ) : status === "warning" ? (
                               <AlertTriangle className="w-4 h-4 text-amber-500 dark:text-amber-400" />
                             ) : (
-                              <CheckCircle className="w-4 h-4 text-green-500 dark:text-green-400" />
+                              <CheckCircle className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
                             )}
                           </div>
                         </div>
