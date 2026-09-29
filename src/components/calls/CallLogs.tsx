@@ -821,17 +821,28 @@ const CallLogs: React.FC<CallLogsProps> = ({
               <RefreshCw className={cn('h-3 w-3', (isLoading || isRefetching) && 'animate-spin')} />
             </Button>
             {selectedIds.size > 0 && (
-              <div className="flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 py-1 pl-2.5 pr-1.5 dark:border-blue-900/50 dark:bg-blue-950/30">
-                <span className="text-xs font-medium text-blue-700 dark:text-blue-300">{selectedIds.size} selected</span>
-                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={handleCopySelected}>
+              <div className="flex h-8 items-center gap-1 rounded-md border border-blue-200 bg-blue-50 pl-3 pr-1 dark:border-blue-900/50 dark:bg-blue-950/30">
+                <span className="whitespace-nowrap text-xs font-medium text-blue-700 dark:text-blue-300">
+                  {selectedIds.size} selected
+                </span>
+                <div className="mx-1 h-4 w-px bg-blue-200 dark:bg-blue-900/50" />
+                <Button
+                  variant="ghost" size="sm"
+                  className="h-6 px-2 text-xs font-normal text-blue-700 hover:bg-blue-100 hover:text-blue-900 dark:text-blue-300 dark:hover:bg-blue-900/40"
+                  onClick={handleCopySelected}
+                >
                   {copyFeedback ? 'Copied!' : 'Copy'}
                 </Button>
-                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={handleExportSelected}>
+                <Button
+                  variant="ghost" size="sm"
+                  className="h-6 px-2 text-xs font-normal text-blue-700 hover:bg-blue-100 hover:text-blue-900 dark:text-blue-300 dark:hover:bg-blue-900/40"
+                  onClick={handleExportSelected}
+                >
                   Export CSV
                 </Button>
                 <Button
                   variant="ghost" size="sm"
-                  className="h-6 w-6 p-0"
+                  className="h-6 w-6 p-0 text-blue-700 hover:bg-blue-100 hover:text-blue-900 dark:text-blue-300 dark:hover:bg-blue-900/40"
                   aria-label="Clear selection"
                   onClick={() => setSelectedIds(new Set())}
                 >
