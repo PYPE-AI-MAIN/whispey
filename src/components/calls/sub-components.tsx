@@ -3,7 +3,7 @@
 import React, { memo } from "react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -206,7 +206,13 @@ export const ReanalyzeDialogWrapper = memo<ReanalyzeDialogWrapperProps>(({
       </DialogTrigger>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-lg">Re-analyze Call Logs</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 text-lg">
+            <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            Re-analyze Call Logs
+          </DialogTitle>
+          <DialogDescription>
+            Update transcription metrics and analytics for historical call logs.
+          </DialogDescription>
         </DialogHeader>
         <ReanalyzeCallLogs projectId={projectId} agentId={agentId} isDialogOpen={isOpen} />
       </DialogContent>

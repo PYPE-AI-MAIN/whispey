@@ -12,6 +12,7 @@ import { PhoneCall, Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { cn } from '@/lib/utils'
 import { DispatchVariablesEditor, type DispatchVariable } from './DispatchVariablesEditor'
 import type { CallLog } from '@/types/logs'
 import {
@@ -148,25 +149,31 @@ export default function CallAgainDialog({ call, projectId, agent, phoneNumbers }
         </DialogHeader>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
-          {!isValidNumber ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300 flex items-start gap-2">
-              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-              <span className="break-all" title={call.customer_number}>
-                &ldquo;{displayNumber}&rdquo; doesn&apos;t look like a valid phone number — dispatch is disabled.
-              </span>
-            </div>
-          ) : (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300 flex items-start gap-2">
-              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-              <span>
-                {isCheckingRunning
+          {/* One status line, not a stack of colored boxes — plain (muted) for
+              informational states, red text only when it actually blocks the
+              call, matching how this app's other confirm dialogs (e.g.
+              AgentDeleteDialog) keep color reserved for real warnings. */}
+          <p
+            className={cn(
+              'flex items-start gap-1.5 text-sm',
+              !isValidNumber || (!isCheckingRunning && !runningStatus.isRunning)
+                ? 'text-red-600 dark:text-red-400'
+                : 'text-muted-foreground'
+            )}
+          >
+            {(!isValidNumber || (!isCheckingRunning && !runningStatus.isRunning)) && (
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+            )}
+            <span className="break-all" title={call.customer_number}>
+              {!isValidNumber
+                ? `"${displayNumber}" doesn't look like a valid phone number.`
+                : isCheckingRunning
                   ? 'Checking whether the agent is currently running…'
                   : runningStatus.isRunning
                     ? `Will dial ${call.customer_number} using ${agent.name}.`
                     : 'Agent is not currently running — start it first to dispatch this call.'}
-              </span>
-            </div>
-          )}
+            </span>
+          </p>
 
           <div>
             <label htmlFor="call-again-from-number" className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-300">
@@ -191,22 +198,19 @@ export default function CallAgainDialog({ call, projectId, agent, phoneNumbers }
           <DispatchVariablesEditor variables={variables} setVariables={setVariables} />
 
           {result && (
-            <div
-              className={
-                result.type === 'success'
-                  ? 'flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-300'
-                  : 'rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300'
-              }
-            >
-              {result.type === 'success' && <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />}
+            <p className={cn(
+              'flex items-center gap-1.5 text-sm',
+              result.type === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+            )}>
+              {result.type === 'success' ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertTriangle className="h-4 w-4 shrink-0" />}
               {result.text}
-            </div>
+            </p>
           )}
         </div>
 
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Close</Button>
-          <Button size="sm" onClick={handleConfirm} disabled={disabled} className="max-w-[70%] gap-1.5">
+          <Button variant="destructive" size="sm" onClick={handleConfirm} disabled={disabled} className="max-w-[70%] gap-1.5">
             {isDispatching ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" /> : <PhoneCall className="h-3.5 w-3.5 shrink-0" />}
             <span className="truncate">Call {displayNumber} now</span>
           </Button>

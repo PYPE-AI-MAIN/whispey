@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
@@ -279,18 +278,7 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
   }
 
   return (
-    <div className="space-y-6">
-      <Card className="border-gray-200 dark:border-gray-800">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            Re-analyze Call Logs
-          </CardTitle>
-          <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
-            Update transcription metrics and analytics for historical call logs.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
+    <div className="space-y-5">
             {/* Date Range Picker */}
             <div className="space-y-2">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -565,8 +553,6 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-          </CardContent>
-        </Card>
     </div>
   )
 }
