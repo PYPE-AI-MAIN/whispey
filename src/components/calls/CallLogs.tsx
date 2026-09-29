@@ -165,16 +165,11 @@ function getRowClassName(isNavigatingRow: boolean, isSelected: boolean, isFlagge
   )
 }
 
-// The header's thin top-border accent (getHeaderCellClassName) already marks a
-// transcription/metrics column — the body cells stay plain, rather than
-// tinting every row of that column with a translucent color wash. Selection
-// uses the same neutral gray the rest of the app's selected/active states do,
-// not a saturated blue.
 function getCellClassName(rowIndex: number, isSelected: boolean): string {
   return cn(
     "px-4 py-1 text-sm border-2 dark:text-gray-100 border-gray-200 dark:border-gray-800 leading-tight h-20",
     rowIndex === 0 && "border-t-0",
-    isSelected && "bg-gray-100 dark:bg-gray-800",
+    isSelected && "bg-blue-100 dark:bg-blue-900/40",
   )
 }
 

@@ -89,7 +89,11 @@ export const TruncatedText = memo<TruncatedTextProps>(({
         </span>
       </TooltipTrigger>
       {text.length > maxLength && (
-        <TooltipContent sideOffset={6} className="pointer-events-auto max-w-[420px] max-h-64 overflow-auto break-words">
+        <TooltipContent
+          sideOffset={6}
+          className="pointer-events-auto max-w-[420px] max-h-64 overflow-auto break-words"
+          onClick={(e) => e.stopPropagation()}
+        >
           {text}
         </TooltipContent>
       )}
@@ -140,7 +144,16 @@ export const DynamicJsonCell = memo<DynamicJsonCellProps>(({
                 {truncatedJson}
               </pre>
             </TooltipTrigger>
-            <TooltipContent sideOffset={6} className="pointer-events-auto max-w-[520px] max-h-64 overflow-auto whitespace-pre-wrap break-words">
+            {/* pointer-events-auto so the value can be selected/copied — but that
+                also means a click here bubbles to the row's own onClick (React
+                replays it against the component tree, not the DOM tree a Radix
+                portal actually renders into), navigating to the log's detail
+                page mid-copy. stopPropagation keeps it inside this tooltip. */}
+            <TooltipContent
+              sideOffset={6}
+              className="pointer-events-auto max-w-[520px] max-h-64 overflow-auto whitespace-pre-wrap break-words"
+              onClick={(e) => e.stopPropagation()}
+            >
               {jsonString}
             </TooltipContent>
           </Tooltip>
@@ -167,7 +180,11 @@ export const DynamicJsonCell = memo<DynamicJsonCellProps>(({
           </span>
         </TooltipTrigger>
         {shouldTruncate && (
-          <TooltipContent sideOffset={6} className="pointer-events-auto max-w-[420px] max-h-64 overflow-auto break-words">
+          <TooltipContent
+            sideOffset={6}
+            className="pointer-events-auto max-w-[420px] max-h-64 overflow-auto break-words"
+            onClick={(e) => e.stopPropagation()}
+          >
             {stringValue}
           </TooltipContent>
         )}
