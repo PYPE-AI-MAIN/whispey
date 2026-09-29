@@ -356,7 +356,10 @@ function serializeRouteTool(tool: any): any {
   if (tool.type === 'voicemail_detection') {
     return {
       ...baseToolConfig,
-      ...commonFields,
+      name: tool.name,
+      // No description: the backend never reads it for this tool type - it's
+      // driven entirely by AMD (LiveKit's Answering Machine Detection), not a
+      // user-describable LLM-callable function.
       // ?? not || - a blank message / 0 timeout is an intentional config (instant, silent hangup).
       vm_message: tool.config.vm_message ?? "It looks like I've reached a voicemail. Please call us back when you're available. Thank you, goodbye.",
       vm_wait_timeout: tool.config.vm_wait_timeout ?? 7,

@@ -248,6 +248,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, promptVariable
               activationThreshold={advancedSettings.vad.activationThreshold}
               sampleRate={advancedSettings.vad.sampleRate}
               forceCpu={advancedSettings.vad.forceCpu}
+              turnDetection={advancedSettings.session.turn_detection}
               onFieldChange={onFieldChange}
             />
           </CollapsibleContent>
