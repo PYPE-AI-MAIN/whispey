@@ -22,7 +22,7 @@ import DownloadDialog from './DownloadDialog'
 import DownloadSettingsDialog from './DownloadSettingsDialog'
 import { useQuery } from '@tanstack/react-query'
 import { useCallLogsStore } from '@/stores/callLogsStore'
-import { createTableColumns } from './tableColumns'
+import { createTableColumns, getColumnGroupBgClass } from './tableColumns'
 import {
   FilterHeaderSkeleton,
   TableSkeleton,
@@ -123,8 +123,11 @@ function formatTotalCountLabel(
   return null
 }
 
-function getHeaderCellClassName(): string {
-  return "px-6 truncate border-2 border-r-black border-b-2 border-gray-200 dark:border-gray-800 py-1.5 text-left font-semibold text-sm leading-tight text-foreground dark:text-gray-100"
+function getHeaderCellClassName(columnId: string): string {
+  return cn(
+    "px-6 truncate border-2 border-r-black border-b-2 border-gray-200 dark:border-gray-800 py-1.5 text-left font-semibold text-sm leading-tight text-foreground dark:text-gray-100",
+    getColumnGroupBgClass(columnId)
+  )
 }
 
 // Extracted so the mixed &&/|| chain doesn't add to CallLogs's own cognitive complexity.
@@ -169,6 +172,9 @@ function getCellClassName(rowIndex: number, isSelected: boolean): string {
   return cn(
     "px-4 py-1 text-sm border-2 dark:text-gray-100 border-gray-200 dark:border-gray-800 leading-tight h-20",
     rowIndex === 0 && "border-t-0",
+    // Cells already carry their own color (score badges, status pills) —
+    // tinting the cell background too just fights with that. The header tint
+    // alone is enough to tell which section a column belongs to.
     isSelected && "bg-blue-100 dark:bg-blue-900/40",
   )
 }
@@ -930,7 +936,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
                     {hg.headers.map(h => (
                       <th
                         key={h.id}
-                        className={getHeaderCellClassName()}
+                        className={getHeaderCellClassName(h.column.id)}
                         style={{ minWidth: h.column.columnDef.minSize || 200, width: h.column.columnDef.size || 'auto' }}
                       >
                         {h.isPlaceholder ? null : flexRender(h.column.columnDef.header, h.getContext())}

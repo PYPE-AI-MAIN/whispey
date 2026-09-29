@@ -13,6 +13,30 @@ import { BASIC_COLUMNS } from "@/hooks/useCallLogsColumns"
 import { TagEditor } from './TagEditor'
 import { FlagEditor } from './FlagEditor'
 import { cn } from "@/lib/utils"
+
+// Column ids are prefixed by which bucket built them (`metadata-`,
+// `transcription-`, `metrics-`) — see createTableColumns below. Reusing that
+// prefix (instead of a second lookup table) to tint header + body cells by
+// column type, so both `<th>` and `<td>` render the same color from one place.
+// One color family (slate) at three intensities, not three different hues —
+// a multi-hue combination is what kept reading as unprofessional/patchwork
+// no matter how muted each individual color was.
+// Plain solid shades, no opacity modifiers — the fractional-opacity variants
+// (bg-slate-800/25 etc.) weren't compiling reliably; these exact classes are
+// already used elsewhere in the app (ModelSelector.tsx, CampaignSelector.tsx),
+// so they're proven safe.
+// Four groups need four distinct tiers, including the plain "call info"
+// columns (customer_number, call_id, ...) — leaving them untinted fell back
+// to the row's own default dark background, which happened to land almost
+// exactly on the disposition tint below, making two different groups look
+// like the same one. Every tier is explicit now, one ladder, darkest to
+// lightest as you move from "just a call info column" to "a metric".
+export function getColumnGroupBgClass(columnId: string): string {
+  if (columnId.startsWith("metadata-")) return "bg-slate-100 dark:bg-slate-800"
+  if (columnId.startsWith("transcription-")) return "bg-slate-200 dark:bg-slate-700"
+  if (columnId.startsWith("metrics-")) return "bg-slate-300 dark:bg-slate-600"
+  return "bg-slate-50 dark:bg-slate-900"
+}
 import { isViewerRole } from '@/utils/callLogsUtils'
 
 // ── Basic-column cell renderers ──────────────────────────────────────────
@@ -281,19 +305,6 @@ function renderMetricCell(call: CallLog, metricId: string) {
   ) : value
 }
 
-// A small colored dot inline with the column label — not a bg wash (looked
-// like a kids' app) and not a border-top accent (invisible: the table's
-// sticky header has a small negative top offset that clips anything sitting
-// right at a header cell's edge). A dot in the content flow avoids both.
-function renderColumnHeader(label: string, dotColorClass: string) {
-  return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dotColorClass)} />
-      {label}
-    </span>
-  )
-}
-
 export const createTableColumns = (
   visibleColumns: {
     basic: string[]
@@ -340,7 +351,7 @@ export const createTableColumns = (
     cols.push({
       id: `metadata-${key}`,
       accessorFn: (row) => row.metadata?.[key],
-      header: () => renderColumnHeader(key, "bg-teal-400 dark:bg-teal-500"),
+      header: key,
       cell: ({ row }) => {
         const call = row.original
 
@@ -370,7 +381,7 @@ export const createTableColumns = (
     cols.push({
       id: `transcription-${key}`,
       accessorFn: (row) => row.transcription_metrics?.[key],
-      header: () => renderColumnHeader(key, "bg-violet-400 dark:bg-violet-500"),
+      header: key,
       cell: ({ row }) => (
         <DynamicJsonCell
           data={row.original.transcription_metrics}
@@ -387,10 +398,7 @@ export const createTableColumns = (
     cols.push({
       id: `metrics-${metricId}`,
       accessorFn: (row) => row.metrics?.[metricId],
-      header: () => renderColumnHeader(
-        metricId.replaceAll('_', ' ').replaceAll(/\b\w/g, l => l.toUpperCase()),
-        "bg-sky-400 dark:bg-sky-500"
-      ),
+      header: metricId.replaceAll('_', ' ').replaceAll(/\b\w/g, l => l.toUpperCase()),
       cell: ({ row }) => renderMetricCell(row.original, metricId),
       size: 150,
     })
