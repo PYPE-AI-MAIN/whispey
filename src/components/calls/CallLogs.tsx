@@ -123,9 +123,10 @@ function formatTotalCountLabel(
   return null
 }
 
-// A thin top-border accent, not a filled column background — enough to tell a
-// transcription/metrics column apart from a basic one without painting the
-// whole column a saturated color (the previous bg-purple-50/bg-blue-50 wash).
+// A thin top-border accent, not a filled column background — enough to tell
+// metadata/transcription/metrics columns apart from a basic one and from each
+// other, without painting the whole column a saturated color (the previous
+// bg-purple-50/bg-blue-50 wash).
 function getHeaderCellClassName(headerId: string): string {
   const base = "px-6 truncate border-2 border-r-black border-b-2 border-gray-200 dark:border-gray-800 py-1.5 text-left font-semibold text-sm leading-tight text-foreground dark:text-gray-100"
   if (headerId.startsWith('transcription-')) {
@@ -133,6 +134,9 @@ function getHeaderCellClassName(headerId: string): string {
   }
   if (headerId.startsWith('metrics-')) {
     return cn(base, "border-t-2 border-t-sky-400 dark:border-t-sky-600")
+  }
+  if (headerId.startsWith('metadata-')) {
+    return cn(base, "border-t-2 border-t-teal-400 dark:border-t-teal-600")
   }
   return base
 }
