@@ -19,6 +19,8 @@ import {
   type RunningAgent,
   type DispatchAgent,
   formatNumberLabel,
+  formatDisplayNumber,
+  looksLikePhoneNumber,
   getRunningAgentName,
   validateDispatch,
   extractDispatchError,
@@ -47,6 +49,12 @@ export default function CallAgainDialog({ call, projectId, agent, phoneNumbers }
   const [result, setResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const runningStatus = getRunningAgentName(agent, runningAgents)
+  // Production has real rows where customer_number is a 45+ digit garbled
+  // value, not a phone number at all — caught here so it never reaches the
+  // dispatch call, and displayed truncated so it can't blow out the layout
+  // the way it did when this dialog rendered it raw.
+  const isValidNumber = looksLikePhoneNumber(call.customer_number)
+  const displayNumber = formatDisplayNumber(call.customer_number)
 
   const handleOpenChange = (next: boolean) => {
     setOpen(next)
@@ -111,7 +119,7 @@ export default function CallAgainDialog({ call, projectId, agent, phoneNumbers }
     }
   }
 
-  const disabled = isDispatching || isCheckingRunning || !fromPhoneNumberId || !runningStatus.isRunning
+  const disabled = isDispatching || isCheckingRunning || !fromPhoneNumberId || !runningStatus.isRunning || !isValidNumber
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -131,23 +139,34 @@ export default function CallAgainDialog({ call, projectId, agent, phoneNumbers }
         onClick={(e) => e.stopPropagation()}
       >
         <DialogHeader>
-          <DialogTitle>Call {call.customer_number} again?</DialogTitle>
+          <DialogTitle className="line-clamp-2 break-all" title={call.customer_number}>
+            Call {displayNumber} again?
+          </DialogTitle>
           <DialogDescription>
             This places a live outbound call right now — not a simulation. Review the number and variables below first.
           </DialogDescription>
         </DialogHeader>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300 flex items-start gap-2">
-            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-            <span>
-              {isCheckingRunning
-                ? 'Checking whether the agent is currently running…'
-                : runningStatus.isRunning
-                  ? `Will dial ${call.customer_number} using ${agent.name}.`
-                  : 'Agent is not currently running — start it first to dispatch this call.'}
-            </span>
-          </div>
+          {!isValidNumber ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300 flex items-start gap-2">
+              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span className="break-all" title={call.customer_number}>
+                &ldquo;{displayNumber}&rdquo; doesn&apos;t look like a valid phone number — dispatch is disabled.
+              </span>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300 flex items-start gap-2">
+              <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>
+                {isCheckingRunning
+                  ? 'Checking whether the agent is currently running…'
+                  : runningStatus.isRunning
+                    ? `Will dial ${call.customer_number} using ${agent.name}.`
+                    : 'Agent is not currently running — start it first to dispatch this call.'}
+              </span>
+            </div>
+          )}
 
           <div>
             <label htmlFor="call-again-from-number" className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-300">
@@ -187,9 +206,9 @@ export default function CallAgainDialog({ call, projectId, agent, phoneNumbers }
 
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Close</Button>
-          <Button size="sm" onClick={handleConfirm} disabled={disabled} className="gap-1.5">
-            {isDispatching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PhoneCall className="h-3.5 w-3.5" />}
-            Call {call.customer_number} now
+          <Button size="sm" onClick={handleConfirm} disabled={disabled} className="max-w-[70%] gap-1.5">
+            {isDispatching ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" /> : <PhoneCall className="h-3.5 w-3.5 shrink-0" />}
+            <span className="truncate">Call {displayNumber} now</span>
           </Button>
         </DialogFooter>
       </DialogContent>

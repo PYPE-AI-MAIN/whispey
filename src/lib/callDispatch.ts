@@ -62,6 +62,25 @@ export type DispatchValidation =
   | { ok: false; error: string | null }
   | { ok: true; cleaned: string; selectedPhone: PhoneNumber; agentName: string }
 
+// E.164 bounds — the shortest real numbers (a few Pacific island plans) run
+// about 8 digits, and 15 is the format's own hard maximum. A stored
+// customer_number outside this range isn't a phone number at all (seen in
+// production: some rows carry a 45+ digit garbled value), so it's rejected
+// here rather than handed to a telephony provider.
+const MIN_PHONE_DIGITS = 8
+const MAX_PHONE_DIGITS = 15
+
+export function looksLikePhoneNumber(value: string): boolean {
+  const digits = value.replaceAll(/\D/g, '')
+  return digits.length >= MIN_PHONE_DIGITS && digits.length <= MAX_PHONE_DIGITS
+}
+
+/** For display only — a garbled number (production has rows 45+ digits long)
+ * shouldn't be able to blow out a title or button's layout. */
+export function formatDisplayNumber(value: string, maxLength = 20): string {
+  return value.length > maxLength ? `${value.slice(0, maxLength)}…` : value
+}
+
 /** `error: null` means silently no-op (no agent / empty field) rather than a message worth showing. */
 export function validateDispatch(
   hasAgent: boolean,
@@ -72,7 +91,9 @@ export function validateDispatch(
 ): DispatchValidation {
   if (!hasAgent || !phoneNumber.trim()) return { ok: false, error: null }
   const cleaned = phoneNumber.replaceAll(/\D/g, '')
-  if (cleaned.length < 10) return { ok: false, error: 'Please enter a valid phone number' }
+  if (cleaned.length < MIN_PHONE_DIGITS || cleaned.length > MAX_PHONE_DIGITS) {
+    return { ok: false, error: 'Please enter a valid phone number' }
+  }
   if (!fromPhoneNumberId.trim()) return { ok: false, error: 'Please select a phone number to call from' }
   const selectedPhone = phoneNumbers.find((p) => p.id === fromPhoneNumberId)
   if (!selectedPhone) return { ok: false, error: 'Selected phone number not found' }
