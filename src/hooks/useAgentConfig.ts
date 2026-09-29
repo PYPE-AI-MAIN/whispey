@@ -460,6 +460,27 @@ export function useUpdateProgressLabel(agentName: string | null | undefined, act
   return label
 }
 
+/**
+ * One-shot check for whether a deploy is currently in progress for this
+ * agent — no background polling. Call this right before letting someone
+ * start a call, so a deploy triggered externally (e.g. through the MCP)
+ * still gets caught, without ever running a poll loop the rest of the time.
+ */
+export async function checkUpdateInProgress(
+  agentName: string
+): Promise<{ inProgress: boolean; label: string | null }> {
+  try {
+    const res = await fetch(updateStatusUrl(agentName))
+    if (!res.ok) return { inProgress: false, label: null }
+    const status = await res.json()
+    const inProgress = !!status && NON_TERMINAL_UPDATE_STATUSES.has(status.status)
+    return { inProgress, label: inProgress ? (UPDATE_STAGE_LABELS[status.status] ?? null) : null }
+  } catch {
+    // transient — don't block a call over a failed status check
+    return { inProgress: false, label: null }
+  }
+}
+
 // Exported for callers outside the big config form (e.g. Agent Studio's voice
 // picker) that need the same "wait for the redeploy to actually finish, not
 // just for the request to be accepted" behavior without pulling in the whole

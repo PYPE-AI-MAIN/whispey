@@ -191,6 +191,13 @@ export default function TestAgentPanel({
   const [phoneNumber, setPhoneNumber] = useState('')
   const { voices, loading: voicesLoading } = useStudioVoices()
 
+  // voiceSavingLabel is now polled continuously by the page regardless of
+  // whether THIS page triggered the change — it's non-null for a deploy
+  // started externally (e.g. through the MCP) too, not just a local voice
+  // pick. Show the same loading state either way, so the call button's
+  // disabled state always has a visible reason next to it.
+  const isDeploying = voiceSaving || !!voiceSavingLabel
+
   const inCall = isConnected || isConnecting
   const currentVoice = voices.find((v) => v.id === voiceId && v.provider === voiceProvider)
   const varKeys = Object.keys(sessionVariables)
@@ -369,9 +376,9 @@ export default function TestAgentPanel({
                     selectedVoiceId={voiceId}
                     selectedProvider={voiceProvider}
                     onSelect={onVoiceSelect}
-                    disabled={voiceSaving || inCall}
+                    disabled={isDeploying || inCall}
                   />
-                  {voiceSaving && (
+                  {isDeploying && (
                     <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-gray-500">
                       <Loader2 className="h-3 w-3 animate-spin" /> {voiceSavingLabel ?? 'Applying — the agent is restarting with the new voice…'}
                     </p>
@@ -429,7 +436,7 @@ export default function TestAgentPanel({
             disabled={tab !== 'voice' || callDisabled}
             className="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 text-sm font-medium text-white shadow-sm transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
           >
-            {tab === 'voice' && voiceSaving ? (
+            {tab === 'voice' && isDeploying ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : tab === 'chat' ? (
               <MessageSquare className="h-4 w-4" />
@@ -437,8 +444,8 @@ export default function TestAgentPanel({
               <Phone className="h-4 w-4" />
             )}
             {tab === 'voice'
-              ? voiceSaving
-                ? (voiceSavingLabel ?? 'Applying voice change…')
+              ? isDeploying
+                ? (voiceSavingLabel ?? 'Applying changes…')
                 : 'Start call'
               : tab === 'phone'
                 ? 'Place call — soon'

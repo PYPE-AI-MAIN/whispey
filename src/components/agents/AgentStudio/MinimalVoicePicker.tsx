@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Check, ChevronsUpDown, Loader2, Pause, Play } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { MCP_ELEVENLABS_VOICES, MCP_SARVAM_VOICES } from '@/config/mcpAgentVoices'
 
 export interface StudioVoice {
   id: string
@@ -15,14 +16,16 @@ export interface StudioVoice {
   model?: string
 }
 
-// Fixed, curated set — not the full catalog. Sarvam's is static (bulbul:v3);
-// ElevenLabs voices are account-specific, so those are fetched and capped at 4.
-const SARVAM_VOICES: StudioVoice[] = [
-  { id: 'shubh', name: 'Shubh', subtitle: 'Warm, natural default voice', tags: ['Male', 'Indian', 'Multilingual'], provider: 'sarvam', model: 'bulbul:v3' },
-  { id: 'priya', name: 'Priya', subtitle: 'Clear and friendly', tags: ['Female', 'Indian', 'Multilingual'], provider: 'sarvam', model: 'bulbul:v3' },
-  { id: 'rahul', name: 'Rahul', subtitle: 'Calm and steady', tags: ['Male', 'Indian', 'Multilingual'], provider: 'sarvam', model: 'bulbul:v3' },
-  { id: 'kavya', name: 'Kavya', subtitle: 'Bright and conversational', tags: ['Female', 'Indian', 'Multilingual'], provider: 'sarvam', model: 'bulbul:v3' },
-]
+// Same curated list the MCP validates create_agent/update_agent voice
+// selections against (src/config/mcpAgentVoices.ts) — one source of truth,
+// so a voice set through the MCP always shows up as selected here too.
+const SARVAM_VOICES: StudioVoice[] = MCP_SARVAM_VOICES.map((v) => ({
+  id: v.voice_id,
+  name: v.name,
+  tags: ['Indian', 'Multilingual'],
+  provider: 'sarvam' as const,
+  model: v.model,
+}))
 
 const PROVIDER_LABEL: Record<StudioVoice['provider'], string> = {
   elevenlabs: 'ElevenLabs',
@@ -59,15 +62,24 @@ export function useStudioVoices() {
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error('failed'))))
       .then((data) => {
         if (cancelled) return
+        const byId = new Map((data?.voices ?? []).map((v: any) => [v.voice_id, v]))
+        // Same curated 4 ids as MCP_ELEVENLABS_VOICES, in that order — not
+        // "whichever 4 the API returns first". Falls back to our own name if
+        // one isn't present in the live fetch (e.g. account access hiccup).
         setElevenVoices(
-          (data?.voices ?? []).slice(0, 4).map((v: any) => {
-            const { name, subtitle } = splitName(v.name ?? '')
+          MCP_ELEVENLABS_VOICES.map((curated) => {
+            const live: any = byId.get(curated.voice_id)
+            if (!live) {
+              return { id: curated.voice_id, name: curated.name, tags: [], provider: 'elevenlabs' as const, model: curated.model }
+            }
+            const { name, subtitle } = splitName(live.name ?? curated.name)
             return {
-              id: v.voice_id,
+              id: curated.voice_id,
               name,
-              subtitle: subtitle ?? v.labels?.description ?? v.description,
-              tags: labelsToTags(v.labels),
+              subtitle: subtitle ?? live.labels?.description ?? live.description,
+              tags: labelsToTags(live.labels),
               provider: 'elevenlabs' as const,
+              model: curated.model,
             }
           })
         )

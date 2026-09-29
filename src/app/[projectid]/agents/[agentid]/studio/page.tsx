@@ -7,7 +7,7 @@ import { Eye, X } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useVoiceAgent } from '@/hooks/useVoiceAgent'
-import { saveAndDeployAgent, useUpdateProgressLabel } from '@/hooks/useAgentConfig'
+import { saveAndDeployAgent, useUpdateProgressLabel, checkUpdateInProgress } from '@/hooks/useAgentConfig'
 import ConversationFlow, { SAMPLE_FLOW } from '@/components/agents/AgentStudio/ConversationFlow'
 import InsightsStrip from '@/components/agents/AgentStudio/InsightsStrip'
 import StudioEmptyState from '@/components/agents/AgentStudio/StudioEmptyState'
@@ -42,6 +42,10 @@ function StudioWorkspace({ isPreview, onExitPreview }: Readonly<{ isPreview: boo
   // Same live stage label the real config page shows while it deploys
   // ("Validating config…" → "Stopping current worker…" → … → "Verifying…") —
   // no guessed duration, just what the backend is actually doing right now.
+  // Only active while THIS page triggered a voice change — a deploy started
+  // externally (e.g. through the MCP) is instead caught by a one-shot check
+  // right before a call starts (see handleConnect below), not by polling in
+  // the background the whole time this page happens to be open.
   const voiceUpdateLabel = useUpdateProgressLabel(backendAgentName, voiceSaving)
 
   // LiveKit test call — same connection name the playground and config pages use.
@@ -81,6 +85,20 @@ function StudioWorkspace({ isPreview, onExitPreview }: Readonly<{ isPreview: boo
     },
     [backendAgentName, liveAgentConfig, refetchConfig]
   )
+
+  // Checked once, right when someone tries to start a call — not polled in
+  // the background — so a deploy started externally (e.g. through the MCP)
+  // still blocks the call, without paying a continuous polling cost for the
+  // common case where nothing external is happening.
+  const handleConnect = useCallback(async () => {
+    if (!backendAgentName) return
+    const { inProgress, label } = await checkUpdateInProgress(backendAgentName)
+    if (inProgress) {
+      setVoiceError(label ?? 'An update is currently in progress — try again in a moment.')
+      return
+    }
+    callActions.connect()
+  }, [backendAgentName, callActions])
 
   return (
     <div className="flex h-full">
@@ -144,7 +162,7 @@ function StudioWorkspace({ isPreview, onExitPreview }: Readonly<{ isPreview: boo
         transcripts={call.transcripts}
         isMuted={call.isMuted}
         onToggleMute={callActions.toggleMute}
-        onConnect={callActions.connect}
+        onConnect={handleConnect}
         onDisconnect={callActions.disconnect}
         callDisabled={!agent || !backendAgentName || voiceSaving}
       />
