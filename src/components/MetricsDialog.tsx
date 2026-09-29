@@ -12,6 +12,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { useGlobalRole } from "@/hooks/useGlobalRole"
+import { CreateMetricTemplateForm, type CreatedMetricTemplate } from "@/components/CreateMetricTemplateForm"
 
 interface MetricConfig {
   metric_id: string
@@ -33,6 +35,24 @@ interface MetricTemplate {
   icon: string
 }
 
+// Same order as the Category dropdown in CreateMetricTemplateForm — anything
+// else (empty, or a category no longer offered there) falls into "General".
+const CATEGORY_ORDER = ['effectiveness', 'efficiency', 'reliability', 'quality', 'compliance', 'experience']
+
+function groupTemplatesByCategory(templates: MetricTemplate[]): { category: string; templates: MetricTemplate[] }[] {
+  const byCategory = new Map<string, MetricTemplate[]>()
+  for (const t of templates) {
+    const key = t.category && CATEGORY_ORDER.includes(t.category) ? t.category : 'general'
+    const list = byCategory.get(key) ?? []
+    list.push(t)
+    byCategory.set(key, list)
+  }
+  const order = [...CATEGORY_ORDER, 'general']
+  return order
+    .filter((category) => byCategory.has(category))
+    .map((category) => ({ category, templates: byCategory.get(category)! }))
+}
+
 interface MetricsDialogProps {
   initialMetrics?: Record<string, MetricConfig>
   onSave: (metrics: Record<string, MetricConfig>) => void
@@ -47,6 +67,10 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
   const [metrics, setMetrics] = useState<Record<string, MetricConfig>>(initialMetrics)
   const [loadingTemplates, setLoadingTemplates] = useState(false)
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
+  // Creating a metric *template* (the scoring rubric itself, not just enabling
+  // one on this agent) is platform-wide, not per-agent — same superadmin gate
+  // as Settings > Users > Metrics, which is the only other place this form appears.
+  const { isSuperAdmin } = useGlobalRole()
 
   // Sync metrics state when initialMetrics prop changes (e.g., after refresh)
   useEffect(() => {
@@ -355,36 +379,53 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                 </div>
               )}
 
-              {/* Available Templates Section */}
+              {/* Only a superadmin can author a new template — everyone else picks
+                  from the library below, same as before. */}
+              {isSuperAdmin && (
+                <CreateMetricTemplateForm
+                  onCreated={(t: CreatedMetricTemplate) => setMetricsTemplates(prev => [...prev, { ...t, icon: '' }])}
+                />
+              )}
+
+              {/* Available Templates Section — grouped by category so the list
+                  stays scannable once there are more than a handful of templates,
+                  rather than one long flat list. */}
               <div>
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
                   Available Metrics Templates
                 </h3>
-                <div className="space-y-2">
-                  {metricsTemplates
-                    .filter(template => !metrics[template.metric_id])
-                    .map((template) => (
-                      <div key={template.metric_id} className="border rounded-lg p-3 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">{template.name}</h4>
-                              <Badge variant="outline" className="text-xs">{template.category}</Badge>
-                              {template.priority === 'critical' && (
-                                <Badge variant="destructive" className="text-xs">Critical</Badge>
-                              )}
+                <div className="space-y-5">
+                  {groupTemplatesByCategory(metricsTemplates.filter(template => !metrics[template.metric_id]))
+                    .map(({ category, templates }) => (
+                      <div key={category}>
+                        <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
+                          {category} <span className="font-normal normal-case text-gray-400 dark:text-gray-500">({templates.length})</span>
+                        </h4>
+                        <div className="space-y-2">
+                          {templates.map((template) => (
+                            <div key={template.metric_id} className="border rounded-lg p-3 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">{template.name}</h4>
+                                    {template.priority === 'critical' && (
+                                      <Badge variant="destructive" className="text-xs">Critical</Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{template.description}</p>
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => addMetric(template)}
+                                  className="ml-3"
+                                >
+                                  <Plus className="w-4 h-4 mr-1" />
+                                  Add
+                                </Button>
+                              </div>
                             </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{template.description}</p>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => addMetric(template)}
-                            className="ml-3"
-                          >
-                            <Plus className="w-4 h-4 mr-1" />
-                            Add
-                          </Button>
+                          ))}
                         </div>
                       </div>
                     ))}
