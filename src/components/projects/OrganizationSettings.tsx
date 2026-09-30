@@ -558,13 +558,13 @@ export default function OrganizationSettings({
                 <p className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">No members match &ldquo;{memberSearch}&rdquo;.</p>
               ) : (
                 <div className="flex-1 min-h-0 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-800">
-                  <table className="w-full text-sm">
+                  <table className="w-full table-fixed text-sm">
                     <thead className="sticky top-0 z-10">
                       <tr className="border-b border-gray-200 bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-400">
                         <th className="px-4 py-2 font-medium">Member</th>
-                        <th className="px-4 py-2 font-medium">Role</th>
-                        <th className="px-4 py-2 font-medium">Status</th>
-                        <th className="px-4 py-2 font-medium text-right">&nbsp;</th>
+                        <th className="px-4 py-2 font-medium w-40">Role</th>
+                        <th className="px-4 py-2 font-medium w-44">Status</th>
+                        <th className="px-4 py-2 font-medium text-right w-44">&nbsp;</th>
                       </tr>
                     </thead>
                     <tbody>
