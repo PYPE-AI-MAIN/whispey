@@ -3,7 +3,7 @@
 import { useMemo } from 'react'
 import { Info, Loader2 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { useChartData } from '@/hooks/useAnalyticsDashboard'
+import { useChartData, type AnalyticsScope } from '@/hooks/useAnalyticsDashboard'
 import type { Widget, WidgetResult } from '@/types/analytics'
 import type { SpecInput } from '@/server/analytics/spec'
 
@@ -126,8 +126,14 @@ export default function InsightsStrip({ agentId }: Readonly<{ agentId: string }>
     () => INSIGHTS.filter((d) => d.spec).map((d) => makeWidget(d.id, d.spec as SpecInput)),
     []
   )
+  // The analytics hooks take a scope (one agent's dashboard, or a project's),
+  // not a bare id. Memoised so the hook doesn't see a new object every render.
+  const scope = useMemo<AnalyticsScope | undefined>(
+    () => (agentId ? { kind: 'agent', id: agentId } : undefined),
+    [agentId]
+  )
   const { byWidget, isFetching, error } = useChartData(
-    agentId,
+    scope,
     widgets,
     undefined, // each widget carries its own range
     [],
