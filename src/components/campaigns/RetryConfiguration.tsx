@@ -470,7 +470,8 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
               .filter((p: any) => p.key && typeof p.key === 'string')
               .map((p: any) => p.key)
             console.log('Extracted field extractor fields:', fields)
-            setAvailableFields(fields.sort())
+            const sortedFields = fields.toSorted((a: string, b: string) => a.localeCompare(b))
+            setAvailableFields(sortedFields)
           } else {
             console.log('promptConfig is not an array:', promptConfig)
             setAvailableFields([])
@@ -504,7 +505,8 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                 return metric && (metric.enabled !== false)
               })
             console.log('Extracted metric IDs:', metricIds)
-            setAvailableMetrics(metricIds.sort())
+            const sortedMetricIds = metricIds.toSorted((a, b) => a.localeCompare(b))
+            setAvailableMetrics(sortedMetricIds)
           } else {
             console.log('metricsConfig is not an object:', typeof metricsConfig)
             setAvailableMetrics([])
@@ -610,7 +612,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
       <div className="space-y-3">
         {values.retryConfig.map((config, index) => {
           // For backward compatibility: if type is not set, assume it's sipCode
-          const retryType = config.type || (config.errorCodes ? 'sipCode' : 'sipCode')
+          const retryType = config.type || 'sipCode'
 
           return (
             <div key={index} className="p-3 border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900">

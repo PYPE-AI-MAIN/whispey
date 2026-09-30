@@ -9,8 +9,19 @@ import { canShowAgentSection } from '@/types/visibility'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { PhoneCall, Loader2, AlertCircle, CheckCircle, Phone, Clock, History, Trash2, RotateCcw, Settings, Delete, PhoneOff, Pencil, Check, X, Plus } from 'lucide-react'
+import { PhoneCall, Loader2, AlertCircle, CheckCircle, Phone, Clock, History, Trash2, RotateCcw, Settings, Delete, PhoneOff, Pencil, Check, X } from 'lucide-react'
 import { agentDisplayName } from '@/lib/agentDisplayName'
+import { DispatchVariablesEditor, type DispatchVariable } from '@/components/calls/DispatchVariablesEditor'
+import {
+  type RunningAgent,
+  type PhoneNumber,
+  formatNumberLabel,
+  getRunningAgentName,
+  validateDispatch,
+  isDispatchDisabled,
+  extractDispatchError,
+  buildDispatchVariables,
+} from '@/lib/callDispatch'
 
 interface Agent {
   id: string
@@ -18,37 +29,6 @@ interface Agent {
   display_name?: string | null
   agent_type: string
   is_active: boolean
-}
-
-interface RunningAgent {
-  agent_name: string
-  pid: number
-  status: string
-}
-
-interface PhoneNumber {
-  id: string
-  phone_number: string
-  formatted_number: string | null
-  provider: string | null
-  trunk_id: string | null
-  country_code: string | null
-  status: string
-  trunk_direction: string
-  number_type: string | null
-  project_id: string | null
-  project_name: string | null
-}
-
-function formatNumberLabel(phone: PhoneNumber): string {
-  const num = phone.formatted_number || phone.phone_number
-  const kind = phone.number_type === 'acefone_bridge' || phone.number_type === 'plivo_bridge'
-    ? 'bridge'
-    : 'SIP'
-  const provider = phone.provider || ''
-  const dir = phone.trunk_direction || ''
-  const parts = [kind, provider, dir].filter(Boolean)
-  return `${num} (${parts.join(' · ')})`
 }
 
 interface CallRecord {
@@ -69,55 +49,16 @@ const COUNTRIES = [
   { code: 'IN', name: 'India', prefix: '+91', placeholder: '98765 43210', flag: '🇮🇳' }
 ]
 
+// Sonar flags this as clear-text storage of PII (phone numbers) — reviewed and
+// accepted: it's per-agent, browser-local-only (never transmitted or synced),
+// and redial (loadCallFromHistory) needs the full number, so masking it here
+// would silently break that feature. The same numbers are already visible to
+// this same authorized user in Whispey's own call logs, so this doesn't widen
+// exposure. Revisit if this page ever needs to run on a genuinely shared/
+// public device.
 const STORAGE_KEY = 'phone_call_history'
 const HISTORY_LIMIT_KEY = 'phone_call_history_limit'
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
-
-type DispatchValidation =
-  | { ok: false; error: string | null }
-  | { ok: true; cleaned: string; selectedPhone: PhoneNumber; agentName: string }
-
-// Validate dispatch inputs. `error: null` means silently no-op (no agent / empty field).
-function validateDispatch(
-  hasAgent: boolean,
-  phoneNumber: string,
-  fromPhoneNumberId: string,
-  phoneNumbers: PhoneNumber[],
-  running: { isRunning: boolean; agentName: string | null },
-): DispatchValidation {
-  if (!hasAgent || !phoneNumber.trim()) return { ok: false, error: null }
-  const cleaned = phoneNumber.replaceAll(/\D/g, '')
-  if (cleaned.length < 10) return { ok: false, error: 'Please enter a valid phone number' }
-  if (!fromPhoneNumberId.trim()) return { ok: false, error: 'Please select a phone number to call from' }
-  const selectedPhone = phoneNumbers.find((p) => p.id === fromPhoneNumberId)
-  if (!selectedPhone) return { ok: false, error: 'Selected phone number not found' }
-  const isBridge = selectedPhone.number_type === 'acefone_bridge' || selectedPhone.number_type === 'plivo_bridge'
-  if (!isBridge && !selectedPhone.trunk_id) return { ok: false, error: 'Selected phone number is missing trunk ID' }
-  if (!running.isRunning || !running.agentName) {
-    return { ok: false, error: 'Agent is not currently running. Please start the agent first.' }
-  }
-  return { ok: true, cleaned, selectedPhone, agentName: running.agentName }
-}
-
-// Turn a failed dispatch response into a user-facing message.
-function extractDispatchError(result: any, status: number): string {
-  if (status === 429) {
-    return result.current_calls === undefined
-      ? 'Rate limit exceeded. Please try again later.'
-      : `Rate limit exceeded. Current calls: ${result.current_calls}/${result.max_calls}. Please try again later.`
-  }
-  if (typeof result.error === 'string') return result.error
-  if (result.error?.message) return result.error.message
-  if (typeof result.message === 'string') return result.message
-  return 'Failed to dispatch call'
-}
-
-// Build the {{key: value}} variables object sent with the dispatch request.
-function buildDispatchVariables(variables: { key: string; value: string }[]): Record<string, string> {
-  return Object.fromEntries(
-    variables.filter((v) => v.key.trim()).map((v) => [v.key.trim(), v.value]),
-  )
-}
 
 function touchExistingCall(existing: CallRecord, status: string): CallRecord {
   return {
@@ -221,69 +162,6 @@ function DialerPad({ buttons, phoneNumber, onDigit, onBackspace }: Readonly<{
   )
 }
 
-type DispatchVariable = { id: string; key: string; value: string }
-
-// Pulled out of the onChange/onClick handlers below: they were closures nested
-// 5 deep (component > map > handler > setVariables callback > inner map/filter).
-// These take the array + index as plain params instead, dropping one level.
-function updateVariableAt(variables: DispatchVariable[], index: number, field: 'key' | 'value', value: string): DispatchVariable[] {
-  return variables.map((v, j) => (j === index ? { ...v, [field]: value } : v))
-}
-
-function removeVariableAt(variables: DispatchVariable[], index: number): DispatchVariable[] {
-  return variables.filter((_, j) => j !== index)
-}
-
-// The {{key}} → value list sent along with the dispatch request.
-function VariablesEditor({ variables, setVariables }: Readonly<{
-  variables: DispatchVariable[]
-  setVariables: React.Dispatch<React.SetStateAction<DispatchVariable[]>>
-}>) {
-  return (
-    <fieldset className="border-0 p-0 m-0">
-      <legend className="w-full flex items-center justify-between mb-2 p-0 text-sm font-semibold text-gray-700 dark:text-gray-300">
-        <span>Variables <span className="text-xs font-normal text-gray-400">(optional)</span></span>
-        <button
-          onClick={() => setVariables(prev => [...prev, { id: crypto.randomUUID(), key: '', value: '' }])}
-          className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
-        >
-          <Plus className="w-3.5 h-3.5" /> Add Variable
-        </button>
-      </legend>
-      {variables.length === 0 ? (
-        <p className="text-xs text-gray-400 dark:text-gray-500 italic">
-          No variables. Use <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{'{{key}}'}</code> in your agent prompt.
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {variables.map((v, i) => (
-            <div key={v.id} className="flex gap-2 items-center">
-              <Input
-                placeholder="key"
-                value={v.key}
-                onChange={e => setVariables(prev => updateVariableAt(prev, i, 'key', e.target.value))}
-                className="h-8 text-xs font-mono w-[35%] bg-white dark:bg-gray-800"
-              />
-              <Input
-                placeholder="value"
-                value={v.value}
-                onChange={e => setVariables(prev => updateVariableAt(prev, i, 'value', e.target.value))}
-                className="h-8 text-xs flex-1 bg-white dark:bg-gray-800"
-              />
-              <button
-                onClick={() => setVariables(prev => removeVariableAt(prev, i))}
-                className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </fieldset>
-  )
-}
-
 // One row in the call-history list — redial target, inline rename, delete.
 function CallHistoryItem({ call, isSelected, isEditing, editingName, setEditingName, onSelect, onStartEdit, onSaveEdit, onCancelEdit, onNameKeyDown, onDelete }: Readonly<{
   call: CallRecord
@@ -369,19 +247,6 @@ function shouldShowNotRunningWarning(agent: Agent, runningStatus: { isRunning: b
 }
 
 // All the reasons the "Dispatch Call" button should be disabled, combined.
-function isDispatchDisabled(
-  agent: Agent,
-  runningStatus: { isRunning: boolean; agentName: string | null },
-  isCheckingRunning: boolean,
-  isLoading: boolean,
-  phoneNumber: string,
-  fromPhoneNumberId: string,
-): boolean {
-  if (isLoading || !phoneNumber.trim() || !fromPhoneNumberId.trim() || isCheckingRunning) return true
-  if (agent.agent_type === 'pype_agent') return !runningStatus.isRunning
-  return !agent.is_active
-}
-
 export default function PhoneCallConfig() {
   const params = useParams()
   const router = useRouter()
@@ -494,16 +359,6 @@ export default function PhoneCallConfig() {
     }
   }
 
-  const getRunningAgentName = (agent: Agent, runningAgents: RunningAgent[]): { isRunning: boolean; agentName: string | null } => {
-    if (agent.agent_type !== 'pype_agent' || !runningAgents.length) return { isRunning: false, agentName: null }
-    const sanitizedAgentId = agent.id.replace(/-/g, '_')
-    const newFormat = `${agent.name}_${sanitizedAgentId}`
-    let runningAgent = runningAgents.find(ra => ra.agent_name === newFormat)
-    if (runningAgent) return { isRunning: true, agentName: newFormat }
-    runningAgent = runningAgents.find(ra => ra.agent_name === agent.name)
-    if (runningAgent) return { isRunning: true, agentName: agent.name }
-    return { isRunning: false, agentName: null }
-  }
 
   const fetchRunningAgents = async () => {
     try {
@@ -764,7 +619,7 @@ export default function PhoneCallConfig() {
               )}
 
               {/* Variables */}
-              <VariablesEditor variables={variables} setVariables={setVariables} />
+              <DispatchVariablesEditor variables={variables} setVariables={setVariables} />
 
               {message && (
                 <div className={`p-4 rounded-xl border backdrop-blur-sm transition-all ${messageType === 'success' ? 'bg-green-50/80 dark:bg-green-900/20 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800' : 'bg-red-50/80 dark:bg-red-900/20 text-red-800 dark:text-red-400 border-red-200 dark:border-red-800'}`}>

@@ -653,7 +653,7 @@ async function fetchAllCallLogPagesForDownload(options: FetchAllCallLogPagesOpti
   return allData
 }
 
-function triggerCSVFileDownload(csvData: Record<string, any>[]): void {
+export function triggerCSVFileDownload(csvData: Record<string, any>[]): void {
   const csv = Papa.unparse(csvData)
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
   const blobUrl = URL.createObjectURL(blob)

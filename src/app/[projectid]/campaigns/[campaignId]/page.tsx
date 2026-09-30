@@ -296,10 +296,10 @@ function ViewCampaign() {
       })
       
       // 3. Add remaining direct columns (sorted)
-      Array.from(directKeys).sort().forEach(col => columns.push(col))
-      
+      Array.from(directKeys).sort((a, b) => a.localeCompare(b)).forEach(col => columns.push(col))
+
       // 4. Add remaining additionalData columns (sorted)
-      Array.from(additionalDataKeys).sort().forEach(col => columns.push(col))
+      Array.from(additionalDataKeys).sort((a, b) => a.localeCompare(b)).forEach(col => columns.push(col))
 
       // Log the columns being exported for debugging
       console.log('Exporting columns:', columns)
@@ -565,12 +565,12 @@ function ViewCampaign() {
     // Add other columns (excluding standard ones)
     Array.from(allKeys)
       .filter(col => !standardColumns.includes(col) && col !== 'status')
-      .sort()
+      .sort((a, b) => a.localeCompare(b))
       .forEach(col => finalColumns.push(col))
-    
+
     // Add remaining additionalData columns at the end
     Array.from(additionalDataKeys)
-      .sort()
+      .sort((a, b) => a.localeCompare(b))
       .forEach(col => finalColumns.push(col))
     
     return finalColumns

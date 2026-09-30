@@ -81,27 +81,28 @@ export default function PipecatUploadZone({ pipecatAgentId, onUploadSuccess }: P
   return (
     <div className="space-y-3 flex-shrink-0">
       {/* Drop zone */}
-      <div
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={KNOWLEDGE_ALLOWED_EXTENSIONS.join(',')}
+        className="hidden"
+        disabled={uploading}
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); e.target.value = '' }}
+      />
+      <button
+        type="button"
         onDrop={e => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files[0]; if (f) handleFileUpload(f) }}
         onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
         onDragLeave={() => setIsDragging(false)}
         onClick={() => fileInputRef.current?.click()}
         className={cn(
-          'relative rounded-xl border-2 border-dashed transition-colors flex flex-col items-center justify-center min-h-[140px] p-4 cursor-pointer',
+          'relative rounded-xl border-2 border-dashed transition-colors flex flex-col items-center justify-center min-h-[140px] p-4 cursor-pointer w-full appearance-none bg-transparent',
           isDragging
             ? 'border-primary bg-primary/5'
             : 'border-gray-300 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-800/50 hover:border-gray-400 dark:hover:border-gray-500',
           uploading && 'pointer-events-none opacity-70'
         )}
       >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={KNOWLEDGE_ALLOWED_EXTENSIONS.join(',')}
-          className="hidden"
-          disabled={uploading}
-          onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(f); e.target.value = '' }}
-        />
         {uploading
           ? <Loader2 className="h-8 w-8 text-primary animate-spin mb-1" />
           : <Upload className="h-8 w-8 text-gray-400 mb-1" />
@@ -112,7 +113,7 @@ export default function PipecatUploadZone({ pipecatAgentId, onUploadSuccess }: P
         <p className="text-xs text-gray-400 mt-0.5">
           PDF, TXT, DOCX, CSV · max {KNOWLEDGE_MAX_FILE_SIZE_MB}MB
         </p>
-      </div>
+      </button>
 
       {/* URL input */}
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-3">

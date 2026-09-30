@@ -190,7 +190,7 @@ const CONFIG_DIFF_SKIP = new Set([
 function configForDiff(assistant: any): string {
   if (!assistant || typeof assistant !== 'object') return '{}'
   const filtered: Record<string, any> = {}
-  for (const k of Object.keys(assistant).sort()) {
+  for (const k of Object.keys(assistant).sort((a, b) => a.localeCompare(b))) {
     if (!CONFIG_DIFF_SKIP.has(k)) filtered[k] = assistant[k]
   }
   return JSON.stringify(filtered, null, 2)
@@ -559,6 +559,45 @@ function ConfigDetailView({
   )
 }
 
+// The compare-mode button has two mutually exclusive shapes (start comparing vs.
+// pick this entry as the target) and a null case — pulled out of the nested
+// ternary in HistoryEntryRow's JSX into plain if/else for readability.
+function CompareButton({
+  isComparePickMode,
+  isCompareBaseline,
+  entryId,
+  onSelectForCompare,
+}: Readonly<{
+  isComparePickMode: boolean
+  isCompareBaseline: boolean
+  entryId: string
+  onSelectForCompare: (id: string) => void
+}>) {
+  if (isComparePickMode && !isCompareBaseline) {
+    return (
+      <button
+        onClick={e => { e.stopPropagation(); onSelectForCompare(entryId) }}
+        className="flex items-center gap-1 text-xs font-medium px-2 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+      >
+        <ArrowLeftRight className="w-3 h-3" />
+        Compare
+      </button>
+    )
+  }
+  if (!isCompareBaseline && !isComparePickMode) {
+    return (
+      <button
+        onClick={e => { e.stopPropagation(); onSelectForCompare(entryId) }}
+        title="Select to compare"
+        className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+      >
+        <ArrowLeftRight className="w-3.5 h-3.5" />
+      </button>
+    )
+  }
+  return null
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // History entry row
 // ─────────────────────────────────────────────────────────────────────────────
@@ -612,6 +651,9 @@ function HistoryEntryRow({
   return (
     <div
       onClick={handleRowClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleRowClick() } }}
       className={`rounded-lg border transition-all ${
         isCompareBaseline
           ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
@@ -659,9 +701,9 @@ function HistoryEntryRow({
           </div>
         </div>
 
-        <div className="shrink-0 flex items-center gap-1" onClick={e => e.stopPropagation()}>
+        <div className="shrink-0 flex items-center gap-1">
           <button
-            onClick={() => onCopy(entry.id)}
+            onClick={e => { e.stopPropagation(); onCopy(entry.id) }}
             title="Copy config JSON"
             className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors ${
               isCopied ? 'text-green-500' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
@@ -672,7 +714,7 @@ function HistoryEntryRow({
 
           {showMergeButton && entry.prompt_snapshot && (
             <button
-              onClick={() => onMerge(entry.id)}
+              onClick={e => { e.stopPropagation(); onMerge(entry.id) }}
               title="Create PR to merge to prod"
               className="flex items-center gap-1 text-xs font-medium px-2 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
@@ -682,7 +724,7 @@ function HistoryEntryRow({
           )}
           {showMergeButton && (
             <button
-              onClick={() => onRestore(entry.id, entry.version_number, entry.commit_message ?? null)}
+              onClick={e => { e.stopPropagation(); onRestore(entry.id, entry.version_number, entry.commit_message ?? null) }}
               title="Restore this version to dev agent"
               className="flex items-center gap-1 text-xs font-medium px-2 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
@@ -690,23 +732,12 @@ function HistoryEntryRow({
             </button>
           )}
 
-          {isComparePickMode && !isCompareBaseline ? (
-            <button
-              onClick={() => onSelectForCompare(entry.id)}
-              className="flex items-center gap-1 text-xs font-medium px-2 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              <ArrowLeftRight className="w-3 h-3" />
-              Compare
-            </button>
-          ) : !isCompareBaseline && !isComparePickMode ? (
-            <button
-              onClick={() => onSelectForCompare(entry.id)}
-              title="Select to compare"
-              className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <ArrowLeftRight className="w-3.5 h-3.5" />
-            </button>
-          ) : null}
+          <CompareButton
+            isComparePickMode={isComparePickMode}
+            isCompareBaseline={isCompareBaseline}
+            entryId={entry.id}
+            onSelectForCompare={onSelectForCompare}
+          />
         </div>
       </div>
     </div>

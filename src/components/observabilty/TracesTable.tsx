@@ -69,6 +69,93 @@ export const METRICS_LOGS_SELECT =
   "created_at, unix_timestamp, bug_report, " +
   "call_success, lesson_day, lesson_completed, phone_number"
 
+// Extracted so TracesTable's row-render callback doesn't carry this branching itself
+// (keeps that callback's cognitive complexity down).
+function getLatencyColorClass(latency: number): string {
+  if (latency === 0) return "text-gray-400 dark:text-gray-500"
+  if (latency > 5000) return "text-red-600 dark:text-red-400"
+  if (latency > 2000) return "text-amber-600 dark:text-amber-400"
+  return "text-emerald-600 dark:text-emerald-400"
+}
+
+function getStatusIcon(status: string) {
+  if (status === "bug_report") return <AlertTriangle className="w-4 h-4 text-red-500 dark:text-red-400" />
+  if (status === "error") return <XCircle className="w-4 h-4 text-red-500 dark:text-red-400" />
+  if (status === "warning") return <AlertTriangle className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+  return <CheckCircle className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+}
+
+// One tool-call line in the Conversation column — pulled out of the row map so its
+// own conditionals don't add to the row callback's cognitive complexity.
+function ToolCallLine({ tool, idx }: Readonly<{ tool: any; idx: number }>) {
+  const toolName = tool.tool_name || tool.name || 'unknown'
+  const isError = tool.success === false || tool.status === 'error'
+  const result = tool.result === undefined ? null : String(tool.result)
+  const argKeys = tool.arguments && typeof tool.arguments === 'object'
+    ? Object.keys(tool.arguments)
+    : []
+  return (
+    <div key={idx} className="flex items-start gap-1 text-xs">
+      <Wrench className={cn(
+        "w-3 h-3 mt-0.5 shrink-0",
+        isError ? "text-red-500 dark:text-red-400" : "text-gray-500 dark:text-gray-400"
+      )} />
+      <div className="min-w-0">
+        <span className={cn(
+          "font-medium",
+          isError ? "text-red-700 dark:text-red-300" : "text-gray-700 dark:text-gray-300"
+        )}>
+          {toolName}
+        </span>
+        {argKeys.length > 0 && (
+          <span className="text-gray-400 dark:text-gray-500 font-mono ml-1">
+            ({argKeys.join(', ')})
+          </span>
+        )}
+        {result && (
+          <span className="text-gray-500 dark:text-gray-400 ml-1">
+            → {result.length > 60 ? result.slice(0, 60) + '…' : result}
+          </span>
+        )}
+        {isError && (
+          <span className="ml-1 text-red-500 dark:text-red-400 font-medium">✗ failed</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// One fallback-event line — same reasoning as ToolCallLine above.
+function FallbackEventLine({ fb, idx }: Readonly<{ fb: any; idx: number }>) {
+  const isRecovery = fb.event_type === 'provider_recovered'
+  const isTotalFailure = !isRecovery && fb.all_providers_failed
+  const eventKey = `${fb.provider_type}-${fb.event_type}-${fb.timestamp}-${idx}`
+
+  let icon = <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0 text-red-500 dark:text-red-400" />
+  let textClass = "text-red-700 dark:text-red-300"
+  let summary = `${fb.provider_type || 'Provider'} fallback: ${fb.provider_label || formatProviderLabel(fb.provider_name)} → ${fb.fallback_label || formatProviderLabel(fb.fallback_provider)}`
+  if (isRecovery) {
+    icon = <CheckCircle className="w-3 h-3 mt-0.5 shrink-0 text-emerald-500 dark:text-emerald-400" />
+    textClass = "text-emerald-700 dark:text-emerald-300"
+    summary = `${fb.provider_type || 'Provider'} recovered: ${fb.provider_label || formatProviderLabel(fb.provider_name)}`
+  } else if (isTotalFailure) {
+    icon = <XCircle className="w-3 h-3 mt-0.5 shrink-0 text-red-500 dark:text-red-400" />
+    summary = `${fb.provider_type || 'Provider'} failed, no fallback available: ${fb.provider_label || formatProviderLabel(fb.provider_name)}`
+  }
+
+  return (
+    <div key={eventKey} className="flex items-start gap-1 text-xs">
+      {icon}
+      <span className={textClass}>{summary}</span>
+      {!isRecovery && fb.error_reason && (
+        <span className="text-gray-400 dark:text-gray-500">
+          — {fb.error_reason.length > 50 ? fb.error_reason.slice(0, 50) + '…' : fb.error_reason}
+        </span>
+      )}
+    </div>
+  )
+}
+
 const TracesTable: React.FC<TracesTableProps> = ({ agentId, projectId, agent, sessionId, filters }) => { // NOSONAR javascript:S3776
 
   const canViewConfig = useConfigTabAccess(projectId)
@@ -237,39 +324,20 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, projectId, agent, se
         if (!text) { i++; continue }
 
         if (role === 'assistant') {
-          // Check if the previous message was a user message already consumed
-          // — if so this is an agent reply to a pending user turn (handled below).
-          // Stand-alone assistant message (e.g. opening greeting): emit its own turn.
-          const nextMsg = transcriptJson[i + 1]
-          const nextRole = nextMsg?.role?.toLowerCase()
-
-          if (nextRole === 'user') {
-            // Pair: assistant[i] is an opening, keep it alone
-            turns.push({
-              id: `transcript_${turnIdx}`,
-              session_id: call.id,
-              turn_id: `turn_${turnIdx + 1}`,
-              user_transcript: '',
-              agent_response: text,
-              created_at: call.created_at,
-              unix_timestamp: turnIdx,
-            } as TraceLog)
-            turnIdx++
-            i++
-          } else {
-            // Orphan assistant message at end
-            turns.push({
-              id: `transcript_${turnIdx}`,
-              session_id: call.id,
-              turn_id: `turn_${turnIdx + 1}`,
-              user_transcript: '',
-              agent_response: text,
-              created_at: call.created_at,
-              unix_timestamp: turnIdx,
-            } as TraceLog)
-            turnIdx++
-            i++
-          }
+          // Whether assistant[i] is followed by a user message (opening
+          // greeting) or is an orphan message at the end, it's emitted as
+          // its own standalone turn either way.
+          turns.push({
+            id: `transcript_${turnIdx}`,
+            session_id: call.id,
+            turn_id: `turn_${turnIdx + 1}`,
+            user_transcript: '',
+            agent_response: text,
+            created_at: call.created_at,
+            unix_timestamp: turnIdx,
+          } as TraceLog)
+          turnIdx++
+          i++
         } else if (role === 'user') {
           // Pair user message with the immediately following assistant reply
           const nextMsg = transcriptJson[i + 1]
@@ -421,16 +489,12 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, projectId, agent, se
     }
   }
 
-  const getOperationColor = (operation: string) => {
-    switch (operation) {
-      case "tool": return "text-orange-600 dark:text-orange-400"
-      case "llm": return "text-purple-600 dark:text-purple-400"
-      case "stt": return "text-blue-600 dark:text-blue-400"
-      case "tts": return "text-green-600 dark:text-green-400"
-      case "eou": return "text-orange-600 dark:text-orange-400"
-      default: return "text-gray-600 dark:text-gray-400"
-    }
-  }
+  // Each operation already has its own icon (see getOperationIcon above) — color
+  // doesn't need to re-encode the same distinction. Reserved for "tool" only,
+  // since a tool call is the one thing in this column worth scanning for; every
+  // other stage (stt/llm/tts/eou) reads as plain text like the rest of the row.
+  // (Previously stt/llm/tts/eou each had their own hue, and "eou" and "tool"
+  // shared the same orange — neither told you anything the icon didn't.)
 
   const formatDuration = (ms: number) => {
     if (ms < 1000) return `${ms.toFixed(1)}ms`
@@ -766,7 +830,7 @@ const handleRowClick = (trace: TraceLog) => {
                     className="flex items-center gap-1 text-[11px] font-normal normal-case tracking-normal text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
                   >
                     {copied
-                      ? <><Check className="w-3 h-3 text-green-500" /><span className="text-green-500">Copied</span></>
+                      ? <><Check className="w-3 h-3 text-emerald-500" /><span className="text-emerald-500">Copied</span></>
                       : <><Copy className="w-3 h-3" /><span>Copy</span></>
                     }
                   </button>
@@ -806,11 +870,12 @@ const handleRowClick = (trace: TraceLog) => {
                     const spansLength = trace.otel_spans?.length || 0
                     
                     return (
-                      <div
+                      <button
+                        type="button"
                         key={trace.id}
                         onClick={() => handleRowClick(trace)}
                         className={cn(
-                          "grid grid-cols-12 gap-3 px-4 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-900/10 cursor-pointer border-l-2 transition-all text-sm",
+                          "w-full appearance-none bg-transparent text-left grid grid-cols-12 gap-3 px-4 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-900/10 cursor-pointer border-l-2 transition-all text-sm",
                           hasBugReport
                             ? "border-l-red-500 bg-red-50 dark:bg-red-900/10 hover:bg-red-50 dark:hover:bg-red-900/20"
                             : "border-l-transparent hover:border-l-blue-500 dark:hover:border-l-blue-400"
@@ -819,7 +884,11 @@ const handleRowClick = (trace: TraceLog) => {
                         {/* Trace Info */}
                         <div className="col-span-3 space-y-1">
                           <div className="flex items-center gap-2">
-                            <div className={cn("text-sm", getOperationColor(mainOp))}>
+                            {/* Every operation already has its own icon shape
+                                (getOperationIcon above) and, for tool calls, its own
+                                neutral badge in the Operations column — a colored
+                                icon here too would just compete for attention. */}
+                            <div className="text-sm text-gray-600 dark:text-gray-400">
                               {getOperationIcon(mainOp)}
                             </div>
                             <div className="font-mono text-xs text-blue-600 dark:text-blue-400 font-semibold">
@@ -855,44 +924,10 @@ const handleRowClick = (trace: TraceLog) => {
 
                           {/* Tool calls — shown between user input and agent response */}
                           {trace.tool_calls && trace.tool_calls.length > 0 && (
-                            <div className="space-y-0.5 pl-1 border-l-2 border-orange-200 dark:border-orange-800 ml-1">
-                              {trace.tool_calls.map((tool: any, idx: number) => {
-                                const toolName = tool.tool_name || tool.name || 'unknown'
-                                const isError = tool.success === false || tool.status === 'error'
-                                const result = tool.result !== undefined ? String(tool.result) : null
-                                const argKeys = tool.arguments && typeof tool.arguments === 'object'
-                                  ? Object.keys(tool.arguments)
-                                  : []
-                                return (
-                                  <div key={idx} className="flex items-start gap-1 text-xs">
-                                    <Wrench className={cn(
-                                      "w-3 h-3 mt-0.5 shrink-0",
-                                      isError ? "text-red-500 dark:text-red-400" : "text-orange-500 dark:text-orange-400"
-                                    )} />
-                                    <div className="min-w-0">
-                                      <span className={cn(
-                                        "font-medium",
-                                        isError ? "text-red-700 dark:text-red-300" : "text-orange-700 dark:text-orange-300"
-                                      )}>
-                                        {toolName}
-                                      </span>
-                                      {argKeys.length > 0 && (
-                                        <span className="text-gray-400 dark:text-gray-500 font-mono ml-1">
-                                          ({argKeys.join(', ')})
-                                        </span>
-                                      )}
-                                      {result && (
-                                        <span className="text-gray-500 dark:text-gray-400 ml-1">
-                                          → {result.length > 60 ? result.slice(0, 60) + '…' : result}
-                                        </span>
-                                      )}
-                                      {isError && (
-                                        <span className="ml-1 text-red-500 dark:text-red-400 font-medium">✗ failed</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                )
-                              })}
+                            <div className="space-y-0.5 pl-1 border-l-2 border-gray-200 dark:border-gray-700 ml-1">
+                              {trace.tool_calls.map((tool: any, idx: number) => (
+                                <ToolCallLine key={`${tool.tool_name || tool.name || 'unknown'}-${idx}`} tool={tool} idx={idx} />
+                              ))}
                             </div>
                           )}
 
@@ -919,35 +954,9 @@ const handleRowClick = (trace: TraceLog) => {
                               sheet (click row → Fallback Events card), not duplicated here. */}
                           {fallbackEvents.length > 0 && (
                             <div className="space-y-0.5 pl-1 border-l-2 border-red-200 dark:border-red-800 ml-1">
-                              {fallbackEvents.map((fb: any, idx: number) => {
-                                const isRecovery = fb.event_type === 'provider_recovered'
-                                const isTotalFailure = !isRecovery && fb.all_providers_failed
-                                const eventKey = `${fb.provider_type}-${fb.event_type}-${fb.timestamp}-${idx}`
-
-                                let icon = <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0 text-red-500 dark:text-red-400" />
-                                let textClass = "text-red-700 dark:text-red-300"
-                                let summary = `${fb.provider_type || 'Provider'} fallback: ${fb.provider_label || formatProviderLabel(fb.provider_name)} → ${fb.fallback_label || formatProviderLabel(fb.fallback_provider)}`
-                                if (isRecovery) {
-                                  icon = <CheckCircle className="w-3 h-3 mt-0.5 shrink-0 text-green-500 dark:text-green-400" />
-                                  textClass = "text-green-700 dark:text-green-300"
-                                  summary = `${fb.provider_type || 'Provider'} recovered: ${fb.provider_label || formatProviderLabel(fb.provider_name)}`
-                                } else if (isTotalFailure) {
-                                  icon = <XCircle className="w-3 h-3 mt-0.5 shrink-0 text-red-500 dark:text-red-400" />
-                                  summary = `${fb.provider_type || 'Provider'} failed, no fallback available: ${fb.provider_label || formatProviderLabel(fb.provider_name)}`
-                                }
-
-                                return (
-                                  <div key={eventKey} className="flex items-start gap-1 text-xs">
-                                    {icon}
-                                    <span className={textClass}>{summary}</span>
-                                    {!isRecovery && fb.error_reason && (
-                                      <span className="text-gray-400 dark:text-gray-500">
-                                        — {fb.error_reason.length > 50 ? fb.error_reason.slice(0, 50) + '…' : fb.error_reason}
-                                      </span>
-                                    )}
-                                  </div>
-                                )
-                              })}
+                              {fallbackEvents.map((fb: any, idx: number) => (
+                                <FallbackEventLine key={`${fb.provider_type}-${fb.event_type}-${fb.timestamp}-${idx}`} fb={fb} idx={idx} />
+                              ))}
                             </div>
                           )}
 
@@ -961,10 +970,13 @@ const handleRowClick = (trace: TraceLog) => {
                         {/* Operations */}
                         <div className="col-span-2 space-y-1">
                           <div className="flex items-center gap-2 flex-wrap">
+                            {/* Neutral, not orange — a tool call isn't an error, so it
+                                doesn't need to compete for attention with the red
+                                fallback-failure count right below it. */}
                             {toolInfo.total > 0 && (
                               <div className="flex items-center gap-1 text-xs">
-                                <Wrench className="w-3 h-3 text-orange-600 dark:text-orange-400" />
-                                <span className="font-medium text-orange-700 dark:text-orange-300">{toolInfo.total}</span>
+                                <Wrench className="w-3 h-3 text-gray-500 dark:text-gray-400" />
+                                <span className="font-medium text-gray-700 dark:text-gray-300">{toolInfo.total}</span>
                                 <span className="text-gray-400 dark:text-gray-500">
                                   ({toolInfo.successful}✓)
                                 </span>
@@ -991,41 +1003,31 @@ const handleRowClick = (trace: TraceLog) => {
                           </div>
                         </div>
   
-                        {/* Latency */}
+                        {/* Latency — same good/fair/bad shades ObservabilityStats' getLatencyColor
+                            uses (was text-green-600 here, a different green from that component's
+                            text-emerald-600 for the same "good" meaning) */}
                         <div className="col-span-1">
-                          <span className={cn(
-                            "text-xs font-semibold",
-                            latency === 0 ? "text-gray-400 dark:text-gray-500" : 
-                            latency > 5000 ? "text-red-600 dark:text-red-400" :
-                            latency > 2000 ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"
-                          )}>
+                          <span className={cn("text-xs font-semibold", getLatencyColorClass(latency))}>
                             {latency > 0 ? formatDuration(latency) : "N/A"}
                           </span>
                         </div>
-  
-                        {/* Cost */}
+
+                        {/* Cost — plain like Turns/Duration in the stats row above; a
+                            number doesn't need its own hue unless it's signaling status */}
                         <div className="col-span-1">
-                          <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
+                          <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
                             {trace.trace_cost_usd ? formatCost(parseFloat(trace.trace_cost_usd.toString())) : "N/A"}
                           </span>
                         </div>
-  
+
                         {/* Status */}
                         <div className="col-span-1">
                           <div className="flex items-center pl-5">
-                            {status === "bug_report" ? (
-                              <AlertTriangle className="w-4 h-4 text-red-500 dark:text-red-400" />
-                            ) : status === "error" ? (
-                              <XCircle className="w-4 h-4 text-red-500 dark:text-red-400" />
-                            ) : status === "warning" ? (
-                              <AlertTriangle className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-                            ) : (
-                              <CheckCircle className="w-4 h-4 text-green-500 dark:text-green-400" />
-                            )}
+                            {getStatusIcon(status)}
                           </div>
                         </div>
-  
-                      </div>
+
+                      </button>
                     )
                   })}
                 </div>

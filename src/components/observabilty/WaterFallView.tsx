@@ -264,8 +264,9 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
           {traceGroups.map((traceGroup) => (
             <div key={traceGroup.trace_id}>
               {/* Trace Header */}
-              <div 
-                className="px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group"
+              <button
+                type="button"
+                className="w-full appearance-none bg-transparent text-left px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group"
                 onClick={() => toggleTrace(traceGroup.trace_id)}
               >
                 <div className="flex items-center gap-3">
@@ -298,7 +299,7 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
                     </span>
                   )}
                 </div>
-              </div>
+              </button>
 
               {/* Expanded Spans */}
               {expandedTraces.has(traceGroup.trace_id) && (
@@ -313,9 +314,10 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
                         const widthPercent = Math.max((span.duration_ms / traceGroup.duration_ms) * 100, 0.5);
 
                         return (
-                          <div 
+                          <button
+                            type="button"
                             key={`${traceGroup.trace_id}-span-${index}`}
-                            className="flex items-center h-8 hover:bg-white dark:hover:bg-gray-700 cursor-pointer rounded group"
+                            className="w-full appearance-none bg-transparent text-left flex items-center h-8 hover:bg-white dark:hover:bg-gray-700 cursor-pointer rounded group"
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedSpan(span);
@@ -350,7 +352,7 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
                                 {span.operation_type}
                               </div>
                             </div>
-                          </div>
+                          </button>
                         );
                       })}
                     </div>

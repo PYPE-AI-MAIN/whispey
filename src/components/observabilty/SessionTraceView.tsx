@@ -316,8 +316,9 @@ const SessionTraceView = ({
           {turns.map((turn) => (
             <div key={turn.id} className="border-b border-gray-100 dark:border-gray-700">
               {/* Turn Header */}
-              <div 
-                className="px-3 py-3 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer flex items-center justify-between text-sm border-l-2 border-l-slate-400 bg-slate-200 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600"
+              <button
+                type="button"
+                className="w-full appearance-none text-left px-3 py-3 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer flex items-center justify-between text-sm border-l-2 border-l-slate-400 bg-slate-200 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600"
                 onClick={() => toggleTurn(turn.id)}
               >
                 <div className="flex items-center gap-2">
@@ -335,7 +336,7 @@ const SessionTraceView = ({
                 <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 font-medium">
                   <span>{turn.spans.length} spans</span>
                 </div>
-              </div>
+              </button>
 
               {/* Nested Spans */}
               {expandedTurns.has(turn.id) && (
@@ -345,9 +346,10 @@ const SessionTraceView = ({
                     const hasChildSpans = hasChildren(span, turn.spans, index);
                     
                     return (
-                      <div 
+                      <button
+                        type="button"
                         key={`${turn.id}-${index}-${span.spanId || span.name}`}
-                        className="hover:bg-white dark:hover:bg-gray-700 cursor-pointer border-l-2 border-l-transparent hover:border-l-blue-300 dark:hover:border-l-blue-500 text-sm transition-colors relative"
+                        className="w-full appearance-none text-left block hover:bg-white dark:hover:bg-gray-700 cursor-pointer border-l-2 border-l-transparent hover:border-l-blue-300 dark:hover:border-l-blue-500 text-sm transition-colors relative"
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedSpan(span);
@@ -429,7 +431,7 @@ const SessionTraceView = ({
                             )}
                           </div>
                         </div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>

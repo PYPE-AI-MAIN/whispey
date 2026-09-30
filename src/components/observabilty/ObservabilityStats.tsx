@@ -8,12 +8,20 @@ import { METRICS_LOGS_SELECT } from "./TracesTable"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Clock, MessageSquare, AlertTriangle, Activity, Mic, Brain, Volume2, Radio, Phone } from "lucide-react"
+import { FlagEditor } from "@/components/calls/FlagEditor"
 
 interface ObservabilityStatsProps {
   sessionId?: string
   agentId: string
   callData?: any[]
   agent?: any
+  /** The call-log row id — lets the Flag button work from this page, not just the logs table. */
+  callId?: string
+  initialFlag?: unknown
+  currentUserId?: string | null
+  currentUserEmail?: string | null
+  canDeleteAnyFlag?: boolean
+  onFlagUpdated?: () => void
 }
 
 interface TranscriptLog {
@@ -31,7 +39,10 @@ interface TranscriptLog {
   bug_report?: boolean
 }
 
-const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agentId, callData, agent }) => {
+const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({
+  sessionId, agentId, callData, agent,
+  callId, initialFlag, currentUserId, currentUserEmail, canDeleteAnyFlag, onFlagUpdated,
+}) => {
   const {
     data: transcriptLogs,
     isLoading: transcriptLoading,
@@ -237,10 +248,14 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Session Overview</h3>
+              {/* Plain inline metadata, not colored chips — this row is identifying
+                  info (which call, when), not a status to draw the eye to. Color is
+                  reserved for the things below that actually need attention (bad
+                  latency, bugs, errors). */}
               {callData?.[0]?.customer_number && (
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                    <Phone className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                    <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                  <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
+                    <Phone className="w-3 h-3" />
+                    <span className="text-xs font-medium">
                       {callData[0].customer_number.length > 15
                         ? `Web Call: ${callData[0].customer_number.slice(0, 6)}...`
                         : callData[0].customer_number}
@@ -248,12 +263,22 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
                   </div>
                 )}
               {callData?.[0]?.call_started_at && (
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
-                  <Clock className="w-3 h-3 text-gray-500 dark:text-gray-400" />
-                  <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
+                  <Clock className="w-3 h-3" />
+                  <span className="text-xs font-medium">
                     {callStartTime}
                   </span>
                 </div>
+              )}
+              {callId && (
+                <FlagEditor
+                  callId={callId}
+                  initialFlag={initialFlag}
+                  currentUserId={currentUserId}
+                  currentUserEmail={currentUserEmail}
+                  canDeleteAnyFlag={canDeleteAnyFlag}
+                  onUpdated={onFlagUpdated}
+                />
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -359,12 +384,12 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="flex items-center gap-2 cursor-help">
-                        <Mic className="w-3 h-3 text-blue-500" />
+                        <Mic className="w-3 h-3 text-gray-400 dark:text-gray-500" />
                         <div className="text-right">
                           <div className={cn("font-bold text-sm", getLatencyColor(conversationMetrics.sttStats.p75, "stt"))}>
                             {formatDuration(conversationMetrics.sttStats.p75)}
                           </div>
-                          <div className="text-blue-600 dark:text-blue-400 text-xs">STT P75</div>
+                          <div className="text-gray-400 dark:text-gray-500 text-xs">STT P75</div>
                         </div>
                       </div>
                     </TooltipTrigger>
@@ -374,7 +399,7 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
                         <div className="text-gray-400 dark:text-gray-500">P50: {formatDuration(conversationMetrics.sttStats.p50)}</div>
                         <div className="text-gray-400 dark:text-gray-500">P75: {formatDuration(conversationMetrics.sttStats.p75)}</div>
                         <div className="text-gray-400 dark:text-gray-500">Avg: {formatDuration(conversationMetrics.sttStats.avg)}</div>
-                        <div className="text-blue-600 dark:text-blue-400 text-xs font-medium mt-1 pt-1 border-t border-gray-200 dark:border-gray-600">
+                        <div className="text-gray-500 dark:text-gray-400 text-xs font-medium mt-1 pt-1 border-t border-gray-200 dark:border-gray-600">
                           Included in total latency
                         </div>
                       </div>
@@ -477,7 +502,7 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({ sessionId, agen
                         <div className="text-gray-400 dark:text-gray-500">P50: {formatDuration(conversationMetrics.sttStats.p50)}</div>
                         <div className="text-gray-400 dark:text-gray-500">P75: {formatDuration(conversationMetrics.sttStats.p75)}</div>
                         <div className="text-gray-400 dark:text-gray-500">Avg: {formatDuration(conversationMetrics.sttStats.avg)}</div>
-                        <div className="text-orange-600 dark:text-orange-400 text-xs font-medium mt-1 pt-1 border-t border-gray-200 dark:border-gray-600">
+                        <div className="text-gray-500 dark:text-gray-400 text-xs font-medium mt-1 pt-1 border-t border-gray-200 dark:border-gray-600">
                           Not included in total latency
                         </div>
                       </div>

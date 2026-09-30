@@ -626,6 +626,9 @@ export default function PipecatPhoneCallConfig({
                   <div
                     key={call.id}
                     onClick={() => loadCallFromHistory(call)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); loadCallFromHistory(call) } }}
                     className={`group relative p-5 rounded-xl border transition-all cursor-pointer ${
                       selectedCallId === call.id
                         ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700 shadow-md'
@@ -658,11 +661,12 @@ export default function PipecatPhoneCallConfig({
                         {/* Name row */}
                         <div className="flex items-center gap-2 mb-2 pr-8">
                           {editingCallId === call.id ? (
-                            <div className="flex items-center gap-1 flex-1" onClick={e => e.stopPropagation()}>
+                            <div className="flex items-center gap-1 flex-1">
                               <Input
                                 value={editingName || ''}
                                 onChange={e => setEditingName(e.target.value)}
-                                onKeyDown={e => handleNameKeyDown(call.id, e)}
+                                onClick={e => e.stopPropagation()}
+                                onKeyDown={e => { e.stopPropagation(); handleNameKeyDown(call.id, e) }}
                                 className="h-7 text-sm font-semibold bg-white dark:bg-gray-700 border-orange-300 dark:border-orange-600"
                                 placeholder="Enter name"
                                 autoFocus

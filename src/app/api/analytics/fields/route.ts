@@ -82,9 +82,11 @@ export const GET = guarded('analytics/fields', async (req: NextRequest) => {
 
 /**
  * Confluence "Analytics Phase 3 and 4 — Build Spec" §3.4: union the field
- * catalogs of every agent in scope, rather than scanning per agent (a rescan
- * already happens whenever that agent's own page is opened; the org view only
- * reads what's already there).
+ * catalogs of every agent in scope. Each agent still gets the same
+ * staleness/empty check the agent-scoped route applies (line ~43) — an agent
+ * nobody has ever opened the own Analytics page for would otherwise never be
+ * scanned, silently emptying the org picker down to whatever other agents
+ * happen to already have a catalog.
  *
  * There is no single agent's outcome_ranking here, so it's returned null —
  * ranking a project's outcomes stays an agent-page concept, not an org one.
@@ -94,14 +96,34 @@ async function getProjectFields(projectId: string) {
   if (isDenied(resolved)) return resolved.errorResponse
   const { ctx } = resolved
 
-  const [{ data: rows }, { data: agents }] = await Promise.all([
+  const [{ data: existingRows }, { data: agents }] = await Promise.all([
     supabase.from('pype_analytics_fields').select('*').in('agent_id', ctx.agentIds).order('coverage_pct', { ascending: false }),
     supabase.from('pype_voice_agents').select('id, field_extractor_prompt').in('id', ctx.agentIds),
   ])
   const extractorPromptByAgent = new Map((agents ?? []).map((a) => [a.id, a.field_extractor_prompt ?? null]))
 
-  const visible = (rows ?? []).filter(
-    (r) => !ctx.deniedFields.has(r.col) && !ctx.deniedFields.has(`${r.col}.${(r.path ?? []).join('.')}`)
+  const byAgent = new Map<string, any[]>()
+  for (const r of existingRows ?? []) {
+    const list = byAgent.get(r.agent_id as string) ?? []
+    list.push(r)
+    byAgent.set(r.agent_id as string, list)
+  }
+  const scanned = await Promise.all(
+    ctx.agentIds.map(async (agentId) => {
+      const existing = byAgent.get(agentId) ?? []
+      if (!catalogIsStale(existing, Date.now())) return existing
+      try {
+        return await rescan(agentId, projectId, existing)
+      } catch (err) {
+        console.error('[analytics/fields] project rescan failed', agentId, err)
+        return existing
+      }
+    })
+  )
+  const rows = scanned.flat()
+
+  const visible = rows.filter(
+    (r) => !ctx.deniedFields.has(r.col as string) && !ctx.deniedFields.has(`${r.col}.${((r.path ?? []) as string[]).join('.')}`)
   )
 
   // each agent's rows get that agent's own extractor declarations before

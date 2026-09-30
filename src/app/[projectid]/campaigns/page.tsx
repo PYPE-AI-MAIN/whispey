@@ -366,6 +366,9 @@ function Campaigns() {
           <div
             key={campaign.campaignId}
             onClick={() => router.push(`/${projectId}/campaigns/${campaign.campaignId}`)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push(`/${projectId}/campaigns/${campaign.campaignId}`) } }}
             className={`relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700
               rounded-lg p-4 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm
               transition-all cursor-pointer group
