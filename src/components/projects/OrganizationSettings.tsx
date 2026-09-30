@@ -442,7 +442,7 @@ export default function OrganizationSettings({
           doesn't fit, and only the table itself ever scrolls. */}
         <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 flex-1 min-h-0 overflow-hidden">
           <CardHeader className="shrink-0">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
                   <Users className="w-5 h-5" />
@@ -527,12 +527,12 @@ export default function OrganizationSettings({
             {/* Team Members List — the flexible region: takes whatever space is
                 left in the card, and its own table area scrolls internally. */}
             <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
-              <div className="shrink-0 flex items-center justify-between gap-3">
+              <div className="shrink-0 flex flex-wrap items-center justify-between gap-3">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Current Members
                 </h3>
                 {allMembers.length > 5 && (
-                  <div className="relative w-56">
+                  <div className="relative w-full sm:w-56">
                     <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
                     <Input
                       value={memberSearch}
@@ -558,8 +558,8 @@ export default function OrganizationSettings({
                 <p className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">No members match &ldquo;{memberSearch}&rdquo;.</p>
               ) : (
                 <div className="flex-1 min-h-0 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
-                <div className="h-full overflow-y-auto">
-                  <table className="w-full table-fixed text-sm">
+                <div className="h-full overflow-auto">
+                  <table className="w-full min-w-[560px] table-fixed text-sm">
                     <thead className="sticky top-0 z-10">
                       <tr className="border-b border-gray-200 bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-400">
                         <th className="px-4 py-2 font-medium">Member</th>
