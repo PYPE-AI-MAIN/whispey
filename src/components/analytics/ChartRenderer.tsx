@@ -24,7 +24,7 @@ import { shape, zeroFill, formatValue, formatBucket, shortLabel, displayNumber, 
  * slot — that breaks the guarantee. A 9th series folds into "Other" instead of
  * getting a new color.
  */
-const SERIES_COLORS = [
+export const SERIES_COLORS = [
   'var(--analytics-series-1)', 'var(--analytics-series-2)', 'var(--analytics-series-3)', 'var(--analytics-series-4)',
   'var(--analytics-series-5)', 'var(--analytics-series-6)', 'var(--analytics-series-7)', 'var(--analytics-series-8)',
 ]
