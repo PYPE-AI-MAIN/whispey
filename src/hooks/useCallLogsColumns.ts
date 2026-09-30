@@ -89,10 +89,13 @@ export const useCallLogsColumns = (agent: any, calls: CallLog[], role: string | 
     const metadataFiltered = Array.from(metadataKeys).filter(
       (key) => !EXCLUDED_METADATA_COLUMNS.includes(key)
     )
+    const sortedMetadata = metadataFiltered.sort((a, b) => a.localeCompare(b))
+    const sortedTranscriptionMetrics = Array.from(transcriptionKeys).sort((a, b) => a.localeCompare(b))
+    const sortedMetrics = Array.from(metricsKeys).sort((a, b) => a.localeCompare(b))
     return {
-      metadata: metadataFiltered.sort((a, b) => a.localeCompare(b)),
-      transcription_metrics: Array.from(transcriptionKeys).sort((a, b) => a.localeCompare(b)),
-      metrics: Array.from(metricsKeys).sort((a, b) => a.localeCompare(b))
+      metadata: sortedMetadata,
+      transcription_metrics: sortedTranscriptionMetrics,
+      metrics: sortedMetrics
     }
   }, [calls])
 

@@ -414,12 +414,11 @@ const ProviderCard = ({
   }
 
   return (
-    <div
+    <button
+      type="button"
+      disabled={disabled}
       onClick={disabled ? undefined : onSelect}
-      role="button"
-      tabIndex={disabled ? -1 : 0}
-      onKeyDown={disabled ? undefined : (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect() } }}
-      className={`${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} p-3 sm:p-4 rounded-lg border transition-all hover:shadow-sm ${
+      className={`w-full appearance-none bg-transparent text-left ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} p-3 sm:p-4 rounded-lg border transition-all hover:shadow-sm ${
         isSelected
           ? getBorderColor()
           : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
@@ -441,7 +440,7 @@ const ProviderCard = ({
           </p>
         </div>
       </div>
-    </div>
+    </button>
   )
 }
 

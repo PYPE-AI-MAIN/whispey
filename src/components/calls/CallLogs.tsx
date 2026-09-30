@@ -148,6 +148,50 @@ function canShowDownloadButton(canDownload: boolean | undefined, isSuperAdmin: b
   return !!canDownload || isSuperAdmin
 }
 
+// Pulled out of CallLogs' render so its own onClick ternary + isSuperAdmin branch
+// don't add to CallLogs' cognitive complexity.
+function DownloadButtonGroup({
+  hasCampaignSelected,
+  isLoading,
+  agentId,
+  isSuperAdmin,
+  onOpenDownloadDialog,
+  onOpenCampaignDownload,
+  onOpenSettings,
+}: {
+  hasCampaignSelected: boolean
+  isLoading: boolean
+  agentId: string | undefined
+  isSuperAdmin: boolean
+  onOpenDownloadDialog: () => void
+  onOpenCampaignDownload: () => void
+  onOpenSettings: () => void
+}) {
+  const handleDownloadClick = hasCampaignSelected ? onOpenCampaignDownload : onOpenDownloadDialog
+  return (
+    <div className="relative flex items-center gap-1">
+      <Button
+        variant="outline" size="sm"
+        onClick={handleDownloadClick}
+        disabled={!hasCampaignSelected && (isLoading || !agentId)}
+        className="min-w-[120px] overflow-hidden"
+      >
+        Download CSV
+      </Button>
+      {isSuperAdmin && (
+        <Button
+          variant="outline" size="sm"
+          onClick={onOpenSettings}
+          className="h-8 w-8 p-0 shrink-0"
+          aria-label="Download settings"
+        >
+          <Settings className="h-3.5 w-3.5" />
+        </Button>
+      )}
+    </div>
+  )
+}
+
 function getRowStyle(
   isSelected: boolean,
   isFlagged: boolean,
@@ -192,19 +236,21 @@ function buildSelectionColumn(
   return {
     id: 'select',
     header: () => (
-      <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+      <div>
         <Checkbox
           aria-label="Select all calls on this page"
           checked={allSelected}
+          onClick={(e) => e.stopPropagation()}
           onCheckedChange={(checked) => setSelectedIds(checked ? new Set(currentPageCalls.map((c) => c.id)) : new Set())}
         />
       </div>
     ),
     cell: ({ row }) => (
-      <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+      <div>
         <Checkbox
           aria-label="Select this call"
           checked={selectedIds.has(row.original.id)}
+          onClick={(e) => e.stopPropagation()}
           onCheckedChange={(checked) =>
             setSelectedIds((prev) => {
               const next = new Set(prev)
@@ -237,11 +283,9 @@ function buildCallAgainColumn(
     header: 'Call Again',
     cell: ({ row }) => {
       if (!row.original.customer_number) return <span className="text-muted-foreground">—</span>
-      return (
-        <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-          <CallAgainDialog call={row.original} projectId={projectId} agent={agent} phoneNumbers={outboundPhoneNumbers} />
-        </div>
-      )
+      // CallAgainDialog's own trigger button already stops propagation itself,
+      // so this cell needs no wrapper click handling.
+      return <CallAgainDialog call={row.original} projectId={projectId} agent={agent} phoneNumbers={outboundPhoneNumbers} />
     },
     size: 110,
     minSize: 110,
@@ -859,26 +903,15 @@ const CallLogs: React.FC<CallLogsProps> = ({
               />
             )}
             {canShowDownloadButton(downloadSettingsData?.canDownload, isSuperAdmin) && (
-              <div className="relative flex items-center gap-1">
-                <Button
-                  variant="outline" size="sm"
-                  onClick={selectedCampaign ? () => setCampaignDownloadOpen(true) : () => setDownloadDialogOpen(true)}
-                  disabled={!selectedCampaign && (isLoading || !agent?.id)}
-                  className="min-w-[120px] overflow-hidden"
-                >
-                  Download CSV
-                </Button>
-                {isSuperAdmin && (
-                  <Button
-                    variant="outline" size="sm"
-                    onClick={() => setDownloadSettingsOpen(true)}
-                    className="h-8 w-8 p-0 shrink-0"
-                    aria-label="Download settings"
-                  >
-                    <Settings className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-              </div>
+              <DownloadButtonGroup
+                hasCampaignSelected={!!selectedCampaign}
+                isLoading={isLoading}
+                agentId={agent?.id}
+                isSuperAdmin={isSuperAdmin}
+                onOpenDownloadDialog={() => setDownloadDialogOpen(true)}
+                onOpenCampaignDownload={() => setCampaignDownloadOpen(true)}
+                onOpenSettings={() => setDownloadSettingsOpen(true)}
+              />
             )}
             <ColumnSelector
               basicColumns={filteredBasicColumns.map(c => c.key)}

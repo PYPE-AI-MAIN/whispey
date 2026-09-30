@@ -386,11 +386,7 @@ export const TagEditor: React.FC<TagEditorProps> = ({
   )
 
   return (
-    <div
-      className="flex flex-wrap items-center gap-1 min-w-[120px] max-w-[280px]"
-      onClick={e => e.stopPropagation()}
-      onKeyDown={e => e.stopPropagation()}
-    >
+    <div className="flex flex-wrap items-center gap-1 min-w-[120px] max-w-[280px]">
       {tags.map(tag => (
         <TagBadge
           key={tag}
@@ -416,6 +412,7 @@ export const TagEditor: React.FC<TagEditorProps> = ({
               saving && 'opacity-40 pointer-events-none'
             )}
             aria-label="Add tag"
+            onClick={e => e.stopPropagation()}
           >
             <Plus className="w-2.5 h-2.5" />
             {tags.length === 0 && <span>Add tag</span>}

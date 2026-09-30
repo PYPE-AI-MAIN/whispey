@@ -470,7 +470,8 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
               .filter((p: any) => p.key && typeof p.key === 'string')
               .map((p: any) => p.key)
             console.log('Extracted field extractor fields:', fields)
-            setAvailableFields(fields.sort((a: string, b: string) => a.localeCompare(b)))
+            const sortedFields = fields.sort((a: string, b: string) => a.localeCompare(b))
+            setAvailableFields(sortedFields)
           } else {
             console.log('promptConfig is not an array:', promptConfig)
             setAvailableFields([])
@@ -504,7 +505,8 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                 return metric && (metric.enabled !== false)
               })
             console.log('Extracted metric IDs:', metricIds)
-            setAvailableMetrics(metricIds.sort((a, b) => a.localeCompare(b)))
+            const sortedMetricIds = metricIds.sort((a, b) => a.localeCompare(b))
+            setAvailableMetrics(sortedMetricIds)
           } else {
             console.log('metricsConfig is not an object:', typeof metricsConfig)
             setAvailableMetrics([])

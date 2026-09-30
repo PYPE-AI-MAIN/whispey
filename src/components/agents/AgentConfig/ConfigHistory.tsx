@@ -662,9 +662,9 @@ function HistoryEntryRow({
           </div>
         </div>
 
-        <div className="shrink-0 flex items-center gap-1" onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
+        <div className="shrink-0 flex items-center gap-1">
           <button
-            onClick={() => onCopy(entry.id)}
+            onClick={e => { e.stopPropagation(); onCopy(entry.id) }}
             title="Copy config JSON"
             className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors ${
               isCopied ? 'text-green-500' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
@@ -675,7 +675,7 @@ function HistoryEntryRow({
 
           {showMergeButton && entry.prompt_snapshot && (
             <button
-              onClick={() => onMerge(entry.id)}
+              onClick={e => { e.stopPropagation(); onMerge(entry.id) }}
               title="Create PR to merge to prod"
               className="flex items-center gap-1 text-xs font-medium px-2 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
@@ -685,7 +685,7 @@ function HistoryEntryRow({
           )}
           {showMergeButton && (
             <button
-              onClick={() => onRestore(entry.id, entry.version_number, entry.commit_message ?? null)}
+              onClick={e => { e.stopPropagation(); onRestore(entry.id, entry.version_number, entry.commit_message ?? null) }}
               title="Restore this version to dev agent"
               className="flex items-center gap-1 text-xs font-medium px-2 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
@@ -695,7 +695,7 @@ function HistoryEntryRow({
 
           {isComparePickMode && !isCompareBaseline ? (
             <button
-              onClick={() => onSelectForCompare(entry.id)}
+              onClick={e => { e.stopPropagation(); onSelectForCompare(entry.id) }}
               className="flex items-center gap-1 text-xs font-medium px-2 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
             >
               <ArrowLeftRight className="w-3 h-3" />
@@ -703,7 +703,7 @@ function HistoryEntryRow({
             </button>
           ) : !isCompareBaseline && !isComparePickMode ? (
             <button
-              onClick={() => onSelectForCompare(entry.id)}
+              onClick={e => { e.stopPropagation(); onSelectForCompare(entry.id) }}
               title="Select to compare"
               className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >

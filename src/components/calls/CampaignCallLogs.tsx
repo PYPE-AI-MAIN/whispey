@@ -248,12 +248,10 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
       const totalAttempts = countsMap[num]
       if (!totalAttempts || totalAttempts <= 1) return null
       return (
-        <div
+        <button
+          type="button"
           onClick={(e) => { e.stopPropagation(); toggleExpand(num) }}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleExpand(num) } }}
-          className="flex items-center justify-center gap-1 w-full h-full min-h-[80px] cursor-pointer select-none group"
+          className="appearance-none bg-transparent flex items-center justify-center gap-1 w-full h-full min-h-[80px] cursor-pointer select-none group"
         >
           {expanded
             ? <ChevronDown className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
@@ -265,7 +263,7 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
           )}>
             ×{totalAttempts}
           </span>
-        </div>
+        </button>
       )
     },
     size: 52,

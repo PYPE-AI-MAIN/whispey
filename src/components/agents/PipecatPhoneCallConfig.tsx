@@ -661,11 +661,12 @@ export default function PipecatPhoneCallConfig({
                         {/* Name row */}
                         <div className="flex items-center gap-2 mb-2 pr-8">
                           {editingCallId === call.id ? (
-                            <div className="flex items-center gap-1 flex-1" onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
+                            <div className="flex items-center gap-1 flex-1">
                               <Input
                                 value={editingName || ''}
                                 onChange={e => setEditingName(e.target.value)}
-                                onKeyDown={e => handleNameKeyDown(call.id, e)}
+                                onClick={e => e.stopPropagation()}
+                                onKeyDown={e => { e.stopPropagation(); handleNameKeyDown(call.id, e) }}
                                 className="h-7 text-sm font-semibold bg-white dark:bg-gray-700 border-orange-300 dark:border-orange-600"
                                 placeholder="Enter name"
                                 autoFocus
