@@ -11,10 +11,10 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import toast from 'react-hot-toast'
-import { 
-  Settings, 
-  UserPlus, 
-  Trash2, 
+import {
+  Settings,
+  UserPlus,
+  Trash2,
   AlertTriangle,
   Users,
   Mail,
@@ -26,9 +26,8 @@ import {
   CheckCircle2,
   Crown,
   Eye,
-  User,
-  RefreshCw,  // ✅ ADDED
-  UserX       // ✅ ADDED
+  RefreshCw,
+  UserX
 } from 'lucide-react'
 import {
   Dialog,
@@ -415,25 +414,24 @@ export default function OrganizationSettings({
 
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-5xl mx-auto p-6 space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-            <Settings className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Organization Settings
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
-              <Building2 className="w-3 h-3" />
-              {organizationName}
-            </p>
-          </div>
+    <>
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+          <Settings className="w-5 h-5 text-white" />
         </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Organization Settings
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+            <Building2 className="w-3 h-3" />
+            {organizationName}
+          </p>
+        </div>
+      </div>
 
-        {/* Team Management Section */}
+      {/* Team Management Section */}
         <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -602,7 +600,6 @@ export default function OrganizationSettings({
                                 </Badge>
                               )}
                               
-                              {/* ✅ UPDATED STATUS BADGES */}
                               {member.status === 'inactive' && (
                                 <Badge variant="outline" className="text-xs border-gray-400 dark:border-gray-600 text-gray-600 dark:text-gray-400 flex items-center gap-1">
                                   <UserX className="w-3 h-3" />
@@ -679,65 +676,6 @@ export default function OrganizationSettings({
           </CardContent>
         </Card>
 
-        {/* Role Permissions Info */}
-        {/* <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base text-gray-900 dark:text-gray-100">
-              <Shield className="w-5 h-5" />
-              Role Permissions
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 text-sm">
-              <div className="flex gap-3 items-start">
-                <Badge variant="outline" className={getRoleBadgeColor('owner')}>
-                  <Crown className="w-3 h-3 mr-1" />
-                  Owner
-                </Badge>
-                <p className="text-gray-600 dark:text-gray-400 flex-1">
-                  Full access including organization deletion and owner transfer
-                </p>
-              </div>
-              <div className="flex gap-3 items-start">
-                <Badge variant="outline" className={getRoleBadgeColor('admin')}>
-                  <Shield className="w-3 h-3 mr-1" />
-                  Admin
-                </Badge>
-                <p className="text-gray-600 dark:text-gray-400 flex-1">
-                  Manage members, agents, and organization settings. Can read, write, and delete
-                </p>
-              </div>
-              <div className="flex gap-3 items-start">
-                <Badge variant="outline" className={getRoleBadgeColor('member')}>
-                  <Users className="w-3 h-3 mr-1" />
-                  Member
-                </Badge>
-                <p className="text-gray-600 dark:text-gray-400 flex-1">
-                  Can read and write agents, call logs, and configurations
-                </p>
-              </div>
-              <div className="flex gap-3 items-start">
-                <Badge variant="outline" className={getRoleBadgeColor('user')}>
-                  <User className="w-3 h-3 mr-1" />
-                  User
-                </Badge>
-                <p className="text-gray-600 dark:text-gray-400 flex-1">
-                  Basic read-only access to agents and call logs
-                </p>
-              </div>
-              <div className="flex gap-3 items-start">
-                <Badge variant="outline" className={getRoleBadgeColor('viewer')}>
-                  <Eye className="w-3 h-3 mr-1" />
-                  Viewer
-                </Badge>
-                <p className="text-gray-600 dark:text-gray-400 flex-1">
-                  Read-only access to view agents and call logs
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card> */}
-
         {/* Danger Zone */}
         {currentUserRole === 'owner' && (
           <Card className="border-red-200 dark:border-red-900 bg-white dark:bg-gray-900">
@@ -779,8 +717,6 @@ export default function OrganizationSettings({
             </CardContent>
           </Card>
         )}
-      </div>
-
 
       {/* Remove Member Confirmation Dialog */}
       <Dialog open={!!memberToRemove} onOpenChange={() => setMemberToRemove(null)}>
@@ -900,6 +836,6 @@ export default function OrganizationSettings({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   )
 }
