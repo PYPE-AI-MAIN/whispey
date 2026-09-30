@@ -557,7 +557,8 @@ export default function OrganizationSettings({
               ) : filteredMembers.length === 0 ? (
                 <p className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">No members match &ldquo;{memberSearch}&rdquo;.</p>
               ) : (
-                <div className="flex-1 min-h-0 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-800">
+                <div className="flex-1 min-h-0 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
+                <div className="h-full overflow-y-auto">
                   <table className="w-full table-fixed text-sm">
                     <thead className="sticky top-0 z-10">
                       <tr className="border-b border-gray-200 bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-400">
@@ -685,6 +686,7 @@ export default function OrganizationSettings({
                       })}
                     </tbody>
                   </table>
+                </div>
                 </div>
               )}
             </div>
