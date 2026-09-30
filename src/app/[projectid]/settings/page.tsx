@@ -64,15 +64,21 @@ export default function SettingsPage() {
     )
   }
 
+  // h-full, not h-screen: the shared SidebarWrapper shell already sizes
+  // <main> to exactly the viewport (flex-1 in a h-screen row) and owns
+  // overflow-auto as the one scroll container. Nesting another h-screen box
+  // inside it just adds a second, redundant full-viewport box — if this
+  // page's total content is ever taller than that, it's main's overflow-auto
+  // that ends up scrolling the whole page, not the table only. overflow-hidden
+  // here instead makes sure main never has to: everything that doesn't fit is
+  // the Team Members table's job to absorb (see its own flex-1/overflow-y-auto).
   return (
-    <div className="flex h-screen flex-col bg-gray-50 dark:bg-gray-900">
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-6 p-4 sm:p-6">
-          <OrganizationSettings
-            organizationName={organization.name}
-            organizationId={organization.id}
-          />
-        </div>
+    <div className="h-full flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-900">
+      <div className="max-w-5xl mx-auto w-full flex-1 min-h-0 flex flex-col gap-6 p-4 sm:p-6 overflow-hidden">
+        <OrganizationSettings
+          organizationName={organization.name}
+          organizationId={organization.id}
+        />
       </div>
     </div>
   )
