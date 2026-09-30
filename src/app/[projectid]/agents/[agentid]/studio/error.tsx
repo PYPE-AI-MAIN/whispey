@@ -5,7 +5,7 @@ import { RefreshCw } from 'lucide-react'
 
 // Catches anything that throws while rendering Studio, so a client sees a calm
 // message with a way forward instead of a stack trace or a blank page.
-export default function StudioError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function StudioError({ error, reset }: Readonly<{ error: Error & { digest?: string }; reset: () => void }>) {
   useEffect(() => {
     console.error('[Studio] render error:', error)
   }, [error])
@@ -24,7 +24,7 @@ export default function StudioError({ error, reset }: { error: Error & { digest?
           <RefreshCw className="h-3.5 w-3.5" /> Try again
         </button>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => globalThis.location.reload()}
           className="cursor-pointer text-xs text-gray-400 underline-offset-2 transition hover:text-gray-600 hover:underline dark:text-gray-500 dark:hover:text-gray-300"
         >
           Refresh page

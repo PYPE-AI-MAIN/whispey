@@ -7,7 +7,7 @@ import AgentHeaderIdentity from '@/components/agents/AgentHeaderIdentity'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { StudioProvider, useStudio } from './_context'
 
-function StudioShell({ children }: { children: ReactNode }) {
+function StudioShell({ children }: Readonly<{ children: ReactNode }>) {
   const router = useRouter()
   const { projectId, agentId, agent, isLoading, refetchAgent } = useStudio()
   const [copied, setCopied] = useState(false)
@@ -70,7 +70,7 @@ function StudioShell({ children }: { children: ReactNode }) {
   )
 }
 
-export default function StudioLayout({ children }: { children: ReactNode }) {
+export default function StudioLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <StudioProvider>
       <StudioShell>{children}</StudioShell>

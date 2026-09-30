@@ -22,7 +22,7 @@ export function useStudio(): StudioContextValue {
   return ctx
 }
 
-export function StudioProvider({ children }: { children: ReactNode }) {
+export function StudioProvider({ children }: Readonly<{ children: ReactNode }>) {
   const params = useParams()
   const projectId = (Array.isArray(params?.projectid) ? params.projectid[0] : params?.projectid) ?? ''
   const agentId = (Array.isArray(params?.agentid) ? params.agentid[0] : params?.agentid) ?? ''
@@ -32,7 +32,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
 
   const backendAgentName = useMemo(() => {
     if (!agent?.name || !agentId) return ''
-    return `${agent.name}_${agentId.replace(/-/g, '_')}`
+    return `${agent.name}_${agentId.replaceAll('-', '_')}`
   }, [agent?.name, agentId])
 
   const value = useMemo<StudioContextValue>(() => ({

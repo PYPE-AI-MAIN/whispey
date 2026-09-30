@@ -5,6 +5,8 @@ import { cn } from '@/lib/utils'
 import type { CallLog } from '@/types/logs'
 
 export interface TurnPreview {
+  /** Stable key for rendering — the live transcript segment id, or derived once when a saved call is normalised. */
+  id: string
   speaker: 'agent' | 'user'
   text: string
 }
@@ -22,20 +24,22 @@ export type LastCallState =
 // output (an arbitrary {key: value} map, see OutputVariablesPanel). The
 // actual conversation lives in transcript_json ({role, content}[]).
 function normalizeTranscript(call: CallLog): TurnPreview[] {
-  if (Array.isArray(call.transcript_json)) {
-    return call.transcript_json
-      .map((item: any) => {
-        const text = Array.isArray(item?.content)
-          ? item.content.join(' ')
-          : (item?.content ?? item?.user_transcript ?? item?.agent_response ?? '')
-        // Skip empty turns and lone-punctuation artifacts (e.g. a stray ".").
-        if (!/[\p{L}\p{N}]/u.test(text?.toString() ?? '')) return null
-        const speaker: 'agent' | 'user' = item?.role === 'assistant' ? 'agent' : 'user'
-        return { speaker, text: text.toString() }
-      })
-      .filter((t: TurnPreview | null): t is TurnPreview => t !== null)
-  }
-  return []
+  if (!Array.isArray(call.transcript_json)) return []
+  const turns: TurnPreview[] = []
+  call.transcript_json.forEach((item: any, position: number) => {
+    const raw = Array.isArray(item?.content)
+      ? item.content.join(' ')
+      : (item?.content ?? item?.user_transcript ?? item?.agent_response ?? '')
+    const text = String(raw ?? '')
+    // Skip empty turns and lone-punctuation artifacts (e.g. a stray ".").
+    if (!/[\p{L}\p{N}]/u.test(text)) return
+    turns.push({
+      id: `${call.id}-${position}`,
+      speaker: item?.role === 'assistant' ? 'agent' : 'user',
+      text,
+    })
+  })
+  return turns
 }
 
 function formatDuration(seconds?: number | null) {
@@ -89,8 +93,8 @@ function TranscriptCard({
         <p className="py-6 text-center text-xs text-gray-400 dark:text-gray-500">{emptyText}</p>
       ) : (
         <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-4 py-3">
-          {turns.map((t, i) => (
-            <div key={i} className={cn('flex flex-col', t.speaker === 'user' ? 'items-end' : 'items-start')}>
+          {turns.map((t) => (
+            <div key={t.id} className={cn('flex flex-col', t.speaker === 'user' ? 'items-end' : 'items-start')}>
               <span className="mb-0.5 px-1 text-[10px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
                 {t.speaker === 'user' ? 'You' : 'Agent'}
               </span>
@@ -168,8 +172,9 @@ export default function LastCallCard({
   const { call } = state
   const turns = normalizeTranscript(call)
   const duration = formatDuration(call.duration_seconds)
-  const reason = call.call_ended_reason?.replace(/_/g, ' ')
-  const meta = [duration, turns.length > 0 ? `${turns.length} turns` : null, reason].filter(Boolean) as string[]
+  const reason = call.call_ended_reason?.replaceAll('_', ' ')
+  const turnCount = turns.length > 0 ? `${turns.length} turns` : null
+  const meta = [duration, turnCount, reason].filter(Boolean) as string[]
 
   return (
     <TranscriptCard

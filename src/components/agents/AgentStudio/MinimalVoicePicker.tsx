@@ -36,7 +36,7 @@ const PREVIEW_TEXT = 'Hi there! This is how I sound.'
 
 const voiceKey = (v: Pick<StudioVoice, 'provider' | 'id'>) => `${v.provider}-${v.id}`
 
-const titleCase = (s: string) => s.replace(/[_-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+const titleCase = (s: string) => s.replaceAll(/[_-]/g, ' ').replaceAll(/\b\w/g, (c) => c.toUpperCase())
 
 function splitName(raw: string): { name: string; subtitle?: string } {
   const [name, ...rest] = raw.split(/\s[-–]\s/)
@@ -159,6 +159,13 @@ function useVoicePreview() {
   return { playingKey, loadingKey, error, toggle }
 }
 
+function avatarTone(voice?: StudioVoice): string {
+  if (!voice) return 'bg-gray-300 dark:bg-gray-700'
+  return voice.provider === 'sarvam'
+    ? 'bg-gradient-to-br from-orange-400 to-rose-500'
+    : 'bg-gradient-to-br from-violet-500 to-indigo-500'
+}
+
 export function VoiceAvatar({ voice, size = 'md' }: Readonly<{ voice?: StudioVoice; size?: 'sm' | 'md' }>) {
   return (
     <span
@@ -166,11 +173,7 @@ export function VoiceAvatar({ voice, size = 'md' }: Readonly<{ voice?: StudioVoi
       className={cn(
         'flex shrink-0 items-center justify-center rounded-full font-semibold text-white',
         size === 'sm' ? 'text-[10px]' : 'text-xs',
-        voice?.provider === 'sarvam'
-          ? 'bg-gradient-to-br from-orange-400 to-rose-500'
-          : voice
-            ? 'bg-gradient-to-br from-violet-500 to-indigo-500'
-            : 'bg-gray-300 dark:bg-gray-700'
+        avatarTone(voice)
       )}
     >
       {voice?.name?.[0]?.toUpperCase() ?? '?'}
@@ -218,16 +221,22 @@ function PlayOrb({
         style={{ opacity: showControl ? 1 : 0, transition: 'opacity 150ms ease', background: 'rgba(0,0,0,0.25)' }}
         className="absolute inset-0 flex items-center justify-center rounded-full"
       >
-        {loading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : playing ? (
-          <Pause className="h-4 w-4 fill-current" />
-        ) : (
-          <Play className="ml-0.5 h-4 w-4 fill-current" />
-        )}
+        <OrbIcon loading={loading} playing={playing} />
       </span>
     </button>
   )
+}
+
+function OrbIcon({ loading, playing }: Readonly<{ loading: boolean; playing: boolean }>) {
+  if (loading) return <Loader2 className="h-4 w-4 animate-spin" />
+  if (playing) return <Pause className="h-4 w-4 fill-current" />
+  return <Play className="ml-0.5 h-4 w-4 fill-current" />
+}
+
+function voiceSubtitle(current: StudioVoice | undefined): string {
+  if (!current) return 'Current voice isn’t in the curated list'
+  const label = PROVIDER_LABEL[current.provider]
+  return current.tags[0] ? `${label} · ${current.tags.join(' · ')}` : label
 }
 
 interface MinimalVoicePickerProps {
@@ -246,7 +255,7 @@ export default function MinimalVoicePicker({
   selectedProvider,
   onSelect,
   disabled,
-}: MinimalVoicePickerProps) {
+}: Readonly<MinimalVoicePickerProps>) {
   const [open, setOpen] = useState(false)
   const preview = useVoicePreview()
   const current = voices.find((v) => v.id === selectedVoiceId && v.provider === selectedProvider)
@@ -286,7 +295,7 @@ export default function MinimalVoicePicker({
                     {current?.name ?? 'Choose a voice'}
                   </span>
                   <span className="block truncate text-[11px] text-gray-400 dark:text-gray-500">
-                    {current ? `${PROVIDER_LABEL[current.provider]}${current.tags[0] ? ` · ${current.tags.join(' · ')}` : ''}` : 'Current voice isn’t in the curated list'}
+                    {voiceSubtitle(current)}
                   </span>
                 </span>
                 <ChevronsUpDown className="mr-1.5 h-3.5 w-3.5 shrink-0 text-gray-400" />
@@ -318,12 +327,12 @@ export default function MinimalVoicePicker({
                 const key = voiceKey(v)
                 const isSelected = v.id === selectedVoiceId && v.provider === selectedProvider
                 return (
-                  // Row selects; the orb previews. A div with role=option (not a
+                  // Row selects; the orb previews. A div with role=menuitemradio (not a
                   // button) because the orb inside is itself a button.
                   <div
                     key={key}
-                    role="option"
-                    aria-selected={isSelected}
+                    role="menuitemradio"
+                    aria-checked={isSelected}
                     tabIndex={0}
                     onClick={() => {
                       onSelect(v.id, v.provider, v.model)

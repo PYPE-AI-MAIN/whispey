@@ -46,6 +46,8 @@ interface SidebarContext {
   projectId?: string
   agentType?: string
   hasWorkflow?: boolean
+  /** Agent was created through the MCP — the only kind Agent Studio can show. */
+  createdViaMcp?: boolean
   canAccessPhoneCalls: boolean
   canAccessPhoneSettings: boolean
   canCreatePypeAgent: boolean
@@ -57,6 +59,28 @@ interface SidebarContext {
   isSuperAdmin: boolean
   /** True only for users with globalRole === 'superadmin' in pype_voice_users */
   isGlobalSuperAdmin: boolean
+}
+
+// Agent Studio (beta) — LiveKit agents only; its test panel uses the LiveKit
+// session flow. Members only get the entry for agents built through the MCP (an
+// agent that wasn't would just open an empty "build it through the MCP" page).
+// Owners and admins keep it on every LiveKit agent, so they can still reach
+// that page and its preview.
+function agentStudioNavItems(
+  projectId: string,
+  agentId: string,
+  agentType: string | undefined,
+  createdViaMcp: boolean | undefined,
+  isOwnerOrAdmin: boolean
+) {
+  if (agentType !== 'pype_agent' || !(createdViaMcp || isOwnerOrAdmin)) return []
+  return [{
+    id: 'agent-studio',
+    name: 'Agent Studio',
+    icon: 'Zap',
+    path: `/${projectId}/agents/${agentId}/studio`,
+    group: 'configuration',
+  }]
 }
 
 interface NavigationItem {
@@ -269,7 +293,7 @@ const sidebarRoutes: SidebarRoute[] = [
     ],
     getSidebarConfig: (params, context) => {
       const { projectId, agentId } = params
-      const { isEnhancedProject, agentType, isOwnerOrAdmin, visibility, isSuperAdmin, hasWorkflow } = context
+      const { isEnhancedProject, agentType, isOwnerOrAdmin, visibility, isSuperAdmin, hasWorkflow, createdViaMcp } = context
 
       const reservedPaths = ['api-keys', 'settings', 'config', 'observability', 'sip-management'];
       if (reservedPaths.includes(agentId)) {
@@ -318,16 +342,7 @@ const sidebarRoutes: SidebarRoute[] = [
         agentType === 'pype_agent' && hasWorkflow &&
         (isOwnerOrAdmin || canShowAgentSection(visibility, 'agentConfig'))
 
-      // Agent Studio (beta) — LiveKit agents only; its test panel uses the LiveKit session flow.
-      if (agentType === 'pype_agent') {
-        configItems.push({
-          id: 'agent-studio',
-          name: 'Agent Studio',
-          icon: 'Zap',
-          path: `/${projectId}/agents/${agentId}/studio`,
-          group: 'configuration'
-        })
-      }
+      configItems.push(...agentStudioNavItems(projectId, agentId, agentType, createdViaMcp, isOwnerOrAdmin))
 
       if (showWorkflow) {
         configItems.push({
@@ -581,6 +596,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     projectId,
     agentType: agent?.agent_type,
     hasWorkflow: !!agent?.hasWorkflow,
+    createdViaMcp: !!agent?.createdViaMcp,
     canAccessPhoneCalls,
     canAccessPhoneSettings,
     canCreatePypeAgent,

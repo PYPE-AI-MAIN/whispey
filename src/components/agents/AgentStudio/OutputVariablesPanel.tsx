@@ -8,6 +8,57 @@ interface FieldExtractorItem {
   description: string
 }
 
+function DispositionsBody({
+  fields, configured, inProgress, loading, latestValues,
+}: Readonly<{
+  fields: FieldExtractorItem[]
+  configured: boolean
+  inProgress: boolean
+  loading: boolean
+  latestValues: Record<string, string> | null | undefined
+}>) {
+  if (!configured) {
+    return (
+      <div className="flex flex-col items-center gap-1.5 rounded-xl border border-dashed border-gray-200 px-4 py-5 text-center dark:border-gray-800">
+        <Settings2 className="h-4 w-4 text-gray-300 dark:text-gray-600" />
+        <p className="text-xs font-medium text-gray-600 dark:text-gray-300">Nothing extracted yet</p>
+        <p className="text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">
+          Define the dispositions to pull out of each call and they&apos;ll be computed
+          automatically right after the call ends.
+        </p>
+      </div>
+    )
+  }
+
+  if (inProgress) {
+    return (
+      <div className="flex flex-col items-center gap-1.5 rounded-xl border border-dashed border-gray-200 px-4 py-5 text-center dark:border-gray-800">
+        <p className="text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">
+          Call in progress — values from this call will show up once it ends.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-1.5 rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
+      {fields.map((f) => (
+        <div key={f.key} className="flex items-baseline justify-between gap-3 text-[12px]">
+          <span className="shrink-0 font-medium text-gray-500 dark:text-gray-400">{f.key}</span>
+          <span className="truncate text-right text-gray-900 dark:text-gray-100">
+            <DispositionValue loading={loading} value={latestValues?.[f.key]} />
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function DispositionValue({ loading, value }: Readonly<{ loading: boolean; value: string | undefined }>) {
+  if (loading) return <Loader2 className="ml-auto h-3 w-3 animate-spin text-gray-300 dark:text-gray-600" />
+  return value ?? <span className="text-gray-300 dark:text-gray-600">—</span>
+}
+
 export default function OutputVariablesPanel({
   agentId,
   fieldExtractorPrompt,
@@ -78,7 +129,7 @@ export default function OutputVariablesPanel({
             the rest of the app instead of risking a mismatched override. */}
         {canEdit && (
         <FieldExtractorDialog
-          initialData={fields.length > 0 ? fields : []}
+          initialData={fields}
           initialVariables={fieldExtractorVariables || {}}
           isEnabled={fieldExtractorEnabled}
           terminology="dispositions"
@@ -87,37 +138,13 @@ export default function OutputVariablesPanel({
         )}
       </div>
 
-      {!configured ? (
-        <div className="flex flex-col items-center gap-1.5 rounded-xl border border-dashed border-gray-200 px-4 py-5 text-center dark:border-gray-800">
-          <Settings2 className="h-4 w-4 text-gray-300 dark:text-gray-600" />
-          <p className="text-xs font-medium text-gray-600 dark:text-gray-300">Nothing extracted yet</p>
-          <p className="text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">
-            Define the dispositions to pull out of each call and they'll be computed
-            automatically right after the call ends.
-          </p>
-        </div>
-      ) : inProgress ? (
-        <div className="flex flex-col items-center gap-1.5 rounded-xl border border-dashed border-gray-200 px-4 py-5 text-center dark:border-gray-800">
-          <p className="text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">
-            Call in progress — values from this call will show up once it ends.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-1.5 rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
-          {fields.map((f) => (
-            <div key={f.key} className="flex items-baseline justify-between gap-3 text-[12px]">
-              <span className="shrink-0 font-medium text-gray-500 dark:text-gray-400">{f.key}</span>
-              <span className="truncate text-right text-gray-900 dark:text-gray-100">
-                {loading ? (
-                  <Loader2 className="ml-auto h-3 w-3 animate-spin text-gray-300 dark:text-gray-600" />
-                ) : (
-                  (latestValues?.[f.key] ?? <span className="text-gray-300 dark:text-gray-600">—</span>)
-                )}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
+      <DispositionsBody
+        fields={fields}
+        configured={configured}
+        inProgress={!!inProgress}
+        loading={!!loading}
+        latestValues={latestValues}
+      />
     </div>
   )
 }

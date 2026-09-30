@@ -46,7 +46,7 @@ function useLastTestCall(agentId: string, isConnected: boolean, liveTranscripts:
     if (liveTranscripts.length > 0) {
       liveTurnsRef.current = liveTranscripts
         .filter((t) => t.text?.trim())
-        .map((t) => ({ speaker: t.speaker, text: t.text }))
+        .map((t) => ({ id: t.id, speaker: t.speaker, text: t.text }))
     }
   }, [liveTranscripts])
 
@@ -223,7 +223,8 @@ function StudioWorkspace({ isPreview, onExitPreview }: Readonly<{ isPreview: boo
         // fails backend validation, which silently rolls back the whole save.
         // We don't collect per-voice settings in this minimal picker anyway,
         // so let the backend apply its own defaults for the new provider.
-        const { voice_settings: _oldVoiceSettings, ...ttsBase } = currentAssistant.tts ?? {}
+        const ttsBase = { ...currentAssistant.tts }
+        delete ttsBase.voice_settings
         const updatedAssistant = {
           ...currentAssistant,
           tts: { ...ttsBase, name: provider, voice_id: voiceId, ...(model ? { model } : {}) },
@@ -306,7 +307,7 @@ function StudioWorkspace({ isPreview, onExitPreview }: Readonly<{ isPreview: boo
       const currentAssistant = liveAgentConfig.assistant[0]
       const updatedAssistant = {
         ...currentAssistant,
-        variables: { ...(currentAssistant.variables ?? {}), ...sessionVariables },
+        variables: { ...currentAssistant.variables, ...sessionVariables },
       }
       // Waits for the redeploy to finish, so the call starts on the updated agent.
       await saveAndDeployAgent({ agent: { ...liveAgentConfig, assistant: [updatedAssistant] } })

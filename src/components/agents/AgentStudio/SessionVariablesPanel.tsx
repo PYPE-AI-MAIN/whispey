@@ -17,7 +17,7 @@ export default function SessionVariablesPanel({
   agentId,
   defaultVariables,
   onChange,
-}: SessionVariablesPanelProps) {
+}: Readonly<SessionVariablesPanelProps>) {
   const [values, setValues] = useState<Record<string, string>>({})
 
   useEffect(() => {

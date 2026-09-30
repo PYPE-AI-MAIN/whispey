@@ -33,7 +33,7 @@ export const MCP_AGENT_DEFAULT_CONFIG = {
     min_silence_duration: 0.55,
     min_speech_duration: 0.05,
     prefix_padding_duration: 0.5,
-    max_buffered_speech: 60.0,
+    max_buffered_speech: 60,
     activation_threshold: 0.5,
     sample_rate: 16000,
     force_cpu: true
@@ -71,8 +71,8 @@ export const MCP_AGENT_DEFAULT_CONFIG = {
     enabled: true,
     ambient: { type: "office", volume: 5 },
     thinking: { type: "keyboard", volume: 0.5 },
-    thinking_probability: 0.10,
-    tool_call_typing_config: { enabled: true, volume: 0.80 }
+    thinking_probability: 0.1,
+    tool_call_typing_config: { enabled: true, volume: 0.8 }
   },
 
   tools: [] as Array<{ type: string }>,

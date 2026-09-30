@@ -49,7 +49,7 @@ export default function DailyTalkToAssistant({
   sessionEndpoint,
   onCallEnded,
   variables,
-}: DailyTalkToAssistantProps) {
+}: Readonly<DailyTalkToAssistantProps>) {
   const [showDetails, setShowDetails]               = useState(false)
   const [isEndCallHighlighted, setIsEndCallHighlighted] = useState(false)
   const [volume, setVolume]                         = useState(80)

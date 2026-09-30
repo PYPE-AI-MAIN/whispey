@@ -31,7 +31,7 @@ const INSIGHTS: InsightDef[] = [
     definition: 'All calls, overall',
     help: 'Every call this agent has handled over the last 400 days, including test calls from this page.',
     spec: { spec_version: 1, agg: { fn: 'count' }, range: ALL_TIME_RANGE },
-    format: (v) => String(v),
+    format: String,
   },
   {
     id: 'completion_rate',
@@ -59,6 +59,31 @@ function makeWidget(id: string, spec: SpecInput): Widget {
 function firstValue(result: WidgetResult | undefined): number | null {
   const v = result?.data?.[0]?.value
   return v === null || v === undefined ? null : Number(v)
+}
+
+function InsightValue({
+  def, value, loading, failure,
+}: Readonly<{ def: InsightDef; value: number | null; loading: boolean; failure?: string }>) {
+  if (value !== null) {
+    return (
+      <span className="text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-50">
+        {def.format(value)}
+      </span>
+    )
+  }
+  if (loading) return <Loader2 className="h-4 w-4 animate-spin text-gray-300 dark:text-gray-600" />
+  if (failure) {
+    return <span className="text-xs text-gray-400 dark:text-gray-500">Unavailable — refresh to retry</span>
+  }
+  return <span className="text-2xl font-semibold text-gray-300 dark:text-gray-700">—</span>
+}
+
+/** Why a card has no number: the whole query failed, or just this widget did. */
+function failureFor(def: InsightDef, result: WidgetResult | undefined, error: Error | null): string | undefined {
+  if (!def.spec) return undefined
+  if (error) return error.message
+  if (result && result.status !== 'ok') return result.error ?? result.status
+  return undefined
 }
 
 function InsightCard({
@@ -90,17 +115,7 @@ function InsightCard({
         </TooltipProvider>
       </div>
       <div className="mt-1.5 flex items-baseline gap-1">
-        {defined && value === null && loading ? (
-          <Loader2 className="h-4 w-4 animate-spin text-gray-300 dark:text-gray-600" />
-        ) : value === null && failure ? (
-          <span className="text-xs text-gray-400 dark:text-gray-500">Unavailable — refresh to retry</span>
-        ) : value === null ? (
-          <span className="text-2xl font-semibold text-gray-300 dark:text-gray-700">—</span>
-        ) : (
-          <span className="text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-50">
-            {def.format(value)}
-          </span>
-        )}
+        <InsightValue def={def} value={value} loading={defined && loading} failure={failure} />
       </div>
     </div>
   )
@@ -131,9 +146,7 @@ export default function InsightsStrip({ agentId }: Readonly<{ agentId: string }>
       <div className="grid grid-cols-2 gap-3">
         {INSIGHTS.map((def) => {
           const result = def.spec ? byWidget.get(def.id) : undefined
-          const failure = def.spec
-            ? error?.message ?? (result && result.status !== 'ok' ? (result.error ?? result.status) : undefined)
-            : undefined
+          const failure = failureFor(def, result, error)
           if (failure) console.warn(`[Studio insights] ${def.id}:`, failure)
           return (
             <InsightCard
