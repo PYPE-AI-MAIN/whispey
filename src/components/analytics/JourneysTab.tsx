@@ -550,6 +550,7 @@ function MilestoneChip({ event, projectId }: Readonly<{ event: JourneyEvent; pro
 }
 
 const JOURNEY_ROW_HEIGHT = 'h-14'
+const JOURNEY_ROW_HEIGHT_PX = 56
 
 /** One table row — milestones scroll horizontally instead of wrapping, so every row stays the same height regardless of how many events a journey has. */
 function JourneyTableRow({ projectId, journey }: Readonly<{ projectId: string; journey: JourneySummary }>) {
@@ -573,9 +574,14 @@ function JourneyTableRow({ projectId, journey }: Readonly<{ projectId: string; j
   )
 }
 
-/** An empty row so a page with fewer than a full page of results still fills the table's fixed height. */
-function EmptyTableRow() {
-  return <tr className={JOURNEY_ROW_HEIGHT} />
+/**
+ * One spacer row (not one per missing journey) so a short last page still
+ * fills the table's fixed height — no array of interchangeable rows, so
+ * there's no index-derived key to flag.
+ */
+function TableSpacerRow({ missingRows }: Readonly<{ missingRows: number }>) {
+  if (missingRows <= 0) return null
+  return <tr style={{ height: missingRows * JOURNEY_ROW_HEIGHT_PX }} />
 }
 
 export function JourneysTab({ projectId, isActive }: Readonly<{ projectId: string; isActive: boolean }>) {
@@ -707,9 +713,7 @@ export function JourneysTab({ projectId, isActive }: Readonly<{ projectId: strin
                     </thead>
                     <tbody>
                       {journeys.map((j) => <JourneyTableRow key={j.id} projectId={projectId} journey={j} />)}
-                      {Array.from({ length: RECENT_JOURNEYS_PAGE_SIZE - journeys.length }).map((_, i) => (
-                        <EmptyTableRow key={`empty-${i}`} />
-                      ))}
+                      <TableSpacerRow missingRows={RECENT_JOURNEYS_PAGE_SIZE - journeys.length} />
                     </tbody>
                   </table>
                 )}
