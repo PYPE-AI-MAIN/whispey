@@ -49,6 +49,13 @@ const COUNTRIES = [
   { code: 'IN', name: 'India', prefix: '+91', placeholder: '98765 43210', flag: '🇮🇳' }
 ]
 
+// Sonar flags this as clear-text storage of PII (phone numbers) — reviewed and
+// accepted: it's per-agent, browser-local-only (never transmitted or synced),
+// and redial (loadCallFromHistory) needs the full number, so masking it here
+// would silently break that feature. The same numbers are already visible to
+// this same authorized user in Whispey's own call logs, so this doesn't widen
+// exposure. Revisit if this page ever needs to run on a genuinely shared/
+// public device.
 const STORAGE_KEY = 'phone_call_history'
 const HISTORY_LIMIT_KEY = 'phone_call_history_limit'
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
