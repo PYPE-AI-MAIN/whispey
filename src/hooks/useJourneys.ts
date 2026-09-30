@@ -4,10 +4,11 @@
  * rather than one combined endpoint, since picking a different campaign only
  * needs to re-fetch the last two.
  */
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
+import { useCallback, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import type { OverviewRange } from './useOrgOverview'
 
-const RECENT_PAGE_SIZE = 20
+const RECENT_PAGE_SIZE = 10
 
 export type Campaign = {
   id: string
@@ -19,6 +20,10 @@ export type Campaign = {
 
 export type FunnelStep = { ordinality: number; step_key: string; label: string; reached_count: number }
 export type Funnel = { steps: FunnelStep[]; journeyCount: number }
+export type ActiveJourneysPoint = { day: string; active_count: number }
+export type ChartDimension = { key: string; label: string }
+export type ChartMetric = 'events' | 'journeys'
+export type CustomChartPoint = { bucket: string; value: number }
 
 export type JourneyEvent = {
   channel: string
@@ -27,6 +32,7 @@ export type JourneyEvent = {
   agent_id: string | null
   external_ref: string | null
   occurred_at: string
+  payload: Record<string, unknown> | null
 }
 
 export type JourneySummary = {
@@ -50,7 +56,7 @@ export type JourneyFilters = {
 
 export type JourneyFilterOptions = { channels: string[]; statuses: string[]; outcomes: string[] }
 
-function filterQuery(filters: JourneyFilters): string {
+export function filterQuery(filters: JourneyFilters): string {
   const params = new URLSearchParams()
   if (filters.channel) params.set('channel', filters.channel)
   if (filters.status) params.set('status', filters.status)
@@ -65,7 +71,7 @@ function filterQuery(filters: JourneyFilters): string {
  * today's date would exclude every journey created today (created_at < today
  * 00:00 is false for anything created after midnight, which is all of today).
  */
-function toDateRange(range: OverviewRange): { from: string; to: string } {
+export function toDateRange(range: OverviewRange): { from: string; to: string } {
   if ('from' in range) return range
   const to = new Date()
   to.setDate(to.getDate() + 1)
@@ -108,18 +114,88 @@ export function useFunnel(
   })
 }
 
-/** "Load more" pagination — each page fetches one extra row server-side to say whether another page exists. */
-export function useRecentJourneys(projectId: string, campaignId: string | null, filters: JourneyFilters, enabled: boolean) {
-  return useInfiniteQuery({
-    queryKey: ['journeys', 'recent', projectId, campaignId, filters],
-    queryFn: ({ pageParam }) =>
-      getJSON<{ journeys: JourneySummary[]; hasMore: boolean }>(
-        `/api/journeys/recent?projectId=${projectId}&campaignId=${campaignId}&limit=${RECENT_PAGE_SIZE}&offset=${pageParam}${filterQuery(filters)}`
-      ),
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, pages) => (lastPage.hasMore ? pages.length * RECENT_PAGE_SIZE : undefined),
+export function useActiveJourneys(
+  projectId: string,
+  campaignId: string | null,
+  range: OverviewRange,
+  filters: JourneyFilters,
+  enabled: boolean
+) {
+  const { from, to } = toDateRange(range)
+  return useQuery({
+    queryKey: ['journeys', 'active', projectId, campaignId, from, to, filters],
+    queryFn: () =>
+      getJSON<{ points: ActiveJourneysPoint[] }>(
+        `/api/journeys/active?projectId=${projectId}&campaignId=${campaignId}&from=${from}&to=${to}${filterQuery(filters)}`
+      ).then((r) => r.points),
     enabled: enabled && !!projectId && !!campaignId,
   })
+}
+
+export function useChartDimensions(projectId: string, campaignId: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: ['journeys', 'dimensions', projectId, campaignId],
+    queryFn: () => getJSON<{ dimensions: ChartDimension[] }>(`/api/journeys/dimensions?projectId=${projectId}&campaignId=${campaignId}`).then((r) => r.dimensions),
+    enabled: enabled && !!projectId && !!campaignId,
+  })
+}
+
+export function useCustomChart(
+  projectId: string,
+  campaignId: string | null,
+  dimension: string,
+  metric: ChartMetric,
+  range: OverviewRange,
+  filters: JourneyFilters,
+  enabled: boolean
+) {
+  const { from, to } = toDateRange(range)
+  return useQuery({
+    queryKey: ['journeys', 'chart', projectId, campaignId, dimension, metric, from, to, filters],
+    queryFn: () =>
+      getJSON<{ points: CustomChartPoint[] }>(
+        `/api/journeys/chart?projectId=${projectId}&campaignId=${campaignId}&dimension=${encodeURIComponent(dimension)}&metric=${metric}&from=${from}&to=${to}${filterQuery(filters)}`
+      ).then((r) => r.points),
+    enabled: enabled && !!projectId && !!campaignId && !!dimension,
+  })
+}
+
+export const RECENT_JOURNEYS_PAGE_SIZE = RECENT_PAGE_SIZE
+
+/** Page-number pagination (not infinite scroll) — same shape as `useCampaignGroupedLogs`'s Prev/Next. Resets to page 1 whenever the campaign or filters change. */
+export function useRecentJourneys(projectId: string, campaignId: string | null, filters: JourneyFilters, enabled: boolean) {
+  const [page, setPage] = useState(1)
+  const offset = (page - 1) * RECENT_PAGE_SIZE
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['journeys', 'recent', projectId, campaignId, filters, page],
+    queryFn: () =>
+      getJSON<{ journeys: JourneySummary[]; hasMore: boolean }>(
+        `/api/journeys/recent?projectId=${projectId}&campaignId=${campaignId}&limit=${RECENT_PAGE_SIZE}&offset=${offset}${filterQuery(filters)}`
+      ),
+    enabled: enabled && !!projectId && !!campaignId,
+  })
+
+  const isFirstPage = page === 1
+  const isLastPage = !data?.hasMore
+
+  const goToNextPage = useCallback(() => {
+    if (!isLastPage && !isFetching) setPage((p) => p + 1)
+  }, [isLastPage, isFetching])
+  const goToPrevPage = useCallback(() => setPage((p) => Math.max(1, p - 1)), [])
+  const resetPage = useCallback(() => setPage(1), [])
+
+  return {
+    journeys: data?.journeys ?? [],
+    isLoading,
+    isFetching,
+    currentPage: page,
+    isFirstPage,
+    isLastPage,
+    goToNextPage,
+    goToPrevPage,
+    resetPage,
+  }
 }
 
 export function useJourneyFilterOptions(projectId: string, campaignId: string | null, enabled: boolean) {
