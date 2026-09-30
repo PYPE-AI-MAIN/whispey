@@ -554,10 +554,10 @@ export default function OrganizationSettings({
               ) : filteredMembers.length === 0 ? (
                 <p className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">No members match &ldquo;{memberSearch}&rdquo;.</p>
               ) : (
-                <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
+                <div className="max-h-[440px] overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-800">
                   <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-200 bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400">
+                    <thead className="sticky top-0 z-10">
+                      <tr className="border-b border-gray-200 bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-400">
                         <th className="px-4 py-2 font-medium">Member</th>
                         <th className="px-4 py-2 font-medium">Role</th>
                         <th className="px-4 py-2 font-medium">Status</th>

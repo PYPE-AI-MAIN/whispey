@@ -65,11 +65,15 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6 p-4 sm:p-6 max-w-5xl mx-auto">
-      <OrganizationSettings
-        organizationName={organization.name}
-        organizationId={organization.id}
-      />
+    <div className="flex h-screen flex-col bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="max-w-5xl mx-auto space-y-6 p-4 sm:p-6">
+          <OrganizationSettings
+            organizationName={organization.name}
+            organizationId={organization.id}
+          />
+        </div>
+      </div>
     </div>
   )
 }
