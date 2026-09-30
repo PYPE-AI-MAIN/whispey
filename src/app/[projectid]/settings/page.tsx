@@ -64,22 +64,21 @@ export default function SettingsPage() {
     )
   }
 
-  // h-full, not h-screen: the shared SidebarWrapper shell already sizes
-  // <main> to exactly the viewport (flex-1 in a h-screen row) and owns
-  // overflow-auto as the one scroll container. Nesting another h-screen box
-  // inside it just adds a second, redundant full-viewport box — if this
-  // page's total content is ever taller than that, it's main's overflow-auto
-  // that ends up scrolling the whole page, not the table only. overflow-hidden
-  // here instead makes sure main never has to: everything that doesn't fit is
-  // the Team Members table's job to absorb (see its own flex-1/overflow-y-auto).
+  // Plain block flow, no h-full/flex-1 chain: the shared SidebarWrapper shell
+  // already gives every page one scroll container (<main class="overflow-auto">),
+  // and a multi-level flex-1/min-h-0 chain trying to make only the member
+  // table scroll turned out to fail silently on at least one real mobile
+  // browser — the table resolved to zero height and was invisible, with no
+  // error, because a child's min-height can't force a zero-height flex
+  // ancestor to expand once overflow-hidden clips it. A plain page that just
+  // grows, with the table given its own fixed vh-based height (immune to any
+  // ancestor's height math) is far less clever but cannot fail this way.
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-5xl mx-auto w-full flex-1 min-h-0 flex flex-col gap-6 p-4 sm:p-6 overflow-hidden">
-        <OrganizationSettings
-          organizationName={organization.name}
-          organizationId={organization.id}
-        />
-      </div>
+    <div className="max-w-5xl mx-auto space-y-6 p-4 sm:p-6">
+      <OrganizationSettings
+        organizationName={organization.name}
+        organizationId={organization.id}
+      />
     </div>
   )
 }

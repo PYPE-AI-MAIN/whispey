@@ -423,7 +423,7 @@ export default function OrganizationSettings({
   return (
     <>
       {/* Header */}
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex items-center gap-3">
         <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
           <Settings className="w-5 h-5 text-white" />
         </div>
@@ -438,11 +438,9 @@ export default function OrganizationSettings({
         </div>
       </div>
 
-      {/* Team Management Section — flex-1/min-h-0/overflow-hidden all the way
-          down to the table, so this card (not the page) absorbs whatever
-          doesn't fit, and only the table itself ever scrolls. */}
-        <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 flex-1 min-h-0 overflow-hidden">
-          <CardHeader className="shrink-0">
+      {/* Team Management Section */}
+        <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+          <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
@@ -466,11 +464,10 @@ export default function OrganizationSettings({
               </div>
             </div>
           </CardHeader>
-          <CardContent className="flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
-            {/* Team Members List — the flexible region: takes whatever space is
-                left in the card, and its own table area scrolls internally. */}
-            <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
-              <div className="shrink-0 flex flex-wrap items-center justify-between gap-3">
+          <CardContent className="space-y-3">
+            {/* Team Members List */}
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Current Members
                 </h3>
@@ -500,7 +497,11 @@ export default function OrganizationSettings({
               ) : filteredMembers.length === 0 ? (
                 <p className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">No members match &ldquo;{memberSearch}&rdquo;.</p>
               ) : (
-                <div className="flex-1 min-h-[240px] overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
+                /* A real vh height, not flex-1/min-h-0 — that chain resolved to
+                   zero on at least one real mobile browser, hiding the table
+                   entirely with no error. vh is resolved against the actual
+                   viewport, independent of any ancestor's height math. */
+                <div className="h-[50vh] overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
                 <div className="h-full overflow-auto">
                   <table className="w-full min-w-[560px] table-fixed text-sm">
                     <thead className="sticky top-0 z-10">
@@ -638,7 +639,7 @@ export default function OrganizationSettings({
 
         {/* Danger Zone */}
         {currentUserRole === 'owner' && (
-          <Card className="border-red-200 dark:border-red-900 bg-white dark:bg-gray-900 shrink-0">
+          <Card className="border-red-200 dark:border-red-900 bg-white dark:bg-gray-900">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
                 <AlertTriangle className="w-5 h-5" />
