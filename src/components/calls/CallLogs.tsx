@@ -158,7 +158,7 @@ function DownloadButtonGroup({
   onOpenDownloadDialog,
   onOpenCampaignDownload,
   onOpenSettings,
-}: {
+}: Readonly<{
   hasCampaignSelected: boolean
   isLoading: boolean
   agentId: string | undefined
@@ -166,7 +166,7 @@ function DownloadButtonGroup({
   onOpenDownloadDialog: () => void
   onOpenCampaignDownload: () => void
   onOpenSettings: () => void
-}) {
+}>) {
   const handleDownloadClick = hasCampaignSelected ? onOpenCampaignDownload : onOpenDownloadDialog
   return (
     <div className="relative flex items-center gap-1">

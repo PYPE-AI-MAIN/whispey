@@ -87,10 +87,10 @@ function getStatusIcon(status: string) {
 
 // One tool-call line in the Conversation column — pulled out of the row map so its
 // own conditionals don't add to the row callback's cognitive complexity.
-function ToolCallLine({ tool, idx }: { tool: any; idx: number }) {
+function ToolCallLine({ tool, idx }: Readonly<{ tool: any; idx: number }>) {
   const toolName = tool.tool_name || tool.name || 'unknown'
   const isError = tool.success === false || tool.status === 'error'
-  const result = tool.result !== undefined ? String(tool.result) : null
+  const result = tool.result === undefined ? null : String(tool.result)
   const argKeys = tool.arguments && typeof tool.arguments === 'object'
     ? Object.keys(tool.arguments)
     : []
@@ -126,7 +126,7 @@ function ToolCallLine({ tool, idx }: { tool: any; idx: number }) {
 }
 
 // One fallback-event line — same reasoning as ToolCallLine above.
-function FallbackEventLine({ fb, idx }: { fb: any; idx: number }) {
+function FallbackEventLine({ fb, idx }: Readonly<{ fb: any; idx: number }>) {
   const isRecovery = fb.event_type === 'provider_recovered'
   const isTotalFailure = !isRecovery && fb.all_providers_failed
   const eventKey = `${fb.provider_type}-${fb.event_type}-${fb.timestamp}-${idx}`
@@ -926,7 +926,7 @@ const handleRowClick = (trace: TraceLog) => {
                           {trace.tool_calls && trace.tool_calls.length > 0 && (
                             <div className="space-y-0.5 pl-1 border-l-2 border-gray-200 dark:border-gray-700 ml-1">
                               {trace.tool_calls.map((tool: any, idx: number) => (
-                                <ToolCallLine key={idx} tool={tool} idx={idx} />
+                                <ToolCallLine key={`${tool.tool_name || tool.name || 'unknown'}-${idx}`} tool={tool} idx={idx} />
                               ))}
                             </div>
                           )}
@@ -955,7 +955,7 @@ const handleRowClick = (trace: TraceLog) => {
                           {fallbackEvents.length > 0 && (
                             <div className="space-y-0.5 pl-1 border-l-2 border-red-200 dark:border-red-800 ml-1">
                               {fallbackEvents.map((fb: any, idx: number) => (
-                                <FallbackEventLine key={idx} fb={fb} idx={idx} />
+                                <FallbackEventLine key={`${fb.provider_type}-${fb.event_type}-${fb.timestamp}-${idx}`} fb={fb} idx={idx} />
                               ))}
                             </div>
                           )}
