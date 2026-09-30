@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import toast from 'react-hot-toast'
 import {
   Settings,
@@ -144,6 +143,7 @@ export default function OrganizationSettings({
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<'admin' | 'viewer'>('viewer')
   const [isInviting, setIsInviting] = useState(false)
+  const [showInviteDialog, setShowInviteDialog] = useState(false)
 
   // Delete organization states
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -208,9 +208,10 @@ export default function OrganizationSettings({
       }
 
       refetchMembers()
-      
+
       setInviteEmail('')
       setInviteRole('viewer')
+      setShowInviteDialog(false)
 
       if (data.inviteSent === false) {
         if (data.type === 'direct_add') {
@@ -452,78 +453,20 @@ export default function OrganizationSettings({
                   Manage who has access to this organization
                 </CardDescription>
               </div>
-              <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-                {allMembers.length} {allMembers.length === 1 ? 'member' : 'members'}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                  {allMembers.length} {allMembers.length === 1 ? 'member' : 'members'}
+                </Badge>
+                {canManageMembers && (
+                  <Button size="sm" onClick={() => setShowInviteDialog(true)} className="gap-1.5">
+                    <UserPlus className="w-3.5 h-3.5" />
+                    Invite
+                  </Button>
+                )}
+              </div>
             </div>
           </CardHeader>
-          <CardContent className="flex-1 min-h-0 flex flex-col gap-6 overflow-hidden">
-            {/* Invite New Member */}
-            {canManageMembers && (
-              <div className="shrink-0 p-4 bg-blue-50 dark:bg-blue-900/10 rounded-lg border border-blue-200 dark:border-blue-800">
-                <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-                  <UserPlus className="w-4 h-4" />
-                  Invite Team Member
-                </h3>
-                <div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
-                  <div className="space-y-1">
-                    <Label htmlFor="invite-email" className="text-xs text-gray-700 dark:text-gray-300">Email Address</Label>
-                    <Input
-                      id="invite-email"
-                      type="email"
-                      placeholder="colleague@company.com"
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
-                      className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="invite-role" className="text-xs text-gray-700 dark:text-gray-300">Role</Label>
-                    <Select value={inviteRole} onValueChange={(value: 'admin' | 'viewer') => setInviteRole(value)}>
-                      <SelectTrigger id="invite-role" className="w-[130px] bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                        <SelectItem value="viewer" className="text-gray-900 dark:text-gray-100">
-                          <div className="flex items-center gap-2">
-                            <Eye className="w-3 h-3" />
-                            Viewer
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="admin" className="text-gray-900 dark:text-gray-100">
-                          <div className="flex items-center gap-2">
-                            <Shield className="w-3 h-3" />
-                            Admin
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-end">
-                    <Button 
-                      onClick={handleInviteMember} 
-                      disabled={isInviting}
-                      className="w-full md:w-auto"
-                    >
-                      {isInviting ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Sending...
-                        </>
-                      ) : (
-                        <>
-                          <Mail className="w-4 h-4 mr-2" />
-                          Add User
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <Separator className="bg-gray-200 dark:bg-gray-800 shrink-0" />
-
+          <CardContent className="flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
             {/* Team Members List — the flexible region: takes whatever space is
                 left in the card, and its own table area scrolls internally. */}
             <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
@@ -557,7 +500,7 @@ export default function OrganizationSettings({
               ) : filteredMembers.length === 0 ? (
                 <p className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">No members match &ldquo;{memberSearch}&rdquo;.</p>
               ) : (
-                <div className="flex-1 min-h-0 overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
+                <div className="flex-1 min-h-[240px] overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
                 <div className="h-full overflow-auto">
                   <table className="w-full min-w-[560px] table-fixed text-sm">
                     <thead className="sticky top-0 z-10">
@@ -734,6 +677,79 @@ export default function OrganizationSettings({
             </CardContent>
           </Card>
         )}
+
+      {/* Invite Team Member Dialog */}
+      <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
+        <DialogContent className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
+              <UserPlus className="w-4 h-4" />
+              Invite Team Member
+            </DialogTitle>
+            <DialogDescription className="text-gray-500 dark:text-gray-400">
+              They'll get an email invite to join this organization.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="invite-email" className="text-xs text-gray-700 dark:text-gray-300">Email Address</Label>
+              <Input
+                id="invite-email"
+                type="email"
+                placeholder="colleague@company.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="invite-role" className="text-xs text-gray-700 dark:text-gray-300">Role</Label>
+              <Select value={inviteRole} onValueChange={(value: 'admin' | 'viewer') => setInviteRole(value)}>
+                <SelectTrigger id="invite-role" className="w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <SelectItem value="viewer" className="text-gray-900 dark:text-gray-100">
+                    <div className="flex items-center gap-2">
+                      <Eye className="w-3 h-3" />
+                      Viewer
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="admin" className="text-gray-900 dark:text-gray-100">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-3 h-3" />
+                      Admin
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowInviteDialog(false)}
+              disabled={isInviting}
+              className="border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleInviteMember} disabled={isInviting}>
+              {isInviting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Mail className="w-4 h-4 mr-2" />
+                  Add User
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Remove Member Confirmation Dialog */}
       <Dialog open={!!memberToRemove} onOpenChange={() => setMemberToRemove(null)}>
