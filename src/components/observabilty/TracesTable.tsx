@@ -98,12 +98,12 @@ function ToolCallLine({ tool, idx }: Readonly<{ tool: any; idx: number }>) {
     <div key={idx} className="flex items-start gap-1 text-xs">
       <Wrench className={cn(
         "w-3 h-3 mt-0.5 shrink-0",
-        isError ? "text-red-500 dark:text-red-400" : "text-gray-500 dark:text-gray-400"
+        isError ? "text-red-500 dark:text-red-400" : "text-amber-500 dark:text-amber-400"
       )} />
       <div className="min-w-0">
         <span className={cn(
           "font-medium",
-          isError ? "text-red-700 dark:text-red-300" : "text-gray-700 dark:text-gray-300"
+          isError ? "text-red-700 dark:text-red-300" : "text-amber-700 dark:text-amber-400"
         )}>
           {toolName}
         </span>
@@ -924,7 +924,7 @@ const handleRowClick = (trace: TraceLog) => {
 
                           {/* Tool calls — shown between user input and agent response */}
                           {trace.tool_calls && trace.tool_calls.length > 0 && (
-                            <div className="space-y-0.5 pl-1 border-l-2 border-gray-200 dark:border-gray-700 ml-1">
+                            <div className="space-y-0.5 pl-1 border-l-2 border-amber-300 dark:border-amber-800/60 ml-1">
                               {trace.tool_calls.map((tool: any, idx: number) => (
                                 <ToolCallLine key={`${tool.tool_name || tool.name || 'unknown'}-${idx}`} tool={tool} idx={idx} />
                               ))}
@@ -970,13 +970,10 @@ const handleRowClick = (trace: TraceLog) => {
                         {/* Operations */}
                         <div className="col-span-2 space-y-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            {/* Neutral, not orange — a tool call isn't an error, so it
-                                doesn't need to compete for attention with the red
-                                fallback-failure count right below it. */}
                             {toolInfo.total > 0 && (
                               <div className="flex items-center gap-1 text-xs">
-                                <Wrench className="w-3 h-3 text-gray-500 dark:text-gray-400" />
-                                <span className="font-medium text-gray-700 dark:text-gray-300">{toolInfo.total}</span>
+                                <Wrench className="w-3 h-3 text-amber-500 dark:text-amber-400" />
+                                <span className="font-medium text-amber-700 dark:text-amber-400">{toolInfo.total}</span>
                                 <span className="text-gray-400 dark:text-gray-500">
                                   ({toolInfo.successful}✓)
                                 </span>
