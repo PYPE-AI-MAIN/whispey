@@ -24,7 +24,7 @@ const MAX_VARIABLE_NAME = 64
 const MAX_VARIABLE_VALUE = 1000
 
 function blank(value: string | undefined): boolean {
-  return !value || !value.trim()
+  return !value?.trim()
 }
 
 /** Which required field is missing, if any. */

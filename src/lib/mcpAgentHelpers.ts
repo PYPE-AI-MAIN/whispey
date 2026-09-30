@@ -36,9 +36,8 @@ export function slugifyAgentName(displayName: string): string {
 }
 
 /** Public URL of the Studio page for an agent. */
-export function studioUrl(projectId: string, agentId: string, appUrl?: string): string {
-  const base = appUrl ?? 'http://localhost:3000'
-  const trimmed = base.endsWith('/') ? base.slice(0, -1) : base
+export function studioUrl(projectId: string, agentId: string, appUrl = 'http://localhost:3000'): string {
+  const trimmed = appUrl.endsWith('/') ? appUrl.slice(0, -1) : appUrl
   return `${trimmed}/${projectId}/agents/${agentId}/studio`
 }
 
