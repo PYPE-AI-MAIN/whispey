@@ -86,6 +86,9 @@ export default function PipecatUploadZone({ pipecatAgentId, onUploadSuccess }: P
         onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
         onDragLeave={() => setIsDragging(false)}
         onClick={() => fileInputRef.current?.click()}
+        role="button"
+        tabIndex={0}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click() } }}
         className={cn(
           'relative rounded-xl border-2 border-dashed transition-colors flex flex-col items-center justify-center min-h-[140px] p-4 cursor-pointer',
           isDragging

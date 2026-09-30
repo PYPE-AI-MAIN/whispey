@@ -316,9 +316,12 @@ const SessionTraceView = ({
           {turns.map((turn) => (
             <div key={turn.id} className="border-b border-gray-100 dark:border-gray-700">
               {/* Turn Header */}
-              <div 
+              <div
                 className="px-3 py-3 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer flex items-center justify-between text-sm border-l-2 border-l-slate-400 bg-slate-200 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600"
                 onClick={() => toggleTurn(turn.id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleTurn(turn.id) } }}
               >
                 <div className="flex items-center gap-2">
                   {expandedTurns.has(turn.id) ? 
@@ -349,6 +352,14 @@ const SessionTraceView = ({
                         key={`${turn.id}-${index}-${span.spanId || span.name}`}
                         className="hover:bg-white dark:hover:bg-gray-700 cursor-pointer border-l-2 border-l-transparent hover:border-l-blue-300 dark:hover:border-l-blue-500 text-sm transition-colors relative"
                         onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedSpan(span);
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key !== 'Enter' && e.key !== ' ') return;
+                          e.preventDefault();
                           e.stopPropagation();
                           setSelectedSpan(span);
                         }}

@@ -100,26 +100,15 @@ export async function GET(request: NextRequest) {
     // Apply reprocess_type filters for empty_only
     if (reprocess_type === 'empty_only') {
       if (reprocess_options === 'transcription') {
-        if (transcription_fields.length > 0) {
-          // Check if specific transcription fields are missing
-          // Use .not() to check if field exists, then invert with .or() for any missing
-          // For now, use a simpler approach: check if transcription_metrics is null/empty
-          // OR if any of the specific fields are missing
-          // Note: Supabase's .or() with JSONB paths is complex, so we'll use a general check
-          // The actual filtering by specific fields will be done in the Lambda function
-          query = query.or('transcription_metrics.is.null,transcription_metrics.eq.{}')
-        } else {
-          // Count logs with null or empty transcription_metrics
-          query = query.or('transcription_metrics.is.null,transcription_metrics.eq.{}')
-        }
+        // Count logs with null or empty transcription_metrics. When specific
+        // transcription_fields are given, this count is approximate — exact
+        // field-level filtering happens in the Lambda function.
+        query = query.or('transcription_metrics.is.null,transcription_metrics.eq.{}')
       } else if (reprocess_options === 'metrics') {
-        if (metrics_fields.length > 0) {
-          // Similar approach for metrics
-          query = query.or('metrics.is.null,metrics.eq.{}')
-        } else {
-          // Count logs with null or empty metrics
-          query = query.or('metrics.is.null,metrics.eq.{}')
-        }
+        // Count logs with null or empty metrics. When specific metrics_fields
+        // are given, this count is approximate — exact field-level filtering
+        // happens in the Lambda function.
+        query = query.or('metrics.is.null,metrics.eq.{}')
       } else if (reprocess_options === 'both') {
         // Count logs where transcription_metrics is null/empty OR metrics is null/empty
         query = query.or('transcription_metrics.is.null,transcription_metrics.eq.{},metrics.is.null,metrics.eq.{}')

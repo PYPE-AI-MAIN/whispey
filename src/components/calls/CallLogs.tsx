@@ -192,7 +192,7 @@ function buildSelectionColumn(
   return {
     id: 'select',
     header: () => (
-      <div onClick={(e) => e.stopPropagation()}>
+      <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
         <Checkbox
           aria-label="Select all calls on this page"
           checked={allSelected}
@@ -201,7 +201,7 @@ function buildSelectionColumn(
       </div>
     ),
     cell: ({ row }) => (
-      <div onClick={(e) => e.stopPropagation()}>
+      <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
         <Checkbox
           aria-label="Select this call"
           checked={selectedIds.has(row.original.id)}
@@ -238,7 +238,7 @@ function buildCallAgainColumn(
     cell: ({ row }) => {
       if (!row.original.customer_number) return <span className="text-muted-foreground">—</span>
       return (
-        <div onClick={(e) => e.stopPropagation()}>
+        <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
           <CallAgainDialog call={row.original} projectId={projectId} agent={agent} phoneNumbers={outboundPhoneNumbers} />
         </div>
       )
@@ -631,7 +631,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
       const tags = call.transcription_metrics?.tags
       if (Array.isArray(tags)) tags.forEach((t: string) => tagSet.add(t))
     })
-    return Array.from(tagSet).sort()
+    return Array.from(tagSet).sort((a, b) => a.localeCompare(b))
   }, [calls])
 
   const baseColumns = useMemo(

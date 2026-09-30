@@ -1146,6 +1146,18 @@ export default function PipecatAgentConfig({
                     return next
                   })
                 }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter' && e.key !== ' ') return
+                  e.preventDefault()
+                  const unmapped = detectedVarNames.filter(n => !(n in variables))
+                  setVariables(v => {
+                    const next = { ...v }
+                    unmapped.forEach(n => { if (!(n in next)) next[n] = '' })
+                    return next
+                  })
+                }}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-start gap-2 flex-1">

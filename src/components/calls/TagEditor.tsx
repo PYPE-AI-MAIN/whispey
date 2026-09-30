@@ -143,6 +143,9 @@ const TagBadge: React.FC<TagBadgeProps> = ({
       }}
       className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] font-medium select-none"
       onClick={e => { if (canComment) { e.stopPropagation(); setCommentOpen(true) } }}
+      role={canComment ? 'button' : undefined}
+      tabIndex={canComment ? 0 : undefined}
+      onKeyDown={e => { if (canComment && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.stopPropagation(); setCommentOpen(true) } }}
     >
       {tag}
       {/* Comment indicator dot */}
@@ -386,6 +389,7 @@ export const TagEditor: React.FC<TagEditorProps> = ({
     <div
       className="flex flex-wrap items-center gap-1 min-w-[120px] max-w-[280px]"
       onClick={e => e.stopPropagation()}
+      onKeyDown={e => e.stopPropagation()}
     >
       {tags.map(tag => (
         <TagBadge

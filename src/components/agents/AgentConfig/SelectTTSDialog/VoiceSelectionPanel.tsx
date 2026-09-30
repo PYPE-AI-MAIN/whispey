@@ -106,6 +106,9 @@ const SarvamVoiceCard = ({
 }) => (
   <div
     onClick={onClick}
+    role="button"
+    tabIndex={0}
+    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
     className={`group cursor-pointer p-2 rounded-md border transition-all hover:shadow-sm ${
       isSelected
         ? 'border-orange-300 dark:border-orange-600 bg-orange-50 dark:bg-orange-900/10'
@@ -175,6 +178,9 @@ const ElevenLabsVoiceCard = ({
 }) => (
   <div
     onClick={onClick}
+    role="button"
+    tabIndex={0}
+    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
     className={`group cursor-pointer p-2 rounded-md border transition-all hover:shadow-sm ${
       isSelected
         ? 'border-purple-300 dark:border-purple-600 bg-purple-50 dark:bg-purple-900/10'
@@ -243,6 +249,9 @@ const GoogleTTSVoiceCard = ({
 }) => (
   <div
     onClick={onClick}
+    role="button"
+    tabIndex={0}
+    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
     className={`group cursor-pointer p-2 rounded-md border transition-all hover:shadow-sm ${
       isSelected
         ? 'border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/10'

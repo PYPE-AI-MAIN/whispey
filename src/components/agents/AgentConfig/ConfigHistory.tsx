@@ -190,7 +190,7 @@ const CONFIG_DIFF_SKIP = new Set([
 function configForDiff(assistant: any): string {
   if (!assistant || typeof assistant !== 'object') return '{}'
   const filtered: Record<string, any> = {}
-  for (const k of Object.keys(assistant).sort()) {
+  for (const k of Object.keys(assistant).sort((a, b) => a.localeCompare(b))) {
     if (!CONFIG_DIFF_SKIP.has(k)) filtered[k] = assistant[k]
   }
   return JSON.stringify(filtered, null, 2)
@@ -612,6 +612,9 @@ function HistoryEntryRow({
   return (
     <div
       onClick={handleRowClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleRowClick() } }}
       className={`rounded-lg border transition-all ${
         isCompareBaseline
           ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
@@ -659,7 +662,7 @@ function HistoryEntryRow({
           </div>
         </div>
 
-        <div className="shrink-0 flex items-center gap-1" onClick={e => e.stopPropagation()}>
+        <div className="shrink-0 flex items-center gap-1" onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>
           <button
             onClick={() => onCopy(entry.id)}
             title="Copy config JSON"

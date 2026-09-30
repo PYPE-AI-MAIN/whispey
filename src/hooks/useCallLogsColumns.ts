@@ -90,9 +90,9 @@ export const useCallLogsColumns = (agent: any, calls: CallLog[], role: string | 
       (key) => !EXCLUDED_METADATA_COLUMNS.includes(key)
     )
     return {
-      metadata: metadataFiltered.sort(),
-      transcription_metrics: Array.from(transcriptionKeys).sort(),
-      metrics: Array.from(metricsKeys).sort()
+      metadata: metadataFiltered.sort((a, b) => a.localeCompare(b)),
+      transcription_metrics: Array.from(transcriptionKeys).sort((a, b) => a.localeCompare(b)),
+      metrics: Array.from(metricsKeys).sort((a, b) => a.localeCompare(b))
     }
   }, [calls])
 
@@ -129,7 +129,7 @@ export const useCallLogsColumns = (agent: any, calls: CallLog[], role: string | 
 
     const allAvailableTranscriptionMetrics = Array.from(
       new Set([...dynamicColumns.transcription_metrics, ...dynamicColumnsKey])
-    ).sort()
+    ).sort((a, b) => a.localeCompare(b))
 
     setVisibleColumns((prev) => {
       const needsInitialization =
@@ -173,7 +173,7 @@ export const useCallLogsColumns = (agent: any, calls: CallLog[], role: string | 
   const mergedTranscriptionMetrics = useMemo(() => {
     return Array.from(
       new Set([...dynamicColumns.transcription_metrics, ...dynamicColumnsKey])
-    ).sort()
+    ).sort((a, b) => a.localeCompare(b))
   }, [dynamicColumns.transcription_metrics, dynamicColumnsKey])
 
   return {

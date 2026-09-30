@@ -237,39 +237,20 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, projectId, agent, se
         if (!text) { i++; continue }
 
         if (role === 'assistant') {
-          // Check if the previous message was a user message already consumed
-          // — if so this is an agent reply to a pending user turn (handled below).
-          // Stand-alone assistant message (e.g. opening greeting): emit its own turn.
-          const nextMsg = transcriptJson[i + 1]
-          const nextRole = nextMsg?.role?.toLowerCase()
-
-          if (nextRole === 'user') {
-            // Pair: assistant[i] is an opening, keep it alone
-            turns.push({
-              id: `transcript_${turnIdx}`,
-              session_id: call.id,
-              turn_id: `turn_${turnIdx + 1}`,
-              user_transcript: '',
-              agent_response: text,
-              created_at: call.created_at,
-              unix_timestamp: turnIdx,
-            } as TraceLog)
-            turnIdx++
-            i++
-          } else {
-            // Orphan assistant message at end
-            turns.push({
-              id: `transcript_${turnIdx}`,
-              session_id: call.id,
-              turn_id: `turn_${turnIdx + 1}`,
-              user_transcript: '',
-              agent_response: text,
-              created_at: call.created_at,
-              unix_timestamp: turnIdx,
-            } as TraceLog)
-            turnIdx++
-            i++
-          }
+          // Whether assistant[i] is followed by a user message (opening
+          // greeting) or is an orphan message at the end, it's emitted as
+          // its own standalone turn either way.
+          turns.push({
+            id: `transcript_${turnIdx}`,
+            session_id: call.id,
+            turn_id: `turn_${turnIdx + 1}`,
+            user_transcript: '',
+            agent_response: text,
+            created_at: call.created_at,
+            unix_timestamp: turnIdx,
+          } as TraceLog)
+          turnIdx++
+          i++
         } else if (role === 'user') {
           // Pair user message with the immediately following assistant reply
           const nextMsg = transcriptJson[i + 1]
@@ -805,6 +786,9 @@ const handleRowClick = (trace: TraceLog) => {
                       <div
                         key={trace.id}
                         onClick={() => handleRowClick(trace)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleRowClick(trace) } }}
                         className={cn(
                           "grid grid-cols-12 gap-3 px-4 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-900/10 cursor-pointer border-l-2 transition-all text-sm",
                           hasBugReport

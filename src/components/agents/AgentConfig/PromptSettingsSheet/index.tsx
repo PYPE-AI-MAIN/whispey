@@ -214,9 +214,12 @@ export default function PromptSettingsSheet({
         <div className="space-y-6 mt-6">
           {/* Unmapped Variables Warning */}
           {unmappedVariables.length > 0 && (
-            <div 
+            <div
               className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
               onClick={addAllUnmapped}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); addAllUnmapped() } }}
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-start gap-2 flex-1">

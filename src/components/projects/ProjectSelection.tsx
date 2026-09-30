@@ -616,6 +616,9 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                       index !== filteredProjects.length - 1 ? 'border-b border-gray-200 dark:border-gray-700' : ''
                     } ${selectedProject === project.id ? 'opacity-50' : ''}`}
                     onClick={() => handleProjectClick(project)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleProjectClick(project) } }}
                   >
                     <div className="grid grid-cols-12 gap-4 items-center">
                       {/* Organisation */}

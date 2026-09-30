@@ -250,6 +250,9 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
       return (
         <div
           onClick={(e) => { e.stopPropagation(); toggleExpand(num) }}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); toggleExpand(num) } }}
           className="flex items-center justify-center gap-1 w-full h-full min-h-[80px] cursor-pointer select-none group"
         >
           {expanded

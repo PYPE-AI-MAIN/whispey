@@ -26,7 +26,7 @@ export function useTranscriptEnglishToggle(traces: TranscriptTurn[]) {
   const [cacheVersion, setCacheVersion] = useState(0)
 
   const fingerprint = useMemo(
-    () => collectUniqueTexts(traces).sort().join('\u0001'),
+    () => collectUniqueTexts(traces).sort((a, b) => a.localeCompare(b)).join('\u0001'),
     [traces],
   )
 

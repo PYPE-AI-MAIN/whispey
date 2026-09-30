@@ -264,9 +264,12 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
           {traceGroups.map((traceGroup) => (
             <div key={traceGroup.trace_id}>
               {/* Trace Header */}
-              <div 
+              <div
                 className="px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group"
                 onClick={() => toggleTrace(traceGroup.trace_id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleTrace(traceGroup.trace_id) } }}
               >
                 <div className="flex items-center gap-3">
                   {expandedTraces.has(traceGroup.trace_id) ? 
@@ -317,6 +320,14 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
                             key={`${traceGroup.trace_id}-span-${index}`}
                             className="flex items-center h-8 hover:bg-white dark:hover:bg-gray-700 cursor-pointer rounded group"
                             onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedSpan(span);
+                            }}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key !== 'Enter' && e.key !== ' ') return;
+                              e.preventDefault();
                               e.stopPropagation();
                               setSelectedSpan(span);
                             }}

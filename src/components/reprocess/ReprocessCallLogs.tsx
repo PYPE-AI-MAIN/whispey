@@ -118,7 +118,7 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
             const fields = promptConfig
               .filter((p: any) => p.key && typeof p.key === 'string')
               .map((p: any) => p.key)
-            setAvailableTranscriptionFields(fields.sort())
+            setAvailableTranscriptionFields(fields.sort((a: string, b: string) => a.localeCompare(b)))
           }
         } catch (e) {
           console.error('Error parsing field_extractor_prompt:', e)
@@ -138,7 +138,7 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
           if (typeof metricsConfig === 'object' && metricsConfig !== null) {
             const metricIds = Object.keys(metricsConfig)
               .filter(key => metricsConfig[key]?.enabled !== false)
-            setAvailableMetricsFields(metricIds.sort())
+            setAvailableMetricsFields(metricIds.sort((a, b) => a.localeCompare(b)))
           }
         } catch (e) {
           console.error('Error parsing metrics:', e)

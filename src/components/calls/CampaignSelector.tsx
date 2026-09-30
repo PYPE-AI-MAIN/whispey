@@ -124,7 +124,9 @@ export const CampaignSelector: React.FC<CampaignSelectorProps> = ({
           {selectedCampaign ? (
             <span
               role="button"
+              tabIndex={0}
               onClick={handleClear}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onSelect(null) } }}
               className="ml-0.5 rounded-full p-0.5 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors shrink-0"
             >
               <X className="h-3 w-3" />
