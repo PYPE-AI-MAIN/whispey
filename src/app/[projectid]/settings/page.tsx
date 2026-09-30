@@ -65,7 +65,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6 p-4 sm:p-6 max-w-3xl mx-auto">
+    <div className="space-y-6 p-4 sm:p-6 max-w-5xl mx-auto">
       <OrganizationSettings
         organizationName={organization.name}
         organizationId={organization.id}
