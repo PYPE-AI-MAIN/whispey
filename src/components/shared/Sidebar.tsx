@@ -624,7 +624,7 @@ export default function Sidebar({
 
         {/* Navigation with Groups */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          <OrganizationSwitcher 
+          <OrganizationSwitcher
             isCollapsed={isCollapsed}
             isMobile={isMobile}
             externalOpen={orgSwitcherOpen}
@@ -685,7 +685,7 @@ export default function Sidebar({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button 
+                <button
                   onClick={() => setIsSupportOpen(true)}
                   className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 w-full ${
                     isCollapsed && !isMobile ? 'justify-center' : ''

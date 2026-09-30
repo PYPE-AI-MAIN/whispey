@@ -222,7 +222,7 @@ export default function TalkToAssistant({
           <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
             {mode === 'voice' ? 'Start voice conversation' : 'Start text conversation — no audio'}
           </p>
-          <Button onClick={voiceActions.connect} className="w-full">
+          <Button onClick={() => voiceActions.connect()} className="w-full">
             {mode === 'voice' ? 'Start Call' : 'Start Chat'}
           </Button>
         </div>

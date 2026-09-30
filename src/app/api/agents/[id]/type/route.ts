@@ -43,6 +43,8 @@ export async function GET(
       id: agent.id,
       agent_type: agentType,
       hasWorkflow,
+      // Lets the sidebar show Agent Studio only for agents built through the MCP.
+      createdViaMcp: configuration?.created_via === 'mcp',
     })
 
   } catch (error) {

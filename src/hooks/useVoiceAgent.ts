@@ -51,7 +51,8 @@ interface VoiceAgentState {
 }
 
 interface VoiceAgentActions {
-  connect: () => Promise<void>
+  /** `variables` override the agent's configured {{variables}} for this call only. */
+  connect: (opts?: { variables?: Record<string, string> }) => Promise<void>
   disconnect: () => Promise<void>
   toggleMute: () => Promise<void>
   setVolume: (volume: number) => void
@@ -241,11 +242,11 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
 
   }, [mode, volume, upsertTranscript, cleanupAudioElements])
 
-  const startWebSession = async (): Promise<WebSession> => {
+  const startWebSession = async (variables?: Record<string, string>): Promise<WebSession> => {
     const res = await fetch(sessionEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_identity: generateSecureId('user'), user_name: `User ${getSecureRandomInt(10000)}`, agent_name: agentName, deploymentTarget }),
+      body: JSON.stringify({ user_identity: generateSecureId('user'), user_name: `User ${getSecureRandomInt(10000)}`, agent_name: agentName, deploymentTarget, ...(variables && Object.keys(variables).length ? { variables } : {}) }),
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Unknown error' }))
@@ -254,7 +255,7 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
     return res.json()
   }
 
-  const connect = useCallback(async () => {
+  const connect = useCallback(async (opts?: { variables?: Record<string, string> }) => {
     if (isConnecting || isConnected) return
     if (!agentName?.trim()) { setConnectionError('Agent name is required'); return }
     // A prior session that ended any way other than a clean disconnect() (closing
@@ -264,7 +265,7 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
     setTranscripts([])
     setIsConnecting(true); setConnectionError(null)
     try {
-      const sessionData = await startWebSession()
+      const sessionData = await startWebSession(opts?.variables)
       setWebSession(sessionData)
       const liveKitRoom = new Room({
         audioCaptureDefaults: { autoGainControl: true, echoCancellation: true, noiseSuppression: true },
