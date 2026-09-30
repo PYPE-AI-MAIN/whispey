@@ -559,6 +559,45 @@ function ConfigDetailView({
   )
 }
 
+// The compare-mode button has two mutually exclusive shapes (start comparing vs.
+// pick this entry as the target) and a null case — pulled out of the nested
+// ternary in HistoryEntryRow's JSX into plain if/else for readability.
+function CompareButton({
+  isComparePickMode,
+  isCompareBaseline,
+  entryId,
+  onSelectForCompare,
+}: Readonly<{
+  isComparePickMode: boolean
+  isCompareBaseline: boolean
+  entryId: string
+  onSelectForCompare: (id: string) => void
+}>) {
+  if (isComparePickMode && !isCompareBaseline) {
+    return (
+      <button
+        onClick={e => { e.stopPropagation(); onSelectForCompare(entryId) }}
+        className="flex items-center gap-1 text-xs font-medium px-2 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+      >
+        <ArrowLeftRight className="w-3 h-3" />
+        Compare
+      </button>
+    )
+  }
+  if (!isCompareBaseline && !isComparePickMode) {
+    return (
+      <button
+        onClick={e => { e.stopPropagation(); onSelectForCompare(entryId) }}
+        title="Select to compare"
+        className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+      >
+        <ArrowLeftRight className="w-3.5 h-3.5" />
+      </button>
+    )
+  }
+  return null
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // History entry row
 // ─────────────────────────────────────────────────────────────────────────────
@@ -693,23 +732,12 @@ function HistoryEntryRow({
             </button>
           )}
 
-          {isComparePickMode && !isCompareBaseline ? (
-            <button
-              onClick={e => { e.stopPropagation(); onSelectForCompare(entry.id) }}
-              className="flex items-center gap-1 text-xs font-medium px-2 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              <ArrowLeftRight className="w-3 h-3" />
-              Compare
-            </button>
-          ) : !isCompareBaseline && !isComparePickMode ? (
-            <button
-              onClick={e => { e.stopPropagation(); onSelectForCompare(entry.id) }}
-              title="Select to compare"
-              className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <ArrowLeftRight className="w-3.5 h-3.5" />
-            </button>
-          ) : null}
+          <CompareButton
+            isComparePickMode={isComparePickMode}
+            isCompareBaseline={isCompareBaseline}
+            entryId={entry.id}
+            onSelectForCompare={onSelectForCompare}
+          />
         </div>
       </div>
     </div>

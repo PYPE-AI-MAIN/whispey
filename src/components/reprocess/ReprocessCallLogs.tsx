@@ -118,7 +118,7 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
             const fields = promptConfig
               .filter((p: any) => p.key && typeof p.key === 'string')
               .map((p: any) => p.key)
-            const sortedFields = fields.sort((a: string, b: string) => a.localeCompare(b))
+            const sortedFields = fields.toSorted((a: string, b: string) => a.localeCompare(b))
             setAvailableTranscriptionFields(sortedFields)
           }
         } catch (e) {
@@ -139,7 +139,7 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
           if (typeof metricsConfig === 'object' && metricsConfig !== null) {
             const metricIds = Object.keys(metricsConfig)
               .filter(key => metricsConfig[key]?.enabled !== false)
-            const sortedMetricIds = metricIds.sort((a, b) => a.localeCompare(b))
+            const sortedMetricIds = metricIds.toSorted((a, b) => a.localeCompare(b))
             setAvailableMetricsFields(sortedMetricIds)
           }
         } catch (e) {
