@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from 'react'
 import {
-  AlertCircle, ChevronDown, Loader2, MessageSquare, Mic, MicOff, Phone, PhoneOff, Settings2,
+  ChevronDown, Info, Loader2, MessageSquare, Mic, MicOff, Phone, PhoneOff, RefreshCw, Settings2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Transcript } from '@/hooks/useVoiceAgent'
 import MinimalVoicePicker, { VoiceAvatar, useStudioVoices } from './MinimalVoicePicker'
 import SessionVariablesPanel from './SessionVariablesPanel'
+import LastCallCard, { type LastCallState } from './LastCallCard'
 
 type AgentCallState = 'initializing' | 'listening' | 'thinking' | 'speaking'
 type TestTab = 'voice' | 'phone' | 'chat'
@@ -26,7 +27,6 @@ const STATE_LABEL: Record<AgentCallState, string> = {
 }
 
 const BAR_COUNT = 9
-const PANEL_WIDTH = 400
 
 function IconTile({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
@@ -121,6 +121,55 @@ function LiveTranscript({ transcripts, agentName }: Readonly<{ transcripts: Tran
   )
 }
 
+// The hook surfaces raw failures ("Failed to start web session: 500 - ...") —
+// fine for logs, never for the person testing. Everything is mapped to calm
+// plain language with a way forward (retry, or refresh), and shown neutrally
+// rather than in error red.
+function friendlyConnectionError(raw: string): { text: string; retryable: boolean } {
+  if (/reconnecting/i.test(raw)) return { text: 'Connection dropped — reconnecting…', retryable: false }
+  if (/microphone access failed/i.test(raw)) {
+    return { text: "We couldn't access your microphone. Allow mic access for this site in your browser, then try again.", retryable: true }
+  }
+  if (/hasn't joined the call/i.test(raw)) {
+    return {
+      text: "The agent didn't join the call. It may still be starting up — give it a few seconds and try again.",
+      retryable: true,
+    }
+  }
+  return { text: 'Something went wrong connecting to the agent. Try again, or refresh the page if it keeps happening.', retryable: true }
+}
+
+function ConnectionErrorNotice({
+  message, onRetry, className,
+}: Readonly<{ message: string; onRetry?: () => void; className?: string }>) {
+  const { text, retryable } = friendlyConnectionError(message)
+  return (
+    <div className={cn('flex flex-col items-center gap-2', className)}>
+      <p className="flex items-start gap-1.5 text-center text-[11px] leading-relaxed text-gray-500 dark:text-gray-400">
+        <Info className="mt-px h-3 w-3 shrink-0" /> {text}
+      </p>
+      {retryable && (
+        <div className="flex items-center gap-2">
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              className="flex cursor-pointer items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1 text-[11px] font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+            >
+              <RefreshCw className="h-3 w-3" /> Try again
+            </button>
+          )}
+          <button
+            onClick={() => window.location.reload()}
+            className="cursor-pointer text-[11px] text-gray-400 underline-offset-2 transition hover:text-gray-600 hover:underline dark:text-gray-500 dark:hover:text-gray-300"
+          >
+            Refresh page
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function EmptyStage({
   icon, title, subtitle, children,
 }: Readonly<{ icon: React.ReactNode; title: string; subtitle: string; children?: React.ReactNode }>) {
@@ -159,7 +208,14 @@ interface TestAgentPanelProps {
   onToggleMute: () => void
   onConnect: () => void
   onDisconnect: () => void
+  /** Tears down a stuck room if there is one, then connects again. */
+  onRetryConnect?: () => void
+  /** Setup values differ from the saved agent, so starting also updates it. */
+  hasPendingChanges?: boolean
   callDisabled?: boolean
+  lastCallState?: LastCallState
+  lastCallHref?: string
+  onRetryLastCall?: () => void
 }
 
 export default function TestAgentPanel({
@@ -184,7 +240,12 @@ export default function TestAgentPanel({
   onToggleMute,
   onConnect,
   onDisconnect,
+  onRetryConnect,
+  hasPendingChanges = false,
   callDisabled,
+  lastCallState = { status: 'idle' },
+  lastCallHref,
+  onRetryLastCall,
 }: TestAgentPanelProps) {
   const [tab, setTab] = useState<TestTab>('voice')
   const [setupOpen, setSetupOpen] = useState(false)
@@ -209,11 +270,13 @@ export default function TestAgentPanel({
   }, [inCall])
 
   return (
-    // Fixed width inline: as a flex item, min-width:auto would otherwise let each
-    // tab's content push the panel wider, so it jumped when switching tabs.
+    // ~65% of the workspace, with a floor AND a ceiling: min-w keeps it usable
+    // on a narrow window, max-w stops it from swallowing the whole screen (and
+    // the insights column with it) on a wide one. Inline style, not Tailwind's
+    // arbitrary-value classes — those weren't taking effect in practice.
     <aside
-      style={{ width: PANEL_WIDTH, minWidth: PANEL_WIDTH, maxWidth: PANEL_WIDTH }}
-      className="flex h-full shrink-0 flex-col overflow-hidden border-l border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
+      style={{ flexBasis: '65%', minWidth: 420, maxWidth: 820 }}
+      className="flex h-full shrink-0 flex-col overflow-hidden border-r border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
     >
       {/* Toolbar — same tab treatment as the Overview's channel switcher */}
       <div className="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-2 dark:border-gray-800">
@@ -225,7 +288,7 @@ export default function TestAgentPanel({
               aria-selected={tab === t.id}
               onClick={() => !inCall && setTab(t.id)}
               className={cn(
-                'flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition',
+                'flex cursor-pointer items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition',
                 tab === t.id
                   ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
                   : 'text-gray-500 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300',
@@ -250,31 +313,43 @@ export default function TestAgentPanel({
       </div>
 
       {/* Stage */}
-      {tab === 'voice' && !inCall && (
+      {tab === 'voice' && !inCall && lastCallState.status === 'idle' && (
         <EmptyStage
           icon={<Waveform state="initializing" active={false} />}
           title={`Talk to ${agentDisplayName}`}
           subtitle="Start a browser call to hear exactly how the agent sounds right now."
         >
           {connectionError && (
-            <p className="flex items-start gap-1.5 text-left text-[11px] text-rose-600 dark:text-rose-400">
-              <AlertCircle className="mt-px h-3 w-3 shrink-0" /> {connectionError}
-            </p>
+            <ConnectionErrorNotice message={connectionError} onRetry={onRetryConnect ?? onConnect} />
           )}
         </EmptyStage>
+      )}
+
+      {tab === 'voice' && !inCall && lastCallState.status !== 'idle' && (
+        <div className="flex min-h-0 flex-1 flex-col px-4 py-4">
+          {connectionError && (
+            <ConnectionErrorNotice
+              className="mb-3"
+              message={connectionError}
+              onRetry={onRetryConnect ?? onConnect}
+            />
+          )}
+          <LastCallCard state={lastCallState} observabilityHref={lastCallHref} onRetry={onRetryLastCall} />
+        </div>
       )}
 
       {tab === 'voice' && inCall && (
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="flex shrink-0 flex-col items-center gap-1 border-b border-gray-100 px-6 py-4 dark:border-gray-800">
             <Waveform state={agentState} active={isConnected} />
-            <p className="text-xs font-medium text-gray-600 dark:text-gray-300">
+            <p className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-300">
+              {(isConnecting || agentState === 'initializing') && (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
+              )}
               {isConnecting ? 'Connecting…' : STATE_LABEL[agentState]}
             </p>
             {connectionError && (
-              <p className="mt-1 flex items-start gap-1.5 text-[11px] text-rose-600 dark:text-rose-400">
-                <AlertCircle className="mt-px h-3 w-3 shrink-0" /> {connectionError}
-              </p>
+              <ConnectionErrorNotice className="mt-1" message={connectionError} onRetry={onRetryConnect} />
             )}
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
@@ -321,7 +396,7 @@ export default function TestAgentPanel({
           <button
             onClick={() => setSetupOpen((o) => !o)}
             aria-expanded={setupOpen}
-            className="flex w-full items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+            className="flex w-full cursor-pointer items-center gap-2 px-3 py-2.5 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
           >
             <Settings2
               style={{ transition: 'transform 400ms cubic-bezier(0.2, 0.8, 0.2, 1)', transform: setupOpen ? 'rotate(90deg)' : 'none' }}
@@ -380,12 +455,12 @@ export default function TestAgentPanel({
                   />
                   {isDeploying && (
                     <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-gray-500">
-                      <Loader2 className="h-3 w-3 animate-spin" /> {voiceSavingLabel ?? 'Applying — the agent is restarting with the new voice…'}
+                      <Loader2 className="h-3 w-3 animate-spin" /> {voiceSavingLabel ?? 'Applying — the agent is restarting with your changes…'}
                     </p>
                   )}
                   {voiceError && (
-                    <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-rose-600 dark:text-rose-400">
-                      <AlertCircle className="h-3 w-3" /> {voiceError}
+                    <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400">
+                      <Info className="h-3 w-3 shrink-0" /> {voiceError}
                     </p>
                   )}
                 </section>
@@ -414,7 +489,7 @@ export default function TestAgentPanel({
               disabled={!isConnected}
               aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'}
               className={cn(
-                'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition disabled:opacity-50',
+                'flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg border transition disabled:cursor-not-allowed disabled:opacity-50',
                 isMuted
                   ? 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-400'
                   : 'border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800'
@@ -424,7 +499,8 @@ export default function TestAgentPanel({
             </button>
             <button
               onClick={onDisconnect}
-              className="flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-red-600 text-sm font-medium text-white transition hover:bg-red-500"
+              style={{ backgroundColor: '#dc2626', color: '#ffffff' }}
+              className="flex h-10 flex-1 cursor-pointer items-center justify-center gap-2 rounded-lg text-sm font-semibold shadow-sm transition hover:brightness-110 active:brightness-90"
             >
               <PhoneOff className="h-4 w-4" />
               End call
@@ -433,8 +509,16 @@ export default function TestAgentPanel({
         ) : (
           <button
             onClick={tab === 'voice' ? onConnect : undefined}
-            disabled={tab !== 'voice' || callDisabled}
-            className="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 text-sm font-medium text-white shadow-sm transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
+            disabled={tab !== 'voice' || callDisabled || isDeploying}
+            // Colours are inline (theme tokens) rather than disabled: variants —
+            // those didn't apply here, so the button stayed blue and looked
+            // clickable while an update was running.
+            style={
+              tab !== 'voice' || callDisabled || isDeploying
+                ? { backgroundColor: 'var(--muted)', color: 'var(--muted-foreground)', boxShadow: 'none', cursor: 'not-allowed' }
+                : { backgroundColor: '#2563eb', color: '#ffffff' }
+            }
+            className="flex h-10 w-full items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors enabled:cursor-pointer enabled:hover:brightness-110"
           >
             {tab === 'voice' && isDeploying ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -445,8 +529,10 @@ export default function TestAgentPanel({
             )}
             {tab === 'voice'
               ? isDeploying
-                ? (voiceSavingLabel ?? 'Applying changes…')
-                : 'Start call'
+                ? (voiceSavingLabel ?? 'Updating agent…')
+                : hasPendingChanges
+                  ? 'Update and start'
+                  : 'Start call'
               : tab === 'phone'
                 ? 'Place call — soon'
                 : 'Start chat — soon'}

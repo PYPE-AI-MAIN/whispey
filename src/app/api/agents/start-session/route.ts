@@ -8,6 +8,8 @@ interface StartSessionRequest {
   user_name: string
   agent_name: string
   deploymentTarget?: string
+  /** Per-call {{variable}} overrides (name -> value). */
+  variables?: Record<string, unknown>
 }
 
 interface StartSessionResponse {
@@ -43,6 +45,15 @@ export async function POST(request: NextRequest) {
     if ('errorResponse' in urlResult) return urlResult.errorResponse
     const { apiUrl: apiBaseUrl } = urlResult
 
+    // Only plain non-empty string values, capped — this rides along in LiveKit
+    // dispatch metadata, so it shouldn't carry arbitrary client-supplied blobs.
+    const variables: Record<string, string> = {}
+    if (body.variables && typeof body.variables === 'object' && !Array.isArray(body.variables)) {
+      for (const [k, v] of Object.entries(body.variables).slice(0, 50)) {
+        if (typeof v === 'string' && v.trim() && k.length <= 64 && v.length <= 1000) variables[k] = v
+      }
+    }
+
     const apiKey = process.env.NEXT_PUBLIC_X_API_KEY || 'pype-api-v1'
 
     const doFetch = () =>
@@ -56,6 +67,7 @@ export async function POST(request: NextRequest) {
           user_identity: body.user_identity,
           user_name: body.user_name,
           agent_name: body.agent_name,
+          ...(Object.keys(variables).length ? { variables } : {}),
         }),
       })
 

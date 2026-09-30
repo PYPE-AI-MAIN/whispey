@@ -37,16 +37,17 @@ export default function SessionVariablesPanel({
   }, [agentId, JSON.stringify(defaultVariables)])
 
   const update = (key: string, val: string) => {
-    setValues((prev) => {
-      const next = { ...prev, [key]: val }
-      try {
-        sessionStorage.setItem(storageKey(agentId), JSON.stringify(next))
-      } catch {
-        // storage blocked — value still applies for this render
-      }
-      onChange?.(next)
-      return next
-    })
+    // onChange must not run inside a setState updater: React calls updaters
+    // during render, so the parent's setState fired mid-render of this component
+    // ("Cannot update StudioWorkspace while rendering SessionVariablesPanel").
+    const next = { ...values, [key]: val }
+    setValues(next)
+    try {
+      sessionStorage.setItem(storageKey(agentId), JSON.stringify(next))
+    } catch {
+      // storage blocked — value still applies for this render
+    }
+    onChange?.(next)
   }
 
   const keys = Object.keys(values)
@@ -68,7 +69,7 @@ export default function SessionVariablesPanel({
           />
         </label>
       ))}
-      <p className="text-[11px] text-gray-400 dark:text-gray-500">Remembered for this browser session only.</p>
+      <p className="text-[11px] text-gray-400 dark:text-gray-500">Changes are saved to the agent when you press Update and start.</p>
     </div>
   )
 }

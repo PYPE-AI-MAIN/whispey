@@ -21,6 +21,7 @@ import { serviceAuthHeaders } from '@/lib/serviceToken'
 import { getPypeApiBaseUrlForServer } from '@/lib/pypeApiFetch'
 import { MCP_AGENT_DEFAULT_CONFIG } from '@/config/mcpAgentDefaults'
 import { findMcpVoice, buildMcpTtsConfig } from '@/config/mcpAgentVoices'
+import { validateDispositions, dispositionsToAgentColumns } from '@/lib/dispositions'
 
 const supabase = createServiceRoleClient()
 
@@ -75,13 +76,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { project_id, display_name, prompt, greeting, voice, variables, created_by } = body as {
+  const { project_id, display_name, prompt, greeting, voice, variables, dispositions, created_by } = body as {
     project_id?: string
     display_name?: string
     prompt?: string
     greeting?: string
     voice?: { provider?: string; voice_id?: string }
     variables?: Record<string, string>
+    dispositions?: unknown
     created_by?: string
   }
 
@@ -103,6 +105,15 @@ export async function POST(request: NextRequest) {
     .replaceAll(/^_+|_+$/g, '')
     .slice(0, 40)
   const name = slugified || 'agent'
+
+  // Validated up front, before anything is created, so a bad list can't leave
+  // a half-configured agent behind.
+  let dispositionColumns: ReturnType<typeof dispositionsToAgentColumns> | null = null
+  if (dispositions !== undefined) {
+    const checked = validateDispositions(dispositions)
+    if (!checked.ok) return NextResponse.json({ error: checked.error }, { status: 400 })
+    dispositionColumns = dispositionsToAgentColumns(checked.dispositions)
+  }
 
   const mcpVoice = findMcpVoice(voice.provider, voice.voice_id)
   if (!mcpVoice) {
@@ -144,6 +155,8 @@ export async function POST(request: NextRequest) {
     project_id,
     environment: 'dev',
     is_active: true,
+    // field_extractor (the on-switch) and field_extractor_prompt must be set together
+    ...(dispositionColumns ?? {}),
   })
   if (insertError) {
     return NextResponse.json({ error: 'Failed to create agent record', details: insertError.message }, { status: 500 })

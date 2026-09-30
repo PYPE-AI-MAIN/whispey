@@ -1,15 +1,27 @@
 'use client'
 
-import { type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, Sparkles } from 'lucide-react'
+import { Check, ChevronLeft, Copy, Sparkles } from 'lucide-react'
 import AgentHeaderIdentity from '@/components/agents/AgentHeaderIdentity'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { StudioProvider, useStudio } from './_context'
 
 function StudioShell({ children }: { children: ReactNode }) {
   const router = useRouter()
-  const { projectId, agent, isLoading, refetchAgent } = useStudio()
+  const { projectId, agentId, agent, isLoading, refetchAgent } = useStudio()
+  const [copied, setCopied] = useState(false)
+
+  // The MCP takes the agent's id (not its name), so it needs to be one click away.
+  const copyAgentId = async () => {
+    try {
+      await navigator.clipboard.writeText(agentId)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // clipboard blocked (insecure origin / permissions) — nothing useful to show
+    }
+  }
   const { isViewer } = useMemberVisibility(projectId || undefined)
 
   return (
@@ -36,6 +48,15 @@ function StudioShell({ children }: { children: ReactNode }) {
               <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:bg-gray-700/70 dark:text-gray-400">
                 Studio · Beta
               </span>
+              <button
+                onClick={copyAgentId}
+                title="Copy agent ID"
+                aria-label="Copy agent ID"
+                className="flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+              >
+                {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+                {copied ? 'Copied' : 'Copy ID'}
+              </button>
             </div>
           </div>
           <p className="hidden items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 md:flex">

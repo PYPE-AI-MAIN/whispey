@@ -27,14 +27,19 @@ interface FieldExtractorDialogProps {
   initialVariables?: Record<string, string>
   onSave: (data: FieldExtractorItem[], enabled: boolean, variables: Record<string, string>) => void
   isEnabled?: boolean
+  /** What to call these in the UI. Studio says "Dispositions"; the config page keeps "Field Extractor". */
+  terminology?: 'field_extractor' | 'dispositions'
 }
 
 const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({ 
   initialData = [], 
   initialVariables = {},
   onSave, 
-  isEnabled = false 
+  isEnabled = false,
+  terminology = 'field_extractor',
 }) => {
+  const isDisp = terminology === 'dispositions'
+  const noun = isDisp ? 'Dispositions' : 'Field Extractor'
   const [fields, setFields] = useState<FieldExtractorItem[]>(
     initialData.length > 0 ? initialData : [{ key: "", description: "" }]
   )
@@ -143,14 +148,21 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
   }
 
   const handleSave = () => {
-    const validFields = fields.filter((f) => f.key.trim() !== "" || f.description.trim() !== "")
+    // Only complete entries are kept — a key without a description (or the
+    // reverse) is silently dropped by the extractor anyway, so saving it just
+    // looks like it worked.
+    const validFields = fields
+      .map((f) => ({ ...f, key: f.key.trim(), description: f.description.trim() }))
+      .filter((f) => f.key !== "" && f.description !== "")
     const validVariables = variables.filter(
       (v) => v.variableName.trim() !== "" && v.columnPath.trim() !== ""
     )
     const variablesObject = Object.fromEntries(
       validVariables.map((v) => [v.variableName, v.columnPath])
     )
-    onSave(validFields, enabled, variablesObject)
+    // Turning it on with nothing to extract would run the extractor for no
+    // result on every call, so an empty list saves as off.
+    onSave(validFields, enabled && validFields.length > 0, variablesObject)
     setIsOpen(false)
   }
   
@@ -165,7 +177,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <MagicButton />
+        <MagicButton label={noun} />
       </DialogTrigger>
       {/* sm:max-w-3xl alongside max-w-3xl: the base DialogContent sets
           sm:max-w-lg, and tailwind-merge doesn't touch it for an unprefixed
@@ -174,7 +186,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
       <DialogContent className="max-w-3xl sm:max-w-3xl rounded-lg shadow-xl p-0 flex flex-col h-[85vh]">
         <DialogHeader className="p-6 pb-4 flex-shrink-0">
           <DialogTitle className="text-2xl font-semibold text-foreground">
-            Field Extractor Config
+            {noun} Config
           </DialogTitle>
         </DialogHeader>
         <Separator className="flex-shrink-0" />
@@ -183,7 +195,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
         <div className="flex-shrink-0 p-6 pb-4">
           <div className="flex items-center justify-between p-2 rounded-md bg-muted">
             <Label htmlFor="enabled" className="text-base font-medium text-foreground">
-              Enable Field Extraction
+              {isDisp ? 'Enable Dispositions' : 'Enable Field Extraction'}
             </Label>
             <Switch id="enabled" checked={enabled} onCheckedChange={setEnabled} />
           </div>
@@ -410,7 +422,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
               </Button>
             </div>
             <Button onClick={handleSave} className="w-full">
-              Save Field Extractor
+              Save {noun}
             </Button>
           </div>
         </div>

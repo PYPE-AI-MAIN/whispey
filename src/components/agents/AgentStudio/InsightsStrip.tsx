@@ -1,112 +1,150 @@
 'use client'
 
-import { Info, TrendingDown, TrendingUp } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { useMemo } from 'react'
+import { Info, Loader2 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useChartData } from '@/hooks/useAnalyticsDashboard'
+import type { Widget, WidgetResult } from '@/types/analytics'
+import type { SpecInput } from '@/server/analytics/spec'
 
-interface Insight {
+// The analytics engine rejects ranges over 400 days (MAX_RANGE_DAYS in
+// server/analytics/context.ts), so this is the widest "overall" window it can
+// answer. (730 passes the spec schema but is refused at query time.)
+const ALL_TIME_RANGE = { days: 400 }
+
+interface InsightDef {
+  id: string
   title: string
   definition: string
   help: string
-  value: string
-  suffix?: string
-  delta?: { text: string; good: boolean; up: boolean }
+  /** Analytics spec that produces the number. Omit while a metric is still to be defined. */
+  spec?: SpecInput
+  format: (value: number) => string
 }
 
-// Placeholder until per-agent scoring is wired up — rendered with a "Sample
-// data" chip so nobody mistakes it for real numbers.
-const SAMPLE_INSIGHTS: Insight[] = [
+// Edit this list to change what the strip shows — each entry is one card.
+// A card without a `spec` renders as "not defined yet" instead of a number.
+const INSIGHTS: InsightDef[] = [
   {
-    title: 'Frustration score',
-    definition: 'Avg. caller sentiment · 1 calm – 5 frustrated',
-    help: 'Scored per call from the transcript, then averaged. Lower is better.',
-    value: '1.4',
-    suffix: '/ 5',
-    delta: { text: '0.3 vs prev. 7d', good: true, up: false },
-  },
-  {
-    title: 'Task completion',
-    definition: 'Calls that reached the goal step',
-    help: 'Share of answered calls where the agent completed its objective (e.g. a booking).',
-    value: '82',
-    suffix: '%',
-    delta: { text: '4% vs prev. 7d', good: true, up: true },
-  },
-  {
-    title: 'Avg. call duration',
-    definition: 'Mean length of answered calls',
-    help: 'Average duration across answered calls in the period.',
-    value: '2m 14s',
-  },
-  {
+    id: 'calls',
     title: 'Calls',
-    definition: 'Test and live calls',
-    help: 'Every call this agent handled in the period, including test calls from this page.',
-    value: '128',
-    delta: { text: '12 vs prev. 7d', good: true, up: true },
+    definition: 'All calls, overall',
+    help: 'Every call this agent has handled over the last 400 days, including test calls from this page.',
+    spec: { spec_version: 1, agg: { fn: 'count' }, range: ALL_TIME_RANGE },
+    format: (v) => String(v),
+  },
+  {
+    id: 'completion_rate',
+    title: 'Completion rate',
+    definition: 'Not defined yet',
+    help: 'Will show the share of calls that reach their goal, once the definition is set.',
+    format: (v) => `${Math.round(v)}%`,
   },
 ]
 
-function InsightCard({ insight }: Readonly<{ insight: Insight }>) {
-  const DeltaIcon = insight.delta?.up ? TrendingUp : TrendingDown
+function makeWidget(id: string, spec: SpecInput): Widget {
+  return {
+    id,
+    dashboard_id: '',
+    title: id,
+    kind: 'kpi',
+    spec,
+    layout: { x: 0, y: 0, w: 3, h: 2 },
+    position: 0,
+    live: false,
+    is_seeded: false,
+  }
+}
+
+function firstValue(result: WidgetResult | undefined): number | null {
+  const v = result?.data?.[0]?.value
+  return v === null || v === undefined ? null : Number(v)
+}
+
+function InsightCard({
+  def, value, loading, failure,
+}: Readonly<{ def: InsightDef; value: number | null; loading: boolean; failure?: string }>) {
+  const defined = !!def.spec
   return (
     <div className="flex flex-col rounded-xl border border-gray-200 bg-white px-4 pb-3 pt-3 shadow-sm transition-colors hover:border-gray-300 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700">
       <div className="flex items-center gap-1.5">
         <h3 className="truncate text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-          {insight.title}
+          {def.title}
         </h3>
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 type="button"
-                aria-label={`How ${insight.title} is calculated`}
-                className="shrink-0 text-gray-300 transition hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400"
+                aria-label={`How ${def.title} is calculated`}
+                className="shrink-0 cursor-pointer text-gray-300 transition hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400"
               >
                 <Info className="h-3 w-3" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="bottom" sideOffset={6} className="max-w-[220px] text-xs">
-              <p className="font-medium">{insight.definition}</p>
-              <p className="mt-1 text-gray-300 dark:text-gray-500">{insight.help}</p>
+              <p className="font-medium">{def.definition}</p>
+              <p className="mt-1 text-gray-300 dark:text-gray-500">{def.help}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       </div>
       <div className="mt-1.5 flex items-baseline gap-1">
-        <span className="text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-50">{insight.value}</span>
-        {insight.suffix && (
-          <span className="text-sm font-medium text-gray-400 dark:text-gray-500">{insight.suffix}</span>
+        {defined && value === null && loading ? (
+          <Loader2 className="h-4 w-4 animate-spin text-gray-300 dark:text-gray-600" />
+        ) : value === null && failure ? (
+          <span className="text-xs text-gray-400 dark:text-gray-500">Unavailable — refresh to retry</span>
+        ) : value === null ? (
+          <span className="text-2xl font-semibold text-gray-300 dark:text-gray-700">—</span>
+        ) : (
+          <span className="text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-50">
+            {def.format(value)}
+          </span>
         )}
       </div>
-      {insight.delta && (
-        <p
-          className={cn(
-            'mt-0.5 flex items-center gap-1 text-[11px] font-medium',
-            insight.delta.good ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
-          )}
-        >
-          <DeltaIcon className="h-3 w-3" />
-          {insight.delta.text}
-        </p>
-      )}
     </div>
   )
 }
 
-export default function InsightsStrip() {
+export default function InsightsStrip({ agentId }: Readonly<{ agentId: string }>) {
+  const widgets = useMemo(
+    () => INSIGHTS.filter((d) => d.spec).map((d) => makeWidget(d.id, d.spec as SpecInput)),
+    []
+  )
+  const { byWidget, isFetching, error } = useChartData(
+    agentId,
+    widgets,
+    undefined, // each widget carries its own range
+    [],
+    { timeOfDay: null, days: [] },
+    !!agentId
+  )
+
+  if (error) console.warn('[Studio insights] analytics query failed:', error.message)
+
   return (
     <div>
       <div className="mb-2 flex items-center justify-between px-0.5">
-        <span className="text-[11px] text-gray-400 dark:text-gray-500">Last 7 days</span>
-        <span className="rounded-full bg-gray-100 px-1.5 py-px text-[10px] uppercase tracking-wide text-gray-400 dark:bg-gray-800/80 dark:text-gray-500">
-          Sample data
-        </span>
+        <span className="text-[11px] text-gray-400 dark:text-gray-500">Overall</span>
+        {isFetching && <Loader2 className="h-3 w-3 animate-spin text-gray-300 dark:text-gray-600" />}
       </div>
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        {SAMPLE_INSIGHTS.map((insight) => (
-          <InsightCard key={insight.title} insight={insight} />
-        ))}
+      <div className="grid grid-cols-2 gap-3">
+        {INSIGHTS.map((def) => {
+          const result = def.spec ? byWidget.get(def.id) : undefined
+          const failure = def.spec
+            ? error?.message ?? (result && result.status !== 'ok' ? (result.error ?? result.status) : undefined)
+            : undefined
+          if (failure) console.warn(`[Studio insights] ${def.id}:`, failure)
+          return (
+            <InsightCard
+              key={def.id}
+              def={def}
+              value={def.spec ? firstValue(result) : null}
+              loading={isFetching}
+              failure={failure}
+            />
+          )
+        })}
       </div>
     </div>
   )

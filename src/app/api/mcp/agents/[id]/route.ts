@@ -17,6 +17,7 @@ import { getPypeApiBaseUrlForServer, fetchPypeApiWithRetry, isPypeUpstreamUnreac
 import { getDeploymentTargetFromAgentBackendName } from '@/lib/getProjectRoleForApi'
 import { deployAgentConfig } from '@/lib/deployAgentConfig'
 import { findMcpVoice, buildMcpTtsConfig } from '@/config/mcpAgentVoices'
+import { validateDispositions, dispositionsToAgentColumns } from '@/lib/dispositions'
 
 const supabase = createServiceRoleClient()
 
@@ -36,23 +37,31 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const { project_id, prompt, greeting, voice, variables, created_by } = body as {
+  const { project_id, prompt, greeting, voice, variables, dispositions, created_by } = body as {
     project_id?: string
     prompt?: string
     greeting?: string
     voice?: { provider?: string; voice_id?: string }
     variables?: Record<string, string>
+    dispositions?: unknown
     created_by?: string
   }
 
   if (!project_id) {
     return NextResponse.json({ error: 'project_id is required' }, { status: 400 })
   }
-  if (prompt === undefined && greeting === undefined && voice === undefined && variables === undefined) {
+  if (prompt === undefined && greeting === undefined && voice === undefined && variables === undefined && dispositions === undefined) {
     return NextResponse.json(
-      { error: 'Nothing to update — provide prompt, greeting, voice, and/or variables' },
+      { error: 'Nothing to update — provide prompt, greeting, voice, variables, and/or dispositions' },
       { status: 400 }
     )
+  }
+
+  let dispositionColumns: ReturnType<typeof dispositionsToAgentColumns> | null = null
+  if (dispositions !== undefined) {
+    const checked = validateDispositions(dispositions)
+    if (!checked.ok) return NextResponse.json({ error: checked.error }, { status: 400 })
+    dispositionColumns = dispositionsToAgentColumns(checked.dispositions)
   }
 
   let mcpVoice: ReturnType<typeof findMcpVoice> | undefined
@@ -99,6 +108,28 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       { error: 'You can only edit agents you created through the MCP' },
       { status: 403 }
     )
+  }
+
+  // Dispositions live on the agent row (not in the voice backend's config), so
+  // they save straight to the DB — and when they're the only change there is
+  // nothing to redeploy, which keeps the agent up during the edit.
+  if (dispositionColumns) {
+    const { error: dispositionError } = await supabase
+      .from('pype_voice_agents')
+      .update({ ...dispositionColumns, updated_at: new Date().toISOString() })
+      .eq('id', agentId)
+    if (dispositionError) {
+      return NextResponse.json({ error: 'Failed to save dispositions', details: dispositionError.message }, { status: 500 })
+    }
+    if (prompt === undefined && greeting === undefined && voice === undefined && variables === undefined) {
+      const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000').replace(/\/$/, '')
+      return NextResponse.json({
+        agent_id: agentId,
+        project_id,
+        studio_url: `${appUrl}/${project_id}/agents/${agentId}/studio`,
+        updated: { prompt: false, greeting: false, voice: false, variables: false, dispositions: true },
+      })
+    }
   }
 
   // agentRow.name is the SHORT name (matches real agents, e.g. "lslocaltwo") —
@@ -218,6 +249,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       greeting: greeting !== undefined,
       voice: mcpVoice ? { provider: mcpVoice.provider, voice_id: mcpVoice.voice_id } : false,
       variables: variables !== undefined,
+      dispositions: dispositions !== undefined,
     },
   })
 }
