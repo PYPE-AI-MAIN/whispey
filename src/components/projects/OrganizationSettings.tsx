@@ -27,7 +27,8 @@ import {
   Crown,
   Eye,
   RefreshCw,
-  UserX
+  UserX,
+  Search
 } from 'lucide-react'
 import {
   Dialog,
@@ -167,6 +168,11 @@ export default function OrganizationSettings({
 
   // Combined list of all members for display
   const allMembers = [...teamMembers, ...pendingMembers]
+
+  const [memberSearch, setMemberSearch] = useState('')
+  const filteredMembers = memberSearch.trim()
+    ? allMembers.filter((m) => m.email.toLowerCase().includes(memberSearch.trim().toLowerCase()))
+    : allMembers
 
   const handleInviteMember = async () => {
     const normalizedEmail = inviteEmail.trim().toLowerCase()
@@ -518,10 +524,23 @@ export default function OrganizationSettings({
 
             {/* Team Members List */}
             <div className="space-y-3">
-              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Current Members
-              </h3>
-              
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Current Members
+                </h3>
+                {allMembers.length > 5 && (
+                  <div className="relative w-56">
+                    <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+                    <Input
+                      value={memberSearch}
+                      onChange={(e) => setMemberSearch(e.target.value)}
+                      placeholder="Search by email"
+                      className="h-8 pl-8 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                    />
+                  </div>
+                )}
+              </div>
+
               {loadingMembers ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400" />
@@ -532,48 +551,52 @@ export default function OrganizationSettings({
                   <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm">No members yet</p>
                 </div>
+              ) : filteredMembers.length === 0 ? (
+                <p className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">No members match &ldquo;{memberSearch}&rdquo;.</p>
               ) : (
-                <div className="space-y-2">
-                  {allMembers.map((member) => {
-                    const isCurrentUser = member.email === user?.emailAddresses?.[0]?.emailAddress
-                    const canChangeRole = canManageMembers && member.role !== 'owner' && !isCurrentUser
-                    const isInactive = member.status === 'inactive'
-                    
-                    return (
-                      <div
-                        key={member.id}
-                        className={`flex items-center justify-between p-3 rounded-lg border ${
-                          isInactive 
-                            ? 'bg-gray-50 dark:bg-gray-800/50 border-gray-300 dark:border-gray-700 opacity-75' 
-                            : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
-                            {member.email.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                              {member.email}
-                              {isCurrentUser && (
-                                <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">(You)</span>
-                              )}
-                            </p>
-                            <div className="flex items-center gap-2 mt-1">
+                <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200 bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-400">
+                        <th className="px-4 py-2 font-medium">Member</th>
+                        <th className="px-4 py-2 font-medium">Role</th>
+                        <th className="px-4 py-2 font-medium">Status</th>
+                        <th className="px-4 py-2 font-medium text-right">&nbsp;</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredMembers.map((member) => {
+                        const isCurrentUser = member.email === user?.emailAddresses?.[0]?.emailAddress
+                        const canChangeRole = canManageMembers && member.role !== 'owner' && !isCurrentUser
+                        const isInactive = member.status === 'inactive'
+
+                        return (
+                          <tr
+                            key={member.id}
+                            className={`border-b border-gray-100 last:border-0 dark:border-gray-800/70 ${isInactive ? 'opacity-60' : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'}`}
+                          >
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                                  {member.email.charAt(0).toUpperCase()}
+                                </div>
+                                <span className="truncate font-medium text-gray-900 dark:text-gray-100">
+                                  {member.email}
+                                  {isCurrentUser && <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">(You)</span>}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
                               {canChangeRole && !isInactive ? (
-                                <Select 
-                                  value={member.role} 
+                                <Select
+                                  value={member.role}
                                   onValueChange={(value: 'admin' | 'viewer') => handleRoleChange(member.id, value)}
                                   disabled={changingRole === member.id}
                                 >
-                                  <SelectTrigger className={`w-[130px] h-6 text-xs ${getRoleBadgeColor(member.role)}`}>
+                                  <SelectTrigger className={`w-[120px] h-7 text-xs ${getRoleBadgeColor(member.role)}`}>
                                     <SelectValue>
                                       <div className="flex items-center gap-1">
-                                        {changingRole === member.id ? (
-                                          <Loader2 className="w-3 h-3 animate-spin" />
-                                        ) : (
-                                          getRoleIcon(member.role)
-                                        )}
+                                        {changingRole === member.id ? <Loader2 className="w-3 h-3 animate-spin" /> : getRoleIcon(member.role)}
                                         {member.role}
                                       </div>
                                     </SelectValue>
@@ -594,82 +617,71 @@ export default function OrganizationSettings({
                                   </SelectContent>
                                 </Select>
                               ) : (
-                                <Badge variant="outline" className={`text-xs flex items-center gap-1 ${getRoleBadgeColor(member.role)}`}>
+                                <Badge variant="outline" className={`text-xs flex w-fit items-center gap-1 ${getRoleBadgeColor(member.role)}`}>
                                   {getRoleIcon(member.role)}
                                   {member.role}
                                 </Badge>
                               )}
-                              
+                            </td>
+                            <td className="px-4 py-3">
                               {member.status === 'inactive' && (
-                                <Badge variant="outline" className="text-xs border-gray-400 dark:border-gray-600 text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                                <Badge variant="outline" className="text-xs border-gray-400 dark:border-gray-600 text-gray-600 dark:text-gray-400 flex w-fit items-center gap-1">
                                   <UserX className="w-3 h-3" />
                                   Inactive
                                 </Badge>
                               )}
-                              
                               {member.status === 'pending' && (
-                                <Badge variant="outline" className="text-xs border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 flex items-center gap-1">
+                                <Badge variant="outline" className="text-xs border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 flex w-fit items-center gap-1">
                                   <Clock className="w-3 h-3" />
                                   Pending
                                 </Badge>
                               )}
-                              
                               {member.status === 'active' && !isInactive && (
-                                <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                                <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 whitespace-nowrap">
                                   <CheckCircle2 className="w-3 h-3 text-green-500" />
                                   Joined {formatDate(member.joinedAt)}
                                 </span>
                               )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Action buttons */}
-                        {canManageMembers && member.role !== 'owner' && !isCurrentUser && (
-                          <div className="flex items-center gap-1">
-                            {isInactive ? (
-                              // Inactive member actions
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleReactivateMember(member)}
-                                  className="text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20 dark:text-green-400 dark:hover:text-green-300 h-7 px-2 text-xs"
-                                >
-                                  <RefreshCw className="w-3 h-3 mr-1" />
-                                  Reactivate
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    setMemberToRemove(member.id)
-                                    setDeleteType('hard')
-                                  }}
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-red-400 dark:hover:text-red-300 h-6 w-6 p-0"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </Button>
-                              </>
-                            ) : (
-                              // Active member actions
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setMemberToRemove(member.id)
-                                  setDeleteType('soft')
-                                }}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-red-400 dark:hover:text-red-300"
-                              >
-                                <X className="w-4 h-4" />
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              {canManageMembers && member.role !== 'owner' && !isCurrentUser && (
+                                isInactive ? (
+                                  <div className="flex items-center justify-end gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleReactivateMember(member)}
+                                      className="text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20 dark:text-green-400 dark:hover:text-green-300 h-7 px-2 text-xs"
+                                    >
+                                      <RefreshCw className="w-3 h-3 mr-1" />
+                                      Reactivate
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => { setMemberToRemove(member.id); setDeleteType('hard') }}
+                                      className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-red-400 dark:hover:text-red-300 h-7 w-7 p-0"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => { setMemberToRemove(member.id); setDeleteType('soft') }}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-red-400 dark:hover:text-red-300 h-7 w-7 p-0"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </Button>
+                                )
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
