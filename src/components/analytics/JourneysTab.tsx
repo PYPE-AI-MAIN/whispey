@@ -26,7 +26,6 @@ import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { RangePicker } from './OrgOverview'
 import {
   RECENT_JOURNEYS_PAGE_SIZE,
-  toDateRange,
   useActiveJourneys,
   useCampaigns,
   useChartDimensions,
@@ -112,9 +111,9 @@ function FilterBar({
  */
 function IntegrationDocs({ campaignKey }: Readonly<{ campaignKey: string }>) {
   const [copied, setCopied] = useState(false)
-  const snippet = `curl -X POST https://<your-domain>/api/journeys/events \\
-  -H "Content-Type: application/json" \\
-  -H "x-pype-token: <YOUR_PYPE_TOKEN>" \\
+  const snippet = String.raw`curl -X POST https://<your-domain>/api/journeys/events \
+  -H "Content-Type: application/json" \
+  -H "x-pype-token: <YOUR_PYPE_TOKEN>" \
   -d '{
     "campaign_key": "${campaignKey}",
     "identity_key": "<your own member/lead id, e.g. member_id>",
@@ -234,7 +233,7 @@ function Funnel({
                 {s.reached_count.toLocaleString()}
               </div>
               <div className="w-24 shrink-0 text-right text-xs tabular-nums text-gray-500 dark:text-gray-400">
-                {stepOverStepPct !== null ? `${stepOverStepPct}% of prev` : `${ofFirstPct}%`}
+                {stepOverStepPct === null ? `${ofFirstPct}%` : `${stepOverStepPct}% of prev`}
               </div>
             </div>
           )
@@ -291,6 +290,17 @@ const tooltipStyle = {
   contentStyle: { borderRadius: 8, border: '1px solid rgb(209 213 219)', fontSize: 12, background: 'rgb(255 255 255)', color: 'rgb(17 24 39)' },
 } as const
 
+/** Module scope, not defined inside CustomChartCard's render — same reasoning as ChartRenderer's own legend formatters. */
+function pieLegendLabel(v: unknown) {
+  return <span title={String(v)}>{shortLabel(String(v), 18)}</span>
+}
+
+/** The angled-label props a category axis needs; a time axis's labels are already short and even, so it gets none. */
+function angledTickProps(isTime: boolean) {
+  if (isTime) return {}
+  return { angle: -35, textAnchor: 'end' as const, height: 56 }
+}
+
 type ChartKind = 'bar' | 'line' | 'pie'
 type BuiltChart = { id: string; dimension: string; metric: ChartMetric; kind: ChartKind }
 
@@ -327,7 +337,7 @@ function CustomChartCard({
                 {points.map((p, i) => <Cell key={p.bucket} fill={SERIES_COLORS[i % SERIES_COLORS.length]} />)}
               </Pie>
               <Tooltip {...tooltipStyle} />
-              <Legend formatter={(v: unknown) => <span title={String(v)}>{shortLabel(String(v), 18)}</span>} wrapperStyle={{ fontSize: 11 }} />
+              <Legend formatter={pieLegendLabel} wrapperStyle={{ fontSize: 11 }} />
             </PieChart>
           </ResponsiveContainer>
         )}
@@ -342,7 +352,7 @@ function CustomChartCard({
                   tick={{ fontSize: 11, fill: 'currentColor' }}
                   tickLine={false}
                   axisLine={false}
-                  {...(!isTime ? { angle: -35, textAnchor: 'end' as const, height: 56 } : {})}
+                  {...angledTickProps(isTime)}
                 />
                 <YAxis tick={{ fontSize: 11, fill: 'currentColor' }} tickLine={false} axisLine={false} width={32} allowDecimals={false} />
                 <Tooltip {...tooltipStyle} labelFormatter={(x: unknown) => (isTime ? formatBucket(String(x), 'day') : String(x))} />
@@ -358,7 +368,7 @@ function CustomChartCard({
                   tickLine={false}
                   axisLine={false}
                   interval={0}
-                  {...(!isTime ? { angle: -35, textAnchor: 'end' as const, height: 56 } : {})}
+                  {...angledTickProps(isTime)}
                 />
                 <YAxis tick={{ fontSize: 11, fill: 'currentColor' }} tickLine={false} axisLine={false} width={32} allowDecimals={false} />
                 <Tooltip {...tooltipStyle} labelFormatter={(x: unknown) => (isTime ? formatBucket(String(x), 'day') : String(x))} />
@@ -564,8 +574,8 @@ function JourneyTableRow({ projectId, journey }: Readonly<{ projectId: string; j
 }
 
 /** An empty row so a page with fewer than a full page of results still fills the table's fixed height. */
-function EmptyTableRow({ index }: Readonly<{ index: number }>) {
-  return <tr key={index} className={JOURNEY_ROW_HEIGHT} />
+function EmptyTableRow() {
+  return <tr className={JOURNEY_ROW_HEIGHT} />
 }
 
 export function JourneysTab({ projectId, isActive }: Readonly<{ projectId: string; isActive: boolean }>) {
@@ -698,7 +708,7 @@ export function JourneysTab({ projectId, isActive }: Readonly<{ projectId: strin
                     <tbody>
                       {journeys.map((j) => <JourneyTableRow key={j.id} projectId={projectId} journey={j} />)}
                       {Array.from({ length: RECENT_JOURNEYS_PAGE_SIZE - journeys.length }).map((_, i) => (
-                        <EmptyTableRow key={i} index={i} />
+                        <EmptyTableRow key={`empty-${i}`} />
                       ))}
                     </tbody>
                   </table>
