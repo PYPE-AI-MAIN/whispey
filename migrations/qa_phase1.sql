@@ -215,8 +215,12 @@ CREATE TABLE IF NOT EXISTS qa_subscriptions (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 
+-- NULLS NOT DISTINCT so a project-wide subscription (agent_id IS NULL) can only
+-- exist once per address. It must be a plain column index, not an expression:
+-- the API upserts with ON CONFLICT (email, project_id, agent_id), and Postgres
+-- only matches that against an index on exactly those columns. Requires PG15+.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_qa_subscription
-  ON qa_subscriptions (email, project_id, COALESCE(agent_id, '00000000-0000-0000-0000-000000000000'::uuid));
+  ON qa_subscriptions (email, project_id, agent_id) NULLS NOT DISTINCT;
 CREATE INDEX IF NOT EXISTS idx_qa_subscriptions_scope
   ON qa_subscriptions (project_id, agent_id) WHERE active;
 
