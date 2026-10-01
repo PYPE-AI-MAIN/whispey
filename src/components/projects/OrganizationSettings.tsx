@@ -502,7 +502,10 @@ export default function OrganizationSettings({
                    entirely with no error. vh is resolved against the actual
                    viewport, independent of any ancestor's height math. */
                 <div className="h-[50vh] overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
-                <div className="h-full overflow-auto">
+                {/* scrollbar-thin (globals.css): the default OS scrollbar track sits
+                    right where the sticky header's right edge is, and its lighter
+                    track color was being mistaken for a gap in the header background. */}
+                <div className="h-full overflow-auto scrollbar-thin">
                   <table className="w-full min-w-[560px] table-fixed text-sm">
                     {/* Background + border on each <th>, not the <tr> — a <tr>'s own
                         background has historically been unreliable to paint across
