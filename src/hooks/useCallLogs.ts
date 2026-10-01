@@ -72,6 +72,8 @@ interface UseCallLogsOptions {
   enabled?: boolean
   refetchOnMount?: boolean
   refetchOnWindowFocus?: boolean
+  /** Re-run the query on this interval (ms) while enabled — e.g. to wait for a fresh row to land. */
+  refetchInterval?: number | false
   staleTime?: number
   gcTime?: number
   userId?: string
@@ -119,6 +121,7 @@ export const useCallLogs = ({
   enabled = true,
   refetchOnMount = false,
   refetchOnWindowFocus = false,
+  refetchInterval = false,
   staleTime = 5 * 60 * 1000,
   gcTime = 10 * 60 * 1000,
   userId,
@@ -185,6 +188,7 @@ export const useCallLogs = ({
     gcTime,
     refetchOnWindowFocus,
     refetchOnMount,
+    refetchInterval,
     // Show current page data while the new page is loading (no blank flash)
     placeholderData: keepPreviousData,
   })
