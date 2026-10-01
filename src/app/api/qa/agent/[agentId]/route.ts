@@ -23,6 +23,30 @@ export const GET = guarded('qa/agent', async (req: NextRequest, ctx: { params: P
 
   const since = new Date(Date.now() - TREND_DAYS * 86400000).toISOString().slice(0, 10)
 
+  // Real disposition values this agent has actually recorded, so the settings
+  // dialog can offer them instead of asking someone to remember the spelling.
+  // Sampled, not exhaustive — it is a suggestion list, not a constraint.
+  const knownDispositions = await (async () => {
+    const { data } = await qaDb
+      .from('pype_voice_call_logs')
+      .select('transcription_metrics')
+      .eq('agent_id', agentId)
+      .not('transcription_metrics', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(300)
+
+    const seen = new Set<string>()
+    for (const row of data || []) {
+      const v = (row.transcription_metrics as Record<string, unknown> | null)?.final_disposition
+      if (typeof v !== 'string') continue
+      const clean = v.trim().toLowerCase()
+      if (!clean || ['-', 'n/a', 'na', 'null', 'undefined'].includes(clean)) continue
+      seen.add(clean)
+      if (seen.size >= 25) break
+    }
+    return [...seen].sort()
+  })()
+
   const [statsRes, insightsRes, typesRes, runsRes, momentsRes] = await Promise.all([
     qaDb
       .from('qa_daily_stats')
@@ -173,5 +197,6 @@ export const GET = guarded('qa/agent', async (req: NextRequest, ctx: { params: P
     metrics,
     trend,
     trendKeys: topKeys.map((k) => ({ key: k, label: typeByKey.get(k)?.label || k })),
+    knownDispositions,
   })
 })

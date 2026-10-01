@@ -35,7 +35,7 @@ function AgentQaPageContent() {
   const agent = agents?.[0]
 
   return (
-    <div className="flex h-screen flex-col bg-gray-50 dark:bg-gray-950">
+    <div className="flex h-screen flex-col bg-gray-50 dark:bg-gray-900">
       <div className="flex-none border-b border-gray-200 bg-white px-6 py-3 dark:border-gray-800 dark:bg-gray-900 md:px-8">
         <nav className="flex items-center gap-2 text-sm">
           <Link href={`/${projectId}/agents`} className="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100">

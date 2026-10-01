@@ -7,6 +7,7 @@ import { createServiceRoleClient } from '@/lib/supabase-server'
 import { getPypeApiBaseUrlForServer } from '@/lib/pypeApiFetch'
 import { normalizeAgentDisplayName } from '@/lib/agentDisplayName'
 import { parseExtractorKeys, validateFlagRules } from '@/lib/flagRulesValidation'
+import { qaConfigError } from '@/lib/qaConfigValidation'
 
 // GET method to fetch agent details
 export async function GET(
@@ -93,6 +94,9 @@ const GATED_FIELDS = {
   field_extractor_variables: 'fieldExtractor',
   flag_rules: 'fieldExtractor', // same sensitivity as field extractor internals
   metrics: 'metrics',
+  // QA is quality reporting, so it rides the same gate as metrics rather than
+  // introducing a permission concept of its own.
+  qa_config: 'metrics',
 } as const
 
 type RoleResult = NonNullable<Awaited<ReturnType<typeof getProjectRoleForApi>>>
@@ -149,6 +153,10 @@ function buildAgentUpdatePayload(
     if (isViewer && org?.[gate] !== true) return { ok: false, error: 'Forbidden', status: 403 }
     if (key === 'flag_rules') {
       const err = flagRulesError(body, existingFieldExtractorPrompt)
+      if (err) return { ok: false, error: err, status: 400 }
+    }
+    if (key === 'qa_config') {
+      const err = qaConfigError(body.qa_config)
       if (err) return { ok: false, error: err, status: 400 }
     }
     payload[key] = body[key]

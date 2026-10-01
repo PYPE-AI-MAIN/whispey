@@ -16,13 +16,14 @@ import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   ArrowDownRight, ArrowUpRight, CheckCircle2, ChevronRight,
-  Headphones, Minus, Sparkles, Clock,
+  Headphones, Minus, Sparkles, Clock, Settings,
 } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import PromptPatchDialog from './PromptPatchDialog'
+import QaSettingsDialog from './QaSettingsDialog'
 import ReviewList from './ReviewList'
 
 type Bullet = { text: string; issue_key: string | null; calls: number | null; pct: number | null; call_ids?: string[] }
@@ -58,6 +59,7 @@ type Payload = {
   metrics: Metric[]
   trend: Array<Record<string, unknown>>
   trendKeys: Array<{ key: string; label: string }>
+  knownDispositions?: string[]
 }
 
 const pct = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${(v * 100).toFixed(0)}%`)
@@ -99,6 +101,7 @@ export default function QaInsightsPanel({
   isActive = true,
 }: Readonly<{ agentId: string; projectId: string; isActive?: boolean }>) {
   const [patchOpen, setPatchOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [tab, setTab] = useState<'insight' | 'review'>('insight')
 
   const { data, isLoading, error, refetch } = useQuery<Payload>({
@@ -152,18 +155,38 @@ export default function QaInsightsPanel({
       <div className="p-6">
         <div className="mx-auto max-w-lg rounded-xl border border-gray-200 bg-white p-8 text-center dark:border-gray-800 dark:bg-gray-900">
           <Sparkles className="mx-auto h-8 w-8 text-gray-300" />
-          <h3 className="mt-3 text-base font-semibold text-gray-900 dark:text-gray-50">QA has not run for this agent yet</h3>
+          <h3 className="mt-3 text-base font-semibold text-gray-900 dark:text-gray-50">
+            {data?.qaConfig ? 'QA has not run for this agent yet' : 'QA is not switched on for this agent'}
+          </h3>
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            Once QA is switched on, 200 of this agent&apos;s calls are checked every night and an insight
-            appears here — but only when there is one worth raising.
+            {data?.qaConfig
+              ? 'It is switched on — the first check runs tonight. 200 calls are sampled and an insight appears here, but only when there is one worth raising.'
+              : 'Switch it on and 200 of this agent\u2019s calls are checked every night. An insight appears here only when there is one worth raising.'}
           </p>
+          {data?.canWrite ? (
+            <Button className="mt-4" onClick={() => setSettingsOpen(true)}>
+              <Settings className="mr-1.5 h-3.5 w-3.5" />
+              {data?.qaConfig ? 'QA settings' : 'Set up QA'}
+            </Button>
+          ) : (
+            <p className="mt-4 text-xs text-gray-400">An admin on this project can switch it on.</p>
+          )}
         </div>
+
+        <QaSettingsDialog
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          agentId={agentId}
+          initial={(data?.qaConfig as never) ?? null}
+          knownDispositions={data?.knownDispositions ?? []}
+          onSaved={refetch}
+        />
       </div>
     )
   }
 
   return (
-    <div className="h-full overflow-auto bg-gray-50 p-6 dark:bg-gray-950">
+    <div className="h-full overflow-auto bg-gray-50 p-6 dark:bg-gray-900">
       <div className="mx-auto max-w-5xl space-y-5">
 
         {/* what was checked — shown on every state, so a quiet night never
@@ -178,6 +201,17 @@ export default function QaInsightsPanel({
               </span>
             )}
           </div>
+          <div className="flex items-center gap-2">
+          {data.canWrite && (
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+              aria-label="QA settings"
+              title="QA settings"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          )}
           <div className="flex items-center gap-1 rounded-lg bg-white p-1 dark:bg-gray-900">
             {(['insight', 'review'] as const).map((t) => (
               <button
@@ -192,6 +226,7 @@ export default function QaInsightsPanel({
                 {t === 'insight' ? 'Insight' : 'To listen to'}
               </button>
             ))}
+          </div>
           </div>
         </div>
 
@@ -440,6 +475,15 @@ export default function QaInsightsPanel({
           </>
         )}
       </div>
+
+      <QaSettingsDialog
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        agentId={agentId}
+        initial={(data.qaConfig as never) ?? null}
+        knownDispositions={data.knownDispositions ?? []}
+        onSaved={refetch}
+      />
 
       {insight?.suggested_prompt_patch && (
         <PromptPatchDialog
