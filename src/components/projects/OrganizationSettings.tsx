@@ -504,12 +504,19 @@ export default function OrganizationSettings({
                 <div className="h-[50vh] overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
                 <div className="h-full overflow-auto">
                   <table className="w-full min-w-[560px] table-fixed text-sm">
-                    <thead className="sticky top-0 z-10">
-                      <tr className="border-b border-gray-200 bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500 dark:border-gray-800 dark:bg-gray-800 dark:text-gray-400">
-                        <th className="px-4 py-2 font-medium">Member</th>
-                        <th className="px-4 py-2 font-medium w-40">Role</th>
-                        <th className="px-4 py-2 font-medium w-44">Status</th>
-                        <th className="px-4 py-2 font-medium text-right w-44">&nbsp;</th>
+                    {/* Background + border on each <th>, not the <tr> — a <tr>'s own
+                        background has historically been unreliable to paint across
+                        its full rendered width in some browsers once you combine
+                        sticky positioning, table-layout: fixed, and a horizontally
+                        scrolling ancestor (our exact combination here); per-cell
+                        background can't have that problem since each cell paints
+                        its own box. */}
+                    <thead className="sticky top-0 z-10 text-left text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                      <tr>
+                        <th className="px-4 py-2 font-medium border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800">Member</th>
+                        <th className="px-4 py-2 font-medium border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800 w-40">Role</th>
+                        <th className="px-4 py-2 font-medium border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800 w-44">Status</th>
+                        <th className="px-4 py-2 font-medium border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800 text-right w-44">&nbsp;</th>
                       </tr>
                     </thead>
                     <tbody>
