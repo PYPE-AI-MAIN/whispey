@@ -175,14 +175,57 @@ function SectionHeader({ title, subtitle }: Readonly<{ title: string; subtitle: 
   )
 }
 
+/**
+ * Shown when there are zero campaigns — before this, `IntegrationDocs`'s
+ * "Integration" button is the only place the actual contract is documented,
+ * but that button only exists once a campaign is already selected. Someone
+ * starting from exactly zero has nowhere else to find this, so the full
+ * curl example goes directly here instead of behind a button with nothing
+ * to anchor to yet.
+ */
 function EmptyState() {
+  const [copied, setCopied] = useState(false)
+  const snippet = String.raw`curl -X POST https://<your-domain>/api/journeys/events \
+  -H "Content-Type: application/json" \
+  -H "x-pype-token: <YOUR_PYPE_TOKEN>" \
+  -d '{
+    "campaign_key": "<pick any name for this campaign, e.g. onboarding>",
+    "identity_key": "<your own member/lead id, e.g. member_id>",
+    "channel": "whatsapp",
+    "step": "<your own step name, e.g. current_step>",
+    "action": "message_sent",
+    "payload": { "delivery_status": "delivered", "reachout_count": 2 }
+  }'`
+
+  const copy = () => {
+    navigator.clipboard.writeText(snippet)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
-      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">No journeys yet</p>
-      <p className="max-w-sm text-sm text-gray-500 dark:text-gray-400">
-        Journeys and their campaigns appear here automatically the first time an external workflow posts an event to{' '}
-        <code className="rounded bg-gray-100 px-1 py-0.5 text-xs dark:bg-gray-800">POST /api/journeys/events</code>. Nothing to configure first.
-      </p>
+    <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
+      <div>
+        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">No journeys yet</p>
+        <p className="mx-auto mt-1 max-w-md text-sm text-gray-500 dark:text-gray-400">
+          A campaign is created automatically the first time any workflow posts an event — nothing to
+          configure here first. Required fields: <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">campaign_key</code>,{' '}
+          <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">identity_key</code>,{' '}
+          <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">channel</code>,{' '}
+          <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">step</code>,{' '}
+          <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">action</code>.
+        </p>
+      </div>
+      <div className="relative w-full max-w-lg text-left">
+        <pre className="max-h-64 overflow-auto rounded-lg bg-gray-900 p-3 text-[11px] leading-relaxed text-gray-100">{snippet}</pre>
+        <button
+          onClick={copy}
+          className="absolute right-2 top-2 rounded-md border border-gray-700 bg-gray-800 p-1.5 text-gray-300 hover:bg-gray-700"
+          title="Copy"
+        >
+          {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+        </button>
+      </div>
     </div>
   )
 }
