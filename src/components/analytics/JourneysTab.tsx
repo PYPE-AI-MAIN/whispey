@@ -109,8 +109,19 @@ function FilterBar({
  * come into existence from an external `POST /api/journeys/events` call
  * (there's nothing to configure in this app first).
  */
-function IntegrationDocs({ campaignKey }: Readonly<{ campaignKey: string }>) {
+/** "Copied" flashes for 1.5s — shared by every code-snippet block on this page instead of each one reimplementing it. */
+function useCopyToClipboard() {
   const [copied, setCopied] = useState(false)
+  const copy = (text: string) => {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+  return { copied, copy }
+}
+
+function IntegrationDocs({ campaignKey }: Readonly<{ campaignKey: string }>) {
+  const { copied, copy } = useCopyToClipboard()
   const snippet = String.raw`curl -X POST https://<your-domain>/api/journeys/events \
   -H "Content-Type: application/json" \
   -H "x-pype-token: <YOUR_PYPE_TOKEN>" \
@@ -122,12 +133,6 @@ function IntegrationDocs({ campaignKey }: Readonly<{ campaignKey: string }>) {
     "action": "message_sent",
     "payload": { "delivery_status": "delivered", "reachout_count": 2 }
   }'`
-
-  const copy = () => {
-    navigator.clipboard.writeText(snippet)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
 
   return (
     <Popover>
@@ -153,7 +158,7 @@ function IntegrationDocs({ campaignKey }: Readonly<{ campaignKey: string }>) {
         <div className="relative">
           <pre className="max-h-64 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words rounded-lg bg-gray-900 p-3 text-[11px] leading-relaxed text-gray-100">{snippet}</pre>
           <button
-            onClick={copy}
+            onClick={() => copy(snippet)}
             className="absolute right-2 top-2 rounded-md border border-gray-700 bg-gray-800 p-1.5 text-gray-300 hover:bg-gray-700"
             title="Copy"
           >
@@ -184,7 +189,7 @@ function SectionHeader({ title, subtitle }: Readonly<{ title: string; subtitle: 
  * to anchor to yet.
  */
 function EmptyState({ projectId }: Readonly<{ projectId: string }>) {
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useCopyToClipboard()
   const snippet = String.raw`curl -X POST https://<your-domain>/api/journeys/events \
   -H "Content-Type: application/json" \
   -H "x-pype-token: <paste the key from step 1>" \
@@ -196,12 +201,6 @@ function EmptyState({ projectId }: Readonly<{ projectId: string }>) {
     "action": "message_sent",
     "payload": { "delivery_status": "delivered", "reachout_count": 2 }
   }'`
-
-  const copy = () => {
-    navigator.clipboard.writeText(snippet)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
 
   return (
     <div className="mx-auto flex h-full max-w-lg flex-col items-center justify-center gap-5 px-6 text-center">
@@ -244,7 +243,7 @@ function EmptyState({ projectId }: Readonly<{ projectId: string }>) {
       <div className="relative w-full text-left">
         <pre className="max-h-64 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words rounded-lg bg-gray-900 p-3 text-[11px] leading-relaxed text-gray-100">{snippet}</pre>
         <button
-          onClick={copy}
+          onClick={() => copy(snippet)}
           className="absolute right-2 top-2 rounded-md border border-gray-700 bg-gray-800 p-1.5 text-gray-300 hover:bg-gray-700"
           title="Copy"
         >
