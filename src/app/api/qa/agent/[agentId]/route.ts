@@ -23,7 +23,7 @@ export const GET = guarded('qa/agent', async (req: NextRequest, ctx: { params: P
 
   const since = new Date(Date.now() - TREND_DAYS * 86400000).toISOString().slice(0, 10)
 
-  const [statsRes, insightsRes, typesRes, runsRes] = await Promise.all([
+  const [statsRes, insightsRes, typesRes, runsRes, momentsRes] = await Promise.all([
     qaDb
       .from('qa_daily_stats')
       .select('run_date, calls_total, calls_sampled, flagged_n, random_n, issue_counts, metrics')
@@ -48,12 +48,31 @@ export const GET = guarded('qa/agent', async (req: NextRequest, ctx: { params: P
       .eq('agent_id', agentId)
       .order('run_date', { ascending: false })
       .limit(12),
+
+    // where in each recording the issue actually happened, so "see a call"
+    // lands on the moment rather than at 0:00
+    qaDb
+      .from('qa_call_issues')
+      .select('issue_key, call_log_id, turn_seconds, evidence')
+      .eq('agent_id', agentId)
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .limit(500),
   ])
 
   const stats = statsRes.data || []
   const insights = insightsRes.data || []
   const issueTypes = typesRes.data || []
   const runs = runsRes.data || []
+
+  // first recorded moment per (issue, call) — one example is enough for a link
+  const moments = new Map<string, { callId: string; seconds: number | null; evidence: string | null }>()
+  for (const row of momentsRes.data || []) {
+    const key = `${row.issue_key}:${row.call_log_id}`
+    if (!moments.has(key)) {
+      moments.set(key, { callId: row.call_log_id, seconds: row.turn_seconds, evidence: row.evidence })
+    }
+  }
 
   const today = stats[0] || null
   const previous = stats.slice(1)
@@ -86,6 +105,9 @@ export const GET = guarded('qa/agent', async (req: NextRequest, ctx: { params: P
         delta: count.pct != null && was !== null ? Number((count.pct - was).toFixed(4)) : null,
         isNew: past.length === 0,
         callIds: count.call_ids || [],
+        example: (count.call_ids || [])
+          .map((id) => moments.get(`${key}:${id}`))
+          .find(Boolean) ?? null,
       }
     })
     // by damage, not by raw count: a P0 on 10 calls beats a P2 on 40

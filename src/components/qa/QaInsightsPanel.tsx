@@ -42,6 +42,7 @@ type Issue = {
   key: string; label: string; priority: string; category: string | null
   fixableBy: string | null; flagged: number; random: number
   pct: number | null; was: number | null; delta: number | null; isNew: boolean; callIds: string[]
+  example: { callId: string; seconds: number | null; evidence: string | null } | null
 }
 type Metric = { key: string; rate: number | null; n: number; was: number | null; delta: number | null }
 
@@ -392,12 +393,18 @@ export default function QaInsightsPanel({
                           </span>
                         </td>
                         <td className="px-3 py-3 text-right">
-                          {issue.callIds.length > 0 && (
+                          {(issue.example || issue.callIds.length > 0) && (
                             <a
-                              href={`/${projectId}/agents/${agentId}/observability?session_id=${issue.callIds[0]}`}
+                              href={
+                                `/${projectId}/agents/${agentId}/observability?session_id=${issue.example?.callId ?? issue.callIds[0]}`
+                                // seek straight to the moment when we know it
+                                + (issue.example?.seconds ? `&t=${issue.example.seconds}` : '')
+                              }
+                              title={issue.example?.evidence ?? undefined}
                               className="inline-flex items-center text-xs text-blue-600 hover:underline dark:text-blue-400"
                             >
-                              See a call <ChevronRight className="h-3 w-3" />
+                              {issue.example?.seconds ? 'Hear it' : 'See a call'}
+                              <ChevronRight className="h-3 w-3" />
                             </a>
                           )}
                         </td>

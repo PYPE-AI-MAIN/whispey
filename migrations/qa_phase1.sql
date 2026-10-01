@@ -58,6 +58,9 @@ CREATE TABLE IF NOT EXISTS qa_call_issues (
   -- computed from 'random' only — the flagged half is not a fair sample.
   sample_arm   text CHECK (sample_arm IN ('flagged','random')),
   turn_index   int,
+  -- seconds into the recording, so the call detail page can seek the audio
+  -- straight to the moment. Null when the agent writes no per-turn timings.
+  turn_seconds numeric(8,2),
   evidence     text,              -- one quoted line from the transcript
   confidence   numeric(3,2),      -- 0.00-1.00, null for rule hits (always certain)
   status       text NOT NULL DEFAULT 'open'
