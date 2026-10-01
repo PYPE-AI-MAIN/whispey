@@ -177,7 +177,7 @@ export const PATCH = guarded('qa/review:update', async (req: NextRequest) => {
   if (status || note !== undefined) {
     await qaDb
       .from('qa_review_items')
-      .update({ ...(status ? { status } : {}), ...(note !== undefined ? { note } : {}), assigned_to: email })
+      .update({ ...(status ? { status } : {}), ...(note === undefined ? {} : { note }), assigned_to: email })
       .eq('id', itemId)
   }
 

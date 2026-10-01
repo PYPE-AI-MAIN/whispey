@@ -385,6 +385,52 @@ function PreviousInsights({ insights, currentId }: Readonly<{ insights: Insight[
   )
 }
 
+/** QA has never run here. Say what to do rather than showing empty charts. */
+function NeverRunState({
+  hasConfig, canWrite, agentId, settingsOpen, onSettingsOpenChange, knownDispositions, qaConfig, onSaved,
+}: Readonly<{
+  hasConfig: boolean
+  canWrite: boolean
+  agentId: string
+  settingsOpen: boolean
+  onSettingsOpenChange: (v: boolean) => void
+  knownDispositions: string[]
+  qaConfig: Record<string, unknown> | null
+  onSaved: () => void
+}>) {
+  const title = hasConfig ? 'QA has not run for this agent yet' : 'QA is not switched on for this agent'
+  const body = hasConfig
+    ? 'It is switched on — the first check runs tonight. 200 calls are sampled and an insight appears here, but only when there is one worth raising.'
+    : 'Switch it on and 200 of this agent’s calls are checked every night. An insight appears here only when there is one worth raising.'
+
+  return (
+    <div className="p-6">
+      <div className="mx-auto max-w-lg rounded-xl border border-gray-200 bg-white p-8 text-center dark:border-gray-800 dark:bg-gray-900">
+        <Sparkles className="mx-auto h-8 w-8 text-gray-300" />
+        <h3 className="mt-3 text-base font-semibold text-gray-900 dark:text-gray-50">{title}</h3>
+        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{body}</p>
+        {canWrite ? (
+          <Button className="mt-4" onClick={() => onSettingsOpenChange(true)}>
+            <Settings className="mr-1.5 h-3.5 w-3.5" />
+            {hasConfig ? 'QA settings' : 'Set up QA'}
+          </Button>
+        ) : (
+          <p className="mt-4 text-xs text-gray-400">An admin on this project can switch it on.</p>
+        )}
+      </div>
+
+      <QaSettingsDialog
+        open={settingsOpen}
+        onOpenChange={onSettingsOpenChange}
+        agentId={agentId}
+        initial={(qaConfig as never) ?? null}
+        knownDispositions={knownDispositions}
+        onSaved={onSaved}
+      />
+    </div>
+  )
+}
+
 export default function QaInsightsPanel({
   agentId,
   projectId,
@@ -474,36 +520,16 @@ export default function QaInsightsPanel({
   // QA has never run here. Say what to do rather than showing empty charts.
   if (!data?.today && !data?.lastRun) {
     return (
-      <div className="p-6">
-        <div className="mx-auto max-w-lg rounded-xl border border-gray-200 bg-white p-8 text-center dark:border-gray-800 dark:bg-gray-900">
-          <Sparkles className="mx-auto h-8 w-8 text-gray-300" />
-          <h3 className="mt-3 text-base font-semibold text-gray-900 dark:text-gray-50">
-            {data?.qaConfig ? 'QA has not run for this agent yet' : 'QA is not switched on for this agent'}
-          </h3>
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-            {data?.qaConfig
-              ? 'It is switched on — the first check runs tonight. 200 calls are sampled and an insight appears here, but only when there is one worth raising.'
-              : 'Switch it on and 200 of this agent\u2019s calls are checked every night. An insight appears here only when there is one worth raising.'}
-          </p>
-          {data?.canWrite ? (
-            <Button className="mt-4" onClick={() => setSettingsOpen(true)}>
-              <Settings className="mr-1.5 h-3.5 w-3.5" />
-              {data?.qaConfig ? 'QA settings' : 'Set up QA'}
-            </Button>
-          ) : (
-            <p className="mt-4 text-xs text-gray-400">An admin on this project can switch it on.</p>
-          )}
-        </div>
-
-        <QaSettingsDialog
-          open={settingsOpen}
-          onOpenChange={setSettingsOpen}
-          agentId={agentId}
-          initial={(data?.qaConfig as never) ?? null}
-          knownDispositions={data?.knownDispositions ?? []}
-          onSaved={refetch}
-        />
-      </div>
+      <NeverRunState
+        hasConfig={Boolean(data?.qaConfig)}
+        canWrite={Boolean(data?.canWrite)}
+        agentId={agentId}
+        settingsOpen={settingsOpen}
+        onSettingsOpenChange={setSettingsOpen}
+        knownDispositions={data?.knownDispositions ?? []}
+        qaConfig={data?.qaConfig ?? null}
+        onSaved={refetch}
+      />
     )
   }
 
