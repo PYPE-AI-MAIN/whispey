@@ -479,9 +479,11 @@ export default function QaInsightsPanel({
     })
     const body = await res.json().catch(() => null)
     toast.success(
-      body?.mailed
-        ? "We've mailed the Pype QA team — they'll follow up."
-        : "Added to the QA team's review queue.",
+      body?.alreadyAsked
+        ? 'Already asked — see the "To listen to" tab.'
+        : body?.mailed
+          ? "We've mailed the Pype QA team — they'll follow up."
+          : "Added to the QA team's review queue.",
     )
     setTab('review')
     refetch()
