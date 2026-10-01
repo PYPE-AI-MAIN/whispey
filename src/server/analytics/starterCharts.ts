@@ -30,32 +30,9 @@ export const STARTER_CHARTS: StarterChart[] = [
     spec: { spec_version: 1, agg: { fn: 'count' }, range: { days: 7 }, display: { round: 0 } },
   },
   {
-    title: 'Total minutes',
-    kind: 'kpi',
-    layout: { x: 3, y: 0, w: 3, h: 2 },
-    spec: {
-      spec_version: 1,
-      agg: { fn: 'sum', field: { col: 'call_duration_seconds' } },
-      range: { days: 7 },
-      // full precision in the query; the rounding happens once, on screen
-      display: { round: 0, unit: 'm', scale: SECONDS_TO_MINUTES },
-    },
-  },
-  {
-    title: 'Billing minutes',
-    kind: 'kpi',
-    layout: { x: 6, y: 0, w: 3, h: 2 },
-    spec: {
-      spec_version: 1,
-      agg: { fn: 'sum', field: { col: 'billing_duration_seconds' } },
-      range: { days: 7 },
-      display: { round: 0, unit: 'm', scale: SECONDS_TO_MINUTES },
-    },
-  },
-  {
     title: 'Total cost',
     kind: 'kpi',
-    layout: { x: 9, y: 0, w: 3, h: 2 },
+    layout: { x: 3, y: 0, w: 3, h: 2 },
     spec: {
       spec_version: 1,
       agg: { fn: 'sum', field: { col: 'total_cost' } },
