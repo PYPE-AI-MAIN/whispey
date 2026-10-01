@@ -275,10 +275,11 @@ function renderQaCell(call: CallLog) {
     return <span className="text-xs text-emerald-600 dark:text-emerald-400">clean</span>
   }
 
-  const tone =
-    qa.worst === 'P0' ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
-    : qa.worst === 'P1' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
-    : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+  const TONE_BY_PRIORITY: Record<string, string> = {
+    P0: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
+    P1: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+  }
+  const tone = TONE_BY_PRIORITY[qa.worst] ?? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
 
   return (
     <div className="flex flex-wrap items-center gap-1" title={issues.join(', ')}>
@@ -286,7 +287,7 @@ function renderQaCell(call: CallLog) {
         {qa.worst ?? 'QA'}
       </span>
       <span className="text-xs text-gray-600 dark:text-gray-400">
-        {issues.length === 1 ? issues[0].replace(/_/g, ' ') : `${issues.length} issues`}
+        {issues.length === 1 ? issues[0].replaceAll('_', ' ') : `${issues.length} issues`}
       </span>
     </div>
   )

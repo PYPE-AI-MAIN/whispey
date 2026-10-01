@@ -13,6 +13,52 @@ export const dynamic = 'force-dynamic'
 
 const WINDOW_DAYS = 7
 
+type IssueType = { key: string; label: string; priority: string; is_positive: boolean }
+type StatsRow = { agent_id: string; run_date: string; calls_total: number; calls_sampled: number; issue_counts: unknown; metrics: unknown }
+type AgentRow = { id: string; name: string; qa_config: unknown }
+type InsightSummary = { id: string; headline: string; severity: string }
+
+function buildAgentRow(
+  a: AgentRow,
+  latest: StatsRow | undefined,
+  types: Map<string, IssueType>,
+  insight: InsightSummary | null,
+) {
+  const counts = (latest?.issue_counts || {}) as Record<string, { random?: number; pct?: number | null }>
+
+  const p0 = Object.entries(counts).filter(([k]) => types.get(k)?.priority === 'P0' && !types.get(k)?.is_positive).length
+  const worst = Object.entries(counts)
+    .filter(([k]) => !types.get(k)?.is_positive)
+    .sort((x, y) => (y[1].pct ?? 0) - (x[1].pct ?? 0))[0]
+
+  return {
+    id: a.id,
+    name: a.name,
+    enabled: Boolean((a.qa_config as { enabled?: boolean } | null)?.enabled),
+    lastChecked: latest?.run_date ?? null,
+    callsTotal: latest?.calls_total ?? 0,
+    sampled: latest?.calls_sampled ?? 0,
+    p0Count: p0,
+    topIssue: worst ? { key: worst[0], label: types.get(worst[0])?.label || worst[0], pct: worst[1].pct ?? null } : null,
+    insight,
+  }
+}
+
+/** Project-wide issue totals over the window — how many calls, across how many agents. */
+function buildIssueTotals(stats: StatsRow[], types: Map<string, IssueType>) {
+  const totals = new Map<string, { calls: number; agents: Set<string> }>()
+  for (const row of stats) {
+    for (const [key, c] of Object.entries((row.issue_counts || {}) as Record<string, { random?: number; flagged?: number }>)) {
+      if (types.get(key)?.is_positive) continue
+      if (!totals.has(key)) totals.set(key, { calls: 0, agents: new Set() })
+      const t = totals.get(key)!
+      t.calls += (c.random || 0) + (c.flagged || 0)
+      t.agents.add(row.agent_id)
+    }
+  }
+  return totals
+}
+
 export const GET = guarded('qa/project', async (req: NextRequest, ctx: { params: Promise<{ projectId: string }> }) => {
   const { projectId } = await ctx.params
 
@@ -54,41 +100,12 @@ export const GET = guarded('qa/project', async (req: NextRequest, ctx: { params:
   const latestByAgent = new Map<string, (typeof stats)[number]>()
   for (const row of stats) if (!latestByAgent.has(row.agent_id)) latestByAgent.set(row.agent_id, row)
 
-  const agents = (agentsRes.data || []).map((a) => {
-    const latest = latestByAgent.get(a.id)
-    const counts = (latest?.issue_counts || {}) as Record<string, { random?: number; pct?: number | null }>
+  const agents = (agentsRes.data || [])
+    .map((a) => buildAgentRow(a, latestByAgent.get(a.id), types, insightsByAgent.get(a.id) || null))
+    // agents with something to say first
+    .sort((a, b) => Number(Boolean(b.insight)) - Number(Boolean(a.insight)) || b.p0Count - a.p0Count)
 
-    const p0 = Object.entries(counts).filter(([k]) => types.get(k)?.priority === 'P0' && !types.get(k)?.is_positive).length
-    const worst = Object.entries(counts)
-      .filter(([k]) => !types.get(k)?.is_positive)
-      .sort((x, y) => (y[1].pct ?? 0) - (x[1].pct ?? 0))[0]
-
-    return {
-      id: a.id,
-      name: a.name,
-      enabled: Boolean((a.qa_config as { enabled?: boolean } | null)?.enabled),
-      lastChecked: latest?.run_date ?? null,
-      callsTotal: latest?.calls_total ?? 0,
-      sampled: latest?.calls_sampled ?? 0,
-      p0Count: p0,
-      topIssue: worst ? { key: worst[0], label: types.get(worst[0])?.label || worst[0], pct: worst[1].pct ?? null } : null,
-      insight: insightsByAgent.get(a.id) || null,
-    }
-  })
-  // agents with something to say first
-  .sort((a, b) => Number(Boolean(b.insight)) - Number(Boolean(a.insight)) || b.p0Count - a.p0Count)
-
-  // project-wide issue totals over the window
-  const totals = new Map<string, { calls: number; agents: Set<string> }>()
-  for (const row of stats) {
-    for (const [key, c] of Object.entries((row.issue_counts || {}) as Record<string, { random?: number; flagged?: number }>)) {
-      if (types.get(key)?.is_positive) continue
-      if (!totals.has(key)) totals.set(key, { calls: 0, agents: new Set() })
-      const t = totals.get(key)!
-      t.calls += (c.random || 0) + (c.flagged || 0)
-      t.agents.add(row.agent_id)
-    }
-  }
+  const totals = buildIssueTotals(stats, types)
 
   const issues = [...totals.entries()]
     .map(([key, t]) => ({

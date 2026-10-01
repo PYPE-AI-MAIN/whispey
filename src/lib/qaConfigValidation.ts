@@ -36,15 +36,7 @@ export type QaConfig = {
 
 const HHMM = /^([01]?\d|2[0-3]):[0-5]\d$/
 
-/** @returns an error message, or null when the config is safe to store. */
-export function qaConfigError(value: unknown): string | null {
-  if (value === null) return null // clearing it is allowed — turns QA off entirely
-  if (typeof value !== 'object' || Array.isArray(value)) return 'qa_config must be an object'
-
-  const cfg = value as Record<string, unknown>
-
-  if (typeof cfg.enabled !== 'boolean') return 'qa_config.enabled must be true or false'
-
+function checkNumericRanges(cfg: Record<string, unknown>): string | null {
   for (const key of NUMERIC_KEYS) {
     if (cfg[key] === undefined || cfg[key] === null) continue
     const n = Number(cfg[key])
@@ -52,14 +44,17 @@ export function qaConfigError(value: unknown): string | null {
     if (!Number.isFinite(n)) return `${label} must be a number`
     if (n < min || n > max) return `${label} must be between ${min} and ${max}`
   }
+  return null
+}
 
-  if (cfg.flagged_share !== undefined && cfg.flagged_share !== null) {
-    const n = Number(cfg.flagged_share)
-    if (!Number.isFinite(n) || n < 0 || n > 1) {
-      return 'The flagged share must be between 0 and 1'
-    }
-  }
+function checkFlaggedShare(cfg: Record<string, unknown>): string | null {
+  if (cfg.flagged_share === undefined || cfg.flagged_share === null) return null
+  const n = Number(cfg.flagged_share)
+  if (!Number.isFinite(n) || n < 0 || n > 1) return 'The flagged share must be between 0 and 1'
+  return null
+}
 
+function checkLists(cfg: Record<string, unknown>): string | null {
   for (const key of LIST_KEYS) {
     const list = cfg[key]
     if (list === undefined || list === null) continue
@@ -69,47 +64,79 @@ export function qaConfigError(value: unknown): string | null {
       return `${key} must be short text values`
     }
   }
-
-  // A success disposition that is not in the allowed list can never match, so
-  // the rule that depends on it would silently never fire.
-  const allowed = Array.isArray(cfg.disposition_values) ? cfg.disposition_values.map((v) => String(v).toLowerCase()) : null
-  if (allowed?.length) {
-    for (const key of ['success_dispositions', 'unanswered_dispositions'] as const) {
-      const list = Array.isArray(cfg[key]) ? (cfg[key] as string[]) : []
-      const stray = list.find((v) => !allowed.includes(String(v).toLowerCase()))
-      if (stray) return `"${stray}" is not in the list of allowed dispositions, so it would never match`
-    }
-  }
-
-  if (cfg.send_window !== undefined && cfg.send_window !== null) {
-    if (typeof cfg.send_window !== 'object' || Array.isArray(cfg.send_window)) {
-      return 'The send window must be an object'
-    }
-    const w = cfg.send_window as Record<string, unknown>
-    for (const edge of ['start', 'end'] as const) {
-      if (w[edge] === undefined || w[edge] === null) continue
-      if (typeof w[edge] !== 'string' || !HHMM.test(w[edge] as string)) {
-        return `The send window ${edge} must look like 10:00`
-      }
-    }
-    if (w.timezone !== undefined && w.timezone !== null) {
-      if (typeof w.timezone !== 'string') return 'The send window timezone must be text'
-      try {
-        new Intl.DateTimeFormat('en-GB', { timeZone: w.timezone as string })
-      } catch {
-        // An unknown zone makes isInSendWindow hold forever, so nothing would
-        // ever be delivered — catch it here rather than as silence later.
-        return `"${w.timezone}" is not a timezone we recognise`
-      }
-    }
-  }
-
-  if (cfg.flow_doc !== undefined && cfg.flow_doc !== null) {
-    if (typeof cfg.flow_doc !== 'string') return 'The flow document must be text'
-    if (cfg.flow_doc.length > 60_000) return 'The flow document is too long (60,000 characters max)'
-  }
-
   return null
+}
+
+// A success disposition that is not in the allowed list can never match, so
+// the rule that depends on it would silently never fire.
+function checkDispositionCrossRef(cfg: Record<string, unknown>): string | null {
+  const allowed = Array.isArray(cfg.disposition_values) ? cfg.disposition_values.map((v) => String(v).toLowerCase()) : null
+  if (!allowed?.length) return null
+
+  for (const key of ['success_dispositions', 'unanswered_dispositions'] as const) {
+    const list = Array.isArray(cfg[key]) ? (cfg[key] as string[]) : []
+    const stray = list.find((v) => !allowed.includes(String(v).toLowerCase()))
+    if (stray) return `"${stray}" is not in the list of allowed dispositions, so it would never match`
+  }
+  return null
+}
+
+function checkSendWindowEdges(w: Record<string, unknown>): string | null {
+  for (const edge of ['start', 'end'] as const) {
+    if (w[edge] === undefined || w[edge] === null) continue
+    if (typeof w[edge] !== 'string' || !HHMM.test(w[edge])) {
+      return `The send window ${edge} must look like 10:00`
+    }
+  }
+  return null
+}
+
+function checkSendWindowTimezone(w: Record<string, unknown>): string | null {
+  if (w.timezone === undefined || w.timezone === null) return null
+  if (typeof w.timezone !== 'string') return 'The send window timezone must be text'
+  try {
+    new Intl.DateTimeFormat('en-GB', { timeZone: w.timezone })
+    return null
+  } catch {
+    // An unknown zone makes isInSendWindow hold forever, so nothing would
+    // ever be delivered — catch it here rather than as silence later.
+    return `"${w.timezone}" is not a timezone we recognise`
+  }
+}
+
+function checkSendWindow(cfg: Record<string, unknown>): string | null {
+  if (cfg.send_window === undefined || cfg.send_window === null) return null
+  if (typeof cfg.send_window !== 'object' || Array.isArray(cfg.send_window)) {
+    return 'The send window must be an object'
+  }
+  const w = cfg.send_window as Record<string, unknown>
+  return checkSendWindowEdges(w) || checkSendWindowTimezone(w)
+}
+
+function checkFlowDoc(cfg: Record<string, unknown>): string | null {
+  if (cfg.flow_doc === undefined || cfg.flow_doc === null) return null
+  if (typeof cfg.flow_doc !== 'string') return 'The flow document must be text'
+  if (cfg.flow_doc.length > 60_000) return 'The flow document is too long (60,000 characters max)'
+  return null
+}
+
+/** @returns an error message, or null when the config is safe to store. */
+export function qaConfigError(value: unknown): string | null {
+  if (value === null) return null // clearing it is allowed — turns QA off entirely
+  if (typeof value !== 'object' || Array.isArray(value)) return 'qa_config must be an object'
+
+  const cfg = value as Record<string, unknown>
+  if (typeof cfg.enabled !== 'boolean') return 'qa_config.enabled must be true or false'
+
+  return (
+    checkNumericRanges(cfg)
+    || checkFlaggedShare(cfg)
+    || checkLists(cfg)
+    || checkDispositionCrossRef(cfg)
+    || checkSendWindow(cfg)
+    || checkFlowDoc(cfg)
+    || null
+  )
 }
 
 export const QA_DEFAULTS: QaConfig = {

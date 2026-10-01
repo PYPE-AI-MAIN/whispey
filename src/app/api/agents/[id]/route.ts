@@ -133,6 +133,13 @@ function flagRulesError(body: Record<string, unknown>, existingFieldExtractorPro
   return validationError ? `Invalid flag_rules: ${validationError}` : null
 }
 
+/** Field-specific content checks, beyond the role/visibility gate. */
+function gatedFieldContentError(key: string, body: Record<string, unknown>, existingFieldExtractorPrompt: unknown): string | null {
+  if (key === 'flag_rules') return flagRulesError(body, existingFieldExtractorPrompt)
+  if (key === 'qa_config') return qaConfigError(body.qa_config)
+  return null
+}
+
 function buildAgentUpdatePayload(
   body: Record<string, unknown>,
   roleResult: RoleResult,
@@ -151,14 +158,8 @@ function buildAgentUpdatePayload(
   for (const [key, gate] of Object.entries(GATED_FIELDS)) {
     if (!(key in body)) continue
     if (isViewer && org?.[gate] !== true) return { ok: false, error: 'Forbidden', status: 403 }
-    if (key === 'flag_rules') {
-      const err = flagRulesError(body, existingFieldExtractorPrompt)
-      if (err) return { ok: false, error: err, status: 400 }
-    }
-    if (key === 'qa_config') {
-      const err = qaConfigError(body.qa_config)
-      if (err) return { ok: false, error: err, status: 400 }
-    }
+    const contentError = gatedFieldContentError(key, body, existingFieldExtractorPrompt)
+    if (contentError) return { ok: false, error: contentError, status: 400 }
     payload[key] = body[key]
   }
 

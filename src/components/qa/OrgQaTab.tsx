@@ -85,7 +85,7 @@ export function OrgQaTab({
             <div className="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
                 Agents
-                <span className="ml-2 font-normal text-gray-400">the ones with something to say come first</span>
+                {' '}<span className="ml-2 font-normal text-gray-400">the ones with something to say come first</span>
               </h3>
             </div>
 
@@ -144,7 +144,7 @@ export function OrgQaTab({
             <div className="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
                 Across the project
-                <span className="ml-2 font-normal text-gray-400">last {data?.windowDays} days</span>
+                {' '}<span className="ml-2 font-normal text-gray-400">last {data?.windowDays} days</span>
               </h3>
             </div>
             <ul className="divide-y divide-gray-50 dark:divide-gray-800/60">

@@ -12,7 +12,7 @@
  * push and the merge PR all behave exactly as they do today. This dialog only
  * produces the patched config; it never deploys anything itself.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
 import {
@@ -27,6 +27,12 @@ type Patch = {
   target?: 'system_prompt' | 'field_extractor_prompt'
 }
 
+// A plain string has no stable identity of its own, and these lines can be
+// edited, added and removed in place — tag each with an id once, at the
+// boundary, so the list rendering never has to fall back to its index.
+type Row = { id: string; value: string }
+const toRows = (lines: string[]): Row[] => lines.map((value) => ({ id: crypto.randomUUID(), value }))
+
 export default function PromptPatchDialog({
   open, onOpenChange, insightId, agentId, patch, onPublished,
 }: Readonly<{
@@ -38,8 +44,8 @@ export default function PromptPatchDialog({
   onPublished: () => void
 }>) {
   const { user } = useUser()
-  const [removeLines, setRemoveLines] = useState<string[]>(patch.remove ?? [])
-  const [addLines, setAddLines] = useState<string[]>(patch.add ?? [])
+  const [removeLines, setRemoveLines] = useState<Row[]>(() => toRows(patch.remove ?? []))
+  const [addLines, setAddLines] = useState<Row[]>(() => toRows(patch.add ?? []))
   const [commitMessage, setCommitMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -51,8 +57,8 @@ export default function PromptPatchDialog({
   // reset whenever a different suggestion is opened
   useEffect(() => {
     if (!open) return
-    setRemoveLines(patch.remove ?? [])
-    setAddLines(patch.add ?? [])
+    setRemoveLines(toRows(patch.remove ?? []))
+    setAddLines(toRows(patch.add ?? []))
     setCommitMessage(`QA: ${patch.why || 'prompt fix'}`.slice(0, 180))
     setError(null)
     setConflicts([])
@@ -69,8 +75,8 @@ export default function PromptPatchDialog({
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          remove: removeLines.filter((l) => l.trim()),
-          add: addLines.filter((l) => l.trim()),
+          remove: removeLines.map((l) => l.value).filter((v) => v.trim()),
+          add: addLines.map((l) => l.value).filter((v) => v.trim()),
         }),
       })
       const patched = await patchRes.json()
@@ -114,10 +120,12 @@ export default function PromptPatchDialog({
     }
   }
 
-  const editLine = (list: string[], set: (v: string[]) => void, i: number, v: string) => {
-    const next = [...list]
-    next[i] = v
-    set(next)
+  const editLine = (set: Dispatch<SetStateAction<Row[]>>, id: string, value: string) => {
+    set((prev) => prev.map((row) => (row.id === id ? { ...row, value } : row)))
+  }
+
+  const removeRow = (set: Dispatch<SetStateAction<Row[]>>, id: string) => {
+    set((prev) => prev.filter((row) => row.id !== id))
   }
 
   return (
@@ -146,16 +154,16 @@ export default function PromptPatchDialog({
             <div>
               <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">Replace these lines</p>
               <div className="space-y-2">
-                {removeLines.map((line, i) => (
-                  <div key={`r${i}`} className="flex items-start gap-2">
+                {removeLines.map((row) => (
+                  <div key={row.id} className="flex items-start gap-2">
                     <span className="mt-2 font-mono text-sm text-red-500">−</span>
                     <Textarea
-                      value={line}
-                      onChange={(e) => editLine(removeLines, setRemoveLines, i, e.target.value)}
+                      value={row.value}
+                      onChange={(e) => editLine(setRemoveLines, row.id, e.target.value)}
                       rows={2}
                       className="flex-1 border-red-200 bg-red-50 font-mono text-xs dark:border-red-900 dark:bg-red-950/30"
                     />
-                    <Button variant="ghost" size="sm" onClick={() => setRemoveLines(removeLines.filter((_, x) => x !== i))}>
+                    <Button variant="ghost" size="sm" onClick={() => removeRow(setRemoveLines, row.id)}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
@@ -174,22 +182,22 @@ export default function PromptPatchDialog({
               {removeLines.length > 0 ? 'With these' : 'Add these lines'}
             </p>
             <div className="space-y-2">
-              {addLines.map((line, i) => (
-                <div key={`a${i}`} className="flex items-start gap-2">
+              {addLines.map((row) => (
+                <div key={row.id} className="flex items-start gap-2">
                   <span className="mt-2 font-mono text-sm text-emerald-600">+</span>
                   <Textarea
-                    value={line}
-                    onChange={(e) => editLine(addLines, setAddLines, i, e.target.value)}
+                    value={row.value}
+                    onChange={(e) => editLine(setAddLines, row.id, e.target.value)}
                     rows={2}
                     className="flex-1 border-emerald-200 bg-emerald-50 font-mono text-xs dark:border-emerald-900 dark:bg-emerald-950/30"
                   />
-                  <Button variant="ghost" size="sm" onClick={() => setAddLines(addLines.filter((_, x) => x !== i))}>
+                  <Button variant="ghost" size="sm" onClick={() => removeRow(setAddLines, row.id)}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               ))}
             </div>
-            <Button variant="outline" size="sm" className="mt-2" onClick={() => setAddLines([...addLines, ''])}>
+            <Button variant="outline" size="sm" className="mt-2" onClick={() => setAddLines((prev) => [...prev, { id: crypto.randomUUID(), value: '' }])}>
               <Plus className="mr-1.5 h-3.5 w-3.5" />
               Add a line of your own
             </Button>
@@ -225,7 +233,7 @@ export default function PromptPatchDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
           <Button
             onClick={publish}
-            disabled={busy || isExtractorTarget || !addLines.some((l) => l.trim())}
+            disabled={busy || isExtractorTarget || !addLines.some((l) => l.value.trim())}
             title={isExtractorTarget ? 'This targets the field extractor prompt — apply it by hand in Agent Config' : undefined}
           >
             {busy && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}

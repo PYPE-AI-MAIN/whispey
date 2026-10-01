@@ -41,7 +41,7 @@ export const EXTRA_RESTRICTABLE_COLUMNS = [
 // truth, shared with flag-rules validation) — do not re-declare it inline here.
 
 // transcription_metrics keys managed as first-class BASIC_COLUMNS — skip auto-discovery
-const EXCLUDED_TRANSCRIPTION_METRICS_COLUMNS = ['tags', 'tagComments', 'flag', 'qa']
+const EXCLUDED_TRANSCRIPTION_METRICS_COLUMNS = new Set(['tags', 'tagComments', 'flag', 'qa'])
 
 interface VisibleColumns {
   basic: string[]
@@ -81,7 +81,7 @@ export const useCallLogsColumns = (agent: any, calls: CallLog[], role: string | 
       }
       if (call.transcription_metrics && typeof call.transcription_metrics === 'object') {
         Object.keys(call.transcription_metrics)
-          .filter(key => !EXCLUDED_TRANSCRIPTION_METRICS_COLUMNS.includes(key))
+          .filter(key => !EXCLUDED_TRANSCRIPTION_METRICS_COLUMNS.has(key))
           .forEach(key => transcriptionKeys.add(key))
       }
       if (call.metrics && typeof call.metrics === 'object') {

@@ -119,6 +119,9 @@ const PRIORITY: Record<string, string> = {
 
 const LINE_COLOURS = ['#111827', '#6b7280', '#9ca3af', '#2563eb', '#93c5fd']
 
+const FIXABLE_BY_LABEL: Record<string, string> = { prompt: 'Prompt', pype: 'Pype' }
+const fixableByLabel = (fixableBy: string | null) => FIXABLE_BY_LABEL[fixableBy ?? ''] ?? 'Customer'
+
 /** Up is not always good: for an issue rate, up is bad. */
 function Delta({ value, goodWhenDown = true }: Readonly<{ value: number | null; goodWhenDown?: boolean }>) {
   if (value === null || Math.abs(value) < 0.005) {
@@ -132,6 +135,253 @@ function Delta({ value, goodWhenDown = true }: Readonly<{ value: number | null; 
       <Icon className="h-3 w-3" />
       {rose ? '+' : ''}{(value * 100).toFixed(1)} pts
     </span>
+  )
+}
+
+function InsightCard({
+  insight, canWrite, onReviewPatch, onAskQa, onDismiss,
+}: Readonly<{
+  insight: Insight
+  canWrite: boolean
+  onReviewPatch: () => void
+  onAskQa: () => void
+  onDismiss: () => void
+}>) {
+  const sev = SEVERITY[insight.severity]
+  return (
+    <div className={`overflow-hidden rounded-xl border border-l-4 bg-white shadow-sm dark:bg-gray-900 ${sev.ring} ${sev.accent}`}>
+      <div className={`flex items-start justify-between gap-4 border-b border-gray-100 p-5 dark:border-gray-800 ${sev.wash}`}>
+        <div className="flex min-w-0 gap-3">
+          <sev.Icon className={`mt-0.5 h-5 w-5 flex-none ${sev.dot.replace('bg-', 'text-')}`} />
+          <div className="min-w-0">
+            <div className="mb-2 flex items-center gap-2">
+              <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${sev.chip}`}>{sev.label}</span>
+              <span className="text-xs text-gray-400">{insight.run_date}</span>
+              {insight.trigger && <Badge variant="outline" className="text-xs capitalize">{insight.trigger}</Badge>}
+            </div>
+            <h2 className="text-lg font-semibold leading-snug text-gray-900 dark:text-gray-50">
+              {insight.headline}
+            </h2>
+          </div>
+        </div>
+      </div>
+
+      <ul className="space-y-3 p-5">
+        {insight.bullets.map((b, i) => (
+          <li key={`${b.issue_key ?? 'b'}-${i}`} className="flex items-start justify-between gap-4 text-sm text-gray-700 dark:text-gray-300">
+            <span className="flex gap-3">
+              <span className={`mt-1.5 h-1.5 w-1.5 flex-none rounded-full ${sev.dot}`} />
+              <span>{b.text}</span>
+            </span>
+            {b.pct !== null && (
+              <span className="flex-none whitespace-nowrap rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                {pct1(b.pct)}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 p-4 dark:border-gray-800">
+        {insight.suggested_prompt_patch && (
+          <Button size="sm" onClick={onReviewPatch} disabled={!canWrite}>
+            <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+            Review prompt change
+          </Button>
+        )}
+        <Button size="sm" variant="outline" onClick={onAskQa}>
+          <Headphones className="mr-1.5 h-3.5 w-3.5" />
+          Ask QA to check this
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onDismiss}>
+          Dismiss
+        </Button>
+        {!canWrite && insight.suggested_prompt_patch && (
+          <span className="text-xs text-gray-400">Admin access is needed to change a prompt</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function QuietState() {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
+      <div className="flex items-start gap-3">
+        <CheckCircle2 className="mt-0.5 h-5 w-5 flex-none text-emerald-500" />
+        <div>
+          <p className="font-medium text-gray-900 dark:text-gray-50">Nothing new to report</p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            The calls below were checked. Nothing crossed the line where it is worth interrupting
+            someone — no new issue, nothing worse than last week, no measure down.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MetricsGrid({ metrics }: Readonly<{ metrics: Metric[] }>) {
+  if (!metrics.length) return null
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+      <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
+        This agent&apos;s measures
+        {' '}<span className="ml-2 font-normal text-gray-400">from the random sample, against the last 30 days</span>
+      </h3>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        {metrics.map((m) => (
+          <div key={m.key} className="rounded-lg border border-gray-100 p-3 dark:border-gray-800">
+            <div className="truncate font-mono text-xs text-gray-500 dark:text-gray-400" title={m.key}>{m.key}</div>
+            <div className="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-50">{pct(m.rate)}</div>
+            <div className="mt-1 flex items-center justify-between">
+              <Delta value={m.delta} goodWhenDown={false} />
+              <span className="text-xs text-gray-400">n={m.n}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function TrendChart({
+  trend, trendKeys,
+}: Readonly<{ trend: Array<Record<string, unknown>>; trendKeys: Array<{ key: string; label: string }> }>) {
+  if (trend.length <= 1 || !trendKeys.length) return null
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+      <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
+        How the top issues are moving
+        {' '}<span className="ml-2 font-normal text-gray-400">share of sampled calls</span>
+      </h3>
+      <div className="h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={trend} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-800" />
+            <XAxis dataKey="date" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
+            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${Math.round(Number(v) * 100)}%`} width={44} />
+            <Tooltip
+              formatter={(value, name) => [
+                pct1(typeof value === 'number' ? value : Number(value)),
+                trendKeys.find((k) => k.key === name)?.label ?? String(name),
+              ]}
+              contentStyle={{ fontSize: 12, borderRadius: 8 }}
+            />
+            <Legend formatter={(v) => trendKeys.find((k) => k.key === v)?.label ?? v} wrapperStyle={{ fontSize: 11 }} />
+            {trendKeys.map((k, i) => (
+              <Line
+                key={k.key}
+                type="monotone"
+                dataKey={k.key}
+                stroke={LINE_COLOURS[i % LINE_COLOURS.length]}
+                strokeWidth={2}
+                dot={false}
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  )
+}
+
+function IssueTable({ issues, projectId, agentId }: Readonly<{ issues: Issue[]; projectId: string; agentId: string }>) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+      <div className="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
+          Everything found last night
+          {' '}<span className="ml-2 font-normal text-gray-400">ranked by how much it matters, not by count</span>
+        </h3>
+      </div>
+
+      {issues.length === 0 ? (
+        <p className="px-5 py-8 text-center text-sm text-gray-400">Nothing found in the calls that were checked.</p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-100 text-left text-xs uppercase tracking-wide text-gray-400 dark:border-gray-800">
+              <th className="px-5 py-2 font-medium">Issue</th>
+              <th className="px-3 py-2 text-right font-medium">Rate</th>
+              <th className="px-3 py-2 text-right font-medium">vs last</th>
+              <th className="px-3 py-2 text-right font-medium">Flagged</th>
+              <th className="px-3 py-2 font-medium">Fix</th>
+              <th className="px-3 py-2" />
+            </tr>
+          </thead>
+          <tbody>
+            {issues.map((issue) => (
+              <tr key={issue.key} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 dark:border-gray-800/60 dark:hover:bg-gray-800/40">
+                <td className="px-5 py-3">
+                  <div className="flex items-center gap-2">
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${PRIORITY[issue.priority] ?? PRIORITY.P2}`}>
+                      {issue.priority}
+                    </span>
+                    <span className="font-medium text-gray-900 dark:text-gray-100">{issue.label}</span>
+                    {issue.isNew && (
+                      <span className="rounded border border-gray-300 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                        NEW
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-3 py-3 text-right font-medium text-gray-900 dark:text-gray-100">{pct1(issue.pct)}</td>
+                <td className="px-3 py-3 text-right"><Delta value={issue.delta} /></td>
+                <td className="px-3 py-3 text-right text-gray-500">{issue.flagged}</td>
+                <td className="px-3 py-3">
+                  <span className="text-xs capitalize text-gray-500">
+                    {fixableByLabel(issue.fixableBy)}
+                  </span>
+                </td>
+                <td className="px-3 py-3 text-right">
+                  {(issue.example || issue.callIds.length > 0) && (
+                    <a
+                      href={
+                        `/${projectId}/agents/${agentId}/observability?session_id=${issue.example?.callId ?? issue.callIds[0]}`
+                        // seek straight to the moment when we know it
+                        + (issue.example?.seconds ? `&t=${issue.example.seconds}` : '')
+                      }
+                      title={issue.example?.evidence ?? undefined}
+                      className="inline-flex items-center text-xs text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      {issue.example?.seconds ? 'Hear it' : 'See a call'}
+                      <ChevronRight className="h-3 w-3" />
+                    </a>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  )
+}
+
+function PreviousInsights({ insights, currentId }: Readonly<{ insights: Insight[]; currentId: string | undefined }>) {
+  const previous = insights.filter((i) => i.id !== currentId)
+  if (!previous.length) return null
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
+      <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-50">
+        Previously
+        {' '}<span className="ml-2 font-normal text-gray-400">and whether it was acted on</span>
+      </h3>
+      <ul className="space-y-2">
+        {previous.slice(0, 8).map((i) => (
+          <li key={i.id} className="flex items-start gap-3 text-sm">
+            <span className="w-20 flex-none pt-0.5 text-xs text-gray-400">{i.run_date}</span>
+            <span className="flex-1 text-gray-700 dark:text-gray-300">{i.headline}</span>
+            {i.acted_at ? (
+              <span className="flex-none text-xs text-emerald-600 dark:text-emerald-400">prompt changed</span>
+            ) : (
+              <span className="flex-none text-xs capitalize text-gray-400">{i.status}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 
@@ -164,10 +414,7 @@ export default function QaInsightsPanel({
   }, [data?.agent?.name])
 
   const insight = data?.currentInsight ?? null
-  const sev = SEVERITY[insight?.severity ?? 'info']
-
   const trendKeys = data?.trendKeys ?? []
-  const hasTrend = (data?.trend?.length ?? 0) > 1
 
   const lastCheckedLabel = useMemo(() => {
     if (!data?.lastRun) return null
@@ -176,6 +423,33 @@ export default function QaInsightsPanel({
     if (status === 'skipped') return `Nothing to check on ${date}`
     return `Checked overnight · ${date} · ${callsSeen} calls`
   }, [data?.lastRun])
+
+  const askQaToCheck = async () => {
+    if (!insight) return
+    const res = await fetch('/api/qa/review', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ agentId, insightId: insight.id }),
+    })
+    const body = await res.json().catch(() => null)
+    toast.success(
+      body?.mailed
+        ? "We've mailed the Pype QA team — they'll follow up."
+        : "Added to the QA team's review queue.",
+    )
+    setTab('review')
+    refetch()
+  }
+
+  const dismissInsight = async () => {
+    if (!insight) return
+    await fetch(`/api/qa/insights/${insight.id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ status: 'dismissed' }),
+    })
+    refetch()
+  }
 
   if (isLoading) {
     return (
@@ -292,253 +566,21 @@ export default function QaInsightsPanel({
           <>
             {/* ---------------------------------------------- the insight */}
             {insight ? (
-              <div className={`overflow-hidden rounded-xl border border-l-4 bg-white shadow-sm dark:bg-gray-900 ${sev.ring} ${sev.accent}`}>
-                <div className={`flex items-start justify-between gap-4 border-b border-gray-100 p-5 dark:border-gray-800 ${sev.wash}`}>
-                  <div className="flex min-w-0 gap-3">
-                    <sev.Icon className={`mt-0.5 h-5 w-5 flex-none ${sev.dot.replace('bg-', 'text-')}`} />
-                    <div className="min-w-0">
-                      <div className="mb-2 flex items-center gap-2">
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${sev.chip}`}>{sev.label}</span>
-                        <span className="text-xs text-gray-400">{insight.run_date}</span>
-                        {insight.trigger && <Badge variant="outline" className="text-xs capitalize">{insight.trigger}</Badge>}
-                      </div>
-                      <h2 className="text-lg font-semibold leading-snug text-gray-900 dark:text-gray-50">
-                        {insight.headline}
-                      </h2>
-                    </div>
-                  </div>
-                </div>
-
-                <ul className="space-y-3 p-5">
-                  {insight.bullets.map((b, i) => (
-                    <li key={`${b.issue_key ?? 'b'}-${i}`} className="flex items-start justify-between gap-4 text-sm text-gray-700 dark:text-gray-300">
-                      <span className="flex gap-3">
-                        <span className={`mt-1.5 h-1.5 w-1.5 flex-none rounded-full ${sev.dot}`} />
-                        <span>{b.text}</span>
-                      </span>
-                      {b.pct !== null && (
-                        <span className="flex-none whitespace-nowrap rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                          {pct1(b.pct)}
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-
-                <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 p-4 dark:border-gray-800">
-                  {insight.suggested_prompt_patch && (
-                    <Button size="sm" onClick={() => setPatchOpen(true)} disabled={!data.canWrite}>
-                      <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                      Review prompt change
-                    </Button>
-                  )}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={async () => {
-                      const res = await fetch('/api/qa/review', {
-                        method: 'POST',
-                        headers: { 'content-type': 'application/json' },
-                        body: JSON.stringify({ agentId, insightId: insight.id }),
-                      })
-                      const body = await res.json().catch(() => null)
-                      toast.success(
-                        body?.mailed
-                          ? "We've mailed the Pype QA team — they'll follow up."
-                          : "Added to the QA team's review queue.",
-                      )
-                      setTab('review')
-                      refetch()
-                    }}
-                  >
-                    <Headphones className="mr-1.5 h-3.5 w-3.5" />
-                    Ask QA to check this
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={async () => {
-                      await fetch(`/api/qa/insights/${insight.id}`, {
-                        method: 'PATCH',
-                        headers: { 'content-type': 'application/json' },
-                        body: JSON.stringify({ status: 'dismissed' }),
-                      })
-                      refetch()
-                    }}
-                  >
-                    Dismiss
-                  </Button>
-                  {!data.canWrite && insight.suggested_prompt_patch && (
-                    <span className="text-xs text-gray-400">Admin access is needed to change a prompt</span>
-                  )}
-                </div>
-              </div>
+              <InsightCard
+                insight={insight}
+                canWrite={data.canWrite}
+                onReviewPatch={() => setPatchOpen(true)}
+                onAskQa={askQaToCheck}
+                onDismiss={dismissInsight}
+              />
             ) : (
-              <div className="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="mt-0.5 h-5 w-5 flex-none text-emerald-500" />
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-gray-50">Nothing new to report</p>
-                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                      The calls below were checked. Nothing crossed the line where it is worth interrupting
-                      someone — no new issue, nothing worse than last week, no measure down.
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <QuietState />
             )}
 
-            {/* ------------------------------------------------- the numbers */}
-            {data.metrics.length > 0 && (
-              <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
-                <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
-                  This agent&apos;s measures
-                  <span className="ml-2 font-normal text-gray-400">from the random sample, against the last 30 days</span>
-                </h3>
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                  {data.metrics.map((m) => (
-                    <div key={m.key} className="rounded-lg border border-gray-100 p-3 dark:border-gray-800">
-                      <div className="truncate font-mono text-xs text-gray-500 dark:text-gray-400" title={m.key}>{m.key}</div>
-                      <div className="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-50">{pct(m.rate)}</div>
-                      <div className="mt-1 flex items-center justify-between">
-                        <Delta value={m.delta} goodWhenDown={false} />
-                        <span className="text-xs text-gray-400">n={m.n}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* --------------------------------------------------- the trend */}
-            {hasTrend && trendKeys.length > 0 && (
-              <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
-                <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
-                  How the top issues are moving
-                  <span className="ml-2 font-normal text-gray-400">share of sampled calls</span>
-                </h3>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={data.trend} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-800" />
-                      <XAxis dataKey="date" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
-                      <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${Math.round(Number(v) * 100)}%`} width={44} />
-                      <Tooltip
-                        formatter={(value, name) => [
-                          pct1(typeof value === 'number' ? value : Number(value)),
-                          trendKeys.find((k) => k.key === name)?.label ?? String(name),
-                        ]}
-                        contentStyle={{ fontSize: 12, borderRadius: 8 }}
-                      />
-                      <Legend formatter={(v) => trendKeys.find((k) => k.key === v)?.label ?? v} wrapperStyle={{ fontSize: 11 }} />
-                      {trendKeys.map((k, i) => (
-                        <Line
-                          key={k.key}
-                          type="monotone"
-                          dataKey={k.key}
-                          stroke={LINE_COLOURS[i % LINE_COLOURS.length]}
-                          strokeWidth={2}
-                          dot={false}
-                        />
-                      ))}
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            )}
-
-            {/* --------------------------------------------- the issue list */}
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-              <div className="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
-                  Everything found last night
-                  <span className="ml-2 font-normal text-gray-400">ranked by how much it matters, not by count</span>
-                </h3>
-              </div>
-
-              {data.issues.length === 0 ? (
-                <p className="px-5 py-8 text-center text-sm text-gray-400">Nothing found in the calls that were checked.</p>
-              ) : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-100 text-left text-xs uppercase tracking-wide text-gray-400 dark:border-gray-800">
-                      <th className="px-5 py-2 font-medium">Issue</th>
-                      <th className="px-3 py-2 text-right font-medium">Rate</th>
-                      <th className="px-3 py-2 text-right font-medium">vs last</th>
-                      <th className="px-3 py-2 text-right font-medium">Flagged</th>
-                      <th className="px-3 py-2 font-medium">Fix</th>
-                      <th className="px-3 py-2" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.issues.map((issue) => (
-                      <tr key={issue.key} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 dark:border-gray-800/60 dark:hover:bg-gray-800/40">
-                        <td className="px-5 py-3">
-                          <div className="flex items-center gap-2">
-                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${PRIORITY[issue.priority] ?? PRIORITY.P2}`}>
-                              {issue.priority}
-                            </span>
-                            <span className="font-medium text-gray-900 dark:text-gray-100">{issue.label}</span>
-                            {issue.isNew && (
-                              <span className="rounded border border-gray-300 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                                NEW
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-3 py-3 text-right font-medium text-gray-900 dark:text-gray-100">{pct1(issue.pct)}</td>
-                        <td className="px-3 py-3 text-right"><Delta value={issue.delta} /></td>
-                        <td className="px-3 py-3 text-right text-gray-500">{issue.flagged}</td>
-                        <td className="px-3 py-3">
-                          <span className="text-xs capitalize text-gray-500">
-                            {issue.fixableBy === 'prompt' ? 'Prompt' : issue.fixableBy === 'pype' ? 'Pype' : 'Customer'}
-                          </span>
-                        </td>
-                        <td className="px-3 py-3 text-right">
-                          {(issue.example || issue.callIds.length > 0) && (
-                            <a
-                              href={
-                                `/${projectId}/agents/${agentId}/observability?session_id=${issue.example?.callId ?? issue.callIds[0]}`
-                                // seek straight to the moment when we know it
-                                + (issue.example?.seconds ? `&t=${issue.example.seconds}` : '')
-                              }
-                              title={issue.example?.evidence ?? undefined}
-                              className="inline-flex items-center text-xs text-blue-600 hover:underline dark:text-blue-400"
-                            >
-                              {issue.example?.seconds ? 'Hear it' : 'See a call'}
-                              <ChevronRight className="h-3 w-3" />
-                            </a>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            {/* ------------------------------------------------- past insights */}
-            {data.insights.filter((i) => i.id !== insight?.id).length > 0 && (
-              <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
-                <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-50">
-                  Previously
-                  <span className="ml-2 font-normal text-gray-400">and whether it was acted on</span>
-                </h3>
-                <ul className="space-y-2">
-                  {data.insights.filter((i) => i.id !== insight?.id).slice(0, 8).map((i) => (
-                    <li key={i.id} className="flex items-start gap-3 text-sm">
-                      <span className="w-20 flex-none pt-0.5 text-xs text-gray-400">{i.run_date}</span>
-                      <span className="flex-1 text-gray-700 dark:text-gray-300">{i.headline}</span>
-                      {i.acted_at ? (
-                        <span className="flex-none text-xs text-emerald-600 dark:text-emerald-400">prompt changed</span>
-                      ) : (
-                        <span className="flex-none text-xs capitalize text-gray-400">{i.status}</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+            <MetricsGrid metrics={data.metrics} />
+            <TrendChart trend={data.trend} trendKeys={trendKeys} />
+            <IssueTable issues={data.issues} projectId={projectId} agentId={agentId} />
+            <PreviousInsights insights={data.insights} currentId={insight?.id} />
           </>
         )}
       </div>

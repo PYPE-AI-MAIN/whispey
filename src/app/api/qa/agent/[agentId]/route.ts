@@ -44,7 +44,7 @@ export const GET = guarded('qa/agent', async (req: NextRequest, ctx: { params: P
       seen.add(clean)
       if (seen.size >= 25) break
     }
-    return [...seen].sort()
+    return [...seen].sort((a, b) => a.localeCompare(b))
   })()
 
   const [statsRes, insightsRes, typesRes, runsRes, momentsRes] = await Promise.all([
@@ -145,7 +145,7 @@ export const GET = guarded('qa/agent', async (req: NextRequest, ctx: { params: P
   const metrics = [...metricKeys]
     .map((key) => {
       const now = (today?.metrics as Record<string, { type?: string; rate?: number; n?: number; top?: unknown[] }>)?.[key]
-      if (!now || now.type !== 'rate') return null
+      if (now?.type !== 'rate') return null
       const past = previous
         .map((d) => (d.metrics as Record<string, { rate?: number }>)?.[key]?.rate)
         .filter((r): r is number => typeof r === 'number')

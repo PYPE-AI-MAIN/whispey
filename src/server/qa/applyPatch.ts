@@ -11,7 +11,7 @@
  * since the suggestion was written, we say so and let a human look.
  */
 
-const normalise = (s: string) => s.trim().replace(/\s+/g, ' ')
+const normalise = (s: string) => s.trim().replaceAll(/\s+/g, ' ')
 
 const REPLACE = '\u0000REPLACE\u0000'
 const DROP = '\u0000DROP\u0000'
@@ -43,11 +43,11 @@ export function applyPatch(prompt: string, remove: string[], add: string[]): Pat
     }
 
     // the first line we remove is where the new lines land; the rest just go
-    if (!anchored) {
+    if (anchored) {
+      lines[idx] = DROP
+    } else {
       lines[idx] = REPLACE
       anchored = true
-    } else {
-      lines[idx] = DROP
     }
   }
 
@@ -70,17 +70,19 @@ export function applyPatch(prompt: string, remove: string[], add: string[]): Pat
 /** The agent's live prompt, wherever this platform keeps it. */
 export function readPrompt(config: unknown): { prompt: string; path: 'assistant' | 'agent' } | null {
   const c = config as { agent?: { prompt?: unknown; assistant?: Array<{ prompt?: unknown }> } } | null
-  if (c?.agent?.assistant?.[0]?.prompt !== undefined) {
-    return { prompt: String(c.agent.assistant[0].prompt ?? ''), path: 'assistant' }
+  const assistantPrompt = c?.agent?.assistant?.[0]?.prompt
+  if (assistantPrompt !== undefined) {
+    return { prompt: typeof assistantPrompt === 'string' ? assistantPrompt : '', path: 'assistant' }
   }
-  if (c?.agent?.prompt !== undefined) {
-    return { prompt: String(c.agent.prompt ?? ''), path: 'agent' }
+  const agentPrompt = c?.agent?.prompt
+  if (agentPrompt !== undefined) {
+    return { prompt: typeof agentPrompt === 'string' ? agentPrompt : '', path: 'agent' }
   }
   return null
 }
 
 export function writePrompt(config: unknown, path: 'assistant' | 'agent', prompt: string) {
-  const next = JSON.parse(JSON.stringify(config))
+  const next = structuredClone(config) as Record<string, any>
   if (path === 'assistant') next.agent.assistant[0].prompt = prompt
   else next.agent.prompt = prompt
   return next

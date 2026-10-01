@@ -116,8 +116,9 @@ export default function QaSubscriptions({
         <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
           <div className={`grid gap-3 sm:grid-cols-2 ${lockAgentId ? 'lg:grid-cols-3' : 'lg:grid-cols-4'}`}>
             <div className="lg:col-span-2">
-              <label className="mb-1 block text-xs font-medium text-gray-500">Email address</label>
+              <label htmlFor="qa-sub-email" className="mb-1 block text-xs font-medium text-gray-500">Email address</label>
               <Input
+                id="qa-sub-email"
                 type="email"
                 placeholder="anyone@example.com"
                 value={email}
@@ -126,9 +127,9 @@ export default function QaSubscriptions({
             </div>
             {!lockAgentId && (
               <div className="min-w-0">
-                <label className="mb-1 block text-xs font-medium text-gray-500">For</label>
+                <label htmlFor="qa-sub-agent" className="mb-1 block text-xs font-medium text-gray-500">For</label>
                 <Select value={agentId} onValueChange={setAgentId}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="qa-sub-agent" className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Every agent</SelectItem>
                     {agents.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
@@ -137,9 +138,9 @@ export default function QaSubscriptions({
               </div>
             )}
             <div className="min-w-0">
-              <label className="mb-1 block text-xs font-medium text-gray-500">How often</label>
+              <label htmlFor="qa-sub-cadence" className="mb-1 block text-xs font-medium text-gray-500">How often</label>
               <Select value={cadence} onValueChange={(v) => setCadence(v as Sub['cadence'])}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectTrigger id="qa-sub-cadence" className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(CADENCE).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                 </SelectContent>
@@ -149,9 +150,9 @@ export default function QaSubscriptions({
 
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div className="min-w-0">
-              <label className="mb-1 block text-xs font-medium text-gray-500">What it contains</label>
+              <label htmlFor="qa-sub-contents" className="mb-1 block text-xs font-medium text-gray-500">What it contains</label>
               <Select value={contents} onValueChange={(v) => setContents(v as Sub['contents'])}>
-                <SelectTrigger className="w-full"><SelectValue className="truncate" /></SelectTrigger>
+                <SelectTrigger id="qa-sub-contents" className="w-full"><SelectValue className="truncate" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="insights">Insights only — what changed and what it costs</SelectItem>
                   <SelectItem value="insights_and_prompts">Insights and suggested prompt changes</SelectItem>
