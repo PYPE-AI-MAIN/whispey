@@ -286,6 +286,7 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/agents/:agentId/observability' },
       { pattern: '/:projectId/agents/:agentId/phone-call-config' },
       { pattern: '/:projectId/agents/:agentId/phone-call-config/pipecat' },
+      { pattern: '/:projectId/agents/:agentId/qa' },
       { pattern: '/:projectId/agents/:agentId/knowledge' },
       { pattern: '/:projectId/agents/:agentId/workflow' },
       { pattern: '/:projectId/agents/:agentId/prompt-forge' },
@@ -295,7 +296,7 @@ const sidebarRoutes: SidebarRoute[] = [
       const { projectId, agentId } = params
       const { isEnhancedProject, agentType, isOwnerOrAdmin, visibility, isSuperAdmin, hasWorkflow, createdViaMcp } = context
 
-      const reservedPaths = ['api-keys', 'settings', 'config', 'observability', 'sip-management'];
+      const reservedPaths = ['api-keys', 'settings', 'config', 'observability', 'sip-management', 'qa'];
       if (reservedPaths.includes(agentId)) {
         return null;
       }
@@ -399,6 +400,17 @@ const sidebarRoutes: SidebarRoute[] = [
           group: 'call configuration'
         })
       }
+
+      // Sits directly below Phone Calls. Not gated behind a visibility flag:
+      // QA is read-only reporting about calls this person can already see, and
+      // the page itself re-checks access server-side.
+      callItems.push({
+        id: 'qa-insights',
+        name: 'QA & Insights',
+        icon: 'ShieldCheck',
+        path: `/${projectId}/agents/${agentId}/qa`,
+        group: 'call configuration'
+      })
 
       const enhancedItems = []
       if (isEnhancedProject) {
