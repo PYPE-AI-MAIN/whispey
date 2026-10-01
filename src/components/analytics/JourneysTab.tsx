@@ -109,8 +109,19 @@ function FilterBar({
  * come into existence from an external `POST /api/journeys/events` call
  * (there's nothing to configure in this app first).
  */
-function IntegrationDocs({ campaignKey }: Readonly<{ campaignKey: string }>) {
+/** "Copied" flashes for 1.5s — shared by every code-snippet block on this page instead of each one reimplementing it. */
+function useCopyToClipboard() {
   const [copied, setCopied] = useState(false)
+  const copy = (text: string) => {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+  return { copied, copy }
+}
+
+function IntegrationDocs({ campaignKey }: Readonly<{ campaignKey: string }>) {
+  const { copied, copy } = useCopyToClipboard()
   const snippet = String.raw`curl -X POST https://<your-domain>/api/journeys/events \
   -H "Content-Type: application/json" \
   -H "x-pype-token: <YOUR_PYPE_TOKEN>" \
@@ -122,12 +133,6 @@ function IntegrationDocs({ campaignKey }: Readonly<{ campaignKey: string }>) {
     "action": "message_sent",
     "payload": { "delivery_status": "delivered", "reachout_count": 2 }
   }'`
-
-  const copy = () => {
-    navigator.clipboard.writeText(snippet)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
 
   return (
     <Popover>
@@ -151,9 +156,9 @@ function IntegrationDocs({ campaignKey }: Readonly<{ campaignKey: string }>) {
           it's stored as-is and shown on hover over each journey's milestones. Limits: 8KB per request, 600 requests/min per token.
         </p>
         <div className="relative">
-          <pre className="max-h-64 overflow-auto rounded-lg bg-gray-900 p-3 text-[11px] leading-relaxed text-gray-100">{snippet}</pre>
+          <pre className="max-h-64 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words rounded-lg bg-gray-900 p-3 text-[11px] leading-relaxed text-gray-100">{snippet}</pre>
           <button
-            onClick={copy}
+            onClick={() => copy(snippet)}
             className="absolute right-2 top-2 rounded-md border border-gray-700 bg-gray-800 p-1.5 text-gray-300 hover:bg-gray-700"
             title="Copy"
           >
@@ -175,14 +180,76 @@ function SectionHeader({ title, subtitle }: Readonly<{ title: string; subtitle: 
   )
 }
 
-function EmptyState() {
+/**
+ * Shown when there are zero campaigns — before this, `IntegrationDocs`'s
+ * "Integration" button is the only place the actual contract is documented,
+ * but that button only exists once a campaign is already selected. Someone
+ * starting from exactly zero has nowhere else to find this, so the full
+ * curl example goes directly here instead of behind a button with nothing
+ * to anchor to yet.
+ */
+function EmptyState({ projectId }: Readonly<{ projectId: string }>) {
+  const { copied, copy } = useCopyToClipboard()
+  const snippet = String.raw`curl -X POST https://<your-domain>/api/journeys/events \
+  -H "Content-Type: application/json" \
+  -H "x-pype-token: <paste the key from step 1>" \
+  -d '{
+    "campaign_key": "<pick any name for this campaign, e.g. onboarding>",
+    "identity_key": "<your own member/lead id, e.g. member_id>",
+    "channel": "whatsapp",
+    "step": "<your own step name, e.g. current_step>",
+    "action": "message_sent",
+    "payload": { "delivery_status": "delivered", "reachout_count": 2 }
+  }'`
+
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
-      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">No journeys yet</p>
-      <p className="max-w-sm text-sm text-gray-500 dark:text-gray-400">
-        Journeys and their campaigns appear here automatically the first time an external workflow posts an event to{' '}
-        <code className="rounded bg-gray-100 px-1 py-0.5 text-xs dark:bg-gray-800">POST /api/journeys/events</code>. Nothing to configure first.
-      </p>
+    <div className="mx-auto flex h-full max-w-lg flex-col items-center justify-center gap-5 px-6 text-center">
+      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">No journeys yet — here's the full setup</p>
+
+      <ol className="w-full space-y-3 text-left text-sm">
+        <li className="flex gap-3">
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">1</span>
+          <span className="text-gray-700 dark:text-gray-300">
+            Get a token for this project — open{' '}
+            <Link href={`/${projectId}/agents/api-keys`} className="font-medium text-blue-600 hover:underline dark:text-blue-400">
+              Project API Key
+            </Link>{' '}
+            and copy it (create one if none exists). Every call below needs it.
+          </span>
+        </li>
+        <li className="flex gap-3">
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">2</span>
+          <span className="text-gray-700 dark:text-gray-300">
+            Call the endpoint below with that token. This one call creates the campaign and the journey
+            automatically — nothing to set up beforehand.
+          </span>
+        </li>
+        <li className="flex gap-3">
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">3</span>
+          <span className="text-gray-700 dark:text-gray-300">
+            Call it again for every later step that same person reaches, reusing the same{' '}
+            <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">campaign_key</code> and{' '}
+            <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">identity_key</code>, changing{' '}
+            <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">step</code>/<code className="rounded bg-gray-100 px-1 dark:bg-gray-800">action</code> each
+            time — one call per milestone, not a batch.
+          </span>
+        </li>
+        <li className="flex gap-3">
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">4</span>
+          <span className="text-gray-700 dark:text-gray-300">Come back to this tab — the campaign shows up by its key, with this identity under "Recent journeys."</span>
+        </li>
+      </ol>
+
+      <div className="relative w-full text-left">
+        <pre className="max-h-64 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words rounded-lg bg-gray-900 p-3 text-[11px] leading-relaxed text-gray-100">{snippet}</pre>
+        <button
+          onClick={() => copy(snippet)}
+          className="absolute right-2 top-2 rounded-md border border-gray-700 bg-gray-800 p-1.5 text-gray-300 hover:bg-gray-700"
+          title="Copy"
+        >
+          {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+        </button>
+      </div>
     </div>
   )
 }
@@ -629,7 +696,7 @@ export function JourneysTab({ projectId, isActive }: Readonly<{ projectId: strin
   if (!campaigns || campaigns.length === 0) {
     return (
       <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900">
-        <EmptyState />
+        <EmptyState projectId={projectId} />
       </div>
     )
   }
