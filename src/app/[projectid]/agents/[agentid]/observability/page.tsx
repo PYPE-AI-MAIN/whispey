@@ -16,14 +16,23 @@ import ObservabilityStats from "@/components/observabilty/ObservabilityStats"
 
 interface ObservabilityPageProps {
   params: Promise<{ agentid: string }>
-  searchParams?: Promise<{ session_id?: string }>
+  // `t` is seconds into the recording — QA links here with the moment an
+  // issue happened, so nobody has to scrub for it.
+  searchParams?: Promise<{ session_id?: string; t?: string }>
 }
 
 export default function ObservabilityPage({ params, searchParams }: ObservabilityPageProps) {
   const router = useRouter()
   const resolvedParams = use(params)
-  const resolvedSearchParams = use(searchParams || Promise.resolve({} as { session_id?: string }))
+  const resolvedSearchParams = use(searchParams || Promise.resolve({} as { session_id?: string; t?: string }))
   const sessionId = resolvedSearchParams?.session_id
+
+  // Ignore anything that is not a sane positive number — a bad param should do
+  // nothing, not drop the listener somewhere random in the call.
+  const seekTo = (() => {
+    const raw = Number(resolvedSearchParams?.t)
+    return Number.isFinite(raw) && raw > 0 && raw < 24 * 3600 ? raw : undefined
+  })()
 
   const { projectid } = useParams()
   const projectId = Array.isArray(projectid) ? projectid[0] : projectid
@@ -125,6 +134,7 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
             s3Key={extractS3Key(recordingUrl)}
             url={recordingUrl}
             callId={callInfo?.id}
+            segmentStartTime={seekTo}
           />
         </div>
       )}
