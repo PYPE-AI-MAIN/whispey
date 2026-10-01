@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useUser, SignedIn, useClerk } from '@clerk/nextjs'
+import NotificationBell from '@/components/qa/NotificationBell'
 import { useTheme } from 'next-themes'
 import { useHotkeys } from 'react-hotkeys-hook'
 import Image from 'next/image'
@@ -31,6 +32,7 @@ import {
   Link as LinkIcon,
   User,
   Shield,
+  ShieldCheck,
   UserPlus,
   TrendingUp,
   BarChart,
@@ -68,6 +70,7 @@ const ICONS = {
   Link: LinkIcon,
   User,
   Shield,
+  ShieldCheck,
   UserPlus,
   TrendingUp,
   BarChart,
@@ -592,6 +595,12 @@ export default function Sidebar({
                   </div>
                 </Link>
               </div>
+            )}
+
+            {/* QA bell — only meaningful inside a project, and only shows
+                anything when the night job actually had something to say */}
+            {!isCollapsed && config.context?.projectId && (
+              <NotificationBell projectId={config.context.projectId} />
             )}
 
             {!isMobile && onToggleCollapse && (

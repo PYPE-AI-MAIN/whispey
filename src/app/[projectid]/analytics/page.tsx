@@ -21,14 +21,16 @@ import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { OrgOverview, RangePicker } from '@/components/analytics/OrgOverview'
 import AnalyticsCanvas from '@/components/analytics/AnalyticsCanvas'
 import { JourneysTab } from '@/components/analytics/JourneysTab'
+import { OrgQaTab } from '@/components/qa/OrgQaTab'
 import { AgentMultiSelect } from '@/components/analytics/AgentMultiSelect'
 import type { OverviewRange } from '@/hooks/useOrgOverview'
 
-type Tab = 'overview' | 'explore' | 'journeys'
+type Tab = 'overview' | 'explore' | 'journeys' | 'qa'
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'explore', label: 'Explore' },
   { id: 'journeys', label: 'Journeys' },
+  { id: 'qa', label: 'QA' },
 ]
 
 /**
@@ -164,6 +166,12 @@ function OrgAnalyticsPageContent() {
         </div>
         <div className={activeTab === 'journeys' ? 'block h-full' : 'hidden'}>
           <JourneysTab projectId={projectId} isActive={activeTab === 'journeys'} />
+        </div>
+        {/* QA reads what the night job already wrote — it does not go through
+            buildQuery.ts, so the shared AgentMultiSelect above does not apply
+            to it. Scoping is per agent row instead. */}
+        <div className={activeTab === 'qa' ? 'block h-full' : 'hidden'}>
+          <OrgQaTab projectId={projectId} isActive={activeTab === 'qa'} />
         </div>
       </div>
     </div>
