@@ -175,7 +175,11 @@ export const GET = guarded('qa/agent', async (req: NextRequest, ctx: { params: P
   const lastRun = runs.find((r) => r.stage === 'insight') || runs[0] || null
 
   return NextResponse.json({
-    agent: { id: access.agent.id, name: access.agent.name, projectId: access.projectId },
+    agent: {
+      id: access.agent.id,
+      name: access.agent.display_name || access.agent.name,
+      projectId: access.projectId,
+    },
     canWrite: access.canWrite,
     qaConfig: access.agent.qa_config ?? null,
     // null when QA has never run for this agent — the page shows a setup state

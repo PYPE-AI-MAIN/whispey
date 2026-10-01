@@ -8,11 +8,10 @@
  * (insight / listen list), and keeping it mounted behind a hidden tab would
  * have it refetching in the background on every agent page view.
  */
-import { Suspense } from 'react'
+import { Suspense, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronRight, ShieldCheck } from 'lucide-react'
-import { useSupabaseQuery } from '@/hooks/useSupabase'
 import QaInsightsPanel from '@/components/qa/QaInsightsPanel'
 
 export default function AgentQaPage() {
@@ -28,11 +27,9 @@ function AgentQaPageContent() {
   const projectId = params.projectid as string
   const agentId = params.agentid as string
 
-  const { data: agents } = useSupabaseQuery<{ id: string; name: string; display_name: string | null }>(
-    'pype_voice_agents',
-    { select: 'id, name, display_name', filters: [{ column: 'id', operator: 'eq', value: agentId }] },
-  )
-  const agent = agents?.[0]
+  // QaInsightsPanel already fetches this agent for its own data — reusing that
+  // instead of a second, separate query for just the breadcrumb label.
+  const [agentName, setAgentName] = useState<string | null>(null)
 
   return (
     <div className="flex h-screen flex-col bg-gray-50 dark:bg-gray-900">
@@ -46,7 +43,7 @@ function AgentQaPageContent() {
             href={`/${projectId}/agents/${agentId}`}
             className="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
           >
-            {agent?.display_name || agent?.name || 'Agent'}
+            {agentName || 'Agent'}
           </Link>
           <ChevronRight className="h-4 w-4 text-gray-300 dark:text-gray-600" />
           <span className="inline-flex items-center gap-1.5 text-gray-900 dark:text-gray-100">
@@ -57,7 +54,7 @@ function AgentQaPageContent() {
       </div>
 
       <div className="min-h-0 flex-1">
-        <QaInsightsPanel agentId={agentId} projectId={projectId} />
+        <QaInsightsPanel agentId={agentId} projectId={projectId} onAgentName={setAgentName} />
       </div>
     </div>
   )

@@ -15,7 +15,7 @@ const supabase = createServiceRoleClient()
 export type QaDenied = { denied: true; status: number; error: string }
 export type QaAccess = {
   denied: false
-  agent: { id: string; name: string; project_id: string; qa_config: Record<string, unknown> | null }
+  agent: { id: string; name: string; display_name: string | null; project_id: string; qa_config: Record<string, unknown> | null }
   projectId: string
   role: string
   canWrite: boolean
@@ -46,7 +46,7 @@ export async function resolveAgentAccess(agentId: string): Promise<QaAccess | Qa
 
   const { data: agent, error } = await supabase
     .from('pype_voice_agents')
-    .select('id, name, project_id, qa_config')
+    .select('id, name, display_name, project_id, qa_config')
     .eq('id', agentId)
     .maybeSingle()
 

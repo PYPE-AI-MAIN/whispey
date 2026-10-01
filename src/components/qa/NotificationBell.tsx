@@ -65,7 +65,15 @@ export default function NotificationBell({ projectId }: Readonly<{ projectId: st
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        // Closing is the "I've seen these" signal — mark read then, not on
+        // open, so the unread highlight is still visible while you're reading.
+        if (!next && unread > 0) markAllRead()
+      }}
+    >
       <PopoverTrigger asChild>
         <button
           className="relative rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"

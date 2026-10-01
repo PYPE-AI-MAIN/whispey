@@ -12,22 +12,29 @@
  * renders what it wrote, which is also why "down 4 points on last week" costs a
  * lookup rather than a scan over old calls.
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
 import {
   ArrowDownRight, ArrowUpRight, CheckCircle2, ChevronRight,
-  Headphones, Minus, Sparkles, Clock, Settings,
+  Headphones, Minus, Sparkles, Clock, Settings, Mail,
+  AlertTriangle, AlertCircle, Info,
 } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import PromptPatchDialog from './PromptPatchDialog'
 import QaSettingsDialog from './QaSettingsDialog'
+import QaSubscriptions from './QaSubscriptions'
 import ReviewList from './ReviewList'
 
 type Bullet = { text: string; issue_key: string | null; calls: number | null; pct: number | null; call_ids?: string[] }
-type PromptPatch = { section: string; remove: string[]; add: string[]; why: string; issue_key: string | null; call_ids?: string[] }
+type PromptPatch = {
+  section: string; remove: string[]; add: string[]; why: string; issue_key: string | null; call_ids?: string[]
+  target?: 'system_prompt' | 'field_extractor_prompt'
+}
 type Insight = {
   id: string
   run_date: string
@@ -65,19 +72,52 @@ type Payload = {
 const pct = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${(v * 100).toFixed(0)}%`)
 const pct1 = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${(v * 100).toFixed(1)}%`)
 
-const SEVERITY: Record<string, { ring: string; chip: string; label: string }> = {
-  urgent: { ring: 'border-red-300 dark:border-red-800', chip: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200', label: 'Needs attention' },
-  attention: { ring: 'border-amber-300 dark:border-amber-800', chip: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200', label: 'Worth a look' },
-  info: { ring: 'border-blue-200 dark:border-blue-900', chip: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200', label: 'For information' },
+// One real color, spent on the one thing that deserves it: an urgent insight.
+// Everything else — attention, info, priority badges, the trend lines — stays
+// grayscale, so red actually means something when it shows up.
+const SEVERITY: Record<string, {
+  ring: string; accent: string; wash: string; chip: string; dot: string; label: string
+  Icon: typeof AlertTriangle
+}> = {
+  urgent: {
+    ring: 'border-red-200 dark:border-red-900',
+    accent: 'border-l-red-500 dark:border-l-red-500',
+    wash: 'bg-red-50/60 dark:bg-red-950/20',
+    chip: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200',
+    dot: 'bg-red-500',
+    label: 'Needs attention',
+    Icon: AlertTriangle,
+  },
+  attention: {
+    ring: 'border-gray-200 dark:border-gray-800',
+    accent: 'border-l-gray-400 dark:border-l-gray-600',
+    wash: 'bg-gray-50 dark:bg-gray-800/40',
+    chip: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
+    dot: 'bg-gray-400',
+    label: 'Worth a look',
+    Icon: AlertCircle,
+  },
+  info: {
+    ring: 'border-gray-200 dark:border-gray-800',
+    accent: 'border-l-gray-300 dark:border-l-gray-700',
+    wash: 'bg-gray-50 dark:bg-gray-800/40',
+    chip: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+    dot: 'bg-gray-300',
+    label: 'For information',
+    Icon: Info,
+  },
 }
 
+// Weight, not hue: P0 is the darkest badge, P2 the lightest. Keeps the table
+// one color family instead of a red/amber/gray traffic light next to the
+// severity system above.
 const PRIORITY: Record<string, string> = {
-  P0: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
-  P1: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+  P0: 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900',
+  P1: 'bg-gray-400 text-white dark:bg-gray-600 dark:text-gray-100',
   P2: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
 }
 
-const LINE_COLOURS = ['#dc2626', '#ea580c', '#ca8a04', '#2563eb', '#7c3aed']
+const LINE_COLOURS = ['#111827', '#6b7280', '#9ca3af', '#2563eb', '#93c5fd']
 
 /** Up is not always good: for an issue rate, up is bad. */
 function Delta({ value, goodWhenDown = true }: Readonly<{ value: number | null; goodWhenDown?: boolean }>) {
@@ -99,9 +139,11 @@ export default function QaInsightsPanel({
   agentId,
   projectId,
   isActive = true,
-}: Readonly<{ agentId: string; projectId: string; isActive?: boolean }>) {
+  onAgentName,
+}: Readonly<{ agentId: string; projectId: string; isActive?: boolean; onAgentName?: (name: string) => void }>) {
   const [patchOpen, setPatchOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [subscribeOpen, setSubscribeOpen] = useState(false)
   const [tab, setTab] = useState<'insight' | 'review'>('insight')
 
   const { data, isLoading, error, refetch } = useQuery<Payload>({
@@ -114,6 +156,12 @@ export default function QaInsightsPanel({
     enabled: isActive && Boolean(agentId),
     staleTime: 60_000,
   })
+
+  useEffect(() => {
+    if (data?.agent?.name) onAgentName?.(data.agent.name)
+    // onAgentName identity isn't stable across renders in the page that owns it — depend on the name itself
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.agent?.name])
 
   const insight = data?.currentInsight ?? null
   const sev = SEVERITY[insight?.severity ?? 'info']
@@ -202,6 +250,14 @@ export default function QaInsightsPanel({
             )}
           </div>
           <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSubscribeOpen(true)}
+            className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+            aria-label="Who gets QA email for this agent"
+            title="Who gets QA email for this agent"
+          >
+            <Mail className="h-4 w-4" />
+          </button>
           {data.canWrite && (
             <button
               onClick={() => setSettingsOpen(true)}
@@ -236,30 +292,35 @@ export default function QaInsightsPanel({
           <>
             {/* ---------------------------------------------- the insight */}
             {insight ? (
-              <div className={`rounded-xl border bg-white shadow-sm dark:bg-gray-900 ${sev.ring}`}>
-                <div className="flex items-start justify-between gap-4 border-b border-gray-100 p-5 dark:border-gray-800">
-                  <div className="min-w-0">
-                    <div className="mb-2 flex items-center gap-2">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${sev.chip}`}>{sev.label}</span>
-                      <span className="text-xs text-gray-400">{insight.run_date}</span>
-                      {insight.trigger && <Badge variant="outline" className="text-xs capitalize">{insight.trigger}</Badge>}
+              <div className={`overflow-hidden rounded-xl border border-l-4 bg-white shadow-sm dark:bg-gray-900 ${sev.ring} ${sev.accent}`}>
+                <div className={`flex items-start justify-between gap-4 border-b border-gray-100 p-5 dark:border-gray-800 ${sev.wash}`}>
+                  <div className="flex min-w-0 gap-3">
+                    <sev.Icon className={`mt-0.5 h-5 w-5 flex-none ${sev.dot.replace('bg-', 'text-')}`} />
+                    <div className="min-w-0">
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${sev.chip}`}>{sev.label}</span>
+                        <span className="text-xs text-gray-400">{insight.run_date}</span>
+                        {insight.trigger && <Badge variant="outline" className="text-xs capitalize">{insight.trigger}</Badge>}
+                      </div>
+                      <h2 className="text-lg font-semibold leading-snug text-gray-900 dark:text-gray-50">
+                        {insight.headline}
+                      </h2>
                     </div>
-                    <h2 className="text-lg font-semibold leading-snug text-gray-900 dark:text-gray-50">
-                      {insight.headline}
-                    </h2>
                   </div>
                 </div>
 
                 <ul className="space-y-3 p-5">
                   {insight.bullets.map((b, i) => (
-                    <li key={`${b.issue_key ?? 'b'}-${i}`} className="flex gap-3 text-sm text-gray-700 dark:text-gray-300">
-                      <span className="mt-1.5 h-1.5 w-1.5 flex-none rounded-full bg-gray-400" />
-                      <span>
-                        {b.text}
-                        {b.pct !== null && (
-                          <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">{pct1(b.pct)} of sampled calls</span>
-                        )}
+                    <li key={`${b.issue_key ?? 'b'}-${i}`} className="flex items-start justify-between gap-4 text-sm text-gray-700 dark:text-gray-300">
+                      <span className="flex gap-3">
+                        <span className={`mt-1.5 h-1.5 w-1.5 flex-none rounded-full ${sev.dot}`} />
+                        <span>{b.text}</span>
                       </span>
+                      {b.pct !== null && (
+                        <span className="flex-none whitespace-nowrap rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                          {pct1(b.pct)}
+                        </span>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -275,11 +336,17 @@ export default function QaInsightsPanel({
                     size="sm"
                     variant="outline"
                     onClick={async () => {
-                      await fetch('/api/qa/review', {
+                      const res = await fetch('/api/qa/review', {
                         method: 'POST',
                         headers: { 'content-type': 'application/json' },
                         body: JSON.stringify({ agentId, insightId: insight.id }),
                       })
+                      const body = await res.json().catch(() => null)
+                      toast.success(
+                        body?.mailed
+                          ? "We've mailed the Pype QA team — they'll follow up."
+                          : "Added to the QA team's review queue.",
+                      )
                       setTab('review')
                       refetch()
                     }}
@@ -396,9 +463,9 @@ export default function QaInsightsPanel({
                   <thead>
                     <tr className="border-b border-gray-100 text-left text-xs uppercase tracking-wide text-gray-400 dark:border-gray-800">
                       <th className="px-5 py-2 font-medium">Issue</th>
-                      <th className="px-3 py-2 font-medium">Rate</th>
-                      <th className="px-3 py-2 font-medium">vs last</th>
-                      <th className="px-3 py-2 font-medium">Flagged</th>
+                      <th className="px-3 py-2 text-right font-medium">Rate</th>
+                      <th className="px-3 py-2 text-right font-medium">vs last</th>
+                      <th className="px-3 py-2 text-right font-medium">Flagged</th>
                       <th className="px-3 py-2 font-medium">Fix</th>
                       <th className="px-3 py-2" />
                     </tr>
@@ -413,15 +480,15 @@ export default function QaInsightsPanel({
                             </span>
                             <span className="font-medium text-gray-900 dark:text-gray-100">{issue.label}</span>
                             {issue.isNew && (
-                              <span className="rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-semibold text-purple-700 dark:bg-purple-950 dark:text-purple-300">
+                              <span className="rounded border border-gray-300 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500 dark:border-gray-700 dark:text-gray-400">
                                 NEW
                               </span>
                             )}
                           </div>
                         </td>
-                        <td className="px-3 py-3 font-medium text-gray-900 dark:text-gray-100">{pct1(issue.pct)}</td>
-                        <td className="px-3 py-3"><Delta value={issue.delta} /></td>
-                        <td className="px-3 py-3 text-gray-500">{issue.flagged}</td>
+                        <td className="px-3 py-3 text-right font-medium text-gray-900 dark:text-gray-100">{pct1(issue.pct)}</td>
+                        <td className="px-3 py-3 text-right"><Delta value={issue.delta} /></td>
+                        <td className="px-3 py-3 text-right text-gray-500">{issue.flagged}</td>
                         <td className="px-3 py-3">
                           <span className="text-xs capitalize text-gray-500">
                             {issue.fixableBy === 'prompt' ? 'Prompt' : issue.fixableBy === 'pype' ? 'Pype' : 'Customer'}
@@ -484,6 +551,19 @@ export default function QaInsightsPanel({
         knownDispositions={data.knownDispositions ?? []}
         onSaved={refetch}
       />
+
+      <Dialog open={subscribeOpen} onOpenChange={setSubscribeOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Who gets QA email for this agent</DialogTitle>
+          </DialogHeader>
+          <QaSubscriptions
+            projectId={projectId}
+            agents={[{ id: agentId, name: data.agent?.name || 'this agent' }]}
+            lockAgentId={agentId}
+          />
+        </DialogContent>
+      </Dialog>
 
       {insight?.suggested_prompt_patch && (
         <PromptPatchDialog

@@ -5,22 +5,10 @@ import { useParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
 import OrganizationSettings from "@/components/projects/OrganizationSettings"
-import QaSubscriptions from "@/components/qa/QaSubscriptions"
-import { useSupabaseQuery } from "@/hooks/useSupabase"
 import { Loader2 } from 'lucide-react'
 
 export default function SettingsPage() {
   const { projectid: projectId } = useParams()
-
-  // for the "which agent" picker on a QA subscription
-  const { data: agents } = useSupabaseQuery<{ id: string; name: string; display_name: string | null }>(
-    'pype_voice_agents',
-    {
-      select: 'id, name, display_name',
-      filters: [{ column: 'project_id', operator: 'eq', value: projectId as string }],
-      orderBy: { column: 'created_at', ascending: true },
-    },
-  )
 
   // Fetch all projects using React Query
   const { data: projects, isLoading, error } = useQuery({
@@ -91,13 +79,6 @@ export default function SettingsPage() {
         organizationName={organization.name}
         organizationId={organization.id}
       />
-
-      <div className="rounded-lg border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
-        <QaSubscriptions
-          projectId={organization.id}
-          agents={(agents ?? []).map((a) => ({ id: a.id, name: a.display_name || a.name }))}
-        />
-      </div>
     </div>
   )
 }

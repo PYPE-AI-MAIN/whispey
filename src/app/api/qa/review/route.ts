@@ -110,17 +110,37 @@ export const POST = guarded('qa/review:create', async (req: NextRequest) => {
 
   // Tell our own QA team. Deliberately not a client subscription — this is our
   // queue and it must not depend on a client having configured anything.
+  const agentLabel = access.agent.display_name || access.agent.name
   await qaDb.from('qa_notifications').insert({
     project_id: access.projectId,
     agent_id: agentId,
     insight_id: insightId || null,
     kind: 'review_request',
-    title: `QA review requested: ${access.agent.name}`,
+    title: `QA review requested: ${agentLabel}`,
     body: ask ? `Asked for: ${ask}` : `${items.length} calls to listen to, ranked, each with a reason.`,
     link: `/${access.projectId}/agents/${agentId}/qa?tab=review`,
   })
 
-  return NextResponse.json({ ok: true, count: items.length, items })
+  // The actual mail to the Pype QA team. Best-effort: the review list and the
+  // in-app notification above are the source of truth and already saved —
+  // losing this one HTTP call should not fail the request.
+  let mailed = false
+  const lambdaUrl = process.env.QA_LAMBDA_API_URL
+  if (lambdaUrl) {
+    try {
+      const res = await fetch(`${lambdaUrl}/qa/notify-review`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-pype-token': process.env.PYPE_API_KEY || 'pype-api-v1' },
+        body: JSON.stringify({ agent_id: agentId, project_id: access.projectId, insight_id: insightId || null }),
+      })
+      const body = await res.json().catch(() => null)
+      mailed = Boolean(res.ok && (body?.emailsSent ?? 0) > 0)
+    } catch (err) {
+      console.error('QA notify-review call failed:', err)
+    }
+  }
+
+  return NextResponse.json({ ok: true, count: items.length, items, mailed })
 })
 
 const PatchBody = z.object({

@@ -22,7 +22,10 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 
-type Patch = { section: string; remove: string[]; add: string[]; why: string; issue_key: string | null; call_ids?: string[] }
+type Patch = {
+  section: string; remove: string[]; add: string[]; why: string; issue_key: string | null; call_ids?: string[]
+  target?: 'system_prompt' | 'field_extractor_prompt'
+}
 
 export default function PromptPatchDialog({
   open, onOpenChange, insightId, agentId, patch, onPublished,
@@ -41,6 +44,9 @@ export default function PromptPatchDialog({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [conflicts, setConflicts] = useState<string[]>([])
+  // Publishing here only ever writes the system prompt (see the patch route) —
+  // a field-extractor-targeted suggestion can't go through this button yet.
+  const isExtractorTarget = patch.target === 'field_extractor_prompt'
 
   // reset whenever a different suggestion is opened
   useEffect(() => {
@@ -127,6 +133,14 @@ export default function PromptPatchDialog({
 
         {/* the only scrolling region — Publish must never scroll out of reach */}
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
+          {isExtractorTarget && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+              This changes the <strong>field extractor prompt</strong> — how{' '}
+              <code>final_disposition</code> and other fields get recorded — not the conversation.
+              Publishing from here only edits the system prompt, so this one needs to be applied by
+              hand in Agent Config.
+            </div>
+          )}
           {/* ---------------------------------------------------- removals */}
           {removeLines.length > 0 && (
             <div>
@@ -209,7 +223,11 @@ export default function PromptPatchDialog({
 
         <DialogFooter className="flex-none border-t border-gray-100 bg-white px-6 py-4 dark:border-gray-800 dark:bg-gray-950 sm:gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
-          <Button onClick={publish} disabled={busy || !addLines.some((l) => l.trim())}>
+          <Button
+            onClick={publish}
+            disabled={busy || isExtractorTarget || !addLines.some((l) => l.trim())}
+            title={isExtractorTarget ? 'This targets the field extractor prompt — apply it by hand in Agent Config' : undefined}
+          >
             {busy && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
             Publish as a new version
           </Button>

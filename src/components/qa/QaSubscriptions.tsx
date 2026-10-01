@@ -38,11 +38,11 @@ const CADENCE: Record<Sub['cadence'], string> = {
 }
 
 export default function QaSubscriptions({
-  projectId, agents = [],
-}: Readonly<{ projectId: string; agents?: Array<{ id: string; name: string }> }>) {
+  projectId, agents = [], lockAgentId,
+}: Readonly<{ projectId: string; agents?: Array<{ id: string; name: string }>; lockAgentId?: string }>) {
   const qc = useQueryClient()
   const [email, setEmail] = useState('')
-  const [agentId, setAgentId] = useState<string>('all')
+  const [agentId, setAgentId] = useState<string>(lockAgentId ?? 'all')
   const [cadence, setCadence] = useState<Sub['cadence']>('as_it_happens')
   const [contents, setContents] = useState<Sub['contents']>('insights')
   const [busy, setBusy] = useState(false)
@@ -91,14 +91,21 @@ export default function QaSubscriptions({
 
   if (isLoading) return <Skeleton className="h-48 w-full" />
 
-  const subs = data?.subscriptions ?? []
   const canWrite = data?.canWrite ?? false
   const agentName = (id: string | null) => (id ? agents.find((a) => a.id === id)?.name ?? 'an agent' : 'Every agent')
+  // Locked to one agent: a project-wide sub (agent_id null) still mails this
+  // agent too, so it stays visible — everything scoped to a different agent
+  // does not belong on this screen.
+  const subs = (data?.subscriptions ?? []).filter(
+    (s) => !lockAgentId || !s.agent_id || s.agent_id === lockAgentId,
+  )
 
   return (
     <div className="space-y-5">
       <div>
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50">QA email</h3>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
+          {lockAgentId ? `QA email for ${agentName(lockAgentId)}` : 'QA email'}
+        </h3>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Mail goes out only when there is something to say, and only between 10am and 7pm.
           A quiet week sends nothing.
@@ -107,7 +114,7 @@ export default function QaSubscriptions({
 
       {canWrite && (
         <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className={`grid gap-3 sm:grid-cols-2 ${lockAgentId ? 'lg:grid-cols-3' : 'lg:grid-cols-4'}`}>
             <div className="lg:col-span-2">
               <label className="mb-1 block text-xs font-medium text-gray-500">Email address</label>
               <Input
@@ -117,20 +124,22 @@ export default function QaSubscriptions({
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-500">For</label>
-              <Select value={agentId} onValueChange={setAgentId}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Every agent</SelectItem>
-                  {agents.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
+            {!lockAgentId && (
+              <div className="min-w-0">
+                <label className="mb-1 block text-xs font-medium text-gray-500">For</label>
+                <Select value={agentId} onValueChange={setAgentId}>
+                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Every agent</SelectItem>
+                    {agents.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="min-w-0">
               <label className="mb-1 block text-xs font-medium text-gray-500">How often</label>
               <Select value={cadence} onValueChange={(v) => setCadence(v as Sub['cadence'])}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(CADENCE).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                 </SelectContent>
@@ -139,10 +148,10 @@ export default function QaSubscriptions({
           </div>
 
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <div>
+            <div className="min-w-0">
               <label className="mb-1 block text-xs font-medium text-gray-500">What it contains</label>
               <Select value={contents} onValueChange={(v) => setContents(v as Sub['contents'])}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full"><SelectValue className="truncate" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="insights">Insights only — what changed and what it costs</SelectItem>
                   <SelectItem value="insights_and_prompts">Insights and suggested prompt changes</SelectItem>
