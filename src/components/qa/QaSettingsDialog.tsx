@@ -162,15 +162,16 @@ export default function QaSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-2xl overflow-auto">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[85vh] sm:max-w-2xl flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="flex-none border-b border-gray-100 px-6 py-4 dark:border-gray-800">
           <DialogTitle>QA settings</DialogTitle>
           <DialogDescription>
             What gets checked each night, and the limits it judges against.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5">
+        {/* the only scrolling region — header and footer stay put */}
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
           <div className="flex items-start justify-between gap-4 rounded-lg border border-gray-200 p-3 dark:border-gray-800">
             <div>
               <p className="text-sm font-medium text-gray-900 dark:text-gray-50">Check this agent every night</p>
@@ -240,7 +241,7 @@ export default function QaSettingsDialog({
           )}
         </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="flex-none border-t border-gray-100 bg-white px-6 py-4 dark:border-gray-800 dark:bg-gray-950 sm:gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
           <Button onClick={save} disabled={busy}>
             {busy && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}

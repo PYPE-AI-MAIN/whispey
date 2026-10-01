@@ -116,8 +116,8 @@ export default function PromptPatchDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-3xl overflow-auto">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[85vh] sm:max-w-3xl flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="flex-none border-b border-gray-100 px-6 py-4 dark:border-gray-800">
           <DialogTitle>Suggested prompt change</DialogTitle>
           <DialogDescription>
             {patch.why || patch.section}
@@ -125,7 +125,8 @@ export default function PromptPatchDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        {/* the only scrolling region — Publish must never scroll out of reach */}
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
           {/* ---------------------------------------------------- removals */}
           {removeLines.length > 0 && (
             <div>
@@ -206,7 +207,7 @@ export default function PromptPatchDialog({
           )}
         </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="flex-none border-t border-gray-100 bg-white px-6 py-4 dark:border-gray-800 dark:bg-gray-950 sm:gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>Cancel</Button>
           <Button onClick={publish} disabled={busy || !addLines.some((l) => l.trim())}>
             {busy && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
