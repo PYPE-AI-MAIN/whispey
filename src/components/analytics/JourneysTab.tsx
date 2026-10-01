@@ -151,7 +151,7 @@ function IntegrationDocs({ campaignKey }: Readonly<{ campaignKey: string }>) {
           it's stored as-is and shown on hover over each journey's milestones. Limits: 8KB per request, 600 requests/min per token.
         </p>
         <div className="relative">
-          <pre className="max-h-64 overflow-auto rounded-lg bg-gray-900 p-3 text-[11px] leading-relaxed text-gray-100">{snippet}</pre>
+          <pre className="max-h-64 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words rounded-lg bg-gray-900 p-3 text-[11px] leading-relaxed text-gray-100">{snippet}</pre>
           <button
             onClick={copy}
             className="absolute right-2 top-2 rounded-md border border-gray-700 bg-gray-800 p-1.5 text-gray-300 hover:bg-gray-700"
@@ -242,7 +242,7 @@ function EmptyState({ projectId }: Readonly<{ projectId: string }>) {
       </ol>
 
       <div className="relative w-full text-left">
-        <pre className="max-h-64 overflow-auto rounded-lg bg-gray-900 p-3 text-[11px] leading-relaxed text-gray-100">{snippet}</pre>
+        <pre className="max-h-64 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words rounded-lg bg-gray-900 p-3 text-[11px] leading-relaxed text-gray-100">{snippet}</pre>
         <button
           onClick={copy}
           className="absolute right-2 top-2 rounded-md border border-gray-700 bg-gray-800 p-1.5 text-gray-300 hover:bg-gray-700"
