@@ -202,27 +202,32 @@ export function OrgOverview({
         <div>
           <h2 className="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">Agent breakdown</h2>
           <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            {/* overflow-x-auto, not overflow-hidden: on a narrow screen the five
-                columns don't fit, and hidden would silently clip Status off the
-                edge instead of letting a finger/scrollbar reach it. min-w on the
-                table is what actually triggers that scrollbar instead of every
-                column just shrinking until the text wraps.
-                max-h + overflow-y-auto caps the list at ~10 rows instead of
-                pushing the whole page taller for a project with dozens of
-                agents; the header is sticky so it stays put while that scrolls. */}
-            <div className="max-h-[32rem] overflow-x-auto overflow-y-auto rounded-xl">
-              <table className="w-full min-w-[640px] text-sm">
-                {/* solid bg, not the row's translucent /60 — sticky means rows
-                    scroll underneath it, and translucency would let them ghost through */}
-                <thead className="sticky top-0 z-10 bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-                  <tr className="border-b border-gray-200 dark:border-gray-800">
-                    <th className="py-3 pl-6 pr-4 font-semibold">Agent</th>
-                    <th className="py-3 pr-4 font-semibold">Calls</th>
-                    <th className="py-3 pr-4 font-semibold">Pickup %</th>
-                    <th className="py-3 pr-4 font-semibold">Latency</th>
-                    <th className="py-3 pr-6 font-semibold">Status</th>
-                  </tr>
-                </thead>
+            {/* Rounding/clipping lives on this outer div (overflow-hidden); the
+                actual scrolling (both directions) happens on the inner div
+                instead of here — combining overflow-auto with rounded-xl on
+                the same element let the sticky header's background fail to
+                paint to the full rendered width in some browsers (a visible
+                notch cut into the top-right corner). Splitting them fixes it,
+                same as the Team Members table's own version of this bug.
+                min-w on the table is what actually triggers horizontal
+                scrolling on a narrow screen, instead of every column just
+                shrinking until the text wraps. max-h caps the list at ~10
+                rows instead of pushing the whole page taller for a project
+                with dozens of agents; the header is sticky so it stays put
+                while that scrolls. */}
+            <div className="max-h-[32rem] overflow-hidden rounded-xl">
+              <div className="h-full overflow-auto scrollbar-thin">
+                <table className="w-full min-w-[640px] text-sm">
+                  {/* Background on each <th>, not the <thead>/<tr> — see the comment above. */}
+                  <thead className="sticky top-0 z-10 text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    <tr>
+                      <th className="py-3 pl-6 pr-4 font-semibold border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800">Agent</th>
+                      <th className="py-3 pr-4 font-semibold border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800">Calls</th>
+                      <th className="py-3 pr-4 font-semibold border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800">Pickup %</th>
+                      <th className="py-3 pr-4 font-semibold border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800">Latency</th>
+                      <th className="py-3 pr-6 font-semibold border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800">Status</th>
+                    </tr>
+                  </thead>
                 <tbody>
                   {data.agents.length === 0 && !isLoading && (
                     <tr>
@@ -235,7 +240,8 @@ export function OrgOverview({
                     <AgentRow key={a.id} agent={a} projectId={projectId} />
                   ))}
                 </tbody>
-              </table>
+                </table>
+              </div>
             </div>
           </div>
         </div>
