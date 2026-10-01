@@ -9,12 +9,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import toast from 'react-hot-toast'
-import { 
-  Settings, 
-  UserPlus, 
-  Trash2, 
+import {
+  Settings,
+  UserPlus,
+  Trash2,
   AlertTriangle,
   Users,
   Mail,
@@ -26,9 +25,9 @@ import {
   CheckCircle2,
   Crown,
   Eye,
-  User,
-  RefreshCw,  // ✅ ADDED
-  UserX       // ✅ ADDED
+  RefreshCw,
+  UserX,
+  Search
 } from 'lucide-react'
 import {
   Dialog,
@@ -70,6 +69,269 @@ interface Organization {
 interface OrganizationSettingsProps {
   organizationName: string
   organizationId: string
+}
+
+function getRoleBadgeColor(role: string) {
+  switch (role) {
+    case 'owner':
+      return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800'
+    case 'admin':
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+    case 'member':
+    case 'user':
+    case 'viewer':
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 border-gray-300 dark:border-gray-600'
+    default:
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 border-gray-300 dark:border-gray-600'
+  }
+}
+
+function getRoleIcon(role: string) {
+  switch (role) {
+    case 'owner':
+      return <Crown className="w-3 h-3" />
+    case 'admin':
+      return <Shield className="w-3 h-3" />
+    case 'member':
+    case 'user':
+    case 'viewer':
+      return <Eye className="w-3 h-3" />
+    default:
+      return <Users className="w-3 h-3" />
+  }
+}
+
+function formatDate(dateString: string) {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  })
+}
+
+/** The two action buttons for an inactive member, or the single remove button for an active one. */
+function MemberRowActions({
+  isInactive, onReactivate, onRemoveHard, onRemoveSoft,
+}: Readonly<{ isInactive: boolean; onReactivate: () => void; onRemoveHard: () => void; onRemoveSoft: () => void }>) {
+  if (isInactive) {
+    return (
+      <div className="flex items-center justify-end gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onReactivate}
+          className="text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20 dark:text-green-400 dark:hover:text-green-300 h-7 px-2 text-xs"
+        >
+          <RefreshCw className="w-3 h-3 mr-1" />
+          Reactivate
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onRemoveHard}
+          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-red-400 dark:hover:text-red-300 h-7 w-7 p-0"
+        >
+          <Trash2 className="w-3 h-3" />
+        </Button>
+      </div>
+    )
+  }
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={onRemoveSoft}
+      className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-red-400 dark:hover:text-red-300 h-7 w-7 p-0"
+    >
+      <X className="w-4 h-4" />
+    </Button>
+  )
+}
+
+/** One row in the Current Members table. */
+function MemberRow({
+  member, currentUserEmail, canManageMembers, changingRole, onRoleChange, onReactivate, onRemove,
+}: Readonly<{
+  member: TeamMember
+  currentUserEmail: string | undefined
+  canManageMembers: boolean
+  changingRole: string | null
+  onRoleChange: (memberId: string, role: 'admin' | 'viewer') => void
+  onReactivate: (member: TeamMember) => void
+  onRemove: (memberId: string, type: 'soft' | 'hard') => void
+}>) {
+  const isCurrentUser = member.email === currentUserEmail
+  const isInactive = member.status === 'inactive'
+  const canChangeRole = canManageMembers && member.role !== 'owner' && !isCurrentUser
+  const showActions = canManageMembers && member.role !== 'owner' && !isCurrentUser
+
+  return (
+    <tr className={`border-b border-gray-100 last:border-0 dark:border-gray-800/70 ${isInactive ? 'opacity-60' : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'}`}>
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+            {member.email.charAt(0).toUpperCase()}
+          </div>
+          <span className="truncate font-medium text-gray-900 dark:text-gray-100">
+            {member.email}
+            {isCurrentUser && <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">(You)</span>}
+          </span>
+        </div>
+      </td>
+      <td className="px-4 py-3">
+        {canChangeRole && !isInactive ? (
+          <Select
+            value={member.role}
+            onValueChange={(value: 'admin' | 'viewer') => onRoleChange(member.id, value)}
+            disabled={changingRole === member.id}
+          >
+            <SelectTrigger className={`w-[120px] h-7 text-xs ${getRoleBadgeColor(member.role)}`}>
+              <SelectValue>
+                <div className="flex items-center gap-1">
+                  {changingRole === member.id ? <Loader2 className="w-3 h-3 animate-spin" /> : getRoleIcon(member.role)}
+                  {member.role}
+                </div>
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+              <SelectItem value="viewer" className="text-xs">
+                <div className="flex items-center gap-2">
+                  <Eye className="w-3 h-3" />
+                  Viewer
+                </div>
+              </SelectItem>
+              <SelectItem value="admin" className="text-xs">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-3 h-3" />
+                  Admin
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        ) : (
+          <Badge variant="outline" className={`text-xs flex w-fit items-center gap-1 ${getRoleBadgeColor(member.role)}`}>
+            {getRoleIcon(member.role)}
+            {member.role}
+          </Badge>
+        )}
+      </td>
+      <td className="px-4 py-3">
+        {member.status === 'inactive' && (
+          <Badge variant="outline" className="text-xs border-gray-400 dark:border-gray-600 text-gray-600 dark:text-gray-400 flex w-fit items-center gap-1">
+            <UserX className="w-3 h-3" />
+            Inactive
+          </Badge>
+        )}
+        {member.status === 'pending' && (
+          <Badge variant="outline" className="text-xs border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 flex w-fit items-center gap-1">
+            <Clock className="w-3 h-3" />
+            Pending
+          </Badge>
+        )}
+        {member.status === 'active' && !isInactive && (
+          <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 whitespace-nowrap">
+            <CheckCircle2 className="w-3 h-3 text-green-500" />
+            Joined {formatDate(member.joinedAt)}
+          </span>
+        )}
+      </td>
+      <td className="px-4 py-3 text-right">
+        {showActions && (
+          <MemberRowActions
+            isInactive={isInactive}
+            onReactivate={() => onReactivate(member)}
+            onRemoveHard={() => onRemove(member.id, 'hard')}
+            onRemoveSoft={() => onRemove(member.id, 'soft')}
+          />
+        )}
+      </td>
+    </tr>
+  )
+}
+
+/**
+ * Loading / empty / no-search-match / table — as early returns, not a
+ * chained ternary, so each state reads as its own case instead of one
+ * four-way nested expression.
+ */
+function MembersTableBody({
+  loadingMembers, allMembers, filteredMembers, memberSearch, currentUserEmail, canManageMembers, changingRole, onRoleChange, onReactivate, onRemove,
+}: Readonly<{
+  loadingMembers: boolean
+  allMembers: TeamMember[]
+  filteredMembers: TeamMember[]
+  memberSearch: string
+  currentUserEmail: string | undefined
+  canManageMembers: boolean
+  changingRole: string | null
+  onRoleChange: (memberId: string, role: 'admin' | 'viewer') => void
+  onReactivate: (member: TeamMember) => void
+  onRemove: (memberId: string, type: 'soft' | 'hard') => void
+}>) {
+  if (loadingMembers) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400" />
+        <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">Loading members...</span>
+      </div>
+    )
+  }
+  if (allMembers.length === 0) {
+    return (
+      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+        <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
+        <p className="text-sm">No members yet</p>
+      </div>
+    )
+  }
+  if (filteredMembers.length === 0) {
+    return <p className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">No members match &ldquo;{memberSearch}&rdquo;.</p>
+  }
+
+  return (
+    // A real vh height, not flex-1/min-h-0 — that chain resolved to zero on
+    // at least one real mobile browser, hiding the table entirely with no
+    // error. vh is resolved against the actual viewport, independent of any
+    // ancestor's height math.
+    <div className="h-[50vh] overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
+      {/* scrollbar-thin (globals.css): the default OS scrollbar track sits
+          right where the sticky header's right edge is, and its lighter
+          track color was being mistaken for a gap in the header background. */}
+      <div className="h-full overflow-auto scrollbar-thin">
+        <table className="w-full min-w-[560px] table-fixed text-sm">
+          {/* Background + border on each <th>, not the <tr> — a <tr>'s own
+              background has historically been unreliable to paint across its
+              full rendered width in some browsers once you combine sticky
+              positioning, table-layout: fixed, and a horizontally scrolling
+              ancestor (our exact combination here); per-cell background
+              can't have that problem since each cell paints its own box. */}
+          <thead className="sticky top-0 z-10 text-left text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            <tr>
+              <th className="px-4 py-2 font-medium border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800">Member</th>
+              <th className="px-4 py-2 font-medium border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800 w-40">Role</th>
+              <th className="px-4 py-2 font-medium border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800 w-44">Status</th>
+              <th className="px-4 py-2 font-medium border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800 text-right w-44">&nbsp;</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredMembers.map((member) => (
+              <MemberRow
+                key={member.id}
+                member={member}
+                currentUserEmail={currentUserEmail}
+                canManageMembers={canManageMembers}
+                changingRole={changingRole}
+                onRoleChange={onRoleChange}
+                onReactivate={onReactivate}
+                onRemove={onRemove}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
 }
 
 // Fetch organizations function
@@ -144,6 +406,7 @@ export default function OrganizationSettings({
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<'admin' | 'viewer'>('viewer')
   const [isInviting, setIsInviting] = useState(false)
+  const [showInviteDialog, setShowInviteDialog] = useState(false)
 
   // Delete organization states
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -168,6 +431,11 @@ export default function OrganizationSettings({
 
   // Combined list of all members for display
   const allMembers = [...teamMembers, ...pendingMembers]
+
+  const [memberSearch, setMemberSearch] = useState('')
+  const filteredMembers = memberSearch.trim()
+    ? allMembers.filter((m) => m.email.toLowerCase().includes(memberSearch.trim().toLowerCase()))
+    : allMembers
 
   const handleInviteMember = async () => {
     const normalizedEmail = inviteEmail.trim().toLowerCase()
@@ -203,9 +471,10 @@ export default function OrganizationSettings({
       }
 
       refetchMembers()
-      
+
       setInviteEmail('')
       setInviteRole('viewer')
+      setShowInviteDialog(false)
 
       if (data.inviteSent === false) {
         if (data.type === 'direct_add') {
@@ -345,45 +614,6 @@ export default function OrganizationSettings({
     }
   }
 
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case 'owner':
-        return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800'
-      case 'admin':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800'
-      case 'member':
-      case 'user':
-      case 'viewer':
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 border-gray-300 dark:border-gray-600'
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 border-gray-300 dark:border-gray-600'
-    }
-  }
-
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case 'owner':
-        return <Crown className="w-3 h-3" />
-      case 'admin':
-        return <Shield className="w-3 h-3" />
-      case 'member':
-      case 'user':
-      case 'viewer':
-        return <Eye className="w-3 h-3" />
-      default:
-        return <Users className="w-3 h-3" />
-    }
-  }
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric' 
-    })
-  }
-
   const handleRoleChange = async (memberId: string, newRole: 'admin' | 'viewer') => {
     setChangingRole(memberId)
   
@@ -415,28 +645,27 @@ export default function OrganizationSettings({
 
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-5xl mx-auto p-6 space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-            <Settings className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Organization Settings
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
-              <Building2 className="w-3 h-3" />
-              {organizationName}
-            </p>
-          </div>
+    <>
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+          <Settings className="w-5 h-5 text-white" />
         </div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Organization Settings
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+            <Building2 className="w-3 h-3" />
+            {organizationName}
+          </p>
+        </div>
+      </div>
 
-        {/* Team Management Section */}
+      {/* Team Management Section */}
         <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
                   <Users className="w-5 h-5" />
@@ -446,297 +675,54 @@ export default function OrganizationSettings({
                   Manage who has access to this organization
                 </CardDescription>
               </div>
-              <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-                {allMembers.length} {allMembers.length === 1 ? 'member' : 'members'}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                  {allMembers.length} {allMembers.length === 1 ? 'member' : 'members'}
+                </Badge>
+                {canManageMembers && (
+                  <Button size="sm" onClick={() => setShowInviteDialog(true)} className="gap-1.5">
+                    <UserPlus className="w-3.5 h-3.5" />
+                    Invite
+                  </Button>
+                )}
+              </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Invite New Member */}
-            {canManageMembers && (
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/10 rounded-lg border border-blue-200 dark:border-blue-800">
-                <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-                  <UserPlus className="w-4 h-4" />
-                  Invite Team Member
-                </h3>
-                <div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
-                  <div className="space-y-1">
-                    <Label htmlFor="invite-email" className="text-xs text-gray-700 dark:text-gray-300">Email Address</Label>
-                    <Input
-                      id="invite-email"
-                      type="email"
-                      placeholder="colleague@company.com"
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
-                      className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="invite-role" className="text-xs text-gray-700 dark:text-gray-300">Role</Label>
-                    <Select value={inviteRole} onValueChange={(value: 'admin' | 'viewer') => setInviteRole(value)}>
-                      <SelectTrigger id="invite-role" className="w-[130px] bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                        <SelectItem value="viewer" className="text-gray-900 dark:text-gray-100">
-                          <div className="flex items-center gap-2">
-                            <Eye className="w-3 h-3" />
-                            Viewer
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="admin" className="text-gray-900 dark:text-gray-100">
-                          <div className="flex items-center gap-2">
-                            <Shield className="w-3 h-3" />
-                            Admin
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-end">
-                    <Button 
-                      onClick={handleInviteMember} 
-                      disabled={isInviting}
-                      className="w-full md:w-auto"
-                    >
-                      {isInviting ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Sending...
-                        </>
-                      ) : (
-                        <>
-                          <Mail className="w-4 h-4 mr-2" />
-                          Add User
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <Separator className="bg-gray-200 dark:bg-gray-800" />
-
+          <CardContent className="space-y-3">
             {/* Team Members List */}
             <div className="space-y-3">
-              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Current Members
-              </h3>
-              
-              {loadingMembers ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400" />
-                  <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">Loading members...</span>
-                </div>
-              ) : allMembers.length === 0 ? (
-                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                  <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No members yet</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {allMembers.map((member) => {
-                    const isCurrentUser = member.email === user?.emailAddresses?.[0]?.emailAddress
-                    const canChangeRole = canManageMembers && member.role !== 'owner' && !isCurrentUser
-                    const isInactive = member.status === 'inactive'
-                    
-                    return (
-                      <div
-                        key={member.id}
-                        className={`flex items-center justify-between p-3 rounded-lg border ${
-                          isInactive 
-                            ? 'bg-gray-50 dark:bg-gray-800/50 border-gray-300 dark:border-gray-700 opacity-75' 
-                            : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
-                            {member.email.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                              {member.email}
-                              {isCurrentUser && (
-                                <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">(You)</span>
-                              )}
-                            </p>
-                            <div className="flex items-center gap-2 mt-1">
-                              {canChangeRole && !isInactive ? (
-                                <Select 
-                                  value={member.role} 
-                                  onValueChange={(value: 'admin' | 'viewer') => handleRoleChange(member.id, value)}
-                                  disabled={changingRole === member.id}
-                                >
-                                  <SelectTrigger className={`w-[130px] h-6 text-xs ${getRoleBadgeColor(member.role)}`}>
-                                    <SelectValue>
-                                      <div className="flex items-center gap-1">
-                                        {changingRole === member.id ? (
-                                          <Loader2 className="w-3 h-3 animate-spin" />
-                                        ) : (
-                                          getRoleIcon(member.role)
-                                        )}
-                                        {member.role}
-                                      </div>
-                                    </SelectValue>
-                                  </SelectTrigger>
-                                  <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                                    <SelectItem value="viewer" className="text-xs">
-                                      <div className="flex items-center gap-2">
-                                        <Eye className="w-3 h-3" />
-                                        Viewer
-                                      </div>
-                                    </SelectItem>
-                                    <SelectItem value="admin" className="text-xs">
-                                      <div className="flex items-center gap-2">
-                                        <Shield className="w-3 h-3" />
-                                        Admin
-                                      </div>
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <Badge variant="outline" className={`text-xs flex items-center gap-1 ${getRoleBadgeColor(member.role)}`}>
-                                  {getRoleIcon(member.role)}
-                                  {member.role}
-                                </Badge>
-                              )}
-                              
-                              {/* ✅ UPDATED STATUS BADGES */}
-                              {member.status === 'inactive' && (
-                                <Badge variant="outline" className="text-xs border-gray-400 dark:border-gray-600 text-gray-600 dark:text-gray-400 flex items-center gap-1">
-                                  <UserX className="w-3 h-3" />
-                                  Inactive
-                                </Badge>
-                              )}
-                              
-                              {member.status === 'pending' && (
-                                <Badge variant="outline" className="text-xs border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 flex items-center gap-1">
-                                  <Clock className="w-3 h-3" />
-                                  Pending
-                                </Badge>
-                              )}
-                              
-                              {member.status === 'active' && !isInactive && (
-                                <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                                  <CheckCircle2 className="w-3 h-3 text-green-500" />
-                                  Joined {formatDate(member.joinedAt)}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Current Members
+                </h3>
+                {allMembers.length > 5 && (
+                  <div className="relative w-full sm:w-56">
+                    <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+                    <Input
+                      value={memberSearch}
+                      onChange={(e) => setMemberSearch(e.target.value)}
+                      placeholder="Search by email"
+                      className="h-8 pl-8 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                    />
+                  </div>
+                )}
+              </div>
 
-                        {/* Action buttons */}
-                        {canManageMembers && member.role !== 'owner' && !isCurrentUser && (
-                          <div className="flex items-center gap-1">
-                            {isInactive ? (
-                              // Inactive member actions
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleReactivateMember(member)}
-                                  className="text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20 dark:text-green-400 dark:hover:text-green-300 h-7 px-2 text-xs"
-                                >
-                                  <RefreshCw className="w-3 h-3 mr-1" />
-                                  Reactivate
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    setMemberToRemove(member.id)
-                                    setDeleteType('hard')
-                                  }}
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-red-400 dark:hover:text-red-300 h-6 w-6 p-0"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </Button>
-                              </>
-                            ) : (
-                              // Active member actions
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setMemberToRemove(member.id)
-                                  setDeleteType('soft')
-                                }}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-red-400 dark:hover:text-red-300"
-                              >
-                                <X className="w-4 h-4" />
-                              </Button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
+              <MembersTableBody
+                loadingMembers={loadingMembers}
+                allMembers={allMembers}
+                filteredMembers={filteredMembers}
+                memberSearch={memberSearch}
+                currentUserEmail={user?.emailAddresses?.[0]?.emailAddress}
+                canManageMembers={canManageMembers}
+                changingRole={changingRole}
+                onRoleChange={handleRoleChange}
+                onReactivate={handleReactivateMember}
+                onRemove={(memberId, type) => { setMemberToRemove(memberId); setDeleteType(type) }}
+              />
             </div>
           </CardContent>
         </Card>
-
-        {/* Role Permissions Info */}
-        {/* <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base text-gray-900 dark:text-gray-100">
-              <Shield className="w-5 h-5" />
-              Role Permissions
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 text-sm">
-              <div className="flex gap-3 items-start">
-                <Badge variant="outline" className={getRoleBadgeColor('owner')}>
-                  <Crown className="w-3 h-3 mr-1" />
-                  Owner
-                </Badge>
-                <p className="text-gray-600 dark:text-gray-400 flex-1">
-                  Full access including organization deletion and owner transfer
-                </p>
-              </div>
-              <div className="flex gap-3 items-start">
-                <Badge variant="outline" className={getRoleBadgeColor('admin')}>
-                  <Shield className="w-3 h-3 mr-1" />
-                  Admin
-                </Badge>
-                <p className="text-gray-600 dark:text-gray-400 flex-1">
-                  Manage members, agents, and organization settings. Can read, write, and delete
-                </p>
-              </div>
-              <div className="flex gap-3 items-start">
-                <Badge variant="outline" className={getRoleBadgeColor('member')}>
-                  <Users className="w-3 h-3 mr-1" />
-                  Member
-                </Badge>
-                <p className="text-gray-600 dark:text-gray-400 flex-1">
-                  Can read and write agents, call logs, and configurations
-                </p>
-              </div>
-              <div className="flex gap-3 items-start">
-                <Badge variant="outline" className={getRoleBadgeColor('user')}>
-                  <User className="w-3 h-3 mr-1" />
-                  User
-                </Badge>
-                <p className="text-gray-600 dark:text-gray-400 flex-1">
-                  Basic read-only access to agents and call logs
-                </p>
-              </div>
-              <div className="flex gap-3 items-start">
-                <Badge variant="outline" className={getRoleBadgeColor('viewer')}>
-                  <Eye className="w-3 h-3 mr-1" />
-                  Viewer
-                </Badge>
-                <p className="text-gray-600 dark:text-gray-400 flex-1">
-                  Read-only access to view agents and call logs
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card> */}
 
         {/* Danger Zone */}
         {currentUserRole === 'owner' && (
@@ -779,8 +765,79 @@ export default function OrganizationSettings({
             </CardContent>
           </Card>
         )}
-      </div>
 
+      {/* Invite Team Member Dialog */}
+      <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
+        <DialogContent className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
+              <UserPlus className="w-4 h-4" />
+              Invite Team Member
+            </DialogTitle>
+            <DialogDescription className="text-gray-500 dark:text-gray-400">
+              They'll get an email invite to join this organization.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="invite-email" className="text-xs text-gray-700 dark:text-gray-300">Email Address</Label>
+              <Input
+                id="invite-email"
+                type="email"
+                placeholder="colleague@company.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="invite-role" className="text-xs text-gray-700 dark:text-gray-300">Role</Label>
+              <Select value={inviteRole} onValueChange={(value: 'admin' | 'viewer') => setInviteRole(value)}>
+                <SelectTrigger id="invite-role" className="w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <SelectItem value="viewer" className="text-gray-900 dark:text-gray-100">
+                    <div className="flex items-center gap-2">
+                      <Eye className="w-3 h-3" />
+                      Viewer
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="admin" className="text-gray-900 dark:text-gray-100">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-3 h-3" />
+                      Admin
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowInviteDialog(false)}
+              disabled={isInviting}
+              className="border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleInviteMember} disabled={isInviting}>
+              {isInviting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Mail className="w-4 h-4 mr-2" />
+                  Add User
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Remove Member Confirmation Dialog */}
       <Dialog open={!!memberToRemove} onOpenChange={() => setMemberToRemove(null)}>
@@ -900,6 +957,6 @@ export default function OrganizationSettings({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   )
 }
