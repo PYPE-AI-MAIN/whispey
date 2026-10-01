@@ -41,21 +41,13 @@ const WIDGET_IDS = {
 } as const
 
 /**
- * Checked directly against production data before picking this (a prior
- * version of this file used `transcription_metrics->>'is_user_in_call'`,
- * copying a rule from the NHIC campaign doc — wrong here: that field exists
- * on only 2 of 9 agents checked in this project, near-zero coverage on the
- * rest, which is why "Pickup %" was rendering as "—" for almost everyone).
- *
- * `duration_seconds` cleanly separates the two cases in real data — e.g. one
- * agent's calls: 'completed' averages 49.9s, 'User busy'/'No answer' average
- * exactly 0.0s — and is populated on ~99.6% of calls platform-wide over the
- * last 90 days. `call_ended_at > call_started_at` (this file's other
- * duration signal, `call_duration_seconds`) looked appealing but is NOT a
- * safe substitute: it's true even for a busy/no-answer attempt, since some
- * fractional time still elapses before the provider reports the failure.
+ * "Picked up" = the call ended normally, not merely "someone answered."
+ * An earlier version used `duration_seconds > 0`, which also counts a call
+ * that was answered but then dropped (error, crash, network failure) before
+ * finishing — this definition deliberately excludes those: only
+ * `call_ended_reason = 'completed'` counts.
  */
-const PICKED_UP_HAVING = [{ field: { col: 'duration_seconds' }, op: 'gt' as const, value: 0 }]
+const PICKED_UP_HAVING = [{ field: { col: 'call_ended_reason' }, op: 'eq' as const, value: 'completed' }]
 
 function specsFor(range: OverviewRange): { id: string; spec: SpecInput }[] {
   return [
