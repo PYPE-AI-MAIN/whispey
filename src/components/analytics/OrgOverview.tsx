@@ -215,8 +215,8 @@ export function OrgOverview({
                 rows instead of pushing the whole page taller for a project
                 with dozens of agents; the header is sticky so it stays put
                 while that scrolls. */}
-            <div className="max-h-[32rem] overflow-hidden rounded-xl">
-              <div className="h-full overflow-auto scrollbar-thin">
+            <div className="overflow-hidden rounded-xl">
+              <div className="max-h-[32rem] overflow-auto scrollbar-thin">
                 <table className="w-full min-w-[640px] text-sm">
                   {/* Background on each <th>, not the <thead>/<tr> — see the comment above. */}
                   <thead className="sticky top-0 z-10 text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
