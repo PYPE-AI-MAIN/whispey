@@ -1,7 +1,7 @@
 // src/components/shared/Header.tsx
 "use client"
 
-import { UserButton, SignedIn, useUser } from "@clerk/clerk-react";
+import { UserButton, Show, useUser } from "@clerk/react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -209,7 +209,7 @@ function Header({ breadcrumb, isLoading }: HeaderProps) {
                 </>
               ) : (
                 // Only show actual content after hydration AND Clerk is loaded
-                <SignedIn>
+                <Show when="signed-in">
                   <div className="hidden sm:flex flex-col items-end">
                     <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-none">{getUserDisplayName()}</p>
                   </div>
@@ -241,7 +241,7 @@ function Header({ breadcrumb, isLoading }: HeaderProps) {
                     {/* Online Status Indicator */}
                     <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-900 shadow-sm"></div>
                   </div>
-                </SignedIn>
+                </Show>
               )}
             </div>
           </div>

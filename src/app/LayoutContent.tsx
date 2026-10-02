@@ -1,6 +1,6 @@
 'use client'
 
-import { SignedIn, SignedOut, useUser } from '@clerk/nextjs'
+import { Show, useUser } from '@clerk/nextjs'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef } from 'react'
 import SidebarWrapper from '@/components/shared/SidebarWrapper'
@@ -105,12 +105,12 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
 
   return (
     <main>
-      <SignedOut>
+      <Show when="signed-out">
         <div className="min-h-screen">
           {children}
         </div>
-      </SignedOut>
-      <SignedIn>
+      </Show>
+      <Show when="signed-in">
         <SignOutHandler>
           {showSidebar ? (
             <SidebarWrapper>
@@ -123,7 +123,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
           )}
           <FeedbackWidget />
         </SignOutHandler>
-      </SignedIn>
+      </Show>
     </main>
   )
 }

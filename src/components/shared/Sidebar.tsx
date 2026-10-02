@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useUser, SignedIn, useClerk } from '@clerk/nextjs'
+import { useUser, Show, useClerk } from '@clerk/nextjs'
 import NotificationBell from '@/components/qa/NotificationBell'
 import { useTheme } from 'next-themes'
 import { useHotkeys } from 'react-hotkeys-hook'
@@ -809,7 +809,7 @@ function SidebarUserMenu({
       {!mounted || !isLoaded ? (
         <UserMenuSkeleton isCollapsed={isCollapsed} isMobile={isMobile} />
       ) : (
-        <SignedIn>
+        <Show when="signed-in">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className={`w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
@@ -842,7 +842,7 @@ function SidebarUserMenu({
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
-        </SignedIn>
+        </Show>
       )}
     </div>
   )
