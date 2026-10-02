@@ -1,8 +1,7 @@
 import { type Metadata } from 'next'
 import {
   ClerkProvider,
-  SignedIn,
-  SignedOut,
+  Show,
 } from '@clerk/nextjs'
 import { Geist, Geist_Mono, Poppins } from 'next/font/google'
 import { ThemeProvider } from 'next-themes'
