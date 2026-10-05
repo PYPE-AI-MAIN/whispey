@@ -35,6 +35,19 @@ describe('naming helpers', () => {
     expect(slugify('  --Super Health!!  ')).toBe('super-health')
     expect(slugify('!!!')).toBe('project')
   })
+  it('slugify matches the regex it replaced on thousands of random strings, and is fast on dash-heavy input', () => {
+    let x = 11
+    const next = () => ((x = (x * 1664525 + 1013904223) >>> 0) / 2 ** 32)
+    const alphabet = ['-', '-', 'a', 'B', '1', ' ', '_', '!', 'é']
+    const reference = (s: string) => s.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-+|-+$/g, '') || 'project'
+    for (let i = 0; i < 5000; i++) {
+      const text = Array.from({ length: Math.floor(next() * 14) }, () => alphabet[Math.floor(next() * alphabet.length)]).join('')
+      expect(slugify(text), JSON.stringify(text)).toBe(reference(text))
+    }
+    const start = performance.now()
+    slugify('-'.repeat(200000) + 'x' + '-'.repeat(200000))
+    expect(performance.now() - start).toBeLessThan(500)
+  })
   it('inboundAlias is <project>-inbound-<last4>', () => {
     expect(inboundAlias('Super Health', '+918035315519')).toBe('super-health-inbound-5519')
   })

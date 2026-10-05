@@ -29,7 +29,15 @@ async function plivo(path: string, init: { method?: 'GET' | 'POST'; query?: Reco
 
 export const digitsOnly = (n: string) => n.replaceAll(/\D/g, '')
 
-export const slugify = (s: string) => s.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-+|-+$/g, '') || 'project'
+function trimDashes(s: string): string {
+  let start = 0
+  let end = s.length
+  while (start < end && s[start] === '-') start++
+  while (end > start && s[end - 1] === '-') end--
+  return s.slice(start, end)
+}
+
+export const slugify = (s: string) => trimDashes(s.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-')) || 'project'
 
 /** `<project-alias>-inbound-<last4>` — used for the Plivo number alias and the LiveKit trunk name. */
 export const inboundAlias = (projectName: string, number: string) => `${slugify(projectName)}-inbound-${digitsOnly(number).slice(-4)}`

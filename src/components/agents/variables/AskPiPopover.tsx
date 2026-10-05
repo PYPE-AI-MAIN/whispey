@@ -3,23 +3,15 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useParams } from 'next/navigation'
+import { parseReply, readReply, type Msg } from '@/lib/askPi'
 import { Pi, ArrowUp, X, Check, Loader2, AlertTriangle, RotateCcw } from 'lucide-react'
 
 interface Anchor { left: number; top: number; bottom: number }
-interface Msg {
-  id: number
-  role: 'user' | 'assistant'
-  content: string
-  replacement?: string | null
-  missingVars?: string[]
-  streamingReplacement?: boolean
-}
 
 const PANEL_W = 360
 const PANEL_MAX_H = 540
 const MARGIN = 12
 const MAX_HISTORY = 12
-const MARK = '<<<REPLACEMENT>>>'
 const CHIPS = [
   ['Shorter', 'Make it shorter'],
   ['More natural', 'Make it sound more natural for a phone call'],
@@ -46,35 +38,6 @@ const GRADIENT = 'linear-gradient(135deg,#7c3aed,#4f46e5)'
 
 let msgSeq = 0
 const nextMsgId = () => ++msgSeq
-
-const varsOf = (t: string) => new Set(t.match(/\{\{[^}]*\}\}/g) ?? [])
-
-/** Splits the streamed "<short reply>\n<<<REPLACEMENT>>>\n<new text>" into the message the card shows. */
-function parseReply(id: number, acc: string, done: boolean, selectedText: string): Msg {
-  const k = acc.indexOf(MARK)
-  const content = (k < 0 ? acc : acc.slice(0, k)).trim()
-  const rep = k < 0 ? '' : acc.slice(k + MARK.length).trim()
-  const replacement = done && rep ? rep : null
-  return {
-    id, role: 'assistant', content, replacement,
-    missingVars: replacement ? [...varsOf(selectedText)].filter((v) => !replacement.includes(v)) : [],
-    streamingReplacement: !done && k >= 0,
-  }
-}
-
-/** Reads the response body to the end, reporting the text so far after every chunk. */
-async function readReply(body: ReadableStream<Uint8Array>, onText: (acc: string) => void): Promise<string> {
-  const reader = body.getReader()
-  const dec = new TextDecoder()
-  let acc = ''
-  for (;;) {
-    const { value, done } = await reader.read()
-    if (done) break
-    acc += dec.decode(value, { stream: true })
-    onText(acc)
-  }
-  return acc + dec.decode()
-}
 
 /** Selection -> "Ask Pi" button -> floating chat that rewrites the selected prompt text in place. */
 export function AskPiPopover({ editor, fullPrompt }: { editor: any; fullPrompt: string }) {

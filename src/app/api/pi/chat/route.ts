@@ -737,106 +737,111 @@ async function saveDispositions(agentId: string, dispositions: unknown): Promise
   return error ? { error: error.message } : {}
 }
 
-async function runEditAgent(projectId: string, _callerUserId: string, args: any) {
-  if (!(await agentBelongsToProject(args.agent_id, projectId))) {
-    return { success: false, result: { error: 'No such agent in this project' } }
-  }
+const failure = (error: string) => ({ success: false, result: { error } })
 
-  const touchesAssistant = args.prompt !== undefined || args.prompt_patch !== undefined || args.greeting !== undefined || args.variables !== undefined || (args.voice_provider && args.voice_id) || args.llm_model !== undefined
-  const updated: Record<string, boolean> = {}
+async function saveExtractorVariables(agentId: string, value: unknown): Promise<{ error: string } | null> {
+  const mapped = asStringMap(value)
+  if (!mapped.ok) return { error: mapped.error }
+  const supabase = createServiceRoleClient()
+  const { error } = await supabase
+    .from('pype_voice_agents')
+    .update({ field_extractor_variables: mapped.value, updated_at: new Date().toISOString() })
+    .eq('id', agentId)
+  return error ? { error: error.message } : null
+}
 
-  if (args.extractor_variables !== undefined) {
-    const mapped = asStringMap(args.extractor_variables)
-    if (!mapped.ok) return { success: false, result: { error: mapped.error } }
+async function saveMergedDispositions(args: any): Promise<{ error: string } | null> {
+  // saveDispositions is a full replace of the stored list — merge by key here
+  // by default so "add a disposition" doesn't silently delete every other one
+  // already on the agent. dispositions_mode: "replace" opts into the old
+  // destructive behavior explicitly, for the rare case that's really intended.
+  let finalDispositions = args.dispositions
+  if (args.dispositions_mode !== 'replace') {
     const supabase = createServiceRoleClient()
-    const { error } = await supabase
-      .from('pype_voice_agents')
-      .update({ field_extractor_variables: mapped.value, updated_at: new Date().toISOString() })
-      .eq('id', args.agent_id)
-    if (error) return { success: false, result: { error: error.message } }
+    const { data: row } = await supabase.from('pype_voice_agents').select('field_extractor_prompt').eq('id', args.agent_id).maybeSingle()
+    const existing = parseExtractorList(row?.field_extractor_prompt) as Array<{ key: string; description: string }>
+    const byKey = new Map(existing.map((d) => [d.key, d]))
+    for (const d of args.dispositions as Array<{ key: string; description: string }>) byKey.set(d.key, d)
+    finalDispositions = Array.from(byKey.values())
+  }
+  const saved = await saveDispositions(args.agent_id, finalDispositions)
+  return saved.error ? { error: saved.error } : null
+}
+
+/** The extractor-variable and disposition edits (they live on the agent row, not in the voice config). */
+async function applyExtractorEdits(args: any): Promise<{ updated: Record<string, boolean> } | { error: string }> {
+  const updated: Record<string, boolean> = {}
+  if (args.extractor_variables !== undefined) {
+    const failed = await saveExtractorVariables(args.agent_id, args.extractor_variables)
+    if (failed) return failed
     updated.extractor_variables = true
   }
-
   if (args.dispositions !== undefined) {
-    // saveDispositions is a full replace of the stored list — merge by key here
-    // by default so "add a disposition" doesn't silently delete every other one
-    // already on the agent. dispositions_mode: "replace" opts into the old
-    // destructive behavior explicitly, for the rare case that's really intended.
-    let finalDispositions = args.dispositions
-    if (args.dispositions_mode !== 'replace') {
-      const supabase = createServiceRoleClient()
-      const { data: row } = await supabase.from('pype_voice_agents').select('field_extractor_prompt').eq('id', args.agent_id).maybeSingle()
-      const existing = parseExtractorList(row?.field_extractor_prompt) as Array<{ key: string; description: string }>
-      const byKey = new Map(existing.map((d) => [d.key, d]))
-      for (const d of args.dispositions as Array<{ key: string; description: string }>) byKey.set(d.key, d)
-      finalDispositions = Array.from(byKey.values())
-    }
-    const saved = await saveDispositions(args.agent_id, finalDispositions)
-    if (saved.error) return { success: false, result: { error: saved.error } }
+    const failed = await saveMergedDispositions(args)
+    if (failed) return failed
     updated.dispositions = true
   }
+  return { updated }
+}
 
-  if (!touchesAssistant) return { success: true, result: { agent_id: args.agent_id, updated } }
+function touchesAssistant(args: any): boolean {
+  return args.prompt !== undefined || args.prompt_patch !== undefined || args.greeting !== undefined || args.variables !== undefined || !!(args.voice_provider && args.voice_id) || args.llm_model !== undefined
+}
 
-  const loaded = await loadCurrentAssistant(args.agent_id)
-  if ('error' in loaded) return { success: false, result: { error: loaded.error } }
-  const { backendAgentName, deploymentTarget, assistant } = loaded
+// prompt_patch exists so a small change doesn't force re-generating the
+// entire prompt as output tokens — the model sends only the old/new snippet,
+// the full text is reconstructed server-side from what's already stored
+function patchPrompt(current: string, patch: { old_string: string; new_string: string }): { prompt: string } | { error: string } {
+  const { old_string, new_string } = patch
+  const occurrences = current.split(old_string).length - 1
+  if (occurrences === 0) {
+    return { error: 'prompt_patch.old_string was not found in the current prompt — it must match exactly, including whitespace' }
+  }
+  if (occurrences > 1) {
+    return { error: `prompt_patch.old_string matches ${occurrences} places in the current prompt — include more surrounding text to make it unique` }
+  }
+  return { prompt: current.replace(old_string, new_string) }
+}
 
-  // prompt_patch exists so a small change doesn't force re-generating the
-  // entire prompt as output tokens — the model sends only the old/new snippet,
-  // the full text is reconstructed server-side from what's already stored
+// Same rule the Studio's own prompt editor enforces (variableValidator.ts) —
+// a variable Pi writes that the Studio would reject makes the agent
+// inconsistent the moment someone opens it there, even though the runtime
+// substitution itself has no such limit.
+function promptVariableError(prompt: string): string | null {
+  const validation = validateVariables(prompt)
+  return validation.isValid ? null : `Prompt has invalid {{variable}} name(s): ${validation.errors.map((e) => e.message).join('; ')}`
+}
+
+function resolveNextPrompt(args: any, assistant: any): { prompt: string | undefined } | { error: string } {
   let nextPrompt = args.prompt
   if (args.prompt_patch) {
-    const current = assistant.prompt ?? ''
-    const { old_string, new_string } = args.prompt_patch
-    const occurrences = current.split(old_string).length - 1
-    if (occurrences === 0) {
-      return { success: false, result: { error: 'prompt_patch.old_string was not found in the current prompt — it must match exactly, including whitespace' } }
-    }
-    if (occurrences > 1) {
-      return { success: false, result: { error: `prompt_patch.old_string matches ${occurrences} places in the current prompt — include more surrounding text to make it unique` } }
-    }
-    nextPrompt = current.replace(old_string, new_string)
+    const patched = patchPrompt(assistant.prompt ?? '', args.prompt_patch)
+    if ('error' in patched) return patched
+    nextPrompt = patched.prompt
   }
+  const invalid = nextPrompt ? promptVariableError(nextPrompt) : null
+  return invalid ? { error: invalid } : { prompt: nextPrompt }
+}
 
-  // Same rule the Studio's own prompt editor enforces (variableValidator.ts) —
-  // a variable Pi writes that the Studio would reject makes the agent
-  // inconsistent the moment someone opens it there, even though the runtime
-  // substitution itself has no such limit.
-  if (nextPrompt) {
-    const validation = validateVariables(nextPrompt)
-    if (!validation.isValid) {
-      return { success: false, result: { error: `Prompt has invalid {{variable}} name(s): ${validation.errors.map((e) => e.message).join('; ')}` } }
-    }
+function resolveMcpVoice(args: any): { voice?: ReturnType<typeof findMcpVoice> } | { error: string } {
+  if (!(args.voice_provider && args.voice_id)) return {}
+  const voice = findMcpVoice(args.voice_provider, args.voice_id)
+  return voice ? { voice } : { error: `Voice ${args.voice_provider}/${args.voice_id} is not in the Agent Studio voice list` }
+}
+
+function sarvamLlm(args: any, assistant: any): { llm: Record<string, unknown> } | { error: string } {
+  const llmModel = String(args.llm_model)
+  if (llmModel !== 'sarvam-105b-conversations' && llmModel !== 'sarvam-105b') {
+    return { error: `Unknown LLM "${llmModel}". Use sarvam-105b-conversations (Sarvam 105) or sarvam-105b.` }
   }
+  return { llm: { name: 'sarvam', provider: 'sarvam', model: llmModel, temperature: assistant.llm?.temperature ?? 0.3 } }
+}
 
-  let mcpVoice
-  if (args.voice_provider && args.voice_id) {
-    mcpVoice = findMcpVoice(args.voice_provider, args.voice_id)
-    if (!mcpVoice) return { success: false, result: { error: `Voice ${args.voice_provider}/${args.voice_id} is not in the Agent Studio voice list` } }
-  }
-
-  const updatedAssistant = applyAssistantUpdates(assistant, {
-    prompt: nextPrompt,
-    greeting: args.greeting,
-    tts: mcpVoice ? buildMcpTtsConfig(mcpVoice) : undefined,
-    variables: args.variables,
-  })
-
-  if (args.llm_model !== undefined) {
-    const llmModel = String(args.llm_model)
-    if (llmModel !== 'sarvam-105b-conversations' && llmModel !== 'sarvam-105b') {
-      return { success: false, result: { error: `Unknown LLM "${llmModel}". Use sarvam-105b-conversations (Sarvam 105) or sarvam-105b.` } }
-    }
-    updatedAssistant.llm = {
-      name: 'sarvam',
-      provider: 'sarvam',
-      model: llmModel,
-      temperature: assistant.llm?.temperature ?? 0.3,
-    }
-    updated.llm = true
-  }
-
+async function deployEditedAssistant(
+  projectId: string, args: any, loaded: LoadedAssistant, updatedAssistant: any,
+  mcpVoice: ReturnType<typeof findMcpVoice> | undefined, updated: Record<string, boolean>,
+) {
+  const { backendAgentName, deploymentTarget } = loaded
   const supabase = createServiceRoleClient()
   const deployed = await deployAgentConfig(
     backendAgentName,
@@ -850,7 +855,7 @@ async function runEditAgent(projectId: string, _callerUserId: string, args: any)
     },
     deploymentTarget,
   )
-  if (!deployed.ok) return { success: false, result: { error: deployed.errorText || 'Failed to deploy updated config' } }
+  if (!deployed.ok) return failure(deployed.errorText || 'Failed to deploy updated config')
   const { data: named } = await supabase.from('pype_voice_agents').select('display_name').eq('id', args.agent_id).maybeSingle()
   return {
     success: true,
@@ -868,6 +873,43 @@ async function runEditAgent(projectId: string, _callerUserId: string, args: any)
       },
     },
   }
+}
+
+async function runEditAgent(projectId: string, _callerUserId: string, args: any) {
+  if (!(await agentBelongsToProject(args.agent_id, projectId))) return failure('No such agent in this project')
+
+  const edits = await applyExtractorEdits(args)
+  if ('error' in edits) return failure(edits.error)
+  const updated = edits.updated
+
+  if (!touchesAssistant(args)) return { success: true, result: { agent_id: args.agent_id, updated } }
+
+  const loaded = await loadCurrentAssistant(args.agent_id)
+  if ('error' in loaded) return failure(loaded.error)
+  const { assistant } = loaded
+
+  const nextPrompt = resolveNextPrompt(args, assistant)
+  if ('error' in nextPrompt) return failure(nextPrompt.error)
+
+  const voice = resolveMcpVoice(args)
+  if ('error' in voice) return failure(voice.error)
+  const mcpVoice = voice.voice
+
+  const updatedAssistant = applyAssistantUpdates(assistant, {
+    prompt: nextPrompt.prompt,
+    greeting: args.greeting,
+    tts: mcpVoice ? buildMcpTtsConfig(mcpVoice) : undefined,
+    variables: args.variables,
+  })
+
+  if (args.llm_model !== undefined) {
+    const chosen = sarvamLlm(args, assistant)
+    if ('error' in chosen) return failure(chosen.error)
+    updatedAssistant.llm = chosen.llm as typeof updatedAssistant.llm
+    updated.llm = true
+  }
+
+  return deployEditedAssistant(projectId, args, loaded, updatedAssistant, mcpVoice, updated)
 }
 
 async function runListAnalyticsFields(projectId: string, args: any) {
@@ -951,6 +993,29 @@ async function runListAnalyticsFields(projectId: string, args: any) {
 // `summarise`, capped at 4000 chars in / 150 chars out), so a term defined
 // deep in a long description never reaches the model through that path at
 // all. This searches the full, untruncated text instead.
+/** Up to 3 windows of text around each occurrence of `term` in a field's description, 10 matches overall. */
+function findDefinitionContexts(fields: Array<{ key: string; description?: string }>, term: string): Array<{ field: string; context: string }> {
+  const CONTEXT_CHARS = 350
+  const matches: Array<{ field: string; context: string }> = []
+  for (const f of fields) {
+    const text = f.description ?? ''
+    const lower = text.toLowerCase()
+    let idx = lower.indexOf(term)
+    let found = 0
+    while (idx !== -1 && found < 3 && matches.length < 10) {
+      const start = Math.max(0, idx - CONTEXT_CHARS)
+      const end = Math.min(text.length, idx + term.length + CONTEXT_CHARS)
+      matches.push({
+        field: f.key,
+        context: `${start > 0 ? '…' : ''}${text.slice(start, end).trim()}${end < text.length ? '…' : ''}`,
+      })
+      idx = lower.indexOf(term, idx + term.length)
+      found++
+    }
+  }
+  return matches
+}
+
 async function runSearchFieldDefinitions(projectId: string, args: any) {
   if (!args.agent_id) return { success: false, result: { error: 'agent_id is required' } }
   if (!args.term || typeof args.term !== 'string') return { success: false, result: { error: 'term is required' } }
@@ -980,25 +1045,7 @@ async function runSearchFieldDefinitions(projectId: string, args: any) {
     return { success: true, result: { matches: [{ field: exact.key, context: exact.description ?? '' }] } }
   }
 
-  const CONTEXT_CHARS = 350
-  const matches: Array<{ field: string; context: string }> = []
-
-  for (const f of fields) {
-    const text = f.description ?? ''
-    const lower = text.toLowerCase()
-    let idx = lower.indexOf(term)
-    let found = 0
-    while (idx !== -1 && found < 3 && matches.length < 10) {
-      const start = Math.max(0, idx - CONTEXT_CHARS)
-      const end = Math.min(text.length, idx + term.length + CONTEXT_CHARS)
-      matches.push({
-        field: f.key,
-        context: `${start > 0 ? '…' : ''}${text.slice(start, end).trim()}${end < text.length ? '…' : ''}`,
-      })
-      idx = lower.indexOf(term, idx + term.length)
-      found++
-    }
-  }
+  const matches = findDefinitionContexts(fields, term)
 
   return {
     success: true,
@@ -1015,26 +1062,37 @@ async function runSearchFieldDefinitions(projectId: string, args: any) {
 // never do this, correct it here: any field ref whose col isn't a real column
 // gets matched against the agent's own field catalog by its path's last
 // segment, so a reasonable guess still works instead of failing validation.
-async function correctFieldRefs(rawSpec: Record<string, unknown>, agentIds: string[]): Promise<Record<string, unknown>> {
-  const refs: Array<{ col: string; path?: string[] }> = []
-  const dimField = (rawSpec as any)?.dimension?.field
-  if (dimField) refs.push(dimField)
-  const aggField = (rawSpec as any)?.agg?.field
-  if (aggField) refs.push(aggField)
-  for (const arr of [(rawSpec as any)?.filters, (rawSpec as any)?.having]) {
-    if (Array.isArray(arr)) for (const node of arr) if (node?.field) refs.push(node.field)
-  }
-  const needsFix = refs.filter((r) => r && typeof r.col === 'string' && !ALL_COLS.has(r.col))
-  if (!needsFix.length || !agentIds.length) return rawSpec
+type FieldRef = { col: string; path?: string[] }
 
-  const supabase = createServiceRoleClient()
-  const { data } = await supabase.from('pype_analytics_fields').select('col, path').in('agent_id', agentIds)
-  const byLeaf = new Map<string, { col: string; path?: string[] }>()
-  for (const row of data ?? []) {
+/** Every field reference in a spec: the dimension, the aggregate, and each filter / having clause, in that order. */
+function collectFieldRefs(rawSpec: any): FieldRef[] {
+  const refs: FieldRef[] = []
+  for (const field of [rawSpec?.dimension?.field, rawSpec?.agg?.field]) if (field) refs.push(field)
+  for (const clauses of [rawSpec?.filters, rawSpec?.having]) {
+    if (!Array.isArray(clauses)) continue
+    for (const node of clauses) if (node?.field) refs.push(node.field)
+  }
+  return refs
+}
+
+/** The agents' real field catalog, indexed by the last segment of each path (lowercased). */
+function indexCatalogByLeaf(rows: Array<{ col: string; path?: unknown }>): Map<string, FieldRef> {
+  const byLeaf = new Map<string, FieldRef>()
+  for (const row of rows) {
     const path = (row.path ?? []) as string[]
     const leaf = (path.length ? path.at(-1) : row.col)?.toLowerCase()
     if (leaf && !byLeaf.has(leaf)) byLeaf.set(leaf, { col: row.col, path: path.length ? path : undefined })
   }
+  return byLeaf
+}
+
+async function correctFieldRefs(rawSpec: Record<string, unknown>, agentIds: string[]): Promise<Record<string, unknown>> {
+  const needsFix = collectFieldRefs(rawSpec).filter((r) => r && typeof r.col === 'string' && !ALL_COLS.has(r.col))
+  if (!needsFix.length || !agentIds.length) return rawSpec
+
+  const supabase = createServiceRoleClient()
+  const { data } = await supabase.from('pype_analytics_fields').select('col, path').in('agent_id', agentIds)
+  const byLeaf = indexCatalogByLeaf(data ?? [])
   for (const r of needsFix) {
     const match = byLeaf.get(r.col.toLowerCase())
     if (!match) continue
@@ -1126,17 +1184,42 @@ async function runOpenCustomToolForm(projectId: string, args: any) {
 
 const AGENT_PAGES = new Set(['logs', 'overview', 'config', 'phone_calls', 'knowledge', 'qa', 'campaign_logs'])
 
+const STATIC_PAGES = new Map<string, { path: string; label: string }>([
+  ['agents', { path: 'agents', label: 'Agent list' }],
+  ['analytics', { path: 'analytics', label: 'Org overview' }],
+  ['campaigns', { path: 'campaigns', label: 'Campaigns' }],
+  ['settings', { path: 'settings', label: 'Settings' }],
+  ['phone_settings', { path: 'agents/sip-management', label: 'Phone settings' }],
+  ['api_keys', { path: 'agents/api-keys', label: 'Project API key' }],
+])
+
+type AgentPageContext = { base: string; name: string; pipecat: boolean; agentType: string | undefined; hasWorkflow: boolean }
+
+function agentConfigHref(c: AgentPageContext): string {
+  if (c.pipecat) return `${c.base}/config/pipecat`
+  if (c.agentType === 'livekit') return `${c.base}/config/livekit`
+  return c.hasWorkflow ? `${c.base}/workflow` : `${c.base}/config`
+}
+
+function agentPageLink(page: string, c: AgentPageContext): { href: string; label: string } {
+  switch (page) {
+    case 'logs': return { href: `${c.base}?tab=logs`, label: `${c.name} call logs` }
+    case 'overview': return { href: `${c.base}?tab=overview`, label: `${c.name} overview` }
+    case 'campaign_logs': return { href: `${c.base}?tab=campaign-logs`, label: `${c.name} campaign logs` }
+    case 'phone_calls': return { href: `${c.base}/phone-call-config`, label: `${c.name} phone calls` }
+    case 'qa': return { href: `${c.base}/qa`, label: `${c.name} QA` }
+    case 'knowledge': return { href: c.pipecat ? `${c.base}/config/pipecat/knowledgebase` : `${c.base}/knowledge`, label: `${c.name} knowledge base` }
+    default: return { href: agentConfigHref(c), label: `${c.name} config` }
+  }
+}
+
 async function runOpenPage(projectId: string, args: any) {
   const page = String(args.page || '')
   const agentId = typeof args.agent_id === 'string' ? args.agent_id : ''
   const campaignId = typeof args.campaign_id === 'string' ? args.campaign_id : ''
 
-  if (page === 'agents') return { success: true, result: { href: `/${projectId}/agents`, label: 'Agent list' } }
-  if (page === 'analytics') return { success: true, result: { href: `/${projectId}/analytics`, label: 'Org overview' } }
-  if (page === 'campaigns') return { success: true, result: { href: `/${projectId}/campaigns`, label: 'Campaigns' } }
-  if (page === 'settings') return { success: true, result: { href: `/${projectId}/settings`, label: 'Settings' } }
-  if (page === 'phone_settings') return { success: true, result: { href: `/${projectId}/agents/sip-management`, label: 'Phone settings' } }
-  if (page === 'api_keys') return { success: true, result: { href: `/${projectId}/agents/api-keys`, label: 'Project API key' } }
+  const fixed = STATIC_PAGES.get(page)
+  if (fixed) return { success: true, result: { href: `/${projectId}/${fixed.path}`, label: fixed.label } }
   if (page === 'campaign') {
     if (!campaignId) return { success: false, result: { error: 'campaign_id is required' } }
     return { success: true, result: { href: `/${projectId}/campaigns/${campaignId}`, label: 'Campaign' } }
@@ -1153,24 +1236,15 @@ async function runOpenPage(projectId: string, args: any) {
     .maybeSingle()
   if (!data) return { success: false, result: { error: 'No such agent in this project' } }
 
-  const name = data.display_name || 'Agent'
   const config = (data.configuration ?? {}) as { pipecat_agent_id?: string; workflow?: unknown; workflowMode?: unknown }
-  const pipecat = data.agent_type === 'pipecat_agent' || !!config.pipecat_agent_id
-  const base = `/${projectId}/agents/${agentId}`
-  if (page === 'logs') return { success: true, result: { href: `${base}?tab=logs`, label: `${name} call logs` } }
-  if (page === 'overview') return { success: true, result: { href: `${base}?tab=overview`, label: `${name} overview` } }
-  if (page === 'campaign_logs') return { success: true, result: { href: `${base}?tab=campaign-logs`, label: `${name} campaign logs` } }
-  if (page === 'phone_calls') return { success: true, result: { href: `${base}/phone-call-config`, label: `${name} phone calls` } }
-  if (page === 'qa') return { success: true, result: { href: `${base}/qa`, label: `${name} QA` } }
-  if (page === 'knowledge') {
-    const href = pipecat ? `${base}/config/pipecat/knowledgebase` : `${base}/knowledge`
-    return { success: true, result: { href, label: `${name} knowledge base` } }
+  const context: AgentPageContext = {
+    base: `/${projectId}/agents/${agentId}`,
+    name: data.display_name || 'Agent',
+    pipecat: data.agent_type === 'pipecat_agent' || !!config.pipecat_agent_id,
+    agentType: data.agent_type,
+    hasWorkflow: !!(config.workflow || config.workflowMode),
   }
-  let href = `${base}/config`
-  if (pipecat) href = `${base}/config/pipecat`
-  else if (data.agent_type === 'livekit') href = `${base}/config/livekit`
-  else if (config.workflow || config.workflowMode) href = `${base}/workflow`
-  return { success: true, result: { href, label: `${name} config` } }
+  return { success: true, result: agentPageLink(page, context) }
 }
 
 async function runGetTalkLink(projectId: string, args: any) {
@@ -1381,115 +1455,287 @@ async function generateTitle(client: OpenAI, model: string, firstMessage: string
   }
 }
 
+type PendingToolCall = { id: string; name: string; args: string }
+type TurnUsage = { prompt_tokens: number; completion_tokens: number }
+type ServiceClient = ReturnType<typeof createServiceRoleClient>
+
+type TurnContext = {
+  controller: ReadableStreamDefaultController<Uint8Array>
+  client: OpenAI
+  model: string
+  tools: OpenAI.Chat.ChatCompletionTool[]
+  projectId: string
+  userId: string
+  canWrite: boolean
+  conversation: any[]
+  userTurn: StoredMessage[]
+  isFirstTurn: boolean
+  message: string
+  saveSession: (messages: StoredMessage[], title?: string) => Promise<boolean>
+}
+
+/** What a turn has produced so far — kept outside the model loop so a failure can still save what exists. */
+type TurnState = { assistantText: string; assistantToolCalls: StoredToolCall[]; savedReply: boolean; lastUsage: TurnUsage | null }
+
+const toolCallsOrUndefined = (calls: StoredToolCall[]) => (calls.length ? calls : undefined)
+
+async function authorize(projectId: string): Promise<{ response: NextResponse } | { userId: string; canWrite: boolean }> {
+  const { userId } = await auth()
+  if (!userId) return { response: NextResponse.json({ error: 'Not signed in' }, { status: 401 }) }
+  const access = await getProjectRoleForApi(projectId)
+  if (!access) return { response: NextResponse.json({ error: 'Not a member of this project' }, { status: 403 }) }
+  return { userId, canWrite: access.role !== 'viewer' }
+}
+
+/** A session this user owns in this project — the same two checks guard resuming a chat and clicking Confirm. */
+async function loadOwnedSession(supabase: ServiceClient, sessionId: string, projectId: string, userId: string): Promise<{ history: StoredMessage[] } | { response: NextResponse }> {
+  const { data: existing, error } = await supabase.from('pi_sessions').select('project_id, user_id, messages').eq('id', sessionId).maybeSingle()
+  if (error || !existing) return { response: NextResponse.json({ error: 'Session not found' }, { status: 404 }) }
+  if (existing.project_id !== projectId || existing.user_id !== userId) {
+    return { response: NextResponse.json({ error: 'Not your session' }, { status: 403 }) }
+  }
+  return { history: (existing.messages as StoredMessage[]) ?? [] }
+}
+
+// The Confirm/Cancel button's click, not a chat message — no LLM involved.
+// Only `toolCallId` comes from the client; the action name and arguments
+// are read back from what the server itself already stored for that
+// pending call, never trusted from the request, so a tampered client
+// request can't execute something other than what was actually shown to
+// the user.
+async function handleResolveAction(
+  supabase: ServiceClient,
+  { projectId, userId, canWrite, sessionId, resolveAction }: { projectId: string; userId: string; canWrite: boolean; sessionId: string | undefined; resolveAction: any },
+): Promise<NextResponse> {
+  const { toolCallId, decision } = resolveAction ?? {}
+  if (!sessionId || !toolCallId || (decision !== 'confirm' && decision !== 'cancel')) {
+    return NextResponse.json({ error: 'Invalid confirmation request' }, { status: 400 })
+  }
+  const owned = await loadOwnedSession(supabase, sessionId, projectId, userId)
+  if ('response' in owned) return owned.response
+  const sessionHistory = owned.history
+
+  const msgIndex = sessionHistory.findIndex((m) => m.toolCalls?.some((t) => t.id === toolCallId))
+  const tcIndex = msgIndex === -1 ? -1 : sessionHistory[msgIndex].toolCalls!.findIndex((t) => t.id === toolCallId)
+  if (msgIndex === -1 || tcIndex === -1) return NextResponse.json({ error: 'That action is no longer in this chat' }, { status: 404 })
+  const storedCall = sessionHistory[msgIndex].toolCalls![tcIndex]
+  if (!storedCall.result?.__pending) return NextResponse.json({ error: 'That action was already resolved' }, { status: 409 })
+
+  const outcome = decision === 'cancel'
+    ? { result: { __cancelled: true }, success: true }
+    : await executeTool(projectId, userId, canWrite, storedCall.name, storedCall.arguments)
+
+  const updatedHistory = sessionHistory.map((m, i) =>
+    i === msgIndex ? { ...m, toolCalls: m.toolCalls!.map((t, j) => (j === tcIndex ? { ...t, ...outcome } : t)) } : m
+  )
+  await supabase.from('pi_sessions').update({ messages: updatedHistory, updated_at: new Date().toISOString() }).eq('id', sessionId)
+  return NextResponse.json({ ...outcome, toolCallId })
+}
+
+/** Resumes the given session, or starts a new one. */
+async function openSession(supabase: ServiceClient, projectId: string, userId: string, incomingSessionId: string | undefined): Promise<{ sessionId: string; history: StoredMessage[] } | { response: NextResponse }> {
+  if (incomingSessionId) {
+    const owned = await loadOwnedSession(supabase, incomingSessionId, projectId, userId)
+    if ('response' in owned) return owned
+    return { sessionId: incomingSessionId, history: owned.history }
+  }
+  const user = await currentUser()
+  const userEmail = user?.emailAddresses?.[0]?.emailAddress ?? 'unknown'
+  const { data: created, error } = await supabase
+    .from('pi_sessions')
+    .insert({ project_id: projectId, user_id: userId, user_email: userEmail, title: 'New chat', messages: [] })
+    .select('id')
+    .single()
+  if (error || !created) return { response: NextResponse.json({ error: 'Could not create session' }, { status: 500 }) }
+  return { sessionId: created.id, history: [] }
+}
+
+function createLlmClient(): OpenAI | null {
+  if (process.env.AZURE_OPENAI_API_KEY && process.env.AZURE_OPENAI_ENDPOINT) {
+    return new AzureOpenAI({
+      apiKey: process.env.AZURE_OPENAI_API_KEY,
+      endpoint: process.env.AZURE_OPENAI_ENDPOINT,
+      apiVersion: process.env.OPENAI_API_VERSION || '2024-12-01-preview',
+    })
+  }
+  if (process.env.OPENAI_API_KEY) return new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  return null
+}
+
+const FIELD_NOT_FOUND_NUDGE = 'Your previous reply concluded a field/disposition could not be found. If this message is still about that same term (even rephrased, mistranscribed, or repeated), two things are both suspect, not just the term: (1) call search_field_definitions with the term fresh — do not restate the earlier "not found" conclusion from memory; (2) re-confirm which agent_id you actually used last time matches what the user means now — a wrong pinned agent produces exactly this symptom (a real term reported as missing because the wrong agent was checked). If unsure, call list_agents and ask, or check the term against the agent whose name the user actually said. Never answer this turn by combining this term\'s "not found" result with a different agent\'s numbers from earlier in the thread.'
+
+// Prompting alone wasn't reliable here (confirmed in practice: Pi repeated
+// a "field not found" conclusion verbatim across several follow-ups
+// without ever re-searching) — so this nudges deterministically instead of
+// hoping static instructions get followed. Soft hint, not a forced tool
+// call: tool_choice stays 'auto', this just raises the odds in the exact
+// situation that kept failing.
+function buildConversation(projectId: string, canWrite: boolean, history: StoredMessage[], message: string): any[] {
+  const lastAssistant = [...history].reverse().find((m) => m.role === 'assistant')
+  const saidFieldNotFound = !!lastAssistant && /does not have a (disposition|field)|do not see any disposition/i.test(lastAssistant.content ?? '')
+  const conversation: any[] = [
+    { role: 'system', content: systemPrompt(projectId, canWrite, history) },
+    ...toWireMessages(history),
+    { role: 'user', content: message },
+  ]
+  if (saidFieldNotFound) conversation.push({ role: 'system', content: FIELD_NOT_FOUND_NUDGE })
+  return conversation
+}
+
+function accumulateToolCallDeltas(pending: Record<number, PendingToolCall>, deltas: any[]) {
+  for (const tc of deltas) {
+    if (!pending[tc.index]) pending[tc.index] = { id: tc.id ?? '', name: '', args: '' }
+    if (tc.id) pending[tc.index].id = tc.id
+    if (tc.function?.name) pending[tc.index].name += tc.function.name
+    if (tc.function?.arguments) pending[tc.index].args += tc.function.arguments
+  }
+}
+
+/** Streams one model reply to the client as it arrives and collects the text, tool calls and finish reason. */
+async function readCompletion(stream: AsyncIterable<any>, ctx: TurnContext, turn: TurnState) {
+  const pendingCalls: Record<number, PendingToolCall> = {}
+  let textContent = ''
+  let finishReason = ''
+
+  for await (const chunk of stream) {
+    const delta = chunk.choices[0]?.delta
+    finishReason = chunk.choices[0]?.finish_reason ?? finishReason
+
+    if (delta?.content) {
+      textContent += delta.content
+      ctx.controller.enqueue(sseChunk(JSON.stringify({ text: delta.content })))
+    }
+    if (delta?.tool_calls) accumulateToolCallDeltas(pendingCalls, delta.tool_calls)
+
+    // the usage chunk (stream_options.include_usage) arrives last, with no choices —
+    // its prompt_tokens already covers this whole turn's history, so later iterations
+    // (tool-calling round trips) naturally overwrite this with the bigger number
+    if (chunk.usage) turn.lastUsage = { prompt_tokens: chunk.usage.prompt_tokens, completion_tokens: chunk.usage.completion_tokens }
+  }
+  return { textContent, finishReason, pendingCalls }
+}
+
+/** Runs (or holds for Confirm) one tool call the model asked for, announcing it and its result to the client. */
+async function runToolCall(tc: PendingToolCall, ctx: TurnContext) {
+  let parsedArgs: any = {}
+  try { parsedArgs = JSON.parse(tc.args) } catch {}
+
+  ctx.controller.enqueue(sseChunk(JSON.stringify({ toolCall: { id: tc.id, name: tc.name, arguments: parsedArgs } })))
+
+  const start = Date.now()
+  // create_agent/edit_agent never execute here — holding them until an
+  // actual button click (handled in handleResolveAction) is
+  // a code guarantee that nothing writes without it, instead of relying
+  // on the model to correctly sequence "ask, wait, then call the tool
+  // next turn" — a sequence prompting alone didn't reliably hold to.
+  const needsConfirmation = CONFIRMED_TOOLS.has(tc.name) && ctx.canWrite
+  const { result, success }: { result: any; success: boolean } = needsConfirmation
+    ? { result: { __pending: true, action: tc.name, args: parsedArgs, preview: await pendingPreview(ctx.projectId, tc.name, parsedArgs) }, success: true }
+    : await executeTool(ctx.projectId, ctx.userId, ctx.canWrite, tc.name, parsedArgs)
+  const duration_ms = Date.now() - start
+
+  ctx.controller.enqueue(sseChunk(JSON.stringify({ toolResult: { id: tc.id, result, success, duration_ms } })))
+  return { parsedArgs, result, success }
+}
+
+async function runToolCalls(pendingCalls: Record<number, PendingToolCall>, textContent: string, ctx: TurnContext, turn: TurnState) {
+  const calls = Object.values(pendingCalls)
+  ctx.conversation.push({
+    role: 'assistant',
+    content: textContent || null,
+    tool_calls: calls.map((tc) => ({ id: tc.id, type: 'function' as const, function: { name: tc.name, arguments: tc.args } })),
+  })
+
+  for (const tc of calls) {
+    const { parsedArgs, result, success } = await runToolCall(tc, ctx)
+    const forModel = RAW_PHONE_RESULT_TOOLS.has(tc.name) ? result : redactPhoneLikeStrings(result)
+    ctx.conversation.push({ role: 'tool', tool_call_id: tc.id, content: truncateForContext(forModel, toolResultLimit(tc.name)) })
+    turn.assistantToolCalls.push({ id: tc.id, name: tc.name, arguments: parsedArgs, result, success })
+  }
+}
+
+/** Ask the model, run any tools it calls, and go again — up to MAX_TOOL_ITERATIONS round trips. */
+async function runModelLoop(ctx: TurnContext, turn: TurnState) {
+  for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
+    const stream = await ctx.client.chat.completions.create({
+      model: ctx.model,
+      messages: ctx.conversation,
+      stream: true,
+      stream_options: { include_usage: true },
+      temperature: 0.2,
+      tools: ctx.tools,
+      tool_choice: 'auto',
+    })
+    const { textContent, finishReason, pendingCalls } = await readCompletion(stream, ctx, turn)
+    turn.assistantText += textContent
+    if (finishReason !== 'tool_calls') return
+    await runToolCalls(pendingCalls, textContent, ctx, turn)
+  }
+}
+
+async function finishTurn(ctx: TurnContext, turn: TurnState) {
+  const reply: StoredMessage = { role: 'assistant', content: turn.assistantText, toolCalls: toolCallsOrUndefined(turn.assistantToolCalls) }
+  let title: string | undefined
+  if (ctx.isFirstTurn) {
+    title = (await generateTitle(ctx.client, ctx.model, ctx.message)) ?? undefined
+    if (title) ctx.controller.enqueue(sseChunk(JSON.stringify({ title })))
+  }
+  turn.savedReply = await ctx.saveSession([...ctx.userTurn, reply], title)
+
+  if (turn.lastUsage) {
+    const used = turn.lastUsage.prompt_tokens + turn.lastUsage.completion_tokens
+    ctx.controller.enqueue(sseChunk(JSON.stringify({ usage: { used, limit: contextWindowFor(ctx.model) } })))
+  }
+  ctx.controller.enqueue(sseChunk('[DONE]'))
+}
+
+async function recoverFromError(err: unknown, ctx: TurnContext, turn: TurnState) {
+  const hasReply = turn.assistantText || turn.assistantToolCalls.length
+  const partial: StoredMessage[] = hasReply
+    ? [...ctx.userTurn, { role: 'assistant', content: turn.assistantText, toolCalls: toolCallsOrUndefined(turn.assistantToolCalls) }]
+    : ctx.userTurn
+  if (!turn.savedReply) await ctx.saveSession(partial)
+  ctx.controller.enqueue(sseChunk(JSON.stringify({ error: String(err) })))
+}
+
+function chatStream(base: Omit<TurnContext, 'controller'>, sessionId: string) {
+  return new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const ctx: TurnContext = { ...base, controller }
+      controller.enqueue(sseChunk(JSON.stringify({ sessionId })))
+      const turn: TurnState = { assistantText: '', assistantToolCalls: [], savedReply: false, lastUsage: null }
+      try {
+        await ctx.saveSession(ctx.userTurn)
+        await runModelLoop(ctx, turn)
+        await finishTurn(ctx, turn)
+      } catch (err) {
+        await recoverFromError(err, ctx, turn)
+      } finally {
+        controller.close()
+      }
+    },
+  })
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { message, projectId, sessionId: incomingSessionId, resolveAction } = await request.json()
     if (!projectId) return NextResponse.json({ error: 'projectId is required' }, { status: 400 })
     if (!resolveAction && (!message || typeof message !== 'string')) return NextResponse.json({ error: 'message is required' }, { status: 400 })
 
-    const { userId } = await auth()
-    if (!userId) return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
-
-    const access = await getProjectRoleForApi(projectId)
-    if (!access) return NextResponse.json({ error: 'Not a member of this project' }, { status: 403 })
-    const canWrite = access.role !== 'viewer'
+    const who = await authorize(projectId)
+    if ('response' in who) return who.response
+    const { userId, canWrite } = who
 
     const supabase = createServiceRoleClient()
+    if (resolveAction) return await handleResolveAction(supabase, { projectId, userId, canWrite, sessionId: incomingSessionId, resolveAction })
 
-    // The Confirm/Cancel button's click, not a chat message — no LLM involved.
-    // Only `toolCallId` comes from the client; the action name and arguments
-    // are read back from what the server itself already stored for that
-    // pending call, never trusted from the request, so a tampered client
-    // request can't execute something other than what was actually shown to
-    // the user.
-    if (resolveAction) {
-      const { toolCallId, decision } = resolveAction ?? {}
-      if (!incomingSessionId || !toolCallId || (decision !== 'confirm' && decision !== 'cancel')) {
-        return NextResponse.json({ error: 'Invalid confirmation request' }, { status: 400 })
-      }
-      const { data: existing, error } = await supabase.from('pi_sessions').select('project_id, user_id, messages').eq('id', incomingSessionId).maybeSingle()
-      if (error || !existing) return NextResponse.json({ error: 'Session not found' }, { status: 404 })
-      if (existing.project_id !== projectId || existing.user_id !== userId) {
-        return NextResponse.json({ error: 'Not your session' }, { status: 403 })
-      }
-      const sessionHistory = (existing.messages as StoredMessage[]) ?? []
-      const msgIndex = sessionHistory.findIndex((m) => m.toolCalls?.some((t) => t.id === toolCallId))
-      const tcIndex = msgIndex === -1 ? -1 : sessionHistory[msgIndex].toolCalls!.findIndex((t) => t.id === toolCallId)
-      if (msgIndex === -1 || tcIndex === -1) return NextResponse.json({ error: 'That action is no longer in this chat' }, { status: 404 })
-      const storedCall = sessionHistory[msgIndex].toolCalls![tcIndex]
-      if (!storedCall.result?.__pending) return NextResponse.json({ error: 'That action was already resolved' }, { status: 409 })
+    const opened = await openSession(supabase, projectId, userId, incomingSessionId)
+    if ('response' in opened) return opened.response
+    const { sessionId, history } = opened
 
-      const outcome = decision === 'cancel'
-        ? { result: { __cancelled: true }, success: true }
-        : await executeTool(projectId, userId, canWrite, storedCall.name, storedCall.arguments)
-
-      const updatedHistory = sessionHistory.map((m, i) =>
-        i === msgIndex ? { ...m, toolCalls: m.toolCalls!.map((t, j) => (j === tcIndex ? { ...t, ...outcome } : t)) } : m
-      )
-      await supabase.from('pi_sessions').update({ messages: updatedHistory, updated_at: new Date().toISOString() }).eq('id', incomingSessionId)
-      return NextResponse.json({ ...outcome, toolCallId })
-    }
-
-    let sessionId = incomingSessionId as string | undefined
-    let history: StoredMessage[] = []
-
-    if (sessionId) {
-      const { data: existing, error } = await supabase.from('pi_sessions').select('project_id, user_id, messages').eq('id', sessionId).maybeSingle()
-      if (error || !existing) return NextResponse.json({ error: 'Session not found' }, { status: 404 })
-      if (existing.project_id !== projectId || existing.user_id !== userId) {
-        return NextResponse.json({ error: 'Not your session' }, { status: 403 })
-      }
-      history = (existing.messages as StoredMessage[]) ?? []
-    } else {
-      const user = await currentUser()
-      const userEmail = user?.emailAddresses?.[0]?.emailAddress ?? 'unknown'
-      const { data: created, error } = await supabase
-        .from('pi_sessions')
-        .insert({ project_id: projectId, user_id: userId, user_email: userEmail, title: 'New chat', messages: [] })
-        .select('id')
-        .single()
-      if (error || !created) return NextResponse.json({ error: 'Could not create session' }, { status: 500 })
-      sessionId = created.id
-    }
-
-    const isFirstTurn = history.length === 0
-
-    let client: OpenAI
-    if (process.env.AZURE_OPENAI_API_KEY && process.env.AZURE_OPENAI_ENDPOINT) {
-      client = new AzureOpenAI({
-        apiKey: process.env.AZURE_OPENAI_API_KEY,
-        endpoint: process.env.AZURE_OPENAI_ENDPOINT,
-        apiVersion: process.env.OPENAI_API_VERSION || '2024-12-01-preview',
-      })
-    } else if (process.env.OPENAI_API_KEY) {
-      client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-    } else {
-      return NextResponse.json({ error: 'No LLM provider configured' }, { status: 500 })
-    }
-    const resolvedModel = process.env.AZURE_DEPLOYMENT_NAME || 'gpt-4o-mini'
-    const tools = toolSchemas(canWrite)
-
-    // Prompting alone wasn't reliable here (confirmed in practice: Pi repeated
-    // a "field not found" conclusion verbatim across several follow-ups
-    // without ever re-searching) — so this nudges deterministically instead of
-    // hoping static instructions get followed. Soft hint, not a forced tool
-    // call: tool_choice stays 'auto', this just raises the odds in the exact
-    // situation that kept failing.
-    const lastAssistant = [...history].reverse().find((m) => m.role === 'assistant')
-    const saidFieldNotFound = !!lastAssistant && /does not have a (disposition|field)|do not see any disposition/i.test(lastAssistant.content ?? '')
-
-    const conversationMessages: any[] = [
-      { role: 'system', content: systemPrompt(projectId, canWrite, history) },
-      ...toWireMessages(history),
-      { role: 'user', content: message },
-      ...(saidFieldNotFound
-        ? [{ role: 'system', content: 'Your previous reply concluded a field/disposition could not be found. If this message is still about that same term (even rephrased, mistranscribed, or repeated), two things are both suspect, not just the term: (1) call search_field_definitions with the term fresh — do not restate the earlier "not found" conclusion from memory; (2) re-confirm which agent_id you actually used last time matches what the user means now — a wrong pinned agent produces exactly this symptom (a real term reported as missing because the wrong agent was checked). If unsure, call list_agents and ask, or check the term against the agent whose name the user actually said. Never answer this turn by combining this term\'s "not found" result with a different agent\'s numbers from earlier in the thread.' }]
-        : []),
-    ]
-    // What actually gets persisted back to the session at the end — the UI
-    // shape, not the OpenAI wire shape, so a resumed session needs no
-    // reverse-translation on load.
-    const userTurn: StoredMessage[] = [...history, { role: 'user', content: message }]
+    const client = createLlmClient()
+    if (!client) return NextResponse.json({ error: 'No LLM provider configured' }, { status: 500 })
 
     const saveSession = async (messages: StoredMessage[], title?: string) => {
       const { error } = await supabase
@@ -1500,126 +1746,22 @@ export async function POST(request: NextRequest) {
       return !error
     }
 
-    const readable = new ReadableStream({
-      async start(controller) {
-        controller.enqueue(sseChunk(JSON.stringify({ sessionId })))
-        let assistantText = ''
-        const assistantToolCalls: StoredToolCall[] = []
-        let savedReply = false
-        let lastUsage: { prompt_tokens: number; completion_tokens: number } | null = null
-        try {
-          await saveSession(userTurn)
-          let continueLoop = true
-          let iterations = 0
-
-          while (continueLoop && iterations < MAX_TOOL_ITERATIONS) {
-            iterations++
-
-            const stream = await client.chat.completions.create({
-              model: resolvedModel,
-              messages: conversationMessages,
-              stream: true,
-              stream_options: { include_usage: true },
-              temperature: 0.2,
-              tools,
-              tool_choice: 'auto',
-            })
-
-            const pendingCalls: Record<number, { id: string; name: string; args: string }> = {}
-            let textContent = ''
-            let finishReason = ''
-
-            for await (const chunk of stream) {
-              const delta = chunk.choices[0]?.delta
-              finishReason = chunk.choices[0]?.finish_reason ?? finishReason
-
-              if (delta?.content) {
-                textContent += delta.content
-                controller.enqueue(sseChunk(JSON.stringify({ text: delta.content })))
-              }
-
-              if (delta?.tool_calls) {
-                for (const tc of delta.tool_calls) {
-                  if (!pendingCalls[tc.index]) pendingCalls[tc.index] = { id: tc.id ?? '', name: '', args: '' }
-                  if (tc.id) pendingCalls[tc.index].id = tc.id
-                  if (tc.function?.name) pendingCalls[tc.index].name += tc.function.name
-                  if (tc.function?.arguments) pendingCalls[tc.index].args += tc.function.arguments
-                }
-              }
-
-              // the usage chunk (stream_options.include_usage) arrives last, with no choices —
-              // its prompt_tokens already covers this whole turn's history, so later iterations
-              // (tool-calling round trips) naturally overwrite this with the bigger number
-              if (chunk.usage) lastUsage = { prompt_tokens: chunk.usage.prompt_tokens, completion_tokens: chunk.usage.completion_tokens }
-            }
-
-            assistantText += textContent
-
-            if (finishReason === 'tool_calls') {
-              const toolCallsForMsg = Object.values(pendingCalls).map((tc) => ({
-                id: tc.id,
-                type: 'function' as const,
-                function: { name: tc.name, arguments: tc.args },
-              }))
-              conversationMessages.push({ role: 'assistant', content: textContent || null, tool_calls: toolCallsForMsg })
-
-              for (const tc of Object.values(pendingCalls)) {
-                let parsedArgs: any = {}
-                try { parsedArgs = JSON.parse(tc.args) } catch {}
-
-                controller.enqueue(sseChunk(JSON.stringify({ toolCall: { id: tc.id, name: tc.name, arguments: parsedArgs } })))
-
-                const start = Date.now()
-                // create_agent/edit_agent never execute here — holding them until an
-                // actual button click (handled below, in the confirmAction branch) is
-                // a code guarantee that nothing writes without it, instead of relying
-                // on the model to correctly sequence "ask, wait, then call the tool
-                // next turn" — a sequence prompting alone didn't reliably hold to.
-                const needsConfirmation = CONFIRMED_TOOLS.has(tc.name) && canWrite
-                const { result, success } = needsConfirmation
-                  ? { result: { __pending: true, action: tc.name, args: parsedArgs, preview: await pendingPreview(projectId, tc.name, parsedArgs) }, success: true }
-                  : await executeTool(projectId, userId, canWrite, tc.name, parsedArgs)
-                const duration_ms = Date.now() - start
-
-                controller.enqueue(sseChunk(JSON.stringify({ toolResult: { id: tc.id, result, success, duration_ms } })))
-
-                conversationMessages.push({ role: 'tool', tool_call_id: tc.id, content: truncateForContext(RAW_PHONE_RESULT_TOOLS.has(tc.name) ? result : redactPhoneLikeStrings(result), toolResultLimit(tc.name)) })
-                assistantToolCalls.push({ id: tc.id, name: tc.name, arguments: parsedArgs, result, success })
-              }
-            } else {
-              continueLoop = false
-            }
-          }
-
-          const reply: StoredMessage = {
-            role: 'assistant',
-            content: assistantText,
-            toolCalls: assistantToolCalls.length ? assistantToolCalls : undefined,
-          }
-          let title: string | undefined
-          if (isFirstTurn) {
-            title = (await generateTitle(client, resolvedModel, message)) ?? undefined
-            if (title) controller.enqueue(sseChunk(JSON.stringify({ title })))
-          }
-          savedReply = await saveSession([...userTurn, reply], title)
-
-          if (lastUsage) {
-            const used = lastUsage.prompt_tokens + lastUsage.completion_tokens
-            controller.enqueue(sseChunk(JSON.stringify({ usage: { used, limit: contextWindowFor(resolvedModel) } })))
-          }
-
-          controller.enqueue(sseChunk('[DONE]'))
-        } catch (err) {
-          const partial: StoredMessage[] = assistantText || assistantToolCalls.length
-            ? [...userTurn, { role: 'assistant', content: assistantText, toolCalls: assistantToolCalls.length ? assistantToolCalls : undefined }]
-            : userTurn
-          if (!savedReply) await saveSession(partial)
-          controller.enqueue(sseChunk(JSON.stringify({ error: String(err) })))
-        } finally {
-          controller.close()
-        }
-      },
-    })
+    const readable = chatStream({
+      client,
+      model: process.env.AZURE_DEPLOYMENT_NAME || 'gpt-4o-mini',
+      tools: toolSchemas(canWrite),
+      projectId,
+      userId,
+      canWrite,
+      conversation: buildConversation(projectId, canWrite, history, message),
+      // What actually gets persisted back to the session at the end — the UI
+      // shape, not the OpenAI wire shape, so a resumed session needs no
+      // reverse-translation on load.
+      userTurn: [...history, { role: 'user', content: message }],
+      isFirstTurn: history.length === 0,
+      message,
+      saveSession,
+    }, sessionId)
 
     return new Response(readable, {
       headers: {

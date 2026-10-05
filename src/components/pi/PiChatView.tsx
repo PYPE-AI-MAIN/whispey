@@ -7,6 +7,11 @@ import { ArrowUp, Mic } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { useVoiceAgent } from '@/hooks/useVoiceAgent'
 import PiCustomToolForm, { type ToolDraft } from '@/components/pi/PiCustomToolForm'
+import { closeOpenMarkdown, nextRevealLength, splitBlocks } from '@/lib/piMarkdown'
+import {
+  applyEvent, classifyEvent, consumeSse, failAssistant, navigationTarget, parseSseLine, withToolCallResult,
+  type Classified, type ContextUsage, type Message, type ToolCall,
+} from '@/lib/piStream'
 
 const MARKDOWN_COMPONENTS = {
   h1: ({ children }: { children?: React.ReactNode }) => (
@@ -58,22 +63,7 @@ const MARKDOWN_COMPONENTS = {
   ),
 }
 
-export interface ToolCall {
-  id: string
-  name: string
-  arguments: any
-  result?: any
-  success?: boolean
-  pending?: boolean
-}
-
-export interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  isFinal: boolean
-  toolCalls?: ToolCall[]
-}
+export type { Message, ToolCall } from '@/lib/piStream'
 
 const TOOL_LABELS: Record<string, string> = {
   list_agents: 'Checking your agents',
@@ -198,9 +188,6 @@ function agentSelector(tc: ToolCall): Array<{ id: string; display_name: string }
   return agents.map((a: any) => ({ id: String(a.id), display_name: String(a.display_name ?? 'Agent') }))
 }
 
-// create_agent/edit_agent never execute server-side until a button click (see
-// route.ts) — this reads the __pending marker and builds the human-readable
-// summary for what that click will actually do.
 function composeInput(recording: boolean, partialText: string, input: string): string {
   if (!recording || !partialText) return input
   return input ? `${input} ${partialText}` : partialText
@@ -244,6 +231,9 @@ function editSummary(args: any): string {
   return parts.length ? `Update this agent: ${parts.join(', ')}` : 'Update this agent'
 }
 
+// create_agent/edit_agent never execute server-side until a button click (see
+// route.ts) — this reads the __pending marker and builds the human-readable
+// summary for what that click will actually do.
 function pendingAction(tc: ToolCall): { action: string; summary: string } | null {
   if (!CONFIRMED_TOOLS.has(tc.name) || !tc.result?.__pending) return null
   const args = tc.arguments ?? {}
@@ -396,38 +386,6 @@ function ToolCallLine({ tc }: Readonly<{ tc: ToolCall }>) {
 // revealed on requestAnimationFrame at a speed that scales with the backlog
 // (steady when small, fast enough to never lag far behind), never splitting a
 // surrogate pair or a combining mark (Devanagari/Kannada conjuncts).
-const COMBINING = /[\p{M}‌‍]/u
-
-// Split markdown into blocks at blank lines (outside code fences, and never
-// before a list/indented continuation) so finished blocks can be memoised and
-// only the last one is re-parsed while streaming.
-function splitBlocks(text: string): string[] {
-  const blocks: string[] = []
-  let cur: string[] = []
-  let fenced = false
-  const lines = text.split('\n')
-  lines.forEach((line, i) => {
-    if (/^\s*```/.test(line)) fenced = !fenced
-    cur.push(line)
-    const next = lines[i + 1]
-    if (!fenced && line.trim() === '' && next !== undefined && next.trim() !== '' && !/^(\s|[-*+]\s|\d+[.)]\s|\||>)/.test(next)) {
-      blocks.push(cur.join('\n'))
-      cur = []
-    }
-  })
-  if (cur.length) blocks.push(cur.join('\n'))
-  return blocks
-}
-
-// Close markdown the stream hasn't finished yet so it never flashes raw `**`/backticks.
-function closeOpenMarkdown(text: string): string {
-  let out = text
-  if ((out.match(/^\s*```/gm) ?? []).length % 2) return `${out}\n\`\`\``
-  if ((out.match(/\*\*/g) ?? []).length % 2) out += '**'
-  if ((out.replaceAll('```', '').match(/`/g) ?? []).length % 2) out += '`'
-  return out
-}
-
 const MarkdownBlock = memo(function MarkdownBlock({ text }: Readonly<{ text: string }>) {
   return <ReactMarkdown components={MARKDOWN_COMPONENTS}>{text}</ReactMarkdown>
 })
@@ -440,12 +398,7 @@ const StreamedMarkdown = memo(function StreamedMarkdown({ content, isFinal }: Re
   useEffect(() => {
     if (shown >= content.length) return
     const id = requestAnimationFrame(() => {
-      const text = textRef.current
-      const backlog = text.length - shown
-      let n = Math.min(text.length, shown + Math.max(1, Math.ceil(backlog * 0.08)))
-      if (n < text.length && n > 0 && /[\ud800-\udbff]/.test(text[n - 1])) n++
-      while (n < text.length && COMBINING.test(text[n])) n++
-      setShown(n)
+      setShown(nextRevealLength(textRef.current, shown))
     })
     return () => cancelAnimationFrame(id)
   }, [shown, content])
@@ -468,6 +421,101 @@ const StreamedMarkdown = memo(function StreamedMarkdown({ content, isFinal }: Re
   )
 })
 
+
+type LatestToolIds = { voice: string | null; form: string | null; selector: string | null }
+
+/** Only the most recent voice call / tool form / agent chooser is shown live; older ones stay as plain history. */
+function latestToolIds(messages: Message[]): LatestToolIds {
+  const latest: LatestToolIds = { voice: null, form: null, selector: null }
+  for (const msg of messages) {
+    for (const tc of msg.toolCalls ?? []) {
+      if (voiceTarget(tc)) latest.voice = tc.id
+      if (toolForm(tc)) latest.form = tc.id
+      if (agentSelector(tc)) latest.selector = tc.id
+    }
+  }
+  return latest
+}
+
+/** What happened after the user clicked Confirm on a phone-number purchase or attach. */
+function PhoneActionOutcome({ tc, cancelled }: Readonly<{ tc: ToolCall; cancelled: boolean }>) {
+  const isPhoneAction = tc.name === 'buy_plivo_number' || tc.name === 'attach_inbound_number'
+  if (!isPhoneAction || !tc.result || tc.result.__pending || cancelled) return null
+  if (tc.success === false || tc.result.error) {
+    return <p className="mt-2 max-w-md rounded-lg bg-red-50 px-3 py-2 text-[13px] text-red-700 dark:bg-red-950/30 dark:text-red-300">Failed: {String(tc.result.error ?? 'Something went wrong')}</p>
+  }
+  return (
+    <p className="mt-2 max-w-md rounded-lg bg-emerald-50 px-3 py-2 text-[13px] text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
+      {tc.name === 'buy_plivo_number'
+        ? `Bought ${tc.result.bought} ($${Number(tc.result.monthly_rental_rate_usd).toFixed(2)}/month). Ask me to attach it to an agent.`
+        : `Attached ${tc.result.attached} to ${tc.result.agent} for inbound calls (${tc.result.alias}).`}
+    </p>
+  )
+}
+
+function ToolCallBlock({
+  tc, projectId, latest, resolving, onChoose, onResolve,
+}: Readonly<{
+  tc: ToolCall; projectId: string; latest: LatestToolIds; resolving: boolean
+  onChoose: (agentName: string) => void; onResolve: (toolCallId: string, decision: 'confirm' | 'cancel') => void
+}>) {
+  const target = tc.id === latest.voice ? voiceTarget(tc) : null
+  const form = tc.id === latest.form ? toolForm(tc) : null
+  const page = pageTarget(tc)
+  const agents = tc.id === latest.selector ? agentSelector(tc) : null
+  const pending = pendingAction(tc)
+  const cancelled = tc.result?.__cancelled === true
+  return (
+    <div>
+      {target ? <PiVoiceCall agentName={target.agentName} label={target.label} /> : null}
+      {form ? <PiCustomToolForm projectId={projectId} agentId={form.agentId} label={form.label} draft={form.draft} toolCallId={tc.id} /> : null}
+      {page ? (
+        <Link href={page.href} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-lg bg-gray-900 px-3 py-1.5 text-[13px] text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900">
+          {page.label}
+        </Link>
+      ) : null}
+      {agents ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {agents.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => onChoose(a.display_name)}
+              className="rounded-full border border-gray-200 bg-white px-3.5 py-1.5 text-[13px] text-gray-700 transition hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-600"
+            >
+              {a.display_name}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {pending ? (
+        <div className="mt-3 max-w-md rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/60 dark:bg-amber-950/30">
+          <p className="text-[13px] text-amber-900 dark:text-amber-200">{pending.summary}</p>
+          <div className="mt-2.5 flex gap-2">
+            <button
+              type="button"
+              disabled={resolving}
+              onClick={() => onResolve(tc.id, 'confirm')}
+              className="rounded-lg bg-gray-900 px-3 py-1.5 text-[13px] font-medium text-white transition hover:bg-gray-800 disabled:cursor-wait disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900"
+            >
+              Confirm
+            </button>
+            <button
+              type="button"
+              disabled={resolving}
+              onClick={() => onResolve(tc.id, 'cancel')}
+              className="rounded-lg border border-amber-300 px-3 py-1.5 text-[13px] font-medium text-amber-900 transition hover:bg-amber-100 disabled:cursor-wait disabled:opacity-50 dark:border-amber-800 dark:text-amber-200 dark:hover:bg-amber-900/40"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {cancelled && <p className="mt-2 text-[12px] text-gray-400">Cancelled.</p>}
+      <PhoneActionOutcome tc={tc} cancelled={cancelled} />
+    </div>
+  )
+}
 
 export default function PiChatView({
   projectId,
@@ -502,7 +550,7 @@ export default function PiChatView({
     if (!isStreaming) setMessages(initialMessages ?? [])
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialMessages])
-  const [contextUsage, setContextUsage] = useState<{ used: number; limit: number } | null>(null)
+  const [contextUsage, setContextUsage] = useState<ContextUsage | null>(null)
   const [recording, setRecording] = useState(false)
   const [partialText, setPartialText] = useState('')
   const [micError, setMicError] = useState<string | null>(null)
@@ -593,12 +641,7 @@ export default function PiChatView({
       const data = await res.json().catch(() => null)
       const result = res.ok ? data.result : { error: data?.error ?? 'Could not complete that action' }
       const success = res.ok ? data.success : false
-      setMessages((prev) =>
-        prev.map((m) => ({
-          ...m,
-          toolCalls: m.toolCalls?.map((tc) => (tc.id === toolCallId ? { ...tc, result, success } : tc)),
-        }))
-      )
+      setMessages((prev) => withToolCallResult(prev, toolCallId, result, success))
     } finally {
       setResolvingIds((prev) => {
         const next = new Set(prev)
@@ -607,6 +650,31 @@ export default function PiChatView({
       })
     }
   }, [projectId])
+
+  // one line of the server-sent stream -> a state change; a malformed or surprising line is skipped, never fatal
+  const handleStreamLine = useCallback((line: string, assistantId: string) => {
+    const parsed = parseSseLine(line)
+    if (!parsed) return
+    try {
+      const event: Classified = 'done' in parsed ? { kind: 'done' } : classifyEvent(parsed.event, !!sessionIdRef.current)
+      if (event.kind === 'usage') {
+        setContextUsage(event.usage)
+        return
+      }
+      if (event.kind === 'session') {
+        sessionIdRef.current = event.sessionId
+        onSessionCreated?.(event.sessionId)
+        return
+      }
+      if (event.kind === 'toolResult') {
+        const href = navigationTarget(event.toolResult, projectId)
+        if (href) router.push(href)
+      }
+      setMessages((prev) => applyEvent(prev, assistantId, event))
+    } catch {
+      // malformed chunk
+    }
+  }, [onSessionCreated, projectId, router])
 
   const sendMessage = useCallback(async (userContent: string, historyBefore: Message[]) => {
     if (isStreaming || !userContent.trim() || readOnly) return
@@ -625,74 +693,17 @@ export default function PiChatView({
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Request failed' }))
-        setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, content: err.error ?? 'Error', isFinal: true } : m)))
+        setMessages((prev) => failAssistant(prev, assistantId, err.error ?? 'Error'))
         return
       }
-      const reader = res.body!.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() ?? ''
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          const payload = line.slice(6).trim()
-          if (payload === '[DONE]') {
-            setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, isFinal: true } : m)))
-            continue
-          }
-          try {
-            const { text, error, toolCall, toolResult, sessionId: newSessionId, usage } = JSON.parse(payload)
-            if (usage) {
-              setContextUsage(usage)
-            } else if (newSessionId && !sessionIdRef.current) {
-              sessionIdRef.current = newSessionId
-              onSessionCreated?.(newSessionId)
-            } else if (error) {
-              setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, content: error, isFinal: true } : m)))
-            } else if (text) {
-              setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, content: m.content + text } : m)))
-            } else if (toolCall) {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantId
-                    ? { ...m, toolCalls: [...(m.toolCalls ?? []), { id: toolCall.id, name: toolCall.name, arguments: toolCall.arguments, pending: true }] }
-                    : m
-                )
-              )
-            } else if (toolResult) {
-              const href = toolResult.result?.href
-              if (toolResult.success && typeof href === 'string' && href.startsWith(`/${projectId}/`)) {
-                router.push(href)
-              }
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantId
-                    ? {
-                        ...m,
-                        toolCalls: (m.toolCalls ?? []).map((tc) =>
-                          tc.id === toolResult.id ? { ...tc, result: toolResult.result, success: toolResult.success, pending: false } : tc
-                        ),
-                      }
-                    : m
-                )
-              )
-            }
-          } catch {
-            // malformed chunk
-          }
-        }
-      }
+      await consumeSse(res.body!, (line) => handleStreamLine(line, assistantId))
       onTurnComplete?.()
     } catch (err: any) {
-      setMessages((prev) => prev.map((m) => (m.id === assistantId ? { ...m, content: err?.message ?? 'Network error', isFinal: true } : m)))
+      setMessages((prev) => failAssistant(prev, assistantId, err?.message ?? 'Network error'))
     } finally {
       setIsStreaming(false)
     }
-  }, [isStreaming, projectId, readOnly, onSessionCreated, onTurnComplete, pinToBottom, router])
+  }, [isStreaming, projectId, readOnly, onTurnComplete, pinToBottom, handleStreamLine])
 
   const autoGrow = useCallback(() => {
     const el = textareaRef.current
@@ -807,6 +818,7 @@ export default function PiChatView({
     }
   }
 
+  const latest = latestToolIds(messages)
   const micSupported = !!globalThis.navigator?.mediaDevices?.getUserMedia && globalThis.RTCPeerConnection !== undefined
 
   const showContextHint = messages.length > 0 || !!sessionIdRef.current
@@ -845,18 +857,7 @@ export default function PiChatView({
           )}
 
           <div className="space-y-8">
-            {(() => {
-              let latestVoiceId: string | null = null
-              let latestToolFormId: string | null = null
-              let latestAgentSelectorId: string | null = null
-              for (const msg of messages) {
-                for (const tc of msg.toolCalls ?? []) {
-                  if (voiceTarget(tc)) latestVoiceId = tc.id
-                  if (toolForm(tc)) latestToolFormId = tc.id
-                  if (agentSelector(tc)) latestAgentSelectorId = tc.id
-                }
-              }
-              return messages.map((m, index) =>
+            {messages.map((m, index) =>
               m.role === 'user' ? (
                 <div key={m.id} data-pi-last={index === messages.length - 1 ? 'true' : undefined} className="flex min-w-0 justify-end">
                   <UserMessage content={m.content} />
@@ -872,79 +873,20 @@ export default function PiChatView({
                   )}
                   {m.content && <StreamedMarkdown content={m.content} isFinal={m.isFinal} />}
                   {!m.content && !m.isFinal && <ThinkingIndicator />}
-                  {m.toolCalls?.map((tc) => {
-                    const target = tc.id === latestVoiceId ? voiceTarget(tc) : null
-                    const form = tc.id === latestToolFormId ? toolForm(tc) : null
-                    const page = pageTarget(tc)
-                    const agents = tc.id === latestAgentSelectorId ? agentSelector(tc) : null
-                    const pending = pendingAction(tc)
-                    const resolving = resolvingIds.has(tc.id)
-                    const cancelled = tc.result?.__cancelled === true
-                    return (
-                      <div key={tc.id}>
-                        {target ? <PiVoiceCall agentName={target.agentName} label={target.label} /> : null}
-                        {form ? <PiCustomToolForm projectId={projectId} agentId={form.agentId} label={form.label} draft={form.draft} toolCallId={tc.id} /> : null}
-                        {page ? (
-                          <Link href={page.href} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-lg bg-gray-900 px-3 py-1.5 text-[13px] text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900">
-                            {page.label}
-                          </Link>
-                        ) : null}
-                        {agents ? (
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {agents.map((a) => (
-                              <button
-                                key={a.id}
-                                type="button"
-                                onClick={() => sendMessage(a.display_name, messages)}
-                                className="rounded-full border border-gray-200 bg-white px-3.5 py-1.5 text-[13px] text-gray-700 transition hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-600"
-                              >
-                                {a.display_name}
-                              </button>
-                            ))}
-                          </div>
-                        ) : null}
-                        {pending ? (
-                          <div className="mt-3 max-w-md rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/60 dark:bg-amber-950/30">
-                            <p className="text-[13px] text-amber-900 dark:text-amber-200">{pending.summary}</p>
-                            <div className="mt-2.5 flex gap-2">
-                              <button
-                                type="button"
-                                disabled={resolving}
-                                onClick={() => resolvePendingAction(tc.id, 'confirm')}
-                                className="rounded-lg bg-gray-900 px-3 py-1.5 text-[13px] font-medium text-white transition hover:bg-gray-800 disabled:cursor-wait disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900"
-                              >
-                                Confirm
-                              </button>
-                              <button
-                                type="button"
-                                disabled={resolving}
-                                onClick={() => resolvePendingAction(tc.id, 'cancel')}
-                                className="rounded-lg border border-amber-300 px-3 py-1.5 text-[13px] font-medium text-amber-900 transition hover:bg-amber-100 disabled:cursor-wait disabled:opacity-50 dark:border-amber-800 dark:text-amber-200 dark:hover:bg-amber-900/40"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        ) : null}
-                        {cancelled && <p className="mt-2 text-[12px] text-gray-400">Cancelled.</p>}
-                        {(tc.name === 'buy_plivo_number' || tc.name === 'attach_inbound_number') && tc.result && !tc.result.__pending && !cancelled && (
-                          tc.success === false || tc.result.error ? (
-                            <p className="mt-2 max-w-md rounded-lg bg-red-50 px-3 py-2 text-[13px] text-red-700 dark:bg-red-950/30 dark:text-red-300">Failed: {String(tc.result.error ?? 'Something went wrong')}</p>
-                          ) : (
-                            <p className="mt-2 max-w-md rounded-lg bg-emerald-50 px-3 py-2 text-[13px] text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
-                              {tc.name === 'buy_plivo_number'
-                                ? `Bought ${tc.result.bought} ($${Number(tc.result.monthly_rental_rate_usd).toFixed(2)}/month). Ask me to attach it to an agent.`
-                                : `Attached ${tc.result.attached} to ${tc.result.agent} for inbound calls (${tc.result.alias}).`}
-                            </p>
-                          )
-                        )}
-                      </div>
-                    )
-                  })}
+                  {m.toolCalls?.map((tc) => (
+                    <ToolCallBlock
+                      key={tc.id}
+                      tc={tc}
+                      projectId={projectId}
+                      latest={latest}
+                      resolving={resolvingIds.has(tc.id)}
+                      onChoose={(name) => sendMessage(name, messages)}
+                      onResolve={resolvePendingAction}
+                    />
+                  ))}
                 </div>
               )
-            )
-            })()}
+            )}
           </div>
         </div>
       </div>
