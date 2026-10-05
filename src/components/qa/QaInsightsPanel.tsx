@@ -267,7 +267,7 @@ function TrendChart({
     <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
       <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
         How the top issues are moving
-        {' '}<span className="ml-2 font-normal text-gray-400">share of sampled calls</span>
+        {' '}<span className="ml-2 font-normal text-gray-400">share of random calls</span>
       </h3>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
@@ -570,9 +570,18 @@ export default function QaInsightsPanel({
             <Clock className="h-4 w-4" />
             <span>{lastCheckedLabel ?? 'Not checked yet'}</span>
             {data.today && (
-              <span className="text-gray-400 dark:text-gray-500">
-                ({data.today.flagged} flagged, {data.today.random} random, of {data.today.callsTotal} made)
-              </span>
+              <>
+                <Badge
+                  variant="outline"
+                  className="text-xs"
+                  title={`${data.today.flagged} flagged + ${data.today.random} random, out of ${data.today.callsTotal} calls made. Rates and trends use the random calls only.`}
+                >
+                  {data.today.sampled} calls sampled
+                </Badge>
+                <span className="text-gray-400 dark:text-gray-500">
+                  ({data.today.flagged} flagged, {data.today.random} random, of {data.today.callsTotal} made)
+                </span>
+              </>
             )}
           </div>
           <div className="flex items-center gap-2">
