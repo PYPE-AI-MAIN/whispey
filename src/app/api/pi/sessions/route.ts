@@ -1,15 +1,14 @@
 // src/app/api/pi/sessions/route.ts
 //
 // Pi's session list — same table-as-JSON-blob shape Prompt Forge already
-// uses (pype_voice_promptforge_sessions), but scoped for real: 'mine' is the
-// signed-in user's own chats, 'team' (owner/admin only) is every session in
-// the project, which is what makes "who has been asking Pi to do what" an
-// actual answerable question instead of a column nobody writes to.
+// uses (pype_voice_promptforge_sessions). A chat is private to the person who
+// started it — no role (not even owner/admin) can list or read someone else's.
 
 import { NextRequest, NextResponse } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
+import { verifiedEmail } from '@/lib/piOwner'
 
 export const runtime = 'nodejs'
 
@@ -23,7 +22,6 @@ function withMessageCount(row: any) {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const projectId = searchParams.get('projectId')
-  const scope = searchParams.get('scope') === 'team' ? 'team' : 'mine'
   if (!projectId) return NextResponse.json({ error: 'projectId is required' }, { status: 400 })
 
   const { userId } = await auth()
@@ -31,15 +29,11 @@ export async function GET(request: NextRequest) {
 
   const access = await getProjectRoleForApi(projectId)
   if (!access) return NextResponse.json({ error: 'Not a member of this project' }, { status: 403 })
-  if (scope === 'team' && access.role !== 'owner' && access.role !== 'admin') {
-    return NextResponse.json({ error: 'Only project owners/admins can see team activity' }, { status: 403 })
-  }
 
   const supabase = createServiceRoleClient()
-  let query = supabase.from('pi_sessions').select(LIST_COLUMNS).eq('project_id', projectId).order('updated_at', { ascending: false }).limit(200)
-  if (scope === 'mine') query = query.eq('user_id', userId)
-
-  const { data, error } = await query
+  const email = await verifiedEmail()
+  const mine = email ? `user_id.eq.${userId},user_email.eq."${email.replaceAll(/[\\"]/g, String.raw`\$&`)}"` : `user_id.eq.${userId}`
+  const { data, error } = await supabase.from('pi_sessions').select(LIST_COLUMNS).eq('project_id', projectId).or(mine).order('updated_at', { ascending: false }).limit(200)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json((data ?? []).map(withMessageCount))
 }
