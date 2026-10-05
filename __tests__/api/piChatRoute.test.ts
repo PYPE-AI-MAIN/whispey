@@ -287,6 +287,80 @@ describe('Confirm / Cancel', () => {
   })
 })
 
+describe('model selection and fallback (Azure)', () => {
+  beforeEach(() => { vi.stubEnv('AZURE_OPENAI_API_KEY', 'k'); vi.stubEnv('AZURE_OPENAI_ENDPOINT', 'https://azure.test') })
+  const mainCalls = () => state.llmCalls.filter((c: any) => c.stream)
+
+  it('uses gpt-5.6-luna by default, without the parameters a reasoning model rejects', async () => {
+    state.llm.push([text('hi'), stop])
+    await sse({ projectId: P, message: 'hello' })
+    const call = mainCalls()[0]
+    expect(call.model).toBe('gpt-5.6-luna')
+    expect(call).not.toHaveProperty('temperature')
+    expect(call).not.toHaveProperty('max_tokens')
+  })
+
+  it('uses the model the user picked, and keeps temperature for a non-reasoning one', async () => {
+    state.llm.push([text('hi'), stop])
+    await sse({ projectId: P, message: 'hello', model: 'gpt-4.1' })
+    expect(mainCalls()[0]).toMatchObject({ model: 'gpt-4.1', temperature: 0.2 })
+  })
+
+  it('ignores a model that is not on the list', async () => {
+    state.llm.push([text('hi'), stop])
+    await sse({ projectId: P, message: 'hello', model: 'DeepSeek-V4-Flash' })
+    expect(mainCalls()[0].model).toBe('gpt-5.6-luna')
+  })
+
+  it('falls back to gpt-4.1-mini when the first request fails, and still answers', async () => {
+    let n = 0
+    state.createImpl = async (args: any) => {
+      state.llmCalls.push({ ...args, messages: JSON.parse(JSON.stringify(args.messages)) })
+      if (!args.stream) return { choices: [{ message: { content: state.title } }] }
+      if (++n === 1) throw Object.assign(new Error('deployment overloaded'), { status: 429 })
+      return (async function* () { yield text('from the fallback'); yield stop })()
+    }
+    const { frames } = await sse({ projectId: P, message: 'hello' })
+    expect(mainCalls().map((c: any) => c.model)).toEqual(['gpt-5.6-luna', 'gpt-4.1-mini-2'])
+    expect(frames.some((f: any) => f.error)).toBe(false)
+    expect(frames.at(-1)).toBe('[DONE]')
+  })
+
+  it('reports the error when the fallback fails too', async () => {
+    state.createImpl = async (args: any) => {
+      state.llmCalls.push({ ...args, messages: JSON.parse(JSON.stringify(args.messages)) })
+      if (!args.stream) return { choices: [{ message: { content: state.title } }] }
+      throw new Error('everything is down')
+    }
+    const { frames } = await sse({ projectId: P, message: 'hello' })
+    expect(frames.find((f: any) => f.error).error).toContain('everything is down')
+    expect(mainCalls()).toHaveLength(2)
+  })
+
+  it('writes the first-turn title with the cheap model, not the reasoning one', async () => {
+    state.llm.push([text('hi'), stop])
+    await sse({ projectId: P, message: 'hello' })
+    const titleCall = state.llmCalls.find((c: any) => !c.stream)
+    expect(titleCall.model).toBe('gpt-4.1-mini-2')
+  })
+})
+
+describe('tool argument validation', () => {
+  it('never shows a Confirm card for arguments that could not run', async () => {
+    state.llm.push(toolCall('bad1', 'attach_inbound_number', { agent_id: 'a1' }), [text('ok'), stop])
+    const { frames } = await sse({ projectId: P, message: 'attach' })
+    const result = frames.find((f: any) => f.toolResult).toolResult
+    expect(result).toMatchObject({ success: false, result: { error: expect.stringContaining('Invalid arguments for attach_inbound_number') } })
+    expect(result.result.__pending).toBeUndefined()
+  })
+
+  it('rejects a wrongly typed argument instead of passing it to the tool', async () => {
+    state.llm.push(toolCall('bad2', 'get_agent_details', { agent_id: { $ne: 'x' } }), [text('ok'), stop])
+    const { frames } = await sse({ projectId: P, message: 'details' })
+    expect(frames.find((f: any) => f.toolResult).toolResult).toMatchObject({ success: false, result: { error: expect.stringContaining('Invalid arguments for get_agent_details') } })
+  })
+})
+
 describe('open_page tool', () => {
   const open = async (args: object) => {
     state.llm.push(toolCall('op', 'open_page', args), [text('done'), stop])
@@ -302,7 +376,7 @@ describe('open_page tool', () => {
     expect((await open({ page: 'settings' })).result).toEqual({ href: `/${P}/settings`, label: 'Settings' })
     expect((await open({ page: 'phone_settings' })).result).toEqual({ href: `/${P}/agents/sip-management`, label: 'Phone settings' })
     expect((await open({ page: 'api_keys' })).result).toEqual({ href: `/${P}/agents/api-keys`, label: 'Project API key' })
-    for (const page of ['bogus', 'toString', 'constructor', '']) expect(await open({ page })).toMatchObject({ success: false, result: { error: 'Unknown page' } })
+    for (const page of ['bogus', 'toString', 'constructor', '']) expect(await open({ page })).toMatchObject({ success: false, result: { error: expect.stringContaining('Invalid arguments for open_page') } })
   })
 
   it('refuses a campaign_id that could change the link path', async () => {
@@ -423,6 +497,28 @@ describe('edit_agent (confirmed)', () => {
     const out = await edit({ prompt: 'Hi {{1bad}}' })
     expect(out.success).toBe(false); expect(out.result.error).toContain('Prompt has invalid {{variable}} name(s)')
     expect(state.deployCalls).toHaveLength(0)
+  })
+
+  it('writes nothing when the prompt, voice or model is rejected, even if dispositions came in the same call', async () => {
+    const dispositions = [{ key: 'interested', description: 'Wants a callback' }]
+    for (const bad of [{ prompt: 'Hi {{1bad}}' }, { llm_model: 'gpt-4' }, { voice_provider: 'sarvam' }]) {
+      const out = await edit({ ...bad, dispositions, extractor_variables: { name: 'metadata.name' } })
+      expect(out.success).toBe(false)
+      expect(state.updates).toHaveLength(0)
+    }
+  })
+
+  it('runs a doubled-up Confirm once: the overlapping click is refused', async () => {
+    state.sessions.set('s8', {
+      id: 's8', project_id: P, user_id: 'user-1', title: 't',
+      messages: [{ role: 'assistant', content: '', toolCalls: [{ id: 'e2', name: 'edit_agent', arguments: { agent_id: A, prompt: 'You are Bot.' }, result: { __pending: true }, success: true }] }],
+    })
+    const click = () => post({ projectId: P, sessionId: 's8', resolveAction: { toolCallId: 'e2', decision: 'confirm' } })
+    const [a, b] = await Promise.all([click(), click()])
+    expect([a.status, b.status].sort()).toEqual([200, 409])
+    expect(state.deployCalls).toHaveLength(1)
+    expect((await click()).status).toBe(409) // and once it is saved, still refused
+    expect(state.deployCalls).toHaveLength(1)
   })
 
   it('switches the conversation model only to the supported Sarvam models', async () => {
