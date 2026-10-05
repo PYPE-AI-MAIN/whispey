@@ -109,10 +109,11 @@ export const GET = guarded('qa/agent', async (req: NextRequest, ctx: { params: P
   const issues = Object.entries((today?.issue_counts || {}) as Record<string, { flagged?: number; random?: number; pct?: number | null; call_ids?: string[] }>)
     .filter(([key]) => !typeByKey.get(key)?.is_positive)
     .map(([key, count]) => {
-      const past = previous
-        .map((d) => (d.issue_counts as Record<string, { pct?: number | null }>)?.[key]?.pct)
-        .filter((p): p is number => typeof p === 'number')
-      const was = past.length ? past.reduce((a, b) => a + b, 0) / past.length : null
+      // a night that checked and found none counts as 0%, not as a missing day
+      const checked = previous.filter((d) => d.random_n > 0)
+      const pcts = checked.map((d) => (d.issue_counts as Record<string, { pct?: number | null }>)?.[key]?.pct)
+      const seenDays = pcts.filter((p) => typeof p === 'number').length
+      const was = seenDays ? pcts.reduce<number>((a, p) => a + (p ?? 0), 0) / pcts.length : null
       const type = typeByKey.get(key)
 
       return {
@@ -127,7 +128,7 @@ export const GET = guarded('qa/agent', async (req: NextRequest, ctx: { params: P
         pct: count.pct ?? null,
         was: was === null ? null : Number(was.toFixed(4)),
         delta: count.pct != null && was !== null ? Number((count.pct - was).toFixed(4)) : null,
-        isNew: past.length === 0,
+        isNew: seenDays === 0,
         callIds: count.call_ids || [],
         example: (count.call_ids || [])
           .map((id) => moments.get(`${key}:${id}`))
