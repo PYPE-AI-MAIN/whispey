@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
+import { ownsSession, verifiedEmail } from '@/lib/piOwner'
 
 export const runtime = 'nodejs'
 
@@ -31,7 +32,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
   const access = await getProjectRoleForApi(session.project_id)
   if (!access) return NextResponse.json({ error: 'Not a member of this project' }, { status: 403 })
-  if (session.user_id !== userId) return NextResponse.json({ error: 'Not your session' }, { status: 403 })
+  if (!ownsSession(session, userId, await verifiedEmail())) return NextResponse.json({ error: 'Not your session' }, { status: 403 })
 
   return NextResponse.json(session)
 }
@@ -44,7 +45,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const loaded = await loadSession(id)
   if (!loaded.ok) return NextResponse.json({ error: loaded.error }, { status: loaded.status })
   const { session } = loaded
-  if (session.user_id !== userId) return NextResponse.json({ error: 'Not your session' }, { status: 403 })
+  if (!ownsSession(session, userId, await verifiedEmail())) return NextResponse.json({ error: 'Not your session' }, { status: 403 })
 
   const { title } = await request.json().catch(() => ({}))
   if (typeof title !== 'string' || !title.trim()) return NextResponse.json({ error: 'title is required' }, { status: 400 })
@@ -63,7 +64,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
   const loaded = await loadSession(id)
   if (!loaded.ok) return NextResponse.json({ error: loaded.error }, { status: loaded.status })
   const { session } = loaded
-  if (session.user_id !== userId) return NextResponse.json({ error: 'Not your session' }, { status: 403 })
+  if (!ownsSession(session, userId, await verifiedEmail())) return NextResponse.json({ error: 'Not your session' }, { status: 403 })
 
   const supabase = createServiceRoleClient()
   const { error } = await supabase.from('pi_sessions').delete().eq('id', id)

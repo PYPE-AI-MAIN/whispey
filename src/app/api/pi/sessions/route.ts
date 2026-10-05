@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
+import { verifiedEmail } from '@/lib/piOwner'
 
 export const runtime = 'nodejs'
 
@@ -30,7 +31,9 @@ export async function GET(request: NextRequest) {
   if (!access) return NextResponse.json({ error: 'Not a member of this project' }, { status: 403 })
 
   const supabase = createServiceRoleClient()
-  const { data, error } = await supabase.from('pi_sessions').select(LIST_COLUMNS).eq('project_id', projectId).eq('user_id', userId).order('updated_at', { ascending: false }).limit(200)
+  const email = await verifiedEmail()
+  const mine = email ? `user_id.eq.${userId},user_email.eq."${email.replaceAll(/[\\"]/g, '\\$&')}"` : `user_id.eq.${userId}`
+  const { data, error } = await supabase.from('pi_sessions').select(LIST_COLUMNS).eq('project_id', projectId).or(mine).order('updated_at', { ascending: false }).limit(200)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json((data ?? []).map(withMessageCount))
 }
