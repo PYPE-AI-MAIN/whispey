@@ -11,6 +11,7 @@ import { appendFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import OpenAI, { AzureOpenAI } from 'openai'
 import { auth, currentUser } from '@clerk/nextjs/server'
+import { ownsSession, verifiedEmail } from '@/lib/piOwner'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { MCP_VOICES, findMcpVoice, buildMcpTtsConfig } from '@/config/mcpAgentVoices'
 import { getProjectRoleForApi, getDeploymentTargetFromAgentBackendName } from '@/lib/getProjectRoleForApi'
@@ -1489,9 +1490,9 @@ async function authorize(projectId: string): Promise<{ response: NextResponse } 
 
 /** A session this user owns in this project — the same two checks guard resuming a chat and clicking Confirm. */
 async function loadOwnedSession(supabase: ServiceClient, sessionId: string, projectId: string, userId: string): Promise<{ history: StoredMessage[] } | { response: NextResponse }> {
-  const { data: existing, error } = await supabase.from('pi_sessions').select('project_id, user_id, messages').eq('id', sessionId).maybeSingle()
+  const { data: existing, error } = await supabase.from('pi_sessions').select('project_id, user_id, user_email, messages').eq('id', sessionId).maybeSingle()
   if (error || !existing) return { response: NextResponse.json({ error: 'Session not found' }, { status: 404 }) }
-  if (existing.project_id !== projectId || existing.user_id !== userId) {
+  if (existing.project_id !== projectId || !ownsSession(existing, userId, await verifiedEmail())) {
     return { response: NextResponse.json({ error: 'Not your session' }, { status: 403 }) }
   }
   return { history: (existing.messages as StoredMessage[]) ?? [] }
