@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { checkSpamNumber } from '@/lib/piSpamCheck'
+import { checkSpamNumber, createGuardedSpamCheck } from '@/lib/piSpamCheck'
 
 const env = { SCAM_CHECK_TOKEN: 'tok' }
 const reply = (body: unknown, status = 200) => vi.fn(async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch
@@ -88,5 +88,75 @@ describe('checkSpamNumber', () => {
       await checkSpamNumber('7988307935', f, env, async (ms) => { waits.push(ms) })
       expect(waits[0]).toBe(2000)
     })
+  })
+})
+
+describe('createGuardedSpamCheck', () => {
+  const good = { success: true, result: { is_spam: false } }
+  const outage = { success: false, result: { error: 'down' }, transient: true }
+  const clock = () => { let t = 1_000_000; return { now: () => t, tick: (ms: number) => { t += ms } } }
+
+  it('serves a repeat number from cache, and shares one call between concurrent identical checks', async () => {
+    const check = vi.fn(async () => good)
+    const run = createGuardedSpamCheck({ check })
+    await Promise.all([run('u1', '7988307935'), run('u2', '+91 7988307935'.slice(4))])
+    await run('u1', '79883-07935')
+    expect(check).toHaveBeenCalledTimes(1)
+  })
+
+  it('expires the cache after 10 minutes', async () => {
+    const c = clock(); const check = vi.fn(async () => good)
+    const run = createGuardedSpamCheck({ check, now: c.now })
+    await run('u', '7988307935'); c.tick(11 * 60_000); await run('u', '7988307935')
+    expect(check).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not cache failures', async () => {
+    const check = vi.fn(async () => ({ success: false, result: { error: 'bad token' } }))
+    const run = createGuardedSpamCheck({ check })
+    await run('u', '7988307935'); await run('u', '7988307935')
+    expect(check).toHaveBeenCalledTimes(2)
+  })
+
+  it('limits one user to 30 distinct checks per 10 minutes, without blocking another user', async () => {
+    const c = clock(); const check = vi.fn(async () => good)
+    const run = createGuardedSpamCheck({ check, now: c.now })
+    for (let i = 0; i < 30; i++) await run('u', String(9000000000 + i))
+    const blocked = await run('u', '9100000000')
+    expect(blocked).toMatchObject({ success: false, result: { error: expect.stringContaining('limit') } })
+    expect((await run('other', '9100000000')).success).toBe(true)
+    c.tick(11 * 60_000)
+    expect((await run('u', '9100000001')).success).toBe(true)
+  })
+
+  it('does not spend rate limit on an unusable number', async () => {
+    const check = vi.fn(async () => ({ success: false, result: { error: 'Give a phone number' } }))
+    const run = createGuardedSpamCheck({ check })
+    for (let i = 0; i < 40; i++) await run('u', 'abc')
+    expect((await run('u', 'abc')).result.error).toBe('Give a phone number')
+  })
+
+  it('opens the circuit after 3 outages, fails fast, then recovers after 30s', async () => {
+    const c = clock(); let up = false
+    const check = vi.fn(async () => (up ? good : outage))
+    const run = createGuardedSpamCheck({ check, now: c.now })
+    for (let i = 0; i < 3; i++) await run('u', String(9000000000 + i))
+    const fast = await run('u', '9200000000')
+    expect(fast.result.error).toEqual(expect.stringContaining('temporarily unavailable'))
+    expect(check).toHaveBeenCalledTimes(3)
+    c.tick(31_000); up = true
+    expect((await run('u', '9200000000')).success).toBe(true)
+  })
+
+  it('a bad token or bad request does not open the circuit', async () => {
+    const check = vi.fn(async () => ({ success: false, result: { error: 'rejected' } }))
+    const run = createGuardedSpamCheck({ check })
+    for (let i = 0; i < 6; i++) await run('u', String(9000000000 + i))
+    expect(check).toHaveBeenCalledTimes(6)
+  })
+
+  it('never leaks the internal transient flag to the model', async () => {
+    const run = createGuardedSpamCheck({ check: async () => outage })
+    expect(Object.keys(await run('u', '7988307935')).sort()).toEqual(['result', 'success'])
   })
 })

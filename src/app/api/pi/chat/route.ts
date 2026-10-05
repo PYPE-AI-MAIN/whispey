@@ -25,7 +25,7 @@ import { validateVariables } from '@/utils/variableValidator'
 import { piPlatformSchemaDoc, PI_MODEL_HISTORY_TURNS } from '@/lib/piPlatformSchema'
 import { PI_AGENT_INTELLIGENCE_DOC } from '@/lib/piAgentIntelligence'
 import { PI_ANALYTICS_RECIPES_DOC } from '@/lib/piAnalyticsRecipes'
-import { checkSpamNumber } from '@/lib/piSpamCheck'
+import { createGuardedSpamCheck } from '@/lib/piSpamCheck'
 import { PI_MANDATORY_ANALYTICS_TOOLS_DOC, runCallVolumeTrend, runCompletionInsights } from '@/lib/piAnalyticsTools'
 import { resolveWhispeyKeyFields } from '@/server/mcpAgentDb'
 import { resolveScope, isDenied } from '@/server/analytics/context'
@@ -802,7 +802,7 @@ async function applyExtractorEdits(args: any): Promise<{ updated: Record<string,
 }
 
 function touchesAssistant(args: any): boolean {
-  return args.prompt !== undefined || args.prompt_patch !== undefined || args.greeting !== undefined || args.variables !== undefined || !!(args.voice_provider && args.voice_id) || args.llm_model !== undefined
+  return args.prompt !== undefined || args.prompt_patch !== undefined || args.greeting !== undefined || args.variables !== undefined || !!(args.voice_provider || args.voice_id) || args.llm_model !== undefined
 }
 
 // prompt_patch exists so a small change doesn't force re-generating the
@@ -896,21 +896,34 @@ async function deployEditedAssistant(
 async function runEditAgent(projectId: string, _callerUserId: string, args: any) {
   if (!(await agentBelongsToProject(args.agent_id, projectId))) return failure('No such agent in this project')
 
+  // Validate everything that can be rejected BEFORE anything is written, so a bad prompt/voice/LLM
+  // cannot leave dispositions or extractor variables saved while the call reports a failure.
+  const assistantEdit = touchesAssistant(args) ? await prepareAssistantEdit(args) : null
+  if (assistantEdit && 'error' in assistantEdit) return failure(assistantEdit.error)
+
   const edits = await applyExtractorEdits(args)
   if ('error' in edits) return failure(edits.error)
   const updated = edits.updated
 
-  if (!touchesAssistant(args)) return { success: true, result: { agent_id: args.agent_id, updated } }
+  if (!assistantEdit) return { success: true, result: { agent_id: args.agent_id, updated } }
+  if (assistantEdit.llm) updated.llm = true
+  return deployEditedAssistant(projectId, args, assistantEdit.loaded, assistantEdit.updatedAssistant, assistantEdit.mcpVoice, updated)
+}
 
+type PreparedEdit =
+  | { error: string }
+  | { loaded: LoadedAssistant; updatedAssistant: any; mcpVoice: ReturnType<typeof findMcpVoice> | undefined; llm: boolean }
+
+async function prepareAssistantEdit(args: any): Promise<PreparedEdit> {
   const loaded = await loadCurrentAssistant(args.agent_id)
-  if ('error' in loaded) return failure(loaded.error)
+  if ('error' in loaded) return { error: loaded.error }
   const { assistant } = loaded
 
   const nextPrompt = resolveNextPrompt(args, assistant)
-  if ('error' in nextPrompt) return failure(nextPrompt.error)
+  if ('error' in nextPrompt) return { error: nextPrompt.error }
 
   const voice = resolveMcpVoice(args)
-  if ('error' in voice) return failure(voice.error)
+  if ('error' in voice) return { error: voice.error }
   const mcpVoice = voice.voice
 
   const updatedAssistant = applyAssistantUpdates(assistant, {
@@ -920,14 +933,14 @@ async function runEditAgent(projectId: string, _callerUserId: string, args: any)
     variables: args.variables,
   })
 
+  let llm = false
   if (args.llm_model !== undefined) {
     const chosen = sarvamLlm(args, assistant)
-    if ('error' in chosen) return failure(chosen.error)
+    if ('error' in chosen) return { error: chosen.error }
     updatedAssistant.llm = chosen.llm as typeof updatedAssistant.llm
-    updated.llm = true
+    llm = true
   }
-
-  return deployEditedAssistant(projectId, args, loaded, updatedAssistant, mcpVoice, updated)
+  return { loaded, updatedAssistant, mcpVoice, llm }
 }
 
 async function runListAnalyticsFields(projectId: string, args: any) {
@@ -1446,6 +1459,8 @@ type ToolRunner = (projectId: string, userId: string, args: any) => Promise<any>
 
 const analyticsQuery: Parameters<typeof runCallVolumeTrend>[1] = (pid, a) => runQueryAnalytics(pid, a)
 
+const guardedSpamCheck = createGuardedSpamCheck()
+
 const READ_TOOLS: Record<string, ToolRunner> = {
   get_call_volume_trend: (pid, _uid, args) => runCallVolumeTrend(pid, analyticsQuery, args),
   get_completion_insights: (pid, _uid, args) => runCompletionInsights(pid, analyticsQuery, runListAnalyticsFields, args),
@@ -1456,7 +1471,7 @@ const READ_TOOLS: Record<string, ToolRunner> = {
   get_talk_link: (pid, _uid, args) => runGetTalkLink(pid, args),
   open_page: (pid, _uid, args) => runOpenPage(pid, args),
   get_agent_details: (pid, _uid, args) => runGetAgentDetails(pid, args),
-  check_spam_number: (_pid, _uid, args) => checkSpamNumber(args.number),
+  check_spam_number: (_pid, uid, args) => guardedSpamCheck(uid, args.number),
 }
 
 // everything here needs a non-viewer role; create/edit/buy/attach are additionally held behind a Confirm click (see POST)

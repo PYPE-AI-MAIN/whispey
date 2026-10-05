@@ -425,6 +425,15 @@ describe('edit_agent (confirmed)', () => {
     expect(state.deployCalls).toHaveLength(0)
   })
 
+  it('writes nothing when the prompt, voice or model is rejected, even if dispositions came in the same call', async () => {
+    const dispositions = [{ key: 'interested', description: 'Wants a callback' }]
+    for (const bad of [{ prompt: 'Hi {{1bad}}' }, { llm_model: 'gpt-4' }, { voice_provider: 'sarvam' }]) {
+      const out = await edit({ ...bad, dispositions, extractor_variables: { name: 'metadata.name' } })
+      expect(out.success).toBe(false)
+      expect(state.updates).toHaveLength(0)
+    }
+  })
+
   it('switches the conversation model only to the supported Sarvam models', async () => {
     const bad = await edit({ llm_model: 'gpt-4' })
     expect(bad.result.error).toBe('Unknown LLM "gpt-4". Use sarvam-105b-conversations (Sarvam 105) or sarvam-105b.')
