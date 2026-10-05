@@ -90,6 +90,8 @@ interface NavigationItem {
   path: string
   group?: string
   external?: boolean
+  disabled?: boolean
+  badge?: string
 }
 
 export interface SidebarConfig {
@@ -104,7 +106,9 @@ export interface SidebarConfig {
 const matchRoute = (pathname: string, pattern: string): RouteParams | null => {
   if (pattern.endsWith('*')) {
     const basePattern = pattern.slice(0, -1)
-    if (!pathname.startsWith(basePattern)) {
+    // Literal prefixes only (`/sign*`). `/:projectId/pi*` cannot startsWith the
+    // unsubstituted pattern, and would miss every real /{uuid}/pi URL.
+    if (!basePattern.includes(':') && !pathname.startsWith(basePattern)) {
       return null
     }
     
@@ -187,7 +191,9 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/settings/dnc' },
       { pattern: '/:projectId/campaigns/:campaignId' },
       { pattern: '/:projectId/campaigns/create' },
-      { pattern: '/:projectId/analytics' }, 
+      { pattern: '/:projectId/analytics' },
+      { pattern: '/:projectId/pi' },
+      { pattern: '/:projectId/pi/:sessionId' },
     ],
     getSidebarConfig: (params, context) => {
       const { projectId } = params
@@ -207,6 +213,14 @@ const sidebarRoutes: SidebarRoute[] = [
           icon: 'Activity',
           path: `/${projectId}/agents`,
           group: 'Agents'
+        },
+        {
+          id: 'ask-pi',
+          name: 'Ask Pi',
+          icon: 'Pi',
+          path: `/${projectId}/pi`,
+          group: 'Agents',
+          ...(isOwnerOrAdmin ? {} : { disabled: true, badge: 'Beta' })
         }
       ]
 
@@ -286,6 +300,7 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/agents/:agentId/observability' },
       { pattern: '/:projectId/agents/:agentId/phone-call-config' },
       { pattern: '/:projectId/agents/:agentId/phone-call-config/pipecat' },
+      { pattern: '/:projectId/agents/:agentId/qa' },
       { pattern: '/:projectId/agents/:agentId/knowledge' },
       { pattern: '/:projectId/agents/:agentId/workflow' },
       { pattern: '/:projectId/agents/:agentId/prompt-forge' },
@@ -295,7 +310,7 @@ const sidebarRoutes: SidebarRoute[] = [
       const { projectId, agentId } = params
       const { isEnhancedProject, agentType, isOwnerOrAdmin, visibility, isSuperAdmin, hasWorkflow, createdViaMcp } = context
 
-      const reservedPaths = ['api-keys', 'settings', 'config', 'observability', 'sip-management'];
+      const reservedPaths = ['api-keys', 'settings', 'config', 'observability', 'sip-management', 'qa'];
       if (reservedPaths.includes(agentId)) {
         return null;
       }
@@ -399,6 +414,17 @@ const sidebarRoutes: SidebarRoute[] = [
           group: 'call configuration'
         })
       }
+
+      // Sits directly below Phone Calls. Not gated behind a visibility flag:
+      // QA is read-only reporting about calls this person can already see, and
+      // the page itself re-checks access server-side.
+      callItems.push({
+        id: 'qa-insights',
+        name: 'QA & Insights',
+        icon: 'ShieldCheck',
+        path: `/${projectId}/agents/${agentId}/qa`,
+        group: 'call configuration'
+      })
 
       const enhancedItems = []
       if (isEnhancedProject) {
@@ -663,7 +689,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
             </Sheet>
           </div>
           
-          <main className="flex-1 pt-14 overflow-auto">
+          <main className={`flex-1 pt-14 min-h-0 ${pathname?.includes('/pi') ? 'overflow-hidden' : 'overflow-auto'}`}>
             {children}
           </main>
         </>
@@ -681,7 +707,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
             />
           </div>
           
-          <main className="flex-1 overflow-auto">
+          <main className={`flex-1 min-h-0 ${pathname?.includes('/pi') ? 'overflow-hidden' : 'overflow-auto'}`}>
             {children}
           </main>
         </>

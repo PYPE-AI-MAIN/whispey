@@ -25,6 +25,10 @@ const isPublicRoute = createRouteMatcher([
   '/api/agents/status(.*)',
   '/api/agent-config(.*)',
   '/api/agents/:id/update-voice',
+  // Studio secret is checked in the handler. Clerk must not see these calls:
+  // protect() rewrites a non-session Authorization to /clerk_* (HTTP 404).
+  '/api/mcp(.*)',
+  '/api/askpi(.*)',
 ]);
 
 // GET-only reads the public playground needs (PATCH/DELETE on the same path must stay protected)

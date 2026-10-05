@@ -16,6 +16,9 @@
  */
 import { BOOLEAN_VALUES, BOOLEAN_ENCODINGS, DEFAULT_SENTINELS, EXPRESSION_SOURCES, JSON_COLS } from './spec'
 import { runQuery } from './db'
+import { createServiceRoleClient } from '@/lib/supabase-server'
+
+const supabase = createServiceRoleClient()
 
 /** Depth 2 covers metadata.usage.llm_prompt_tokens. Deeper fields still chart; they just are not offered. */
 const MAX_DEPTH = 2
@@ -362,4 +365,126 @@ export function catalogIsStale(
   if (rows.every((r) => (r.coverage_pct ?? 0) === 0)) return true
   const newest = rows.reduce((max, r) => Math.max(max, Date.parse(r.last_seen_at ?? '') || 0), 0)
   return nowMs - newest > STALE_AFTER_MS
+}
+
+/** One row for a real column — every call has a duration and a reason it ended, so it is measured, not discovered. */
+function builtinFieldRow(
+  b: Awaited<ReturnType<typeof scanBuiltins>>[number],
+  agentId: string,
+  projectId: string,
+  now: string,
+  prior: Record<string, unknown> | undefined
+): Record<string, unknown> {
+  return {
+    // the id column has no DB-side default — omitting it on a row with no
+    // prior (a field discovered for the first time) inserts NULL, which
+    // fails the whole batch; this was failing silently (falling back to the
+    // stale pre-rescan rows) until a genuinely new field surfaced it
+    id: (prior?.id as string | undefined) ?? crypto.randomUUID(),
+    project_id: projectId,
+    agent_id: agentId,
+    source: 'voice',
+    col: b.col,
+    path: [],
+    label: (prior?.type_confirmed && (prior?.label as string)) || b.label,
+    value_type: b.value_type,
+    encoding: 'native',
+    boolean_encoding: null,
+    json_shape: null,
+    sentinels: null,
+    enum_values: b.enum_values,
+    is_identity_candidate: b.is_identity_candidate,
+    type_confirmed: prior?.type_confirmed === true,
+    cardinality_est: b.cardinality_est,
+    coverage_pct: b.coverage_pct,
+    blank_count: null,
+    empty_count: null,
+    name_normalised: b.col,
+    is_dimension: b.is_dimension,
+    first_seen_at: prior?.first_seen_at ?? now,
+    last_seen_at: now,
+  }
+}
+
+/** One row for a JSON field — a person's label and confirmed type win over anything we work out. */
+function jsonFieldRow(
+  stats: FieldStats,
+  col: string,
+  agentId: string,
+  projectId: string,
+  now: string,
+  prior: Record<string, unknown> | undefined
+): Record<string, unknown> {
+  const inferred = inferField(stats)
+  const confirmed = prior?.type_confirmed === true
+
+  return {
+    id: (prior?.id as string | undefined) ?? crypto.randomUUID(),
+    project_id: projectId,
+    agent_id: agentId,
+    source: 'voice',
+    col,
+    path: stats.path,
+    label: (confirmed && (prior?.label as string)) || inferred.label,
+    value_type: confirmed ? prior?.value_type : inferred.value_type,
+    encoding: confirmed ? prior?.encoding : inferred.encoding,
+    boolean_encoding: confirmed ? prior?.boolean_encoding : (inferred.boolean_encoding ?? null),
+    json_shape: inferred.json_shape ?? null,
+    sentinels: prior?.sentinels ?? null,
+    enum_values: inferred.enum_values ?? prior?.enum_values ?? null,
+    is_identity_candidate: inferred.is_identity_candidate,
+    type_confirmed: confirmed,
+    cardinality_est: inferred.cardinality_est,
+    coverage_pct: inferred.coverage_pct,
+    blank_count: stats.n_null,
+    empty_count: stats.n_sentinel,
+    // 'summary ' with a trailing space sits next to 'summary'; this is what
+    // lets the picker show one entry instead of two
+    name_normalised: stats.path.map((p) => p.trim().toLowerCase()).join('.'),
+    is_dimension: inferred.is_dimension,
+    first_seen_at: prior?.first_seen_at ?? now,
+    last_seen_at: now,
+  }
+}
+
+/**
+ * Replaces what we worked out, keeps what a person decided. A confirmed type,
+ * an edited label and hand-picked empty values survive a rescan; coverage,
+ * cardinality and the value list are always recomputed.
+ */
+export async function rescan(
+  agentId: string,
+  projectId: string,
+  existing: Record<string, unknown>[]
+): Promise<Record<string, unknown>[]> {
+  const keep = new Map(existing.map((r) => [`${r.col}.${((r.path ?? []) as string[]).join('.')}`, r]))
+  const now = new Date().toISOString()
+  const out: Record<string, unknown>[] = []
+
+  // the real columns first: every call has a duration and a reason it ended,
+  // so they are not discovered, only measured
+  for (const b of await scanBuiltins(agentId)) {
+    out.push(builtinFieldRow(b, agentId, projectId, now, keep.get(`${b.col}.`)))
+  }
+
+  for (const col of JSON_COLS) {
+    for (const stats of await scanColumn(agentId, col)) {
+      const key = `${col}.${stats.path.join('.')}`
+      out.push(jsonFieldRow(stats, col, agentId, projectId, now, keep.get(key)))
+    }
+  }
+
+  if (out.length === 0) return existing
+  // write before delete, not after — these are two separate statements (no
+  // transaction), so deleting first and writing second means ANY failure on
+  // the write (a constraint violation, a network blip, anything) leaves the
+  // agent's whole catalog permanently empty, having already committed the
+  // delete. This order makes a failure merely leave a stale-but-present
+  // catalog, which is what the old delete-first version was trying to avoid
+  // being stuck with in the first place.
+  const { error } = await supabase.from('pype_analytics_fields').upsert(out, { onConflict: 'id' })
+  if (error) throw new Error(error.message)
+  const keepIds = out.map((r) => r.id as string)
+  await supabase.from('pype_analytics_fields').delete().eq('agent_id', agentId).not('id', 'in', `(${keepIds.join(',')})`)
+  return out.sort((a, b) => Number(b.coverage_pct) - Number(a.coverage_pct))
 }

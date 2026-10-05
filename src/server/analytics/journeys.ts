@@ -28,6 +28,10 @@ export type JourneyEvent = {
   agent_id: string | null
   external_ref: string | null
   occurred_at: string
+  // Whatever a source's own system tracks that doesn't fit the fixed columns
+  // (a delivery_status, a retry count, ...) — carried through untouched so
+  // nothing a team already has gets lost just because it isn't one of ours.
+  payload: Record<string, unknown> | null
 }
 
 export type JourneySummary = {
@@ -123,6 +127,41 @@ export async function getFunnel(
   }
 }
 
+export type ActiveJourneysPoint = { day: string; active_count: number }
+
+/**
+ * Distinct journeys with at least one event on each day in range — the
+ * "active people" trend behind the funnel snapshot. Zero-filled server-side
+ * (`generate_series`) so a quiet day draws as 0, not a gap in the line.
+ */
+export async function getActiveJourneysOverTime(
+  projectId: string,
+  campaignId: string,
+  range: { from: string; to: string },
+  filters: JourneyFilters = {}
+): Promise<ActiveJourneysPoint[]> {
+  const rows = await runQuery<{ day: string; active_count: string }>(
+    `with days as (
+       select generate_series($3::date, $4::date - interval '1 day', interval '1 day')::date as day
+     ),
+     active as (
+       select date_trunc('day', e.occurred_at)::date as day, count(distinct e.journey_id) as n
+       from pype_journey_events e
+       join pype_journeys j on j.id = e.journey_id
+       where j.project_id = $1 and j.campaign_id = $2
+         and e.occurred_at >= $3 and e.occurred_at < $4
+         and ($5::text is null or e.channel = $5)
+         and ($6::uuid is null or e.agent_id = $6)
+       group by day
+     )
+     select days.day, coalesce(active.n, 0) as active_count
+     from days left join active using (day)
+     order by days.day`,
+    [projectId, campaignId, range.from, range.to, filters.channel ?? null, filters.agentId ?? null]
+  )
+  return rows.map((r) => ({ day: r.day, active_count: Number(r.active_count) }))
+}
+
 /** What the filter dropdowns offer for a campaign — real values seen so far, not a fixed enum. */
 export async function getFilterOptions(
   projectId: string,
@@ -181,7 +220,7 @@ export async function getRecentJourneys(
 
   const ids = journeys.map((j) => j.id)
   const events = await runQuery<JourneyEvent & { journey_id: string }>(
-    `select journey_id, channel, step, action, agent_id, external_ref, occurred_at
+    `select journey_id, channel, step, action, agent_id, external_ref, occurred_at, payload
      from pype_journey_events
      where journey_id = any($1::uuid[])
      order by occurred_at asc`,
@@ -196,4 +235,107 @@ export async function getRecentJourneys(
   }
 
   return { journeys: journeys.map((j) => ({ ...j, events: byJourney.get(j.id) ?? [] })), hasMore }
+}
+
+/**
+ * The Journeys tab's own mini chart builder — deliberately separate from
+ * Explore's canvas/query engine (`buildQuery.ts`), which is hardcoded to
+ * `pype_voice_call_logs` and shared by other charts. A campaign's shape is
+ * unknowable ahead of time (any source, any `step`/`channel` vocabulary, any
+ * `payload` keys), so the breakdown field list is discovered from real data
+ * instead of a fixed enum.
+ */
+export type ChartDimension = { key: string; label: string }
+
+const FIXED_DIMENSIONS: Record<string, { expr: string; label: string }> = {
+  channel: { expr: 'e.channel', label: 'Channel' },
+  step: { expr: 'e.step', label: 'Step' },
+  action: { expr: 'e.action', label: 'Action' },
+  status: { expr: 'j.status', label: 'Journey status' },
+  outcome: { expr: 'j.outcome', label: 'Outcome' },
+  agent_id: { expr: 'e.agent_id::text', label: 'Agent' },
+}
+
+const PAYLOAD_PREFIX = 'payload.'
+
+/** Fixed dimensions, plus whatever keys this campaign's own events actually carry in `payload`. */
+export async function getChartDimensions(projectId: string, campaignId: string): Promise<ChartDimension[]> {
+  const rows = await runQuery<{ key: string }>(
+    `select distinct jsonb_object_keys(e.payload) as key
+     from pype_journey_events e
+     join pype_journeys j on j.id = e.journey_id
+     where j.project_id = $1 and j.campaign_id = $2 and e.payload is not null
+     order by key
+     limit 50`,
+    [projectId, campaignId]
+  )
+  const fixed = Object.entries(FIXED_DIMENSIONS).map(([key, v]) => ({ key, label: v.label }))
+  const payloadKeys = rows.map((r) => ({ key: `${PAYLOAD_PREFIX}${r.key}`, label: r.key }))
+  return [...fixed, { key: '__time__', label: 'Time (daily)' }, ...payloadKeys]
+}
+
+export type ChartMetric = 'events' | 'journeys'
+export type CustomChartPoint = { bucket: string; value: number }
+
+/**
+ * A dimension is either a whitelisted SQL fragment (never raw user input as an
+ * identifier) or a `payload.<key>` — the key travels as a bound parameter into
+ * `->>`, which reads it as a value, not an identifier, so this stays injection-safe
+ * even though the key itself is arbitrary, source-supplied text.
+ */
+export async function getCustomChart(
+  projectId: string,
+  campaignId: string,
+  dimension: string,
+  metric: ChartMetric,
+  range: { from: string; to: string },
+  filters: JourneyFilters = {}
+): Promise<CustomChartPoint[]> {
+  const metricExpr = metric === 'journeys' ? 'count(distinct e.journey_id)' : 'count(*)'
+  const baseParams = [projectId, campaignId, range.from, range.to, filters.channel ?? null, filters.agentId ?? null, filters.status ?? null, filters.outcome ?? null]
+  const baseWhere = `j.project_id = $1 and j.campaign_id = $2
+     and j.created_at >= $3 and j.created_at < $4
+     and ($5::text is null or e.channel = $5)
+     and ($6::uuid is null or e.agent_id = $6)
+     and ($7::text is null or j.status = $7)
+     and ($8::text is null or j.outcome = $8)`
+
+  if (dimension === '__time__') {
+    const rows = await runQuery<{ bucket: string; value: string }>(
+      `with days as (
+         select generate_series($3::date, $4::date - interval '1 day', interval '1 day')::date as day
+       ),
+       counted as (
+         select date_trunc('day', e.occurred_at)::date as day, ${metricExpr} as value
+         from pype_journey_events e
+         join pype_journeys j on j.id = e.journey_id
+         where ${baseWhere}
+         group by day
+       )
+       select days.day::text as bucket, coalesce(counted.value, 0) as value
+       from days left join counted using (day)
+       order by days.day`,
+      baseParams
+    )
+    return rows.map((r) => ({ bucket: r.bucket, value: Number(r.value) }))
+  }
+
+  const isPayload = dimension.startsWith(PAYLOAD_PREFIX)
+  const fixed = FIXED_DIMENSIONS[dimension]
+  if (!isPayload && !fixed) throw new Error(`Unknown chart dimension: ${dimension}`)
+
+  const dimExpr = isPayload ? `e.payload->>$9` : fixed.expr
+  const params = isPayload ? [...baseParams, dimension.slice(PAYLOAD_PREFIX.length)] : baseParams
+
+  const rows = await runQuery<{ bucket: string | null; value: string }>(
+    `select ${dimExpr} as bucket, ${metricExpr} as value
+     from pype_journey_events e
+     join pype_journeys j on j.id = e.journey_id
+     where ${baseWhere}
+     group by bucket
+     order by value desc
+     limit 20`,
+    params
+  )
+  return rows.map((r) => ({ bucket: r.bucket ?? '(empty)', value: Number(r.value) }))
 }
