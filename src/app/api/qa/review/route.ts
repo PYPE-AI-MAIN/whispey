@@ -59,6 +59,18 @@ export const POST = guarded('qa/review:create', async (req: NextRequest) => {
   const user = await currentUser()
   const requestedBy = user?.emailAddresses?.[0]?.emailAddress || 'unknown'
 
+  // One request per insight: a second click (or a teammate's) must not notify or mail the QA team again.
+  if (insightId) {
+    const { data: already } = await qaDb
+      .from('qa_notifications')
+      .select('id')
+      .eq('agent_id', agentId)
+      .eq('insight_id', insightId)
+      .eq('kind', 'review_request')
+      .limit(1)
+    if (already?.length) return NextResponse.json({ ok: true, alreadyRequested: true, mailed: false })
+  }
+
   // The night job already wrote a ranked list alongside the insight. Asking QA
   // to check it is about telling a person, not about recomputing anything.
   const { data: existing } = await qaDb
