@@ -3,7 +3,7 @@
 import { createContext, memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowUp, Mic } from 'lucide-react'
+import { ArrowUp, ChevronDown, Mic } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { buildAgentLinkMap, resolvePiHref } from '@/lib/piLinks'
 import { fetchWithBackoff } from '@/lib/piFetch'
@@ -1025,18 +1025,23 @@ export default function PiChatView({
             })()}
             <div className="mt-2 flex items-center justify-center gap-1.5">
               {!readOnly && (
-                <select
-                  aria-label="Model"
-                  value={model}
-                  disabled={isStreaming}
-                  onChange={(e) => chooseModel(e.target.value)}
-                  className="rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-medium text-gray-600 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
-                >
-                  {PI_MODEL_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-                </select>
+                // appearance-none drops the browser's own arrow (which sits at a different offset on every OS);
+                // the chevron below is drawn at a fixed spot so it lines up with the text and the chip beside it
+                <span className="relative inline-flex">
+                  <select
+                    aria-label="Model"
+                    value={model}
+                    disabled={isStreaming}
+                    onChange={(e) => chooseModel(e.target.value)}
+                    className="appearance-none rounded-full border border-gray-200 bg-white py-0.5 pl-2.5 pr-6 text-[10px] font-medium leading-4 text-gray-500 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
+                  >
+                    {PI_MODEL_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                  </select>
+                  <ChevronDown aria-hidden className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400" />
+                </span>
               )}
               <span
-                className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
+                className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-0.5 text-[10px] font-medium leading-4 text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
                 title="Phone numbers are masked before reaching the model, both when a field is deliberately grouped by and as a general backstop over every tool result — never sent to the LLM in full."
               >
                 PII redacted
