@@ -26,6 +26,7 @@ import { piPlatformSchemaDoc, PI_MODEL_HISTORY_TURNS } from '@/lib/piPlatformSch
 import { PI_AGENT_INTELLIGENCE_DOC } from '@/lib/piAgentIntelligence'
 import { PI_ANALYTICS_RECIPES_DOC } from '@/lib/piAnalyticsRecipes'
 import { createGuardedSpamCheck } from '@/lib/piSpamCheck'
+import { validateToolArgs } from '@/lib/piToolArgs'
 import { PI_MANDATORY_ANALYTICS_TOOLS_DOC, runCallVolumeTrend, runCompletionInsights } from '@/lib/piAnalyticsTools'
 import { resolveWhispeyKeyFields } from '@/server/mcpAgentDb'
 import { resolveScope, isDenied } from '@/server/analytics/context'
@@ -1559,6 +1560,10 @@ async function loadOwnedSession(supabase: ServiceClient, sessionId: string, proj
   return { history: (existing.messages as StoredMessage[]) ?? [] }
 }
 
+// ponytail: in-memory, so it stops a double-click or an overlapping retry on the same server instance;
+// a hard cross-instance guarantee would need a compare-and-set column on pi_sessions.
+const resolvingActions = new Set<string>()
+
 // The Confirm/Cancel button's click, not a chat message — no LLM involved.
 // Only `toolCallId` comes from the client; the action name and arguments
 // are read back from what the server itself already stored for that
@@ -1573,6 +1578,22 @@ async function handleResolveAction(
   if (!sessionId || !toolCallId || (decision !== 'confirm' && decision !== 'cancel')) {
     return NextResponse.json({ error: 'Invalid confirmation request' }, { status: 400 })
   }
+  // Claimed BEFORE the session is read and held until the outcome is saved: a second click or a client
+  // retry that arrives while this one runs gets a 409, and one that arrives after reads the saved result.
+  const claim = `${sessionId}:${toolCallId}`
+  if (resolvingActions.has(claim)) return NextResponse.json({ error: 'That action is already being processed' }, { status: 409 })
+  resolvingActions.add(claim)
+  try {
+    return await resolveClaimedAction(supabase, { projectId, userId, canWrite, sessionId, toolCallId, decision })
+  } finally {
+    resolvingActions.delete(claim)
+  }
+}
+
+async function resolveClaimedAction(
+  supabase: ServiceClient,
+  { projectId, userId, canWrite, sessionId, toolCallId, decision }: { projectId: string; userId: string; canWrite: boolean; sessionId: string; toolCallId: string; decision: 'confirm' | 'cancel' },
+): Promise<NextResponse> {
   const owned = await loadOwnedSession(supabase, sessionId, projectId, userId)
   if ('response' in owned) return owned.response
   const sessionHistory = owned.history
@@ -1688,10 +1709,11 @@ async function runToolCall(tc: PendingToolCall, ctx: TurnContext) {
     if (!argsError && (parsedArgs === null || typeof parsedArgs !== 'object' || Array.isArray(parsedArgs))) argsError = 'Tool arguments must be a JSON object'
   }
   if (argsError) parsedArgs = {}
+  else argsError = validateToolArgs(tc.name, parsedArgs)
 
   ctx.controller.enqueue(sseChunk(JSON.stringify({ toolCall: { id: tc.id, name: tc.name, arguments: parsedArgs } })))
   if (argsError) {
-    const result = { error: `${argsError}. Call the tool again with a complete JSON object.` }
+    const result = { error: argsError.startsWith('Invalid arguments') ? argsError : `${argsError}. Call the tool again with a complete JSON object.` }
     ctx.controller.enqueue(sseChunk(JSON.stringify({ toolResult: { id: tc.id, result, success: false, duration_ms: 0 } })))
     return { parsedArgs, result, success: false }
   }

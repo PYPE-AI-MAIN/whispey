@@ -287,6 +287,22 @@ describe('Confirm / Cancel', () => {
   })
 })
 
+describe('tool argument validation', () => {
+  it('never shows a Confirm card for arguments that could not run', async () => {
+    state.llm.push(toolCall('bad1', 'attach_inbound_number', { agent_id: 'a1' }), [text('ok'), stop])
+    const { frames } = await sse({ projectId: P, message: 'attach' })
+    const result = frames.find((f: any) => f.toolResult).toolResult
+    expect(result).toMatchObject({ success: false, result: { error: expect.stringContaining('Invalid arguments for attach_inbound_number') } })
+    expect(result.result.__pending).toBeUndefined()
+  })
+
+  it('rejects a wrongly typed argument instead of passing it to the tool', async () => {
+    state.llm.push(toolCall('bad2', 'get_agent_details', { agent_id: { $ne: 'x' } }), [text('ok'), stop])
+    const { frames } = await sse({ projectId: P, message: 'details' })
+    expect(frames.find((f: any) => f.toolResult).toolResult).toMatchObject({ success: false, result: { error: expect.stringContaining('Invalid arguments for get_agent_details') } })
+  })
+})
+
 describe('open_page tool', () => {
   const open = async (args: object) => {
     state.llm.push(toolCall('op', 'open_page', args), [text('done'), stop])
@@ -302,7 +318,7 @@ describe('open_page tool', () => {
     expect((await open({ page: 'settings' })).result).toEqual({ href: `/${P}/settings`, label: 'Settings' })
     expect((await open({ page: 'phone_settings' })).result).toEqual({ href: `/${P}/agents/sip-management`, label: 'Phone settings' })
     expect((await open({ page: 'api_keys' })).result).toEqual({ href: `/${P}/agents/api-keys`, label: 'Project API key' })
-    for (const page of ['bogus', 'toString', 'constructor', '']) expect(await open({ page })).toMatchObject({ success: false, result: { error: 'Unknown page' } })
+    for (const page of ['bogus', 'toString', 'constructor', '']) expect(await open({ page })).toMatchObject({ success: false, result: { error: expect.stringContaining('Invalid arguments for open_page') } })
   })
 
   it('refuses a campaign_id that could change the link path', async () => {
@@ -432,6 +448,19 @@ describe('edit_agent (confirmed)', () => {
       expect(out.success).toBe(false)
       expect(state.updates).toHaveLength(0)
     }
+  })
+
+  it('runs a doubled-up Confirm once: the overlapping click is refused', async () => {
+    state.sessions.set('s8', {
+      id: 's8', project_id: P, user_id: 'user-1', title: 't',
+      messages: [{ role: 'assistant', content: '', toolCalls: [{ id: 'e2', name: 'edit_agent', arguments: { agent_id: A, prompt: 'You are Bot.' }, result: { __pending: true }, success: true }] }],
+    })
+    const click = () => post({ projectId: P, sessionId: 's8', resolveAction: { toolCallId: 'e2', decision: 'confirm' } })
+    const [a, b] = await Promise.all([click(), click()])
+    expect([a.status, b.status].sort()).toEqual([200, 409])
+    expect(state.deployCalls).toHaveLength(1)
+    expect((await click()).status).toBe(409) // and once it is saved, still refused
+    expect(state.deployCalls).toHaveLength(1)
   })
 
   it('switches the conversation model only to the supported Sarvam models', async () => {

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { ArrowUp, Mic } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { internalPiHref } from '@/lib/piLinks'
+import { fetchWithBackoff } from '@/lib/piFetch'
 import { useVoiceAgent } from '@/hooks/useVoiceAgent'
 import PiCustomToolForm, { type ToolDraft } from '@/components/pi/PiCustomToolForm'
 import { closeOpenMarkdown, nextRevealLength, splitBlocks } from '@/lib/piMarkdown'
@@ -457,9 +458,9 @@ function PhoneActionOutcome({ tc, cancelled }: Readonly<{ tc: ToolCall; cancelle
 }
 
 function ToolCallBlock({
-  tc, projectId, latest, resolving, onChoose, onResolve,
+  tc, projectId, latest, resolving, resolveError, onChoose, onResolve,
 }: Readonly<{
-  tc: ToolCall; projectId: string; latest: LatestToolIds; resolving: boolean
+  tc: ToolCall; projectId: string; latest: LatestToolIds; resolving: boolean; resolveError?: string
   onChoose: (agentName: string) => void; onResolve: (toolCallId: string, decision: 'confirm' | 'cancel') => void
 }>) {
   const target = tc.id === latest.voice ? voiceTarget(tc) : null
@@ -514,6 +515,7 @@ function ToolCallBlock({
           </div>
         </div>
       ) : null}
+      {pending && resolveError && <p role="alert" className="mt-2 max-w-md text-[12px] text-red-600 dark:text-red-400">{resolveError}</p>}
       {cancelled && <p className="mt-2 text-[12px] text-gray-400">Cancelled.</p>}
       <PhoneActionOutcome tc={tc} cancelled={cancelled} />
     </div>
@@ -627,14 +629,22 @@ export default function PiChatView({
   }, [scrollToBottom])
 
   const [resolvingIds, setResolvingIds] = useState<Set<string>>(new Set())
+  const [resolveErrors, setResolveErrors] = useState<Record<string, string>>({})
+  const resolvingRef = useRef(new Set<string>())
+  const lastTurnRef = useRef<{ text: string; history: Message[] } | null>(null)
+  const [retryable, setRetryable] = useState(false)
 
   // The button's own click handler — never goes through the model. The server
   // looks up what was actually proposed from its own stored record of this
   // exact toolCallId and executes (or cancels) that, ignoring anything this
   // client might claim about it.
+  // Not retried automatically: Confirm can spend money. A failed click leaves the card
+  // actionable with the reason shown, so the user decides whether to try again.
   const resolvePendingAction = useCallback(async (toolCallId: string, decision: 'confirm' | 'cancel') => {
-    if (!sessionIdRef.current) return
+    if (!sessionIdRef.current || resolvingRef.current.has(toolCallId)) return // a second click before the first settles
+    resolvingRef.current.add(toolCallId)
     setResolvingIds((prev) => new Set(prev).add(toolCallId))
+    setResolveErrors(({ [toolCallId]: _drop, ...rest }) => rest)
     try {
       const res = await fetch('/api/pi/chat', {
         method: 'POST',
@@ -642,10 +652,17 @@ export default function PiChatView({
         body: JSON.stringify({ projectId, sessionId: sessionIdRef.current, resolveAction: { toolCallId, decision } }),
       })
       const data = await res.json().catch(() => null)
-      const result = res.ok ? data.result : { error: data?.error ?? 'Could not complete that action' }
-      const success = res.ok ? data.success : false
-      setMessages((prev) => withToolCallResult(prev, toolCallId, result, success))
+      if (res.ok) {
+        setMessages((prev) => withToolCallResult(prev, toolCallId, data.result, data.success))
+      } else if (res.status === 409) {
+        setResolveErrors((prev) => ({ ...prev, [toolCallId]: 'This was already handled — reload the chat to see the result.' }))
+      } else {
+        setResolveErrors((prev) => ({ ...prev, [toolCallId]: `${data?.error ?? 'Could not complete that action'}. Nothing was changed — you can try again.` }))
+      }
+    } catch {
+      setResolveErrors((prev) => ({ ...prev, [toolCallId]: 'Could not reach the server. Check your connection — the action may not have run; reload the chat before trying again.' }))
     } finally {
+      resolvingRef.current.delete(toolCallId)
       setResolvingIds((prev) => {
         const next = new Set(prev)
         next.delete(toolCallId)
@@ -673,6 +690,7 @@ export default function PiChatView({
         const href = navigationTarget(event.toolResult, projectId)
         if (href) router.push(href)
       }
+      if (event.kind === 'error') setRetryable(true)
       setMessages((prev) => applyEvent(prev, assistantId, event))
     } catch {
       // malformed chunk
@@ -686,10 +704,12 @@ export default function PiChatView({
     const assistantId = crypto.randomUUID()
     const assistantMsg: Message = { id: assistantId, role: 'assistant', content: '', isFinal: false, toolCalls: [] }
     setMessages([...historyBefore, userMsg, assistantMsg])
+    lastTurnRef.current = { text: userContent, history: historyBefore }
+    setRetryable(false)
     setIsStreaming(true)
 
     try {
-      const res = await fetch('/api/pi/chat', {
+      const res = await fetchWithBackoff('/api/pi/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userContent, projectId, sessionId: sessionIdRef.current }),
@@ -697,12 +717,15 @@ export default function PiChatView({
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Request failed' }))
         setMessages((prev) => failAssistant(prev, assistantId, err.error ?? 'Error'))
+        setRetryable(res.status >= 500 || res.status === 429)
         return
       }
-      await consumeSse(res.body!, (line) => handleStreamLine(line, assistantId))
+      if (!res.body) throw new Error('The reply came back empty')
+      await consumeSse(res.body, (line) => handleStreamLine(line, assistantId))
       onTurnComplete?.()
     } catch (err: any) {
       setMessages((prev) => failAssistant(prev, assistantId, err?.message ?? 'Network error'))
+      setRetryable(true)
     } finally {
       setIsStreaming(false)
     }
@@ -746,11 +769,14 @@ export default function PiChatView({
   // attempts could never do correctly. The ephemeral token (minted by
   // /api/pi/realtime-token) is the only thing our server touches; audio and
   // transcripts flow browser-to-OpenAI directly.
+  const micConnectingRef = useRef(false)
   const toggleRecording = async () => {
     if (recording) {
       stopRecording()
       return
     }
+    if (micConnectingRef.current) return
+    micConnectingRef.current = true
     setMicError(null)
     try {
       const tokenRes = await fetch('/api/pi/realtime-token', { method: 'POST' })
@@ -818,6 +844,8 @@ export default function PiChatView({
     } catch (err: any) {
       stopRecording()
       setMicError(err?.message ?? 'Microphone access was denied — allow it in your browser’s site settings.')
+    } finally {
+      micConnectingRef.current = false
     }
   }
 
@@ -883,6 +911,7 @@ export default function PiChatView({
                       projectId={projectId}
                       latest={latest}
                       resolving={resolvingIds.has(tc.id) || isStreaming}
+                      resolveError={resolveErrors[tc.id]}
                       onChoose={(name) => sendMessage(name, messages)}
                       onResolve={resolvePendingAction}
                     />
@@ -893,6 +922,17 @@ export default function PiChatView({
           </div>
         </div>
       </div>
+        {retryable && !isStreaming && !readOnly && (
+          <div className="absolute bottom-3 right-4">
+            <button
+              type="button"
+              onClick={() => { const t = lastTurnRef.current; if (t) void sendMessage(t.text, t.history) }}
+              className="rounded-full border border-red-200 bg-white px-3 py-1 text-[12px] text-red-600 shadow-sm hover:bg-red-50 dark:border-red-900 dark:bg-gray-900 dark:text-red-400"
+            >
+              Try again
+            </button>
+          </div>
+        )}
         {!atBottom && messages.length > 0 && (
           <button
             type="button"
