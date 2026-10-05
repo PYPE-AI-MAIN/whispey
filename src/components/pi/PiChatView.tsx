@@ -3,7 +3,7 @@
 import { createContext, memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowUp, ChevronDown, Mic } from 'lucide-react'
+import { ArrowUp, Bot, ChevronDown, Mic, PhoneIncoming, ShieldAlert, TrendingUp, Trophy, type LucideIcon } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { buildAgentLinkMap, resolvePiHref } from '@/lib/piLinks'
 import { fetchWithBackoff } from '@/lib/piFetch'
@@ -100,11 +100,14 @@ const TOOL_LABELS: Record<string, string> = {
 
 const THINKING_PHRASES = ['Thinking', 'Still working on it', 'Putting the answer together']
 
-const SUGGESTIONS = [
-  'How is call volume trending over the last 30 days?',
-  'Which agent handled the most calls, and how did they perform?',
-  'Walk me through what happens when you create a new voice agent here.',
-  'Attach an inbound phone number to one of my agents.',
+// `send` asks straight away; `fill` types the start of the question into the box for the user to finish
+// (a spam check needs a number, so sending it as-is would only make Pi ask for one).
+const SUGGESTIONS: { label: string; icon: LucideIcon; prompt: string; mode: 'send' | 'fill' }[] = [
+  { label: 'Call volume over the last 30 days', icon: TrendingUp, prompt: 'How is call volume trending over the last 30 days?', mode: 'send' },
+  { label: 'Top agent and how it performed', icon: Trophy, prompt: 'Which agent handled the most calls, and how did they perform?', mode: 'send' },
+  { label: 'Check if a number is spam', icon: ShieldAlert, prompt: 'Is this number spam: ', mode: 'fill' },
+  { label: 'Attach an inbound number to an agent', icon: PhoneIncoming, prompt: 'Attach an inbound phone number to one of my agents.', mode: 'send' },
+  { label: 'Create a new voice agent', icon: Bot, prompt: 'Walk me through what happens when you create a new voice agent here.', mode: 'send' },
 ]
 
 
@@ -762,6 +765,16 @@ export default function PiChatView({
     el.style.height = `${Math.min(el.scrollHeight, MAX_TEXTAREA_PX)}px`
   }, [])
 
+  const fillInput = (text: string) => {
+    setInput(text)
+    requestAnimationFrame(() => {
+      const el = textareaRef.current
+      if (!el) return
+      el.focus()
+      el.setSelectionRange(text.length, text.length)
+    })
+  }
+
   const handleSubmit = () => {
     const text = input
     if (!text.trim()) return
@@ -894,18 +907,19 @@ export default function PiChatView({
             <div className="pt-[8vh] sm:pt-[10vh]">
               <h1 className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-50 sm:text-[28px]">Hi, I'm π.</h1>
               <p className="mt-2 max-w-xl text-[15px] leading-7 text-gray-600 dark:text-gray-400">
-                Ask me about your call analytics, create or update an agent, or attach an inbound phone number — right here in this chat.
+                Ask about your call analytics, create or update agents, attach inbound numbers, or check whether a phone number is spam — right here in this chat.
               </p>
 
               <div className="mt-6 flex flex-wrap gap-2">
-                {SUGGESTIONS.map((s) => (
+                {SUGGESTIONS.map(({ label, icon: Icon, prompt, mode }) => (
                   <button
-                    key={s}
+                    key={label}
                     type="button"
-                    onClick={() => sendMessage(s, messages)}
-                    className="rounded-full border border-gray-200 bg-white px-3.5 py-2 text-left text-[13px] leading-snug text-gray-700 transition hover:border-gray-300 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-700 dark:hover:bg-gray-900/80"
+                    onClick={() => (mode === 'send' ? sendMessage(prompt, messages) : fillInput(prompt))}
+                    className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3.5 py-2 text-left text-[13px] leading-snug text-gray-700 transition hover:border-gray-300 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-700 dark:hover:bg-gray-900/80"
                   >
-                    {s}
+                    <Icon aria-hidden className="h-3.5 w-3.5 shrink-0 text-gray-400 dark:text-gray-500" />
+                    {label}
                   </button>
                 ))}
               </div>
