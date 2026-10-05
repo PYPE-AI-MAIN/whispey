@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
   const supabase = createServiceRoleClient()
   const email = await verifiedEmail()
-  const mine = email ? `user_id.eq.${userId},user_email.eq."${email.replaceAll(/[\\"]/g, '\\$&')}"` : `user_id.eq.${userId}`
+  const mine = email ? `user_id.eq.${userId},user_email.eq."${email.replaceAll(/[\\"]/g, String.raw`\$&`)}"` : `user_id.eq.${userId}`
   const { data, error } = await supabase.from('pi_sessions').select(LIST_COLUMNS).eq('project_id', projectId).or(mine).order('updated_at', { ascending: false }).limit(200)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json((data ?? []).map(withMessageCount))
