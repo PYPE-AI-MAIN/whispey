@@ -8,6 +8,7 @@ import {
   normalizeRayaLanguage,
   rayaConfigFromTts,
   rayaTtsPayload,
+  stripTrailingSlashes,
 } from '@/lib/tts/raya'
 import {
   buildFallbackTtsPayload,
@@ -191,5 +192,24 @@ describe('reopening a saved Raya agent', () => {
 
   it('fallback: restores the dialog config too', () => {
     expect(deriveFallbackTtsVoiceConfig(saved)).toEqual({ language: 'te', model: 'standard', speed: 0.9, sample_rate: 22050 })
+  })
+})
+
+describe('stripTrailingSlashes', () => {
+  it.each([
+    ['https://hub.getraya.app', 'https://hub.getraya.app'],
+    ['https://hub.getraya.app/', 'https://hub.getraya.app'],
+    ['https://hub.getraya.app///', 'https://hub.getraya.app'],
+    ['https://h/a/b/', 'https://h/a/b'],
+    ['', ''],
+    ['///', ''],
+  ])('%s -> %s', (given, expected) => {
+    expect(stripTrailingSlashes(given)).toBe(expected)
+  })
+
+  it('stays fast on slash-heavy input', () => {
+    const start = Date.now()
+    stripTrailingSlashes('/'.repeat(100_000) + 'x')
+    expect(Date.now() - start).toBeLessThan(200)
   })
 })

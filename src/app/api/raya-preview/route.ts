@@ -5,13 +5,14 @@ import {
   RAYA_PREVIEW_TEXT,
   RAYA_SPEED,
   normalizeRayaLanguage,
+  stripTrailingSlashes,
 } from '@/lib/tts/raya'
 
 // Previews are billed per character, so cap what a client can send. The default
 // sample lines are all well under this.
 const MAX_PREVIEW_CHARS = 200
 
-const baseUrl = () => (process.env.RAYA_BASE_URL || 'https://hub.getraya.app').replace(/\/+$/, '')
+const baseUrl = () => stripTrailingSlashes(process.env.RAYA_BASE_URL || 'https://hub.getraya.app')
 
 export async function POST(request: NextRequest) {
   try {

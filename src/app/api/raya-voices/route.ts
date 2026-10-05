@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import type { RayaVoice } from '@/lib/tts/raya'
+import { stripTrailingSlashes, type RayaVoice } from '@/lib/tts/raya'
 
 // GET /v1/voices on Raya (Bakbak). The catalogue is account-scoped and rarely changes
 // (Raya's own best-practices page recommends caching it), so keep it in memory and let
@@ -7,7 +7,7 @@ import type { RayaVoice } from '@/lib/tts/raya'
 const CACHE_TTL_MS = 10 * 60 * 1000
 let cache: { at: number; voices: RayaVoice[] } | null = null
 
-const baseUrl = () => (process.env.RAYA_BASE_URL || 'https://hub.getraya.app').replace(/\/+$/, '')
+const baseUrl = () => stripTrailingSlashes(process.env.RAYA_BASE_URL || 'https://hub.getraya.app')
 
 export async function GET(request: NextRequest) {
   const apiKey = process.env.RAYA_API_KEY

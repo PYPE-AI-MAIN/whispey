@@ -34,13 +34,15 @@ const languageLabel = (code: string) => {
   return lang ? lang.label : code
 }
 
+type Catalogue = RayaVoicesState & { refresh: () => Promise<void> | void }
+
 interface RayaVoicePanelProps {
   config: RayaConfig
   setConfig: React.Dispatch<React.SetStateAction<RayaConfig>>
   selectedVoiceId: string
   selectedProvider: string
   onVoiceSelect: (voiceId: string, provider: string) => void
-  catalogue: RayaVoicesState & { refresh: () => Promise<void> | void }
+  catalogue: Catalogue
 }
 
 function CopyId({ id }: Readonly<{ id: string }>) {
@@ -52,8 +54,7 @@ function CopyId({ id }: Readonly<{ id: string }>) {
       className="w-7 h-7 p-0"
       title="Copy voice ID"
       aria-label="Copy voice ID"
-      onClick={async (e) => {
-        e.stopPropagation()
+      onClick={async () => {
         try {
           await navigator.clipboard.writeText(id)
           setCopied(true)
@@ -96,6 +97,307 @@ function Notice({
   )
 }
 
+// Keyed by the `code` /api/raya-voices returns, so each failure reads as what it is.
+const KEY_PROBLEM_COPY = {
+  not_configured: 'Raya isn’t connected yet',
+  invalid_key: 'Raya rejected the API key',
+} as const
+
+function CatalogueError({
+  errorCode,
+  error,
+  onRetry,
+  onUseStarter,
+}: Readonly<{
+  errorCode: string | null
+  error: string | null
+  onRetry: () => void
+  onUseStarter: () => void
+}>) {
+  const keyProblemTitle = errorCode ? KEY_PROBLEM_COPY[errorCode as keyof typeof KEY_PROBLEM_COPY] : undefined
+  return (
+    <div className="space-y-3 overflow-y-auto">
+      <Notice
+        icon={keyProblemTitle ? KeyRound : AlertCircle}
+        tone="warn"
+        title={keyProblemTitle ?? 'Couldn’t load Raya voices'}
+      >
+        {keyProblemTitle ? (
+          <p>
+            Set <code className="font-mono">RAYA_API_KEY</code> in this app&apos;s server environment, restart it,
+            then refresh. Agents also need the same key on the voice workers.
+          </p>
+        ) : (
+          <p>{error}</p>
+        )}
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Button variant="outline" size="sm" onClick={onRetry}>
+            <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Try again
+          </Button>
+          <Button variant="outline" size="sm" onClick={onUseStarter}>
+            Use Raya&apos;s default voice
+          </Button>
+        </div>
+      </Notice>
+    </div>
+  )
+}
+
+function PreviewIcon({ loading, playing }: Readonly<{ loading: boolean; playing: boolean }>) {
+  if (loading) return <Loader2 className="w-3.5 h-3.5 animate-spin" />
+  if (playing) return <Square className="w-3.5 h-3.5 fill-current" />
+  return <Play className="w-3.5 h-3.5 fill-current" />
+}
+
+// The selectable area is a real <button>; preview and copy sit beside it rather than
+// inside it, since interactive elements can't nest in a button.
+function VoiceCard({
+  voice,
+  isSelected,
+  isPlaying,
+  isLoadingPreview,
+  onSelect,
+  onPreview,
+}: Readonly<{
+  voice: RayaVoice
+  isSelected: boolean
+  isPlaying: boolean
+  isLoadingPreview: boolean
+  onSelect: () => void
+  onPreview: () => void
+}>) {
+  const cardClass = isSelected
+    ? 'border-teal-300 dark:border-teal-600 bg-teal-50 dark:bg-teal-900/10'
+    : 'border-gray-200 dark:border-gray-700 hover:border-teal-200 dark:hover:border-teal-700 hover:bg-teal-50/50 dark:hover:bg-teal-900/5'
+  const previewClass = isPlaying
+    ? 'opacity-100 text-teal-500'
+    : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 text-gray-400 hover:text-teal-500'
+  const previewLabel = isPlaying ? 'Stop preview' : `Preview ${voice.name}`
+
+  return (
+    <div className={`group flex items-center gap-2 p-2 rounded-md border transition-all hover:shadow-sm ${cardClass}`}>
+      <button
+        type="button"
+        aria-pressed={isSelected}
+        onClick={onSelect}
+        className="flex flex-1 min-w-0 items-center gap-2 text-left rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400"
+      >
+        <span className="w-6 h-6 rounded-full bg-gradient-to-br from-teal-400 to-emerald-600 flex items-center justify-center text-white font-medium text-xs flex-shrink-0">
+          {voice.name.charAt(0).toUpperCase()}
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="flex items-center gap-2">
+            <span className="font-medium text-xs text-gray-900 dark:text-gray-100 truncate">{voice.name}</span>
+            {isSelected && <CheckCircle className="w-3 h-3 text-green-600 flex-shrink-0" />}
+          </span>
+          <span className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-600 dark:text-gray-300">
+              {languageLabel(voice.language)}
+            </span>
+            <code className="text-[11px] text-gray-400 truncate max-w-[12rem]">{voice.id}</code>
+          </span>
+        </span>
+      </button>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={isLoadingPreview}
+          onClick={onPreview}
+          className={`w-7 h-7 p-0 transition-opacity ${previewClass}`}
+          title={isPlaying ? 'Stop preview' : 'Preview voice'}
+          aria-label={previewLabel}
+        >
+          <PreviewIcon loading={isLoadingPreview} playing={isPlaying} />
+        </Button>
+        <CopyId id={voice.id} />
+      </div>
+    </div>
+  )
+}
+
+function ModelSwitch({ model, onChange }: Readonly<{ model: string; onChange: (model: string) => void }>) {
+  return (
+    <div className="flex-shrink-0 space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Model</span>
+        <span className="text-[11px] text-gray-500 dark:text-gray-400">
+          {RAYA_MODELS.find((m) => m.value === model)?.hint}
+        </span>
+      </div>
+      <div role="radiogroup" aria-label="Raya model" className="grid grid-cols-2 gap-1 rounded-lg bg-gray-100 dark:bg-gray-800 p-1">
+        {RAYA_MODELS.map((m) => (
+          <button
+            key={m.value}
+            type="button"
+            role="radio"
+            aria-checked={model === m.value}
+            onClick={() => onChange(m.value)}
+            className={`rounded-md py-1.5 text-xs font-medium transition-colors ${
+              model === m.value
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function LanguageChips({
+  total,
+  languages,
+  value,
+  onChange,
+}: Readonly<{
+  total: number
+  languages: [string, number][]
+  value: string
+  onChange: (code: string) => void
+}>) {
+  const chips: [string, number][] = [['all', total], ...languages]
+  return (
+    <fieldset className="flex-shrink-0 min-w-0 m-0 border-0 p-0">
+      <legend className="sr-only">Filter by language</legend>
+      <div className="flex gap-1.5 overflow-x-auto pb-1">
+        {chips.map(([code, count]) => {
+          const active = value === code
+          return (
+            <button
+              key={code}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange(code)}
+              className={`flex-shrink-0 rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                active
+                  ? 'border-teal-300 dark:border-teal-600 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300'
+                  : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+              }`}
+            >
+              {code === 'all' ? 'All' : languageLabel(code)} <span className="tabular-nums opacity-70">{count}</span>
+            </button>
+          )
+        })}
+      </div>
+    </fieldset>
+  )
+}
+
+function ManualVoiceEntry({ model, onUse }: Readonly<{ model: string; onUse: (id: string) => void }>) {
+  const [manualId, setManualId] = useState('')
+  return (
+    <details className="group rounded-lg border border-gray-200 dark:border-gray-700 flex-shrink-0">
+      <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 list-none flex items-center justify-between">
+        Have a voice ID?
+        <ChevronDown className="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" />
+      </summary>
+      <div className="px-3 pb-3 space-y-2">
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Use an ID from your Raya account that isn&apos;t listed. It must belong to the <b>{model}</b> model.
+        </p>
+        <div className="flex gap-2">
+          <Input
+            value={manualId}
+            onChange={(e) => setManualId(e.target.value)}
+            placeholder="Voice ID"
+            aria-label="Raya voice ID"
+            className="h-9 font-mono text-xs"
+          />
+          <Button
+            variant="outline"
+            className="h-9"
+            disabled={!manualId.trim()}
+            onClick={() => {
+              onUse(manualId.trim())
+              setManualId('')
+            }}
+          >
+            Use
+          </Button>
+        </div>
+      </div>
+    </details>
+  )
+}
+
+interface VoiceListProps {
+  catalogue: Catalogue
+  model: string
+  modelVoices: RayaVoice[]
+  visible: RayaVoice[]
+  selectedVoiceId: string
+  selectedProvider: string
+  playingId: string | null
+  loadingId: string | null
+  onPick: (voice: RayaVoice) => void
+  onPreview: (voice: RayaVoice) => void
+  onRetry: () => void
+  onUseStarter: () => void
+}
+
+function VoiceList(props: Readonly<VoiceListProps>) {
+  const { catalogue, model, modelVoices, visible, selectedVoiceId, selectedProvider, playingId, loadingId } = props
+  const hasCatalogue = catalogue.voices.length > 0
+
+  if ((catalogue.status === 'loading' || catalogue.status === 'idle') && !hasCatalogue) {
+    return (
+      <div className="flex items-center justify-center h-full text-sm text-gray-500 dark:text-gray-400 gap-2">
+        <Loader2 className="w-4 h-4 animate-spin" /> Loading Raya voices…
+      </div>
+    )
+  }
+  if (catalogue.status === 'error' && !hasCatalogue) {
+    return (
+      <CatalogueError
+        errorCode={catalogue.errorCode}
+        error={catalogue.error}
+        onRetry={props.onRetry}
+        onUseStarter={props.onUseStarter}
+      />
+    )
+  }
+  if (modelVoices.length === 0) {
+    return (
+      <Notice icon={Mic} title={`No ${model} voices on this account`}>
+        <p>Try the other model, or add a voice ID by hand below.</p>
+      </Notice>
+    )
+  }
+  if (visible.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+        <Mic className="w-10 h-10 text-gray-300 dark:text-gray-600" />
+        No voices match your filters.
+      </div>
+    )
+  }
+  return (
+    <ul className="space-y-2 overflow-y-auto pr-1">
+      {visible.map((voice) => (
+        <li key={voice.id} data-voice-id={voice.id}>
+          <VoiceCard
+            voice={voice}
+            isSelected={selectedProvider === RAYA_PROVIDER && selectedVoiceId === voice.id}
+            isPlaying={playingId === voice.id}
+            isLoadingPreview={loadingId === voice.id}
+            onSelect={() => props.onPick(voice)}
+            onPreview={() => props.onPreview(voice)}
+          />
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+const matchesSearch = (voice: RayaVoice, query: string) =>
+  !query ||
+  voice.name.toLowerCase().includes(query) ||
+  voice.id.toLowerCase().includes(query) ||
+  languageLabel(voice.language).toLowerCase().includes(query)
+
 export default function RayaVoicePanel({
   config,
   setConfig,
@@ -107,12 +409,13 @@ export default function RayaVoicePanel({
   const [search, setSearch] = useState('')
   const [languageFilter, setLanguageFilter] = useState<string>('all')
   const [previewText, setPreviewText] = useState('')
-  const [manualId, setManualId] = useState('')
   const { playingId, loadingId, toggle } = useVoicePreview()
 
-  const { voices, status, errorCode, error, refresh } = catalogue
-  const isLoading = status === 'loading' || status === 'idle'
+  const { voices, status } = catalogue
   const hasCatalogue = voices.length > 0
+  const reload = () => {
+    catalogue.refresh()
+  }
 
   // Voice ids are bound to a model (a standard id fails on m1 and vice versa), so the list
   // only ever offers voices that will actually work with the chosen model.
@@ -126,11 +429,7 @@ export default function RayaVoicePanel({
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return modelVoices.filter(
-      (v) =>
-        (languageFilter === 'all' || v.language === languageFilter) &&
-        (!q || v.name.toLowerCase().includes(q) || v.id.toLowerCase().includes(q) || languageLabel(v.language).toLowerCase().includes(q)),
-    )
+    return modelVoices.filter((v) => (languageFilter === 'all' || v.language === languageFilter) && matchesSearch(v, q))
   }, [modelVoices, languageFilter, search])
 
   const handleModelChange = (model: string) => {
@@ -179,172 +478,6 @@ export default function RayaVoicePanel({
       return blob
     })
 
-  const manualEntry = (
-    <details className="group rounded-lg border border-gray-200 dark:border-gray-700 flex-shrink-0">
-      <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 list-none flex items-center justify-between">
-        Have a voice ID?
-        <ChevronDown className="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" />
-      </summary>
-      <div className="px-3 pb-3 space-y-2">
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          Use an ID from your Raya account that isn&apos;t listed. It must belong to the <b>{config.model}</b> model.
-        </p>
-        <div className="flex gap-2">
-          <Input
-            value={manualId}
-            onChange={(e) => setManualId(e.target.value)}
-            placeholder="Voice ID"
-            aria-label="Raya voice ID"
-            className="h-9 font-mono text-xs"
-          />
-          <Button
-            variant="outline"
-            className="h-9"
-            disabled={!manualId.trim()}
-            onClick={() => {
-              pickVoice({ id: manualId.trim(), language: '', model: config.model })
-              setManualId('')
-            }}
-          >
-            Use
-          </Button>
-        </div>
-      </div>
-    </details>
-  )
-
-  let body: React.ReactNode
-  if (isLoading && !hasCatalogue) {
-    body = (
-      <div className="flex items-center justify-center h-full text-sm text-gray-500 dark:text-gray-400 gap-2">
-        <Loader2 className="w-4 h-4 animate-spin" /> Loading Raya voices…
-      </div>
-    )
-  } else if (status === 'error' && !hasCatalogue) {
-    const notConfigured = errorCode === 'not_configured'
-    body = (
-      <div className="space-y-3 overflow-y-auto">
-        <Notice
-          icon={notConfigured || errorCode === 'invalid_key' ? KeyRound : AlertCircle}
-          tone="warn"
-          title={
-            notConfigured
-              ? 'Raya isn’t connected yet'
-              : errorCode === 'invalid_key'
-                ? 'Raya rejected the API key'
-                : 'Couldn’t load Raya voices'
-          }
-        >
-          {notConfigured || errorCode === 'invalid_key' ? (
-            <p>
-              Set <code className="font-mono">RAYA_API_KEY</code> in this app&apos;s server environment, restart it,
-              then refresh. Agents also need the same key on the voice workers.
-            </p>
-          ) : (
-            <p>{error}</p>
-          )}
-          <div className="flex flex-wrap gap-2 pt-1">
-            <Button variant="outline" size="sm" onClick={() => void refresh()}>
-              <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Try again
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => pickVoice(RAYA_STARTER_VOICE)}>
-              Use Raya&apos;s default voice
-            </Button>
-          </div>
-        </Notice>
-      </div>
-    )
-  } else if (modelVoices.length === 0) {
-    body = (
-      <Notice icon={Mic} title={`No ${config.model} voices on this account`}>
-        <p>Try the other model, or add a voice ID by hand below.</p>
-      </Notice>
-    )
-  } else if (visible.length === 0) {
-    body = (
-      <div className="flex flex-col items-center justify-center h-full text-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-        <Mic className="w-10 h-10 text-gray-300 dark:text-gray-600" />
-        No voices match your filters.
-      </div>
-    )
-  } else {
-    body = (
-      <ul className="space-y-2 overflow-y-auto pr-1">
-        {visible.map((voice) => {
-          const isSelected = selectedProvider === RAYA_PROVIDER && selectedVoiceId === voice.id
-          const isPlaying = playingId === voice.id
-          const isLoadingPreview = loadingId === voice.id
-          return (
-            <li key={voice.id} data-voice-id={voice.id}>
-              <div
-                role="button"
-                tabIndex={0}
-                aria-pressed={isSelected}
-                onClick={() => pickVoice(voice)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    pickVoice(voice)
-                  }
-                }}
-                className={`group cursor-pointer p-2 rounded-md border transition-all hover:shadow-sm ${
-                  isSelected
-                    ? 'border-teal-300 dark:border-teal-600 bg-teal-50 dark:bg-teal-900/10'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-teal-200 dark:hover:border-teal-700 hover:bg-teal-50/50 dark:hover:bg-teal-900/5'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-teal-400 to-emerald-600 flex items-center justify-center text-white font-medium text-xs flex-shrink-0">
-                    {voice.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-xs text-gray-900 dark:text-gray-100 truncate">{voice.name}</h3>
-                      {isSelected && <CheckCircle className="w-3 h-3 text-green-600 flex-shrink-0" />}
-                    </div>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-600 dark:text-gray-300">
-                        {languageLabel(voice.language)}
-                      </span>
-                      <code className="text-[11px] text-gray-400 truncate max-w-[12rem]">{voice.id}</code>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={isLoadingPreview}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        void previewVoice(voice)
-                      }}
-                      className={`w-7 h-7 p-0 transition-opacity ${
-                        isPlaying
-                          ? 'opacity-100 text-teal-500'
-                          : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 text-gray-400 hover:text-teal-500'
-                      }`}
-                      title={isPlaying ? 'Stop preview' : 'Preview voice'}
-                      aria-label={isPlaying ? 'Stop preview' : `Preview ${voice.name}`}
-                    >
-                      {isLoadingPreview ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : isPlaying ? (
-                        <Square className="w-3.5 h-3.5 fill-current" />
-                      ) : (
-                        <Play className="w-3.5 h-3.5 fill-current" />
-                      )}
-                    </Button>
-                    <CopyId id={voice.id} />
-                  </div>
-                </div>
-              </div>
-            </li>
-          )
-        })}
-      </ul>
-    )
-  }
-
   return (
     <div className="h-full p-6 flex flex-col gap-4 overflow-hidden">
       <div className="flex gap-3 flex-shrink-0">
@@ -360,7 +493,7 @@ export default function RayaVoicePanel({
         </div>
         <Button
           variant="outline"
-          onClick={() => void refresh()}
+          onClick={reload}
           disabled={status === 'loading'}
           className="h-10 px-4"
           title="Reload the voice list from Raya"
@@ -371,54 +504,15 @@ export default function RayaVoicePanel({
       </div>
 
       {/* Model: voices are model-specific, so this filters the list below. */}
-      <div className="flex-shrink-0 space-y-1.5">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Model</span>
-          <span className="text-[11px] text-gray-500 dark:text-gray-400">
-            {RAYA_MODELS.find((m) => m.value === config.model)?.hint}
-          </span>
-        </div>
-        <div role="radiogroup" aria-label="Raya model" className="grid grid-cols-2 gap-1 rounded-lg bg-gray-100 dark:bg-gray-800 p-1">
-          {RAYA_MODELS.map((m) => (
-            <button
-              key={m.value}
-              type="button"
-              role="radio"
-              aria-checked={config.model === m.value}
-              onClick={() => handleModelChange(m.value)}
-              className={`rounded-md py-1.5 text-xs font-medium transition-colors ${
-                config.model === m.value
-                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <ModelSwitch model={config.model} onChange={handleModelChange} />
 
       {languagesInModel.length > 1 && (
-        <div className="flex-shrink-0 flex gap-1.5 overflow-x-auto pb-1" role="group" aria-label="Filter by language">
-          {[['all', modelVoices.length] as const, ...languagesInModel].map(([code, count]) => {
-            const active = languageFilter === code
-            return (
-              <button
-                key={code}
-                type="button"
-                aria-pressed={active}
-                onClick={() => setLanguageFilter(code)}
-                className={`flex-shrink-0 rounded-full border px-2.5 py-1 text-xs transition-colors ${
-                  active
-                    ? 'border-teal-300 dark:border-teal-600 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300'
-                    : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                }`}
-              >
-                {code === 'all' ? 'All' : languageLabel(code)} <span className="tabular-nums opacity-70">{count}</span>
-              </button>
-            )
-          })}
-        </div>
+        <LanguageChips
+          total={modelVoices.length}
+          languages={languagesInModel}
+          value={languageFilter}
+          onChange={setLanguageFilter}
+        />
       )}
 
       {hasCatalogue && (
@@ -434,7 +528,22 @@ export default function RayaVoicePanel({
         </div>
       )}
 
-      <div className="flex-1 min-h-0 flex flex-col">{body}</div>
+      <div className="flex-1 min-h-0 flex flex-col">
+        <VoiceList
+          catalogue={catalogue}
+          model={config.model}
+          modelVoices={modelVoices}
+          visible={visible}
+          selectedVoiceId={selectedVoiceId}
+          selectedProvider={selectedProvider}
+          playingId={playingId}
+          loadingId={loadingId}
+          onPick={pickVoice}
+          onPreview={previewVoice}
+          onRetry={reload}
+          onUseStarter={() => pickVoice(RAYA_STARTER_VOICE)}
+        />
+      </div>
 
       {status === 'error' && hasCatalogue && (
         <p className="text-xs text-amber-600 dark:text-amber-400 flex-shrink-0">
@@ -442,7 +551,7 @@ export default function RayaVoicePanel({
         </p>
       )}
 
-      {manualEntry}
+      <ManualVoiceEntry model={config.model} onUse={(id) => pickVoice({ id, language: '', model: config.model })} />
     </div>
   )
 }

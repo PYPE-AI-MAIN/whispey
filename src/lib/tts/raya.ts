@@ -74,6 +74,13 @@ export interface RayaVoice {
   model: string
 }
 
+/** Strips trailing slashes with a plain loop; a regex for this is quadratic on slash-heavy input. */
+export function stripTrailingSlashes(url: string): string {
+  let end = url.length
+  while (end > 0 && url[end - 1] === '/') end--
+  return url.slice(0, end)
+}
+
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n))
 
 /**
@@ -88,7 +95,7 @@ export function normalizeRayaLanguage(raw?: string | null): string {
 }
 
 export function normalizeRayaConfig(raw: Partial<Record<keyof RayaConfig | 'pace', unknown>> = {}): RayaConfig {
-  const model = String(raw.model ?? '')
+  const model = typeof raw.model === 'string' ? raw.model : ''
   const sampleRate = Number(raw.sample_rate)
   // `||` rather than `??`: a stored speed of 0 is never meaningful and would clamp to the minimum.
   const speed = Number(raw.speed || raw.pace || RAYA_SPEED.default)

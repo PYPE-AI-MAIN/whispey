@@ -28,7 +28,100 @@ interface DynamicTTSSwitchProps {
   onDynamicTTSChange?: (dynamicTTSList: DynamicTTSConfig[]) => void
 }
 
-const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
+type TtsFields = Partial<DynamicTTSConfig>
+
+// Per-provider shape of a saved dynamic-TTS entry. Kept out of the component so adding a
+// provider is one function and one map entry rather than another branch in handleSave.
+const formatSarvam = (c: TtsFields): TtsFields => {
+  // `temperature` is not a valid livekit-plugins-sarvam param. pace/loudness/enable_preprocessing
+  // are passed for ALL models; the plugin drops what a model doesn't take.
+  const vs = c.voice_settings || {}
+  return {
+    voice_id: c.voice_id || c.speaker || '',
+    speaker: c.speaker || c.voice_id || '',
+    model: c.model || 'bulbul:v2',
+    language: c.language || 'en-IN',
+    ...(c.voice_settings && {
+      voice_settings: {
+        target_language_code: vs.target_language_code || c.language || 'en-IN',
+        pace: Math.min(2.0, Math.max(0.5, vs.pace || vs.speed || 1.0)),
+        loudness: Math.min(2.0, Math.max(0.5, vs.loudness || 1.0)),
+        enable_preprocessing: vs.enable_preprocessing !== undefined ? vs.enable_preprocessing : false,
+      },
+    }),
+  }
+}
+
+const formatElevenLabs = (c: TtsFields): TtsFields => ({
+  voice_id: c.voice_id || '',
+  model: c.model || 'eleven_multilingual_v2',
+  language: c.language || 'en',
+  ...(c.voice_settings && {
+    voice_settings: {
+      similarity_boost: c.voice_settings.similarity_boost || 0.75,
+      stability: c.voice_settings.stability || 0.5,
+      style: c.voice_settings.style || 0,
+      use_speaker_boost: c.voice_settings.use_speaker_boost !== undefined ? c.voice_settings.use_speaker_boost : true,
+      speed: c.voice_settings.speed || 1.0,
+    },
+  }),
+})
+
+// Normalised so a stale or hand-edited entry can't ship an unsupported language or rate
+const formatRaya = (c: TtsFields): TtsFields => {
+  const { name: _name, ...payload } = rayaTtsPayload(c.voice_id || '', c.model, rayaConfigFromTts(c))
+  return payload
+}
+
+const formatGoogle = (c: TtsFields): TtsFields => ({
+  voice_name: c.voice_name || c.voice_id || '',
+  ...(c.gender && { gender: c.gender }),
+})
+
+// Any other provider: keep whatever fields are set
+const formatGeneric = (c: TtsFields): TtsFields => ({
+  ...(c.voice_id && { voice_id: c.voice_id }),
+  ...(c.language && { language: c.language }),
+  ...(c.model && { model: c.model }),
+  ...(c.voice_settings && { voice_settings: c.voice_settings }),
+  ...(c.voice_name && { voice_name: c.voice_name }),
+  ...(c.gender && { gender: c.gender }),
+})
+
+const SAVE_FORMATTERS: Record<string, (c: TtsFields) => TtsFields> = {
+  sarvam: formatSarvam,
+  elevenlabs: formatElevenLabs,
+  [RAYA_PROVIDER]: formatRaya,
+  google: formatGoogle,
+}
+
+// voice_settings to keep on the draft after a pick in the voice dialog
+function draftVoiceSettings(provider: string, voiceId: string, model: string | undefined, config: any, prev: any) {
+  switch (provider) {
+    case RAYA_PROVIDER:
+      return rayaTtsPayload(voiceId, model, config).voice_settings
+    case 'elevenlabs':
+      return {
+        similarity_boost: config?.similarityBoost || 0.75,
+        stability: config?.stability || 0.5,
+        style: config?.style || 0,
+        use_speaker_boost: config?.useSpeakerBoost !== undefined ? config.useSpeakerBoost : true,
+        speed: config?.speed || 1.0,
+      }
+    case 'sarvam':
+      // SelectTTS sends `pace` (not `speed`); every param is valid for __init__ on all models.
+      return {
+        target_language_code: config?.target_language_code || config?.language || 'en-IN',
+        pace: Math.min(2.0, Math.max(0.5, config?.pace || config?.speed || 1.0)),
+        loudness: Math.min(2.0, Math.max(0.5, config?.loudness || 1.0)),
+        enable_preprocessing: config?.enable_preprocessing !== undefined ? config.enable_preprocessing : false,
+      }
+    default:
+      return prev
+  }
+}
+
+const DynamicTTSSwitch: React.FC<Readonly<DynamicTTSSwitchProps>> = ({
   dynamicTTSList = [],
   onDynamicTTSChange
 }) => {
@@ -95,75 +188,12 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
 
     // Format the config based on provider type
     const normalizedProvider = currentConfig.name === 'sarvam_tts' ? 'sarvam' : currentConfig.name
-    let configToSave: DynamicTTSConfig = {
+    const formatProvider = SAVE_FORMATTERS[normalizedProvider] ?? formatGeneric
+    const configToSave: DynamicTTSConfig = {
       tool_name: currentConfig.tool_name,
       description: currentConfig.description,
-      name: normalizedProvider
-    }
-
-    if (normalizedProvider === 'sarvam') {
-      // FIX: `temperature` removed — not a valid livekit-plugins-sarvam 1.4.2 param.
-      // All params (pace, loudness, enable_preprocessing) passed for ALL models.
-      // Plugin __init__ accepts them; drops pitch/loudness from API payload for non-v2 internally.
-      const vs = currentConfig.voice_settings || {}
-      configToSave = {
-        ...configToSave,
-        voice_id: currentConfig.voice_id || currentConfig.speaker || '',
-        speaker: currentConfig.speaker || currentConfig.voice_id || '',
-        model: currentConfig.model || 'bulbul:v2',
-        language: currentConfig.language || 'en-IN',
-        ...(currentConfig.voice_settings && {
-          voice_settings: {
-            target_language_code: vs.target_language_code || currentConfig.language || 'en-IN',
-            pace: Math.min(2.0, Math.max(0.5, vs.pace || vs.speed || 1.0)),
-            loudness: Math.min(2.0, Math.max(0.5, vs.loudness || 1.0)),
-            enable_preprocessing: vs.enable_preprocessing !== undefined ? vs.enable_preprocessing : false,
-          }
-        })
-      }
-    } else if (normalizedProvider === 'elevenlabs') {
-      // ElevenLabs format
-      configToSave = {
-        ...configToSave,
-        voice_id: currentConfig.voice_id || '',
-        model: currentConfig.model || 'eleven_multilingual_v2',
-        language: currentConfig.language || 'en',
-        ...(currentConfig.voice_settings && {
-          voice_settings: {
-            similarity_boost: currentConfig.voice_settings.similarity_boost || 0.75,
-            stability: currentConfig.voice_settings.stability || 0.5,
-            style: currentConfig.voice_settings.style || 0,
-            use_speaker_boost: currentConfig.voice_settings.use_speaker_boost !== undefined 
-              ? currentConfig.voice_settings.use_speaker_boost 
-              : true,
-            speed: currentConfig.voice_settings.speed || 1.0
-          }
-        })
-      }
-    } else if (normalizedProvider === RAYA_PROVIDER) {
-      // Raya format: normalised so a stale or hand-edited entry can't ship an unsupported language/rate
-      configToSave = {
-        ...configToSave,
-        ...rayaTtsPayload(currentConfig.voice_id || '', currentConfig.model, rayaConfigFromTts(currentConfig)),
-      }
-    } else if (normalizedProvider === 'google') {
-      // Google format
-      configToSave = {
-        ...configToSave,
-        voice_name: currentConfig.voice_name || currentConfig.voice_id || '',
-        ...(currentConfig.gender && { gender: currentConfig.gender })
-      }
-    } else {
-      // Generic format - include all fields
-      configToSave = {
-        ...configToSave,
-        ...(currentConfig.voice_id && { voice_id: currentConfig.voice_id }),
-        ...(currentConfig.language && { language: currentConfig.language }),
-        ...(currentConfig.model && { model: currentConfig.model }),
-        ...(currentConfig.voice_settings && { voice_settings: currentConfig.voice_settings }),
-        ...(currentConfig.voice_name && { voice_name: currentConfig.voice_name }),
-        ...(currentConfig.gender && { gender: currentConfig.gender })
-      }
+      name: normalizedProvider,
+      ...formatProvider(currentConfig),
     }
 
     if (editingIndex !== null) {
@@ -190,7 +220,6 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
 
   const handleVoiceSelect = (voiceId: string, provider: string, model?: string, config?: any) => {
     const normalizedProvider = provider === 'sarvam_tts' ? 'sarvam' : provider
-    const rayaVoiceSettings = rayaTtsPayload(voiceId, model, config).voice_settings
     setCurrentConfig(prev => ({
       ...prev,
       name: normalizedProvider,
@@ -199,23 +228,7 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
       voice_name: normalizedProvider === 'google' ? voiceId : prev.voice_name,
       model: model || prev.model,
       language: config?.language || config?.target_language_code || prev.language,
-      voice_settings: normalizedProvider === RAYA_PROVIDER ? rayaVoiceSettings : normalizedProvider === 'elevenlabs' ? {
-        similarity_boost: config?.similarityBoost || 0.75,
-        stability: config?.stability || 0.5,
-        style: config?.style || 0,
-        use_speaker_boost: config?.useSpeakerBoost !== undefined ? config.useSpeakerBoost : true,
-        speed: config?.speed || 1.0
-      } : normalizedProvider === 'sarvam' ? (() => {
-        // FIX: read `pace` from config (SelectTTS now sends pace not speed).
-        // FIX: `temperature` removed — not a valid plugin param.
-        // All params valid for __init__ on both models; plugin handles API exclusion internally.
-        return {
-          target_language_code: config?.target_language_code || config?.language || 'en-IN',
-          pace: Math.min(2.0, Math.max(0.5, config?.pace || config?.speed || 1.0)),
-          loudness: Math.min(2.0, Math.max(0.5, config?.loudness || 1.0)),
-          enable_preprocessing: config?.enable_preprocessing !== undefined ? config.enable_preprocessing : false,
-        }
-      })() : prev.voice_settings,
+      voice_settings: draftVoiceSettings(normalizedProvider, voiceId, model, config, prev.voice_settings),
       gender: normalizedProvider === 'google' ? config?.gender : prev.gender
     }))
   }
