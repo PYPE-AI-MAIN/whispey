@@ -21,16 +21,14 @@ import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { OrgOverview, RangePicker } from '@/components/analytics/OrgOverview'
 import AnalyticsCanvas from '@/components/analytics/AnalyticsCanvas'
 import { JourneysTab } from '@/components/analytics/JourneysTab'
-import { OrgQaTab } from '@/components/qa/OrgQaTab'
 import { AgentMultiSelect } from '@/components/analytics/AgentMultiSelect'
 import type { OverviewRange } from '@/hooks/useOrgOverview'
 
-type Tab = 'overview' | 'explore' | 'journeys' | 'qa'
+type Tab = 'overview' | 'explore' | 'journeys'
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'explore', label: 'Explore' },
-  { id: 'journeys', label: 'Journeys' },
-  { id: 'qa', label: 'QA' },
+  { id: 'journeys', label: 'Workflows' },
 ]
 
 /**
@@ -89,7 +87,8 @@ function OrgAnalyticsPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const projectId = params.projectid as string
-  const activeTab = (searchParams.get('tab') as Tab | null) || 'overview'
+  const requestedTab = searchParams.get('tab')
+  const activeTab = TABS.find((t) => t.id === requestedTab)?.id ?? 'overview'
 
   const { data: projects, isLoading: projectLoading } = useSupabaseQuery('pype_voice_projects', {
     select: 'id, name',
@@ -166,12 +165,6 @@ function OrgAnalyticsPageContent() {
         </div>
         <div className={activeTab === 'journeys' ? 'block h-full' : 'hidden'}>
           <JourneysTab projectId={projectId} isActive={activeTab === 'journeys'} />
-        </div>
-        {/* QA reads what the night job already wrote — it does not go through
-            buildQuery.ts, so the shared AgentMultiSelect above does not apply
-            to it. Scoping is per agent row instead. */}
-        <div className={activeTab === 'qa' ? 'block h-full' : 'hidden'}>
-          <OrgQaTab projectId={projectId} isActive={activeTab === 'qa'} />
         </div>
       </div>
     </div>
