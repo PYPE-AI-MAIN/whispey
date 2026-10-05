@@ -302,7 +302,7 @@ function toolSchemas(canWrite: boolean): OpenAI.Chat.ChatCompletionTool[] {
       type: 'function',
       function: {
         name: 'list_agents',
-        description: "List this project's voice agents (id, display_name, extractor_count).",
+        description: "List this project's voice agents (id, display_name, is_active, extractor_count, href). Use the href as-is for any link to an agent.",
         parameters: { type: 'object', properties: {} },
       },
     },
@@ -719,6 +719,7 @@ async function runGetAgentDetails(projectId: string, args: any) {
     result: {
       agent_id: args.agent_id,
       display_name: row?.display_name ?? null,
+      href: `/${projectId}/agents/${args.agent_id}`,
       prompt: assistant.prompt,
       greeting: assistant.first_message_mode?.first_message ?? null,
       voice: { provider: assistant.tts?.provider, voice_id: assistant.tts?.voice_id ?? assistant.tts?.speaker },
@@ -831,6 +832,7 @@ function resolveNextPrompt(args: any, assistant: any): { prompt: string | undefi
 }
 
 function resolveMcpVoice(args: any): { voice?: ReturnType<typeof findMcpVoice> } | { error: string } {
+  if (!args.voice_provider !== !args.voice_id) return { error: 'voice_provider and voice_id must be sent together' }
   if (!(args.voice_provider && args.voice_id)) return {}
   const voice = findMcpVoice(args.voice_provider, args.voice_id)
   return voice ? { voice } : { error: `Voice ${args.voice_provider}/${args.voice_id} is not in the Agent Studio voice list` }
@@ -1229,6 +1231,7 @@ async function runOpenPage(projectId: string, args: any) {
   if (fixed) return { success: true, result: { href: `/${projectId}/${fixed.path}`, label: fixed.label } }
   if (page === 'campaign') {
     if (!campaignId) return { success: false, result: { error: 'campaign_id is required' } }
+    if (!/^[\w-]+$/.test(campaignId)) return { success: false, result: { error: 'Invalid campaign_id' } }
     return { success: true, result: { href: `/${projectId}/campaigns/${campaignId}`, label: 'Campaign' } }
   }
   if (!AGENT_PAGES.has(page)) return { success: false, result: { error: 'Unknown page' } }
@@ -1290,14 +1293,40 @@ async function phoneRowsFor(number: string) {
 
 async function runListPhoneNumbers(projectId: string) {
   const supabase = createServiceRoleClient()
-  const [owned, { trunkId: sharedTrunk }, { data: all }] = await Promise.all([listOwnedNumbers(), resolveInboundTrunk(), supabase.from('pype_voice_phone_numbers').select('phone_number, project_id, trunk_direction, assigned_agent_name, status')])
+  const [owned, { trunkId: sharedTrunk }, { data: all }, { data: agentRows }] = await Promise.all([
+    listOwnedNumbers(),
+    resolveInboundTrunk(),
+    supabase.from('pype_voice_phone_numbers').select('phone_number, project_id, trunk_direction, assigned_agent_id, assigned_agent_name, status'),
+    supabase.from('pype_voice_agents').select('id, display_name, name').eq('project_id', projectId),
+  ])
   const inDb = new Set((all ?? []).map((r: any) => digitsOnly(r.phone_number)))
-  const attached = (all ?? []).filter((r: any) => r.project_id === projectId).map((r: any) => ({ number: r.phone_number, direction: r.trunk_direction, agent: r.assigned_agent_name, status: r.status }))
+  // assigned_agent_id is the source of truth (the phone-numbers page keys off it); assigned_agent_name is a label
+  // that can be empty while the id is set, so resolve the name from the agent row. A number can have several rows
+  // (inbound/outbound) — keep one per number, preferring the one with an agent, as the page does.
+  const agentById = new Map((agentRows ?? []).map((a: any) => [a.id, a.display_name || a.name]))
+  const byNumber = new Map<string, any>()
+  for (const r of (all ?? []).filter((r: any) => r.project_id === projectId)) {
+    const kept = byNumber.get(r.phone_number)
+    if (!kept || (!kept.assigned_agent_id && r.assigned_agent_id)) byNumber.set(r.phone_number, r)
+  }
+  const attached = [...byNumber.values()].map((r: any) => ({
+    number: r.phone_number,
+    direction: r.trunk_direction,
+    agent_id: r.assigned_agent_id ?? null,
+    agent: (r.assigned_agent_id && agentById.get(r.assigned_agent_id)) || r.assigned_agent_name || null,
+    status: r.status,
+  }))
   const available = owned.filter((n) => !inDb.has(digitsOnly(n.number)) && isFreeNumber(n.alias, n.trunkId, sharedTrunk)).map((n) => ({ number: `+${digitsOnly(n.number)}`, type: n.type }))
   return { success: true, result: { attached_in_this_project: attached, available_to_attach: available, ...(available.length ? {} : { note: 'No unassigned numbers are left. Offer to search for a new one (ask country, default IN, and type) and buy it; buying needs a project owner/admin.' }) } }
 }
 
+const PLIVO_NUMBER_TYPES = new Set(['local', 'tollfree', 'mobile', 'national', 'fixed'])
+
 async function runSearchPlivoNumbers(args: any) {
+  const country = String(args.country_iso ?? '')
+  if (!/^[A-Za-z]{2}$/.test(country)) return { success: false, result: { error: 'country_iso must be a 2-letter ISO code, e.g. IN or US' } }
+  if (args.type !== undefined && !PLIVO_NUMBER_TYPES.has(args.type)) return { success: false, result: { error: `type must be one of ${[...PLIVO_NUMBER_TYPES].join(', ')}` } }
+  if (args.pattern !== undefined && !/^\d{1,15}$/.test(String(args.pattern))) return { success: false, result: { error: 'pattern must be digits only, without the country code' } }
   const results = await searchAvailableNumbers({ country_iso: String(args.country_iso ?? ''), type: args.type, pattern: args.pattern })
   return { success: true, result: { options: results.map((n: any) => ({ ...n, number: `+${digitsOnly(n.number)}` })), note: 'Prices are USD per month. Nothing has been bought.' } }
 }
@@ -1624,10 +1653,22 @@ async function readCompletion(stream: AsyncIterable<any>, ctx: TurnContext, turn
 
 /** Runs (or holds for Confirm) one tool call the model asked for, announcing it and its result to the client. */
 async function runToolCall(tc: PendingToolCall, ctx: TurnContext) {
+  // no-argument tools arrive with an empty string; anything else must be a JSON object. A truncated or
+  // malformed payload used to run as {} and surface as a misleading "no such agent" — fail it explicitly.
   let parsedArgs: any = {}
-  try { parsedArgs = JSON.parse(tc.args) } catch {}
+  let argsError: string | null = null
+  if (tc.args.trim()) {
+    try { parsedArgs = JSON.parse(tc.args) } catch { argsError = 'Tool arguments were not valid JSON' }
+    if (!argsError && (parsedArgs === null || typeof parsedArgs !== 'object' || Array.isArray(parsedArgs))) argsError = 'Tool arguments must be a JSON object'
+  }
+  if (argsError) parsedArgs = {}
 
   ctx.controller.enqueue(sseChunk(JSON.stringify({ toolCall: { id: tc.id, name: tc.name, arguments: parsedArgs } })))
+  if (argsError) {
+    const result = { error: `${argsError}. Call the tool again with a complete JSON object.` }
+    ctx.controller.enqueue(sseChunk(JSON.stringify({ toolResult: { id: tc.id, result, success: false, duration_ms: 0 } })))
+    return { parsedArgs, result, success: false }
+  }
 
   const start = Date.now()
   // create_agent/edit_agent never execute here — holding them until an

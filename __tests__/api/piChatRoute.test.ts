@@ -206,11 +206,18 @@ describe('tool calls', () => {
     expect(state.llmCalls[0].tools.map((t: any) => t.function.name)).not.toContain('create_agent')
   })
 
-  it('reports an unknown tool instead of crashing, and survives bad tool arguments', async () => {
-    state.llm.push([{ choices: [{ delta: { tool_calls: [{ index: 0, id: 'call_4', function: { name: 'mystery', arguments: '{not json' } }] }, finish_reason: null }] }, { choices: [{ delta: {}, finish_reason: 'tool_calls' }] }], [text('ok'), stop])
+  it('reports an unknown tool instead of crashing', async () => {
+    state.llm.push(toolCall('call_4', 'mystery', {}), [text('ok'), stop])
     const { frames } = await sse({ projectId: P, message: 'x' })
     expect(frames).toContainEqual({ toolCall: { id: 'call_4', name: 'mystery', arguments: {} } })
     expect(frames.find((f: any) => f.toolResult).toolResult).toMatchObject({ success: false, result: { error: 'Unknown tool "mystery"' } })
+  })
+
+  it.each(['{not json', '[1,2]', 'null', '"text"'])('fails malformed tool arguments (%s) explicitly instead of running the tool with {}', async (raw) => {
+    state.llm.push([{ choices: [{ delta: { tool_calls: [{ index: 0, id: 'call_5', function: { name: 'list_agents', arguments: raw } }] }, finish_reason: null }] }, { choices: [{ delta: {}, finish_reason: 'tool_calls' }] }], [text('ok'), stop])
+    const { frames } = await sse({ projectId: P, message: 'x' })
+    expect(frames.find((f: any) => f.toolResult).toolResult).toMatchObject({ success: false, result: { error: expect.stringContaining('JSON') } })
+    expect(frames.at(-1)).toBe('[DONE]')
   })
 
   it('stops after the maximum number of tool round trips', async () => {
@@ -296,6 +303,11 @@ describe('open_page tool', () => {
     expect((await open({ page: 'phone_settings' })).result).toEqual({ href: `/${P}/agents/sip-management`, label: 'Phone settings' })
     expect((await open({ page: 'api_keys' })).result).toEqual({ href: `/${P}/agents/api-keys`, label: 'Project API key' })
     for (const page of ['bogus', 'toString', 'constructor', '']) expect(await open({ page })).toMatchObject({ success: false, result: { error: 'Unknown page' } })
+  })
+
+  it('refuses a campaign_id that could change the link path', async () => {
+    expect((await open({ page: 'campaign', campaign_id: 'abc-123' })).result).toEqual({ href: `/${P}/campaigns/abc-123`, label: 'Campaign' })
+    for (const campaign_id of ['../agents', 'a/b', 'a?x=1', ' ']) expect(await open({ page: 'campaign', campaign_id })).toMatchObject({ success: false })
   })
 
   it('needs a campaign id for a campaign page', async () => {
