@@ -64,48 +64,68 @@ export default function PiCustomToolForm({
   const [error, setError] = useState('')
   const custom = type === 'custom_function'
 
+  const fail = (message: string) => {
+    setStatus('error')
+    setError(message)
+  }
+
+  // First problem with the form, or null; parsed headers come back with it so they are only parsed once.
+  const checkForm = (): { error: string } | { headers: Record<string, string> } => {
+    if (!name.trim()) return { error: 'Give the tool a name.' }
+    if (!custom) return { headers: {} }
+    if (!/^https?:\/\/\S+$/i.test(apiUrl.trim())) return { error: 'API URL must start with http:// or https://' }
+    const seconds = Number(timeoutSec)
+    if (!Number.isFinite(seconds) || seconds < 1 || seconds > 120) return { error: 'Timeout must be between 1 and 120 seconds.' }
+    if (!headers.trim()) return { headers: {} }
+    const hint = 'Headers must be a JSON object, like {"Authorization":"Bearer TOKEN"}'
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(headers)
+    } catch {
+      return { error: hint }
+    }
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return { error: hint }
+    return { headers: parsed as Record<string, string> }
+  }
+
+  // Not retried automatically: adding a tool is not idempotent, so a lost response could double-add it.
+  // A failure re-enables the button and says what happened so the user can retry on purpose.
   const submit = async () => {
-    setStatus('saving')
+    if (status === 'saving') return
     setError('')
-    let parsedHeaders: Record<string, string> = {}
-    if (custom && headers.trim()) {
-      try {
-        parsedHeaders = JSON.parse(headers)
-      } catch {
-        setStatus('error')
-        setError('Headers must be JSON, like {"Authorization":"Bearer TOKEN"}')
-        return
-      }
+    const checked = checkForm()
+    if ('error' in checked) return fail(checked.error)
+    const parsedHeaders = checked.headers
+    setStatus('saving')
+    try {
+      const res = await fetch('/api/pi/tools', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          agentId,
+          tool: {
+            type,
+            name: name.trim(),
+            description,
+            api_url: apiUrl.trim(),
+            http_method: method,
+            timeout: Number(timeoutSec) || 10,
+            async: asyncExec,
+            headers: parsedHeaders,
+            parameters: params.filter((p) => p.name.trim()).map(({ id: _id, ...rest }) => rest),
+            custom_payload: payload,
+          },
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) return fail(data.error || 'Could not add the tool')
+      try { sessionStorage.setItem(addedKey(toolCallId), name.trim() || 'Tool') } catch {}
+      setSavedName(name.trim() || 'Tool')
+      setStatus('saved')
+    } catch {
+      fail('Could not reach the server. The tool may not have been added — check the agent before trying again.')
     }
-    const res = await fetch('/api/pi/tools', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        projectId,
-        agentId,
-        tool: {
-          type,
-          name,
-          description,
-          api_url: apiUrl,
-          http_method: method,
-          timeout: Number(timeoutSec) || 10,
-          async: asyncExec,
-          headers: parsedHeaders,
-          parameters: params.filter((p) => p.name.trim()).map(({ id: _id, ...rest }) => rest),
-          custom_payload: payload,
-        },
-      }),
-    })
-    const data = await res.json().catch(() => ({}))
-    if (!res.ok) {
-      setStatus('error')
-      setError(data.error || 'Could not add the tool')
-      return
-    }
-    try { sessionStorage.setItem(addedKey(toolCallId), name.trim() || 'Tool') } catch {}
-    setSavedName(name.trim() || 'Tool')
-    setStatus('saved')
   }
 
   if (status === 'saved') {
@@ -189,7 +209,7 @@ export default function PiCustomToolForm({
       <button type="button" disabled={status === 'saving'} onClick={() => void submit()} className="rounded-lg bg-gray-900 px-3 py-1.5 text-[13px] text-white disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900">
         {status === 'saving' ? 'Adding…' : 'Add tool'}
       </button>
-      {error && <p className="text-[12px] text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p role="alert" className="text-[12px] text-red-600 dark:text-red-400">{error}</p>}
     </div>
   )
 }

@@ -1,11 +1,13 @@
 'use client'
 
-import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createContext, memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowUp, Mic } from 'lucide-react'
+import { ArrowUp, Bot, ChevronDown, Mic, PhoneIncoming, ShieldAlert, TrendingUp, Trophy, type LucideIcon } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
-import { internalPiHref } from '@/lib/piLinks'
+import { buildAgentLinkMap, resolvePiHref } from '@/lib/piLinks'
+import { fetchWithBackoff } from '@/lib/piFetch'
+import { DEFAULT_PI_MODEL, PI_MODEL_OPTIONS, isPiModelOption } from '@/lib/piModels'
 import { useVoiceAgent } from '@/hooks/useVoiceAgent'
 import PiCustomToolForm, { type ToolDraft } from '@/components/pi/PiCustomToolForm'
 import { closeOpenMarkdown, nextRevealLength, splitBlocks } from '@/lib/piMarkdown'
@@ -13,6 +15,23 @@ import {
   applyEvent, classifyEvent, consumeSse, failAssistant, navigationTarget, parseSseLine, withToolCallResult,
   type Classified, type ContextUsage, type Message, type ToolCall,
 } from '@/lib/piStream'
+
+const AgentLinksContext = createContext<Map<string, string>>(new Map())
+
+const textOf = (node: React.ReactNode): string => {
+  if (typeof node === 'string' || typeof node === 'number') return String(node)
+  return Array.isArray(node) ? node.map(textOf).join('') : ''
+}
+
+function PiLink({ children, href }: Readonly<{ children?: React.ReactNode; href?: string }>) {
+  const agentLinks = useContext(AgentLinksContext)
+  const target = resolvePiHref(href, textOf(children), agentLinks)
+  // not a path this app serves and no known agent by that name — show the words, drop the link (piLinks.ts)
+  if (!target) return <>{children}</>
+  // new tab for a link Pi drops inline (e.g. naming an agent) — clicking
+  // it shouldn't navigate away from the chat you're in the middle of
+  return <Link href={target} target="_blank" rel="noreferrer" className="text-blue-600 underline underline-offset-2 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">{children}</Link>
+}
 
 const MARKDOWN_COMPONENTS = {
   h1: ({ children }: { children?: React.ReactNode }) => (
@@ -55,14 +74,7 @@ const MARKDOWN_COMPONENTS = {
     <blockquote className="border-l-2 border-gray-300 pl-3 not-first:mt-3 text-gray-600 dark:border-gray-600 dark:text-gray-400">{children}</blockquote>
   ),
   hr: () => <hr className="my-6 border-gray-200 dark:border-gray-800" />,
-  a: ({ children, href }: { children?: React.ReactNode; href?: string }) => {
-    const internal = internalPiHref(href)
-    // not a path this app serves — show the words, drop the link (internalPiHref)
-    if (!internal) return <>{children}</>
-    // new tab for a link Pi drops inline (e.g. naming an agent) — clicking
-    // it shouldn't navigate away from the chat you're in the middle of
-    return <Link href={internal} target="_blank" rel="noreferrer" className="text-blue-600 underline underline-offset-2 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">{children}</Link>
-  },
+  a: PiLink,
 }
 
 export type { Message, ToolCall } from '@/lib/piStream'
@@ -80,6 +92,7 @@ const TOOL_LABELS: Record<string, string> = {
   open_custom_tool_form: 'Opening tool form',
   open_page: 'Opening page',
   list_phone_numbers: 'Checking phone numbers',
+  check_spam_number: 'Checking the number for spam',
   search_plivo_numbers: 'Searching Plivo numbers',
   buy_plivo_number: 'Buying the number',
   attach_inbound_number: 'Attaching the number',
@@ -87,11 +100,14 @@ const TOOL_LABELS: Record<string, string> = {
 
 const THINKING_PHRASES = ['Thinking', 'Still working on it', 'Putting the answer together']
 
-const SUGGESTIONS = [
-  'How is call volume trending over the last 30 days?',
-  'Which agent handled the most calls, and how did they perform?',
-  'Walk me through what happens when you create a new voice agent here.',
-  'Attach an inbound phone number to one of my agents.',
+// `send` asks straight away; `fill` types the start of the question into the box for the user to finish
+// (a spam check needs a number, so sending it as-is would only make Pi ask for one).
+const SUGGESTIONS: { label: string; icon: LucideIcon; prompt: string; mode: 'send' | 'fill' }[] = [
+  { label: 'Call volume over the last 30 days', icon: TrendingUp, prompt: 'How is call volume trending over the last 30 days?', mode: 'send' },
+  { label: 'Top agent and how it performed', icon: Trophy, prompt: 'Which agent handled the most calls, and how did they perform?', mode: 'send' },
+  { label: 'Check if a number is spam', icon: ShieldAlert, prompt: 'Is this number spam: ', mode: 'fill' },
+  { label: 'Attach an inbound number to an agent', icon: PhoneIncoming, prompt: 'Attach an inbound phone number to one of my agents.', mode: 'send' },
+  { label: 'Create a new voice agent', icon: Bot, prompt: 'Walk me through what happens when you create a new voice agent here.', mode: 'send' },
 ]
 
 
@@ -456,9 +472,9 @@ function PhoneActionOutcome({ tc, cancelled }: Readonly<{ tc: ToolCall; cancelle
 }
 
 function ToolCallBlock({
-  tc, projectId, latest, resolving, onChoose, onResolve,
+  tc, projectId, latest, resolving, resolveError, onChoose, onResolve,
 }: Readonly<{
-  tc: ToolCall; projectId: string; latest: LatestToolIds; resolving: boolean
+  tc: ToolCall; projectId: string; latest: LatestToolIds; resolving: boolean; resolveError?: string
   onChoose: (agentName: string) => void; onResolve: (toolCallId: string, decision: 'confirm' | 'cancel') => void
 }>) {
   const target = tc.id === latest.voice ? voiceTarget(tc) : null
@@ -513,6 +529,7 @@ function ToolCallBlock({
           </div>
         </div>
       ) : null}
+      {pending && resolveError && <p role="alert" className="mt-2 max-w-md text-[12px] text-red-600 dark:text-red-400">{resolveError}</p>}
       {cancelled && <p className="mt-2 text-[12px] text-gray-400">Cancelled.</p>}
       <PhoneActionOutcome tc={tc} cancelled={cancelled} />
     </div>
@@ -539,6 +556,19 @@ export default function PiChatView({
   const router = useRouter()
   const [messages, setMessages] = useState<Message[]>(initialMessages ?? [])
   const [input, setInput] = useState('')
+  // Remembered per browser, not per chat — switching mid-chat is fine, the history is model-agnostic.
+  // The server re-checks the value against its own list, so a stale or edited one just falls back to the default.
+  const [model, setModel] = useState<string>(DEFAULT_PI_MODEL)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('pi-model')
+      if (isPiModelOption(saved)) setModel(saved)
+    } catch {}
+  }, [])
+  const chooseModel = (value: string) => {
+    setModel(value)
+    try { localStorage.setItem('pi-model', value) } catch {}
+  }
   const [isStreaming, setIsStreaming] = useState(false)
 
   // `messages` only reads `initialMessages` once, at mount. If this component
@@ -626,14 +656,22 @@ export default function PiChatView({
   }, [scrollToBottom])
 
   const [resolvingIds, setResolvingIds] = useState<Set<string>>(new Set())
+  const [resolveErrors, setResolveErrors] = useState<Record<string, string>>({})
+  const resolvingRef = useRef(new Set<string>())
+  const lastTurnRef = useRef<{ text: string; history: Message[] } | null>(null)
+  const [retryable, setRetryable] = useState(false)
 
   // The button's own click handler — never goes through the model. The server
   // looks up what was actually proposed from its own stored record of this
   // exact toolCallId and executes (or cancels) that, ignoring anything this
   // client might claim about it.
+  // Not retried automatically: Confirm can spend money. A failed click leaves the card
+  // actionable with the reason shown, so the user decides whether to try again.
   const resolvePendingAction = useCallback(async (toolCallId: string, decision: 'confirm' | 'cancel') => {
-    if (!sessionIdRef.current) return
+    if (!sessionIdRef.current || resolvingRef.current.has(toolCallId)) return // a second click before the first settles
+    resolvingRef.current.add(toolCallId)
     setResolvingIds((prev) => new Set(prev).add(toolCallId))
+    setResolveErrors(({ [toolCallId]: _drop, ...rest }) => rest)
     try {
       const res = await fetch('/api/pi/chat', {
         method: 'POST',
@@ -641,10 +679,17 @@ export default function PiChatView({
         body: JSON.stringify({ projectId, sessionId: sessionIdRef.current, resolveAction: { toolCallId, decision } }),
       })
       const data = await res.json().catch(() => null)
-      const result = res.ok ? data.result : { error: data?.error ?? 'Could not complete that action' }
-      const success = res.ok ? data.success : false
-      setMessages((prev) => withToolCallResult(prev, toolCallId, result, success))
+      if (res.ok) {
+        setMessages((prev) => withToolCallResult(prev, toolCallId, data.result, data.success))
+      } else if (res.status === 409) {
+        setResolveErrors((prev) => ({ ...prev, [toolCallId]: 'This was already handled — reload the chat to see the result.' }))
+      } else {
+        setResolveErrors((prev) => ({ ...prev, [toolCallId]: `${data?.error ?? 'Could not complete that action'}. Nothing was changed — you can try again.` }))
+      }
+    } catch {
+      setResolveErrors((prev) => ({ ...prev, [toolCallId]: 'Could not reach the server. Check your connection — the action may not have run; reload the chat before trying again.' }))
     } finally {
+      resolvingRef.current.delete(toolCallId)
       setResolvingIds((prev) => {
         const next = new Set(prev)
         next.delete(toolCallId)
@@ -672,6 +717,7 @@ export default function PiChatView({
         const href = navigationTarget(event.toolResult, projectId)
         if (href) router.push(href)
       }
+      if (event.kind === 'error') setRetryable(true)
       setMessages((prev) => applyEvent(prev, assistantId, event))
     } catch {
       // malformed chunk
@@ -685,27 +731,32 @@ export default function PiChatView({
     const assistantId = crypto.randomUUID()
     const assistantMsg: Message = { id: assistantId, role: 'assistant', content: '', isFinal: false, toolCalls: [] }
     setMessages([...historyBefore, userMsg, assistantMsg])
+    lastTurnRef.current = { text: userContent, history: historyBefore }
+    setRetryable(false)
     setIsStreaming(true)
 
     try {
-      const res = await fetch('/api/pi/chat', {
+      const res = await fetchWithBackoff('/api/pi/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userContent, projectId, sessionId: sessionIdRef.current }),
+        body: JSON.stringify({ message: userContent, projectId, sessionId: sessionIdRef.current, model }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Request failed' }))
         setMessages((prev) => failAssistant(prev, assistantId, err.error ?? 'Error'))
+        setRetryable(res.status >= 500 || res.status === 429)
         return
       }
-      await consumeSse(res.body!, (line) => handleStreamLine(line, assistantId))
+      if (!res.body) throw new Error('The reply came back empty')
+      await consumeSse(res.body, (line) => handleStreamLine(line, assistantId))
       onTurnComplete?.()
     } catch (err: any) {
       setMessages((prev) => failAssistant(prev, assistantId, err?.message ?? 'Network error'))
+      setRetryable(true)
     } finally {
       setIsStreaming(false)
     }
-  }, [isStreaming, projectId, readOnly, onTurnComplete, pinToBottom, handleStreamLine])
+  }, [isStreaming, projectId, readOnly, model, onTurnComplete, pinToBottom, handleStreamLine])
 
   const autoGrow = useCallback(() => {
     const el = textareaRef.current
@@ -713,6 +764,16 @@ export default function PiChatView({
     el.style.height = 'auto'
     el.style.height = `${Math.min(el.scrollHeight, MAX_TEXTAREA_PX)}px`
   }, [])
+
+  const fillInput = (text: string) => {
+    setInput(text)
+    requestAnimationFrame(() => {
+      const el = textareaRef.current
+      if (!el) return
+      el.focus()
+      el.setSelectionRange(text.length, text.length)
+    })
+  }
 
   const handleSubmit = () => {
     const text = input
@@ -745,11 +806,14 @@ export default function PiChatView({
   // attempts could never do correctly. The ephemeral token (minted by
   // /api/pi/realtime-token) is the only thing our server touches; audio and
   // transcripts flow browser-to-OpenAI directly.
+  const micConnectingRef = useRef(false)
   const toggleRecording = async () => {
     if (recording) {
       stopRecording()
       return
     }
+    if (micConnectingRef.current) return
+    micConnectingRef.current = true
     setMicError(null)
     try {
       const tokenRes = await fetch('/api/pi/realtime-token', { method: 'POST' })
@@ -817,10 +881,13 @@ export default function PiChatView({
     } catch (err: any) {
       stopRecording()
       setMicError(err?.message ?? 'Microphone access was denied — allow it in your browser’s site settings.')
+    } finally {
+      micConnectingRef.current = false
     }
   }
 
   const latest = latestToolIds(messages)
+  const agentLinks = useMemo(() => buildAgentLinkMap(messages, projectId), [messages, projectId])
   const micSupported = !!globalThis.navigator?.mediaDevices?.getUserMedia && globalThis.RTCPeerConnection !== undefined
 
   const showContextHint = messages.length > 0 || !!sessionIdRef.current
@@ -840,18 +907,19 @@ export default function PiChatView({
             <div className="pt-[8vh] sm:pt-[10vh]">
               <h1 className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-50 sm:text-[28px]">Hi, I'm π.</h1>
               <p className="mt-2 max-w-xl text-[15px] leading-7 text-gray-600 dark:text-gray-400">
-                Ask me about your call analytics, create or update an agent, or attach an inbound phone number — right here in this chat.
+                Ask about your call analytics, create or update agents, attach inbound numbers, or check whether a phone number is spam — right here in this chat.
               </p>
 
               <div className="mt-6 flex flex-wrap gap-2">
-                {SUGGESTIONS.map((s) => (
+                {SUGGESTIONS.map(({ label, icon: Icon, prompt, mode }) => (
                   <button
-                    key={s}
+                    key={label}
                     type="button"
-                    onClick={() => sendMessage(s, messages)}
-                    className="rounded-full border border-gray-200 bg-white px-3.5 py-2 text-left text-[13px] leading-snug text-gray-700 transition hover:border-gray-300 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-700 dark:hover:bg-gray-900/80"
+                    onClick={() => (mode === 'send' ? sendMessage(prompt, messages) : fillInput(prompt))}
+                    className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3.5 py-2 text-left text-[13px] leading-snug text-gray-700 transition hover:border-gray-300 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-700 dark:hover:bg-gray-900/80"
                   >
-                    {s}
+                    <Icon aria-hidden className="h-3.5 w-3.5 shrink-0 text-gray-400 dark:text-gray-500" />
+                    {label}
                   </button>
                 ))}
               </div>
@@ -873,7 +941,7 @@ export default function PiChatView({
                       ))}
                     </div>
                   )}
-                  {m.content && <StreamedMarkdown content={m.content} isFinal={m.isFinal} />}
+                  {m.content && <AgentLinksContext.Provider value={agentLinks}><StreamedMarkdown content={m.content} isFinal={m.isFinal} /></AgentLinksContext.Provider>}
                   {!m.content && !m.isFinal && <ThinkingIndicator />}
                   {m.toolCalls?.map((tc) => (
                     <ToolCallBlock
@@ -881,7 +949,8 @@ export default function PiChatView({
                       tc={tc}
                       projectId={projectId}
                       latest={latest}
-                      resolving={resolvingIds.has(tc.id)}
+                      resolving={resolvingIds.has(tc.id) || isStreaming}
+                      resolveError={resolveErrors[tc.id]}
                       onChoose={(name) => sendMessage(name, messages)}
                       onResolve={resolvePendingAction}
                     />
@@ -892,6 +961,17 @@ export default function PiChatView({
           </div>
         </div>
       </div>
+        {retryable && !isStreaming && !readOnly && (
+          <div className="absolute bottom-3 right-4">
+            <button
+              type="button"
+              onClick={() => { const t = lastTurnRef.current; if (t) sendMessage(t.text, t.history) }}
+              className="rounded-full border border-red-200 bg-white px-3 py-1 text-[12px] text-red-600 shadow-sm hover:bg-red-50 dark:border-red-900 dark:bg-gray-900 dark:text-red-400"
+            >
+              Try again
+            </button>
+          </div>
+        )}
         {!atBottom && messages.length > 0 && (
           <button
             type="button"
@@ -958,8 +1038,24 @@ export default function PiChatView({
               )
             })()}
             <div className="mt-2 flex items-center justify-center gap-1.5">
+              {!readOnly && (
+                // appearance-none drops the browser's own arrow (which sits at a different offset on every OS);
+                // the chevron below is drawn at a fixed spot so it lines up with the text and the chip beside it
+                <span className="relative inline-flex">
+                  <select
+                    aria-label="Model"
+                    value={model}
+                    disabled={isStreaming}
+                    onChange={(e) => chooseModel(e.target.value)}
+                    className="appearance-none rounded-full border border-gray-200 bg-white py-0.5 pl-2.5 pr-6 text-[10px] font-medium leading-4 text-gray-500 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
+                  >
+                    {PI_MODEL_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                  </select>
+                  <ChevronDown aria-hidden className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400" />
+                </span>
+              )}
               <span
-                className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
+                className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-0.5 text-[10px] font-medium leading-4 text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
                 title="Phone numbers are masked before reaching the model, both when a field is deliberately grouped by and as a general backstop over every tool result — never sent to the LLM in full."
               >
                 PII redacted

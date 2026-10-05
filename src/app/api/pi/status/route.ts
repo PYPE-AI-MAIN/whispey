@@ -2,6 +2,7 @@
 
 import { NextResponse } from 'next/server'
 import { PI_MODEL_HISTORY_TURNS } from '@/lib/piPlatformSchema'
+import { PI_MODEL_OPTIONS, piModels } from '@/lib/piModels'
 import { auth } from '@clerk/nextjs/server'
 
 export const runtime = 'nodejs'
@@ -16,9 +17,13 @@ export async function GET() {
   if (hasAzure) provider = 'azure'
   else if (hasOpenAi) provider = 'openai'
 
+  const models = piModels(process.env, hasAzure)
+
   return NextResponse.json({
     provider,
-    model: process.env.AZURE_DEPLOYMENT_NAME || (hasOpenAi ? 'gpt-4o-mini' : null),
+    model: provider === 'none' ? null : models.primary,
+    fallbackModel: provider === 'none' ? null : models.fallback,
+    selectableModels: provider === 'azure' ? PI_MODEL_OPTIONS : [],
     azureEndpointConfigured: !!process.env.AZURE_OPENAI_ENDPOINT,
     azureKeyConfigured: !!process.env.AZURE_OPENAI_API_KEY,
     openAiKeyConfigured: hasOpenAi,
