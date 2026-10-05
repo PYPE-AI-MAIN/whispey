@@ -99,14 +99,14 @@ function toolResultLimit(toolName: string): number {
 // field it came from or whether we specifically anticipated that path.
 function redactPhoneLikeStrings(value: unknown): unknown {
   if (typeof value === 'string') {
-    return value.replace(/\+?\d[\d\s\-().]{7,16}\d/g, (match, offset: number, full: string) => {
+    return value.replaceAll(/\+?\d[\d\s\-().]{7,16}\d/g, (match, offset: number, full: string) => {
       // a UUID/hash segment has a hex letter immediately touching a digit run
       // (agent_id, call_id) — a real phone number never does. Reject anything
       // adjacent to one rather than risk mangling an id the model needs intact.
       const before = full[offset - 1] ?? ''
       const after = full[offset + match.length] ?? ''
       if (/[a-fA-F]/.test(before) || /[a-fA-F]/.test(after)) return match
-      const digits = match.replace(/\D/g, '')
+      const digits = match.replaceAll(/\D/g, '')
       if (digits.length < 10 || digits.length > 15) return match
       return `***${digits.slice(-4)}`
     })
@@ -202,6 +202,7 @@ function pinnedAgent(history: StoredMessage[]): { id: string; name: string } | n
 
 function systemPrompt(projectId: string, canWrite: boolean, history: StoredMessage[]) {
   const extra = process.env.PI_SYSTEM_PROMPT_APPEND?.trim()
+  const extraBlock = extra ? `\nOrganization-specific instructions:\n${extra}` : ''
   const pinned = pinnedAgent(history)
   const pinnedLine = pinned
     ? `PINNED AGENT (saved for this chat): "${pinned.name}" agent_id=${pinned.id}. Default to this for a later prompt edit, tool, or test call — but if the message names or clearly describes a DIFFERENT agent, re-resolve via list_agents instead of forcing the pinned one (see AGENT SCOPE below). Do not ask which agent when the pinned one is clearly still the right one.`
@@ -225,7 +226,7 @@ ${PI_ANALYTICS_RECIPES_DOC}
 
 When create_agent or edit_agent fails, tell the user the exact error and details from the tool result (quota, voice backend, unauthorized, validation). Do not say "try again" without the reason.
 
-${extra ? `\nOrganization-specific instructions:\n${extra}` : ''}`
+${extraBlock}`
 }
 
 // --- Fixed tool registry, scoped to one project_id per request ---
@@ -616,8 +617,8 @@ async function runCreateAgent(projectId: string, args: any) {
       return {
         success: false,
         result: {
-          error: (data as any)?.error ?? `Agent create failed (HTTP ${resp.status})`,
-          details: (data as any)?.details,
+          error: data?.error ?? `Agent create failed (HTTP ${resp.status})`,
+          details: data?.details,
           voice_backend: getPypeApiBaseUrlForServer('classic') ?? 'not configured',
         },
       }
@@ -1031,7 +1032,7 @@ async function correctFieldRefs(rawSpec: Record<string, unknown>, agentIds: stri
   const byLeaf = new Map<string, { col: string; path?: string[] }>()
   for (const row of data ?? []) {
     const path = (row.path ?? []) as string[]
-    const leaf = (path.length ? path[path.length - 1] : row.col)?.toLowerCase()
+    const leaf = (path.length ? path.at(-1) : row.col)?.toLowerCase()
     if (leaf && !byLeaf.has(leaf)) byLeaf.set(leaf, { col: row.col, path: path.length ? path : undefined })
   }
   for (const r of needsFix) {
@@ -1055,7 +1056,9 @@ async function runQueryAnalytics(projectId: string, args: any) {
   // instead of nesting them under `spec` as the tool schema requires — seen in
   // practice, and silently correcting it beats failing a query whose shape was
   // otherwise exactly right
-  const rawSpec = args.spec && typeof args.spec === 'object' ? args.spec : (args.agg || args.range ? args : {})
+  let rawSpec: any = {}
+  if (args.spec && typeof args.spec === 'object') rawSpec = args.spec
+  else if (args.agg || args.range) rawSpec = args
   const correctedSpec = await correctFieldRefs(rawSpec, resolved.ctx.agentIds)
 
   let spec
@@ -1070,7 +1073,7 @@ async function runQueryAnalytics(projectId: string, args: any) {
   const dimensionIsPhone = !!spec.dimension && isPhoneField(spec.dimension.field)
   const maskPhone = (v: unknown) => {
     if (typeof v !== 'string') return v
-    const digits = v.replace(/\D/g, '')
+    const digits = v.replaceAll(/\D/g, '')
     return digits.length >= 7 ? `***${digits.slice(-4)}` : v
   }
 
@@ -1087,7 +1090,7 @@ async function runQueryAnalytics(projectId: string, args: any) {
       result: {
         data: simplified.length ? simplified : rows,
         meta: plan.meta,
-        note: plan.meta.bucket !== 'none' ? 'Each row is one time bucket with value = metric for that period.' : undefined,
+        note: plan.meta.bucket === 'none' ? undefined : 'Each row is one time bucket with value = metric for that period.',
       },
     }
   } catch (err: any) {
@@ -1163,13 +1166,10 @@ async function runOpenPage(projectId: string, args: any) {
     const href = pipecat ? `${base}/config/pipecat/knowledgebase` : `${base}/knowledge`
     return { success: true, result: { href, label: `${name} knowledge base` } }
   }
-  const href = pipecat
-    ? `${base}/config/pipecat`
-    : data.agent_type === 'livekit'
-      ? `${base}/config/livekit`
-      : config.workflow || config.workflowMode
-        ? `${base}/workflow`
-        : `${base}/config`
+  let href = `${base}/config`
+  if (pipecat) href = `${base}/config/pipecat`
+  else if (data.agent_type === 'livekit') href = `${base}/config/livekit`
+  else if (config.workflow || config.workflowMode) href = `${base}/workflow`
   return { success: true, result: { href, label: `${name} config` } }
 }
 
@@ -1270,8 +1270,11 @@ async function runAttachInboundNumber(projectId: string, args: any) {
   if (!owned) return { success: false, result: { error: 'That number is not on the Plivo account. Buy it first.' } }
   if (rows.some((r: any) => r.project_id !== projectId)) return { success: false, result: { error: 'That number is already used by another project' } }
   const { trunkId } = await resolveInboundTrunk()
-  const currentTrunk = owned.application.match(/Zentrunk\/Trunk\/(\d+)/)?.[1] ?? null
-  if (!rows.length && !isFreeNumber(owned.alias, currentTrunk, trunkId)) return { success: false, result: { error: `That number looks in use${owned.alias ? ` (labelled "${owned.alias}")` : ' on another trunk'}. Pick an unassigned number.` } }
+  const currentTrunk = /Zentrunk\/Trunk\/(\d+)/.exec(owned.application)?.[1] ?? null
+  if (!rows.length && !isFreeNumber(owned.alias, currentTrunk, trunkId)) {
+    const labelled = owned.alias ? ` (labelled "${owned.alias}")` : ' on another trunk'
+    return { success: false, result: { error: `That number looks in use${labelled}. Pick an unassigned number.` } }
+  }
 
   const alias = inboundAlias(project.name, number)
   const prevApp = owned.application.match(/(?:Zentrunk\/Trunk|Application)\/(\d+)/)?.[1] ?? null
@@ -1319,26 +1322,40 @@ async function pendingPreview(projectId: string, name: string, args: any): Promi
   return undefined
 }
 
+type ToolRunner = (projectId: string, userId: string, args: any) => Promise<any>
+
+const analyticsQuery: Parameters<typeof runCallVolumeTrend>[1] = (pid, a) => runQueryAnalytics(pid, a)
+
+const READ_TOOLS: Record<string, ToolRunner> = {
+  get_call_volume_trend: (pid, _uid, args) => runCallVolumeTrend(pid, analyticsQuery, args),
+  get_completion_insights: (pid, _uid, args) => runCompletionInsights(pid, analyticsQuery, runListAnalyticsFields, args),
+  list_agents: (pid) => runListAgents(pid),
+  list_analytics_fields: (pid, _uid, args) => runListAnalyticsFields(pid, args),
+  search_field_definitions: (pid, _uid, args) => runSearchFieldDefinitions(pid, args),
+  query_analytics: (pid, _uid, args) => runQueryAnalytics(pid, args),
+  get_talk_link: (pid, _uid, args) => runGetTalkLink(pid, args),
+  open_page: (pid, _uid, args) => runOpenPage(pid, args),
+  get_agent_details: (pid, _uid, args) => runGetAgentDetails(pid, args),
+}
+
+// everything here needs a non-viewer role; create/edit/buy/attach are additionally held behind a Confirm click (see POST)
+const WRITE_TOOLS: Record<string, ToolRunner> = {
+  open_custom_tool_form: (pid, _uid, args) => runOpenCustomToolForm(pid, args),
+  create_agent: (pid, _uid, args) => runCreateAgent(pid, args),
+  edit_agent: (pid, uid, args) => runEditAgent(pid, uid, args),
+  list_phone_numbers: (pid) => runListPhoneNumbers(pid),
+  search_plivo_numbers: (_pid, _uid, args) => runSearchPlivoNumbers(args),
+  buy_plivo_number: (pid, _uid, args) => runBuyPlivoNumber(pid, args),
+  attach_inbound_number: (pid, _uid, args) => runAttachInboundNumber(pid, args),
+}
+
 async function executeTool(projectId: string, userId: string, canWrite: boolean, name: string, args: any) {
-  const query: Parameters<typeof runCallVolumeTrend>[1] = (pid, a) => runQueryAnalytics(pid, a)
   try {
-    if (name === 'get_call_volume_trend') return await runCallVolumeTrend(projectId, query, args)
-    if (name === 'get_completion_insights') return await runCompletionInsights(projectId, query, runListAnalyticsFields, args)
-    if (name === 'list_agents') return await runListAgents(projectId)
-    if (name === 'list_analytics_fields') return await runListAnalyticsFields(projectId, args)
-    if (name === 'search_field_definitions') return await runSearchFieldDefinitions(projectId, args)
-    if (name === 'query_analytics') return await runQueryAnalytics(projectId, args)
-    if (name === 'get_talk_link') return await runGetTalkLink(projectId, args)
-    if (name === 'open_page') return await runOpenPage(projectId, args)
-    if (name === 'get_agent_details') return await runGetAgentDetails(projectId, args)
+    const read = READ_TOOLS[name]
+    if (read) return await read(projectId, userId, args)
     if (!canWrite) return { success: false, result: { error: 'Viewer access — cannot create or edit agents' } }
-    if (name === 'open_custom_tool_form') return await runOpenCustomToolForm(projectId, args)
-    if (name === 'create_agent') return await runCreateAgent(projectId, args)
-    if (name === 'edit_agent') return await runEditAgent(projectId, userId, args)
-    if (name === 'list_phone_numbers') return await runListPhoneNumbers(projectId)
-    if (name === 'search_plivo_numbers') return await runSearchPlivoNumbers(args)
-    if (name === 'buy_plivo_number') return await runBuyPlivoNumber(projectId, args)
-    if (name === 'attach_inbound_number') return await runAttachInboundNumber(projectId, args)
+    const write = WRITE_TOOLS[name]
+    if (write) return await write(projectId, userId, args)
     return { success: false, result: { error: `Unknown tool "${name}"` } }
   } catch (err: any) {
     return { success: false, result: { error: err?.message ?? 'Tool execution failed' } }
@@ -1358,7 +1375,7 @@ async function generateTitle(client: OpenAI, model: string, firstMessage: string
       ],
     })
     const title = resp.choices[0]?.message?.content?.trim()
-    return title ? title.replace(/^["']|["']$/g, '').slice(0, 120) : null
+    return title ? title.replaceAll(/^["']|["']$/g, '').slice(0, 120) : null
   } catch {
     return null
   }
@@ -1400,14 +1417,14 @@ export async function POST(request: NextRequest) {
       const tcIndex = msgIndex === -1 ? -1 : sessionHistory[msgIndex].toolCalls!.findIndex((t) => t.id === toolCallId)
       if (msgIndex === -1 || tcIndex === -1) return NextResponse.json({ error: 'That action is no longer in this chat' }, { status: 404 })
       const storedCall = sessionHistory[msgIndex].toolCalls![tcIndex]
-      if (!(storedCall.result as any)?.__pending) return NextResponse.json({ error: 'That action was already resolved' }, { status: 409 })
+      if (!storedCall.result?.__pending) return NextResponse.json({ error: 'That action was already resolved' }, { status: 409 })
 
       const outcome = decision === 'cancel'
         ? { result: { __cancelled: true }, success: true }
         : await executeTool(projectId, userId, canWrite, storedCall.name, storedCall.arguments)
 
       const updatedHistory = sessionHistory.map((m, i) =>
-        i !== msgIndex ? m : { ...m, toolCalls: m.toolCalls!.map((t, j) => (j === tcIndex ? { ...t, ...outcome } : t)) }
+        i === msgIndex ? { ...m, toolCalls: m.toolCalls!.map((t, j) => (j === tcIndex ? { ...t, ...outcome } : t)) } : m
       )
       await supabase.from('pi_sessions').update({ messages: updatedHistory, updated_at: new Date().toISOString() }).eq('id', incomingSessionId)
       return NextResponse.json({ ...outcome, toolCallId })

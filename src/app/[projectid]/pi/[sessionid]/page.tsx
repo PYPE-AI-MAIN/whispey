@@ -64,7 +64,7 @@ export default function PiSessionPage() {
       sessionId={sessionId}
       initialMessages={initialMessages}
       readOnly={!isOwner}
-      readOnlyLabel={!isOwner ? `Viewing ${data.user_email}'s conversation (read-only)` : undefined}
+      readOnlyLabel={isOwner ? undefined : `Viewing ${data.user_email}'s conversation (read-only)`}
       onTurnComplete={() => queryClient.invalidateQueries({ queryKey: ['pi-sessions', projectId] })}
     />
   )

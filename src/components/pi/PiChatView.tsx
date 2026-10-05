@@ -201,29 +201,37 @@ function agentSelector(tc: ToolCall): Array<{ id: string; display_name: string }
 // create_agent/edit_agent never execute server-side until a button click (see
 // route.ts) — this reads the __pending marker and builds the human-readable
 // summary for what that click will actually do.
-function pendingAction(tc: ToolCall): { action: string; summary: string } | null {
-  if (!['create_agent', 'edit_agent', 'buy_plivo_number', 'attach_inbound_number'].includes(tc.name) || !tc.result?.__pending) return null
-  const args = tc.arguments ?? {}
-  const pv = tc.result?.preview
-  if (tc.name === 'buy_plivo_number') {
-    return {
-      action: tc.name,
-      summary: pv?.monthly_usd
-        ? `Buy ${pv.number}${pv.city ? ` (${pv.city})` : ''} for $${Number(pv.monthly_usd).toFixed(2)}/month${Number(pv.setup_usd) ? ` + $${Number(pv.setup_usd).toFixed(2)} setup` : ''}. This charges your Plivo account.`
-        : `Buy ${args.number ?? 'this number'} — price could not be confirmed, it may no longer be available.`,
-    }
-  }
-  if (tc.name === 'attach_inbound_number') {
-    return {
-      action: tc.name,
-      summary: pv?.agent
-        ? `Attach ${pv.number} to "${pv.agent}" for inbound calls, named ${pv.alias}.`
-        : `Attach ${args.number ?? 'this number'} for inbound calls.`,
-    }
-  }
-  if (tc.name === 'create_agent') {
-    return { action: tc.name, summary: `Create a new agent named "${args.display_name ?? args.name ?? 'Untitled'}"` }
-  }
+function composeInput(recording: boolean, partialText: string, input: string): string {
+  if (!recording || !partialText) return input
+  return input ? `${input} ${partialText}` : partialText
+}
+
+function usageBarColor(pct: number): string {
+  if (pct >= 90) return 'bg-red-500'
+  return pct >= 70 ? 'bg-amber-500' : 'bg-gray-500'
+}
+
+const CONFIRMED_TOOLS = new Set(['create_agent', 'edit_agent', 'buy_plivo_number', 'attach_inbound_number'])
+
+function buySummary(pv: any, args: any): string {
+  if (!pv?.monthly_usd) return `Buy ${args.number ?? 'this number'} — price could not be confirmed, it may no longer be available.`
+  const where = pv.city ? ` (${pv.city})` : ''
+  const setup = Number(pv.setup_usd) ? ` + $${Number(pv.setup_usd).toFixed(2)} setup` : ''
+  return `Buy ${pv.number}${where} for $${Number(pv.monthly_usd).toFixed(2)}/month${setup}. This charges your Plivo account.`
+}
+
+function attachSummary(pv: any, args: any): string {
+  if (!pv?.agent) return `Attach ${args.number ?? 'this number'} for inbound calls.`
+  return `Attach ${pv.number} to "${pv.agent}" for inbound calls, named ${pv.alias}.`
+}
+
+function dispositionsSummary(args: any): string {
+  const verb = args.dispositions_mode === 'replace' ? 'replace all dispositions with' : 'add/update'
+  const plural = args.dispositions.length === 1 ? '' : 's'
+  return `${verb} ${args.dispositions.length} disposition${plural} (${args.dispositions.map((d: any) => d.key).join(', ')})`
+}
+
+function editSummary(args: any): string {
   const parts: string[] = []
   if (args.prompt !== undefined) parts.push('replace the prompt')
   if (args.prompt_patch) parts.push('edit part of the prompt')
@@ -232,10 +240,18 @@ function pendingAction(tc: ToolCall): { action: string; summary: string } | null
   if (args.llm_model !== undefined) parts.push(`change the LLM to ${args.llm_model}`)
   if (args.variables !== undefined) parts.push('update prompt variables')
   if (args.extractor_variables !== undefined) parts.push('update extractor variables')
-  if (Array.isArray(args.dispositions)) {
-    parts.push(`${args.dispositions_mode === 'replace' ? 'replace all dispositions with' : 'add/update'} ${args.dispositions.length} disposition${args.dispositions.length === 1 ? '' : 's'} (${args.dispositions.map((d: any) => d.key).join(', ')})`)
-  }
-  return { action: tc.name, summary: parts.length ? `Update this agent: ${parts.join(', ')}` : 'Update this agent' }
+  if (Array.isArray(args.dispositions)) parts.push(dispositionsSummary(args))
+  return parts.length ? `Update this agent: ${parts.join(', ')}` : 'Update this agent'
+}
+
+function pendingAction(tc: ToolCall): { action: string; summary: string } | null {
+  if (!CONFIRMED_TOOLS.has(tc.name) || !tc.result?.__pending) return null
+  const args = tc.arguments ?? {}
+  const pv = tc.result?.preview
+  if (tc.name === 'buy_plivo_number') return { action: tc.name, summary: buySummary(pv, args) }
+  if (tc.name === 'attach_inbound_number') return { action: tc.name, summary: attachSummary(pv, args) }
+  if (tc.name === 'create_agent') return { action: tc.name, summary: `Create a new agent named "${args.display_name ?? args.name ?? 'Untitled'}"` }
+  return { action: tc.name, summary: editSummary(args) }
 }
 
 const CALL_STATE: Record<string, string> = {
@@ -245,14 +261,19 @@ const CALL_STATE: Record<string, string> = {
   speaking: 'Speaking',
 }
 
+function pickLevel(speaking: boolean, active: boolean, whenSpeaking: number, whenActive: number, idle: number): number {
+  if (speaking) return whenSpeaking
+  return active ? whenActive : idle
+}
+
 function SoundBars({ active, speaking }: Readonly<{ active: boolean; speaking: boolean }>) {
   const [tick, setTick] = useState(0)
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), active ? 120 : 700)
     return () => clearInterval(id)
   }, [active])
-  const spread = speaking ? 0.55 : active ? 0.22 : 0.08
-  const base = speaking ? 0.7 : active ? 0.35 : 0.18
+  const spread = pickLevel(speaking, active, 0.55, 0.22, 0.08)
+  const base = pickLevel(speaking, active, 0.7, 0.35, 0.18)
   return (
     <div className="flex h-10 items-center justify-center gap-1" aria-hidden>
       {Array.from({ length: 9 }, (_, i) => {
@@ -403,7 +424,7 @@ function closeOpenMarkdown(text: string): string {
   let out = text
   if ((out.match(/^\s*```/gm) ?? []).length % 2) return `${out}\n\`\`\``
   if ((out.match(/\*\*/g) ?? []).length % 2) out += '**'
-  if ((out.replace(/```/g, '').match(/`/g) ?? []).length % 2) out += '`'
+  if ((out.replaceAll(/```/g, '').match(/`/g) ?? []).length % 2) out += '`'
   return out
 }
 
@@ -432,10 +453,16 @@ const StreamedMarkdown = memo(function StreamedMarkdown({ content, isFinal }: Re
   const live = !isFinal || shown < content.length
   const visible = content.slice(0, shown)
   const blocks = splitBlocks(visible)
-  if (live && blocks.length) blocks[blocks.length - 1] = closeOpenMarkdown(blocks[blocks.length - 1])
+  if (live && blocks.length) blocks.push(closeOpenMarkdown(blocks.pop() ?? ''))
+  let offset = 0
+  const keyed = blocks.map((text) => {
+    const key = offset // a block's start position never changes while it streams, so it is a stable key
+    offset += text.length
+    return { key, text }
+  })
   return (
     <>
-      {blocks.map((b, i) => <MarkdownBlock key={i} text={b} />)}
+      {keyed.map((b) => <MarkdownBlock key={b.key} text={b.text} />)}
       {live ? <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-gray-400 align-middle dark:bg-gray-500" /> : null}
     </>
   )
@@ -679,7 +706,7 @@ export default function PiChatView({
     if (!text.trim()) return
     setInput('')
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
-    void sendMessage(text, messages)
+    sendMessage(text, messages)
   }
 
   const stopRecording = () => {
@@ -780,7 +807,7 @@ export default function PiChatView({
     }
   }
 
-  const micSupported = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia && typeof window !== 'undefined' && typeof window.RTCPeerConnection !== 'undefined'
+  const micSupported = !!globalThis.navigator?.mediaDevices?.getUserMedia && globalThis.RTCPeerConnection !== undefined
 
   const showContextHint = messages.length > 0 || !!sessionIdRef.current
 
@@ -807,7 +834,7 @@ export default function PiChatView({
                   <button
                     key={s}
                     type="button"
-                    onClick={() => void sendMessage(s, messages)}
+                    onClick={() => sendMessage(s, messages)}
                     className="rounded-full border border-gray-200 bg-white px-3.5 py-2 text-left text-[13px] leading-snug text-gray-700 transition hover:border-gray-300 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-700 dark:hover:bg-gray-900/80"
                   >
                     {s}
@@ -836,18 +863,15 @@ export default function PiChatView({
                 </div>
               ) : (
                 <div key={m.id} data-pi-last={index === messages.length - 1 ? 'true' : undefined} className="min-w-0 max-w-full break-words">
-                  {m.toolCalls && m.toolCalls.some((t) => t.pending) && (
+                  {m.toolCalls?.some((t) => t.pending) && (
                     <div className="mb-2 flex flex-wrap gap-x-3 gap-y-1">
                       {m.toolCalls.filter((t) => t.pending).map((tc) => (
                         <ToolCallLine key={tc.id} tc={tc} />
                       ))}
                     </div>
                   )}
-                  {m.content ? (
-                    <StreamedMarkdown content={m.content} isFinal={m.isFinal} />
-                  ) : !m.isFinal ? (
-                    <ThinkingIndicator />
-                  ) : null}
+                  {m.content && <StreamedMarkdown content={m.content} isFinal={m.isFinal} />}
+                  {!m.content && !m.isFinal && <ThinkingIndicator />}
                   {m.toolCalls?.map((tc) => {
                     const target = tc.id === latestVoiceId ? voiceTarget(tc) : null
                     const form = tc.id === latestToolFormId ? toolForm(tc) : null
@@ -871,7 +895,7 @@ export default function PiChatView({
                               <button
                                 key={a.id}
                                 type="button"
-                                onClick={() => void sendMessage(a.display_name, messages)}
+                                onClick={() => sendMessage(a.display_name, messages)}
                                 className="rounded-full border border-gray-200 bg-white px-3.5 py-1.5 text-[13px] text-gray-700 transition hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-600"
                               >
                                 {a.display_name}
@@ -886,7 +910,7 @@ export default function PiChatView({
                               <button
                                 type="button"
                                 disabled={resolving}
-                                onClick={() => void resolvePendingAction(tc.id, 'confirm')}
+                                onClick={() => resolvePendingAction(tc.id, 'confirm')}
                                 className="rounded-lg bg-gray-900 px-3 py-1.5 text-[13px] font-medium text-white transition hover:bg-gray-800 disabled:cursor-wait disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900"
                               >
                                 Confirm
@@ -894,7 +918,7 @@ export default function PiChatView({
                               <button
                                 type="button"
                                 disabled={resolving}
-                                onClick={() => void resolvePendingAction(tc.id, 'cancel')}
+                                onClick={() => resolvePendingAction(tc.id, 'cancel')}
                                 className="rounded-lg border border-amber-300 px-3 py-1.5 text-[13px] font-medium text-amber-900 transition hover:bg-amber-100 disabled:cursor-wait disabled:opacity-50 dark:border-amber-800 dark:text-amber-200 dark:hover:bg-amber-900/40"
                               >
                                 Cancel
@@ -941,7 +965,7 @@ export default function PiChatView({
             <div className="rounded-2xl border border-gray-700 bg-gray-950 px-3 py-2.5 focus-within:border-gray-600">
               <textarea
                 ref={textareaRef}
-                value={recording && partialText ? (input ? `${input} ${partialText}` : partialText) : input}
+                value={composeInput(recording, partialText, input)}
                 onChange={(e) => { setInput(e.target.value); autoGrow() }}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit() } }}
                 placeholder="Ask Pi…"
@@ -981,7 +1005,7 @@ export default function PiChatView({
                 <div className="mt-2 flex items-center justify-center gap-2" title={`${contextUsage.used.toLocaleString()} / ${contextUsage.limit.toLocaleString()} tokens used this turn`}>
                   <div className="h-1 w-24 overflow-hidden rounded-full bg-gray-800">
                     <div
-                      className={`h-full rounded-full ${pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-500' : 'bg-gray-500'}`}
+                      className={`h-full rounded-full ${usageBarColor(pct)}`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>

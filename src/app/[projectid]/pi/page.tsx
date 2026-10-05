@@ -21,7 +21,7 @@ export default function PiNewChatPage() {
       projectId={projectId}
       onSessionCreated={(sessionId) => {
         try { localStorage.setItem(`pi-last:${projectId}`, sessionId) } catch {}
-        window.history.replaceState(null, '', `/${projectId}/pi/${sessionId}`)
+        globalThis.history.replaceState(null, '', `/${projectId}/pi/${sessionId}`)
         queryClient.invalidateQueries({ queryKey: ['pi-sessions', projectId] })
       }}
       onTurnComplete={() => queryClient.invalidateQueries({ queryKey: ['pi-sessions', projectId] })}

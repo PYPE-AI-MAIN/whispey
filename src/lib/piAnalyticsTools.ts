@@ -106,13 +106,13 @@ export async function runCompletionInsights(
     rates.push({
       label: f.label ?? [...(f.path ?? []), f.col].join('.'),
       field: ref,
-      rate_pct: value != null ? Math.round(Number(value) * 1000) / 10 : null,
+      rate_pct: value == null ? null : Math.round(Number(value) * 1000) / 10,
       n_rows: row?.n_rows,
     })
   }
 
   const totalCalls = volume.success
-    ? Number((volume.result?.data as any[])?.[0]?.value ?? (volume.result?.data as any)?.value ?? 0)
+    ? Number(volume.result?.data?.[0]?.value ?? volume.result?.data?.value ?? 0)
     : null
 
   return {

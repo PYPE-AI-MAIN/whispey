@@ -13,22 +13,23 @@ function creds() {
 
 async function plivo(path: string, init: { method?: 'GET' | 'POST'; query?: Record<string, string | number | undefined>; body?: Record<string, unknown> } = {}) {
   const { id, token } = creds()
+  const basic = Buffer.from(`${id}:${token}`).toString('base64')
   const url = new URL(`https://api.plivo.com/v1/Account/${id}/${path}`)
   for (const [k, v] of Object.entries(init.query ?? {})) if (v !== undefined && v !== '') url.searchParams.set(k, String(v))
   const res = await fetch(url, {
     method: init.method ?? 'GET',
-    headers: { Authorization: `Basic ${Buffer.from(`${id}:${token}`).toString('base64')}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Basic ${basic}`, 'Content-Type': 'application/json' },
     body: init.body ? JSON.stringify(init.body) : undefined,
     signal: AbortSignal.timeout(20_000),
   })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error((data as any)?.error || (data as any)?.message || `Plivo request failed (HTTP ${res.status})`)
-  return data as any
+  if (!res.ok) throw new Error(data?.error || data?.message || `Plivo request failed (HTTP ${res.status})`)
+  return data
 }
 
-export const digitsOnly = (n: string) => n.replace(/\D/g, '')
+export const digitsOnly = (n: string) => n.replaceAll(/\D/g, '')
 
-export const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'project'
+export const slugify = (s: string) => s.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-+|-+$/g, '') || 'project'
 
 /** `<project-alias>-inbound-<last4>` — used for the Plivo number alias and the LiveKit trunk name. */
 export const inboundAlias = (projectName: string, number: string) => `${slugify(projectName)}-inbound-${digitsOnly(number).slice(-4)}`
@@ -36,7 +37,7 @@ export const inboundAlias = (projectName: string, number: string) => `${slugify(
 export async function resolveInboundTrunk(): Promise<{ trunkId: string; complianceApplicationId?: string }> {
   const data = await plivo('Number/', { query: { alias: INBOUND_TRUNK_REFERENCE_ALIAS } })
   const ref = data.objects?.[0]
-  const trunkId = String(ref?.application ?? '').match(/Zentrunk\/Trunk\/(\d+)/)?.[1]
+  const trunkId = /Zentrunk\/Trunk\/(\d+)/.exec(String(ref?.application ?? ''))?.[1]
   if (!trunkId) throw new Error(`Could not find the "${INBOUND_TRUNK_REFERENCE_ALIAS}" number on Plivo to copy its inbound trunk from`)
   return { trunkId, complianceApplicationId: ref?.compliance_application_id || undefined }
 }
@@ -51,8 +52,8 @@ export async function listOwnedNumbers() {
       out.push({
         number: n.number,
         alias: n.alias ?? null,
-        trunkId: app.match(/Zentrunk\/Trunk\/(\d+)/)?.[1] ?? null,
-        appId: app.match(/Application\/(\d+)/)?.[1] ?? null,
+        trunkId: /Zentrunk\/Trunk\/(\d+)/.exec(app)?.[1] ?? null,
+        appId: /Application\/(\d+)/.exec(app)?.[1] ?? null,
         type: n.type ?? n.number_type ?? null,
         monthly_rental_rate: n.monthly_rental_rate ?? null,
       })

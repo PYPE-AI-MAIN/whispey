@@ -7,6 +7,7 @@ import { Pi, ArrowUp, X, Check, Loader2, AlertTriangle, RotateCcw } from 'lucide
 
 interface Anchor { left: number; top: number; bottom: number }
 interface Msg {
+  id: number
   role: 'user' | 'assistant'
   content: string
   replacement?: string | null
@@ -43,7 +44,37 @@ const THEMES = {
 const ACCENT = '#7c3aed'
 const GRADIENT = 'linear-gradient(135deg,#7c3aed,#4f46e5)'
 
+let msgSeq = 0
+const nextMsgId = () => ++msgSeq
+
 const varsOf = (t: string) => new Set(t.match(/\{\{[^}]*\}\}/g) ?? [])
+
+/** Splits the streamed "<short reply>\n<<<REPLACEMENT>>>\n<new text>" into the message the card shows. */
+function parseReply(id: number, acc: string, done: boolean, selectedText: string): Msg {
+  const k = acc.indexOf(MARK)
+  const content = (k < 0 ? acc : acc.slice(0, k)).trim()
+  const rep = k < 0 ? '' : acc.slice(k + MARK.length).trim()
+  const replacement = done && rep ? rep : null
+  return {
+    id, role: 'assistant', content, replacement,
+    missingVars: replacement ? [...varsOf(selectedText)].filter((v) => !replacement.includes(v)) : [],
+    streamingReplacement: !done && k >= 0,
+  }
+}
+
+/** Reads the response body to the end, reporting the text so far after every chunk. */
+async function readReply(body: ReadableStream<Uint8Array>, onText: (acc: string) => void): Promise<string> {
+  const reader = body.getReader()
+  const dec = new TextDecoder()
+  let acc = ''
+  for (;;) {
+    const { value, done } = await reader.read()
+    if (done) break
+    acc += dec.decode(value, { stream: true })
+    onText(acc)
+  }
+  return acc + dec.decode()
+}
 
 /** Selection -> "Ask Pi" button -> floating chat that rewrites the selected prompt text in place. */
 export function AskPiPopover({ editor, fullPrompt }: { editor: any; fullPrompt: string }) {
@@ -58,7 +89,7 @@ export function AskPiPopover({ editor, fullPrompt }: { editor: any; fullPrompt: 
   const [vp, setVp] = useState({ w: 1280, h: 800 })
   const [preview, setPreview] = useState('')
   const [ph, setPh] = useState(200)
-  const panelRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDialogElement>(null)
 
   const decoRef = useRef<any>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -133,7 +164,7 @@ export function AskPiPopover({ editor, fullPrompt }: { editor: any; fullPrompt: 
     const sel = editor.getSelection()
     if (!sel || sel.isEmpty()) return
     decoRef.current = editor.createDecorationsCollection([{ range: sel, options: DECO }])
-    setPreview(editor.getModel().getValueInRange(sel).replace(/\s+/g, ' ').trim())
+    setPreview(editor.getModel().getValueInRange(sel).replaceAll(/\s+/g, ' ').trim())
     setOpen(true)
   }
 
@@ -151,7 +182,7 @@ export function AskPiPopover({ editor, fullPrompt }: { editor: any; fullPrompt: 
     const range = currentRange()
     if (!range) return setError('The selected text is no longer available. Close and select it again.')
     const selectedText = editor.getModel().getValueInRange(range)
-    const next: Msg[] = retry ? msgs : [...msgs, { role: 'user', content }]
+    const next: Msg[] = retry ? msgs : [...msgs, { id: nextMsgId(), role: 'user', content }]
     if (!retry) { setMsgs(next); setInput(''); if (inputRef.current) inputRef.current.style.height = 'auto' }
     setError(''); setBusy(true)
     abortRef.current?.abort()
@@ -173,30 +204,10 @@ export function AskPiPopover({ editor, fullPrompt }: { editor: any; fullPrompt: 
         const data = await res.json().catch(() => ({}))
         throw new Error(data.error || `Request failed (${res.status})`)
       }
-      // stream: "<short reply>\n<<<REPLACEMENT>>>\n<new text>" — show the reply as soon as it starts arriving
-      const reader = res.body.getReader()
-      const dec = new TextDecoder()
-      let acc = ''
-      const parse = (done: boolean): Msg => {
-        const k = acc.indexOf(MARK)
-        const content = (k < 0 ? acc : acc.slice(0, k)).trim()
-        const rep = k < 0 ? '' : acc.slice(k + MARK.length).trim()
-        const replacement = done && rep ? rep : null
-        return {
-          role: 'assistant', content, replacement,
-          missingVars: replacement ? [...varsOf(selectedText)].filter(v => !replacement.includes(v)) : [],
-          streamingReplacement: !done && k >= 0,
-        }
-      }
-      for (;;) {
-        const { value, done } = await reader.read()
-        if (done) break
-        acc += dec.decode(value, { stream: true })
-        setMsgs([...next, parse(false)])
-      }
-      acc += dec.decode()
+      const replyId = nextMsgId()
+      const acc = await readReply(res.body, (text) => setMsgs([...next, parseReply(replyId, text, false, selectedText)]))
       if (!acc.trim()) throw new Error('Pi returned an empty response. Try again.')
-      setMsgs([...next, parse(true)])
+      setMsgs([...next, parseReply(replyId, acc, true, selectedText)])
     } catch (e: any) {
       if (e?.name === 'AbortError') return
       setError(e instanceof Error ? e.message : 'Something went wrong')
@@ -226,24 +237,16 @@ export function AskPiPopover({ editor, fullPrompt }: { editor: any; fullPrompt: 
   const canSend = !busy && !!input.trim()
 
   return createPortal(
-    <div style={{ position: 'fixed', zIndex: 100, fontFamily: FONT, ...(open ? posStyle : { top: Math.min(a.bottom + 8, vp.h - 44), left }) }} onMouseDown={e => { if (!open) e.preventDefault() }}>
+    <div style={{ position: 'fixed', zIndex: 100, fontFamily: FONT, ...(open ? posStyle : { top: Math.min(a.bottom + 8, vp.h - 44), left }) }}>
       <style>{`.ask-pi-selection{background:rgba(124,58,237,.28);border-radius:2px}`}</style>
-      {!open ? (
-        <button
-          onClick={openPanel}
-          style={{ background: GRADIENT, boxShadow: t.shadow }}
-          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-black/10 transition hover:brightness-110"
-        >
-          <Pi className="h-3.5 w-3.5" /> Ask Pi
-        </button>
-      ) : (
-        <div
+      {open ? (
+        <dialog
           ref={panelRef}
-          role="dialog"
+          open
           aria-label="Ask Pi"
           onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); close() } }}
           className="flex flex-col overflow-hidden rounded-2xl"
-          style={{ width: Math.min(PANEL_W, vp.w - 2 * MARGIN), maxHeight: maxH, background: t.panel, color: t.text, border: `1px solid ${t.border}`, boxShadow: t.shadow }}
+          style={{ position: 'static', margin: 0, padding: 0, width: Math.min(PANEL_W, vp.w - 2 * MARGIN), maxHeight: maxH, background: t.panel, color: t.text, border: `1px solid ${t.border}`, boxShadow: t.shadow }}
         >
           <div className="flex items-center gap-2 px-3.5 py-2.5" style={{ borderBottom: `1px solid ${t.border}` }}>
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-white" style={{ background: GRADIENT }}><Pi className="h-3.5 w-3.5" /></span>
@@ -253,12 +256,12 @@ export function AskPiPopover({ editor, fullPrompt }: { editor: any; fullPrompt: 
 
           {(msgs.length > 0 || busy || error) && (
             <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-3.5 py-3" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {msgs.map((m, i) => m.role === 'user' ? (
-                <div key={i} className="flex justify-end">
+              {msgs.map((m) => m.role === 'user' ? (
+                <div key={m.id} className="flex justify-end">
                   <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md px-3 py-1.5 text-sm leading-snug text-white" style={{ background: ACCENT }}>{m.content}</div>
                 </div>
               ) : (
-                <div key={i} className="space-y-2">
+                <div key={m.id} className="space-y-2">
                   {m.content && <p className="whitespace-pre-wrap break-words text-sm leading-relaxed" style={{ color: t.text }}>{m.content}</p>}
                   {m.streamingReplacement && <p className="flex items-center gap-2 text-xs" style={{ color: t.muted }}><Loader2 className="h-3.5 w-3.5 animate-spin" /> Writing…</p>}
                   {m.replacement && (
@@ -271,7 +274,7 @@ export function AskPiPopover({ editor, fullPrompt }: { editor: any; fullPrompt: 
                         </p>
                       )}
                       <button
-                        onClick={() => apply(m.replacement!)}
+                        onClick={() => apply(m.replacement ?? '')}
                         className="flex w-full items-center justify-center gap-1.5 py-2 text-xs font-semibold text-white transition hover:brightness-110"
                         style={{ background: ACCENT }}
                       >
@@ -324,7 +327,16 @@ export function AskPiPopover({ editor, fullPrompt }: { editor: any; fullPrompt: 
               ><ArrowUp className="h-4 w-4" /></button>
             </div>
           </div>
-        </div>
+        </dialog>
+      ) : (
+        <button
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={openPanel}
+          style={{ background: GRADIENT, boxShadow: t.shadow }}
+          className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-black/10 transition hover:brightness-110"
+        >
+          <Pi className="h-3.5 w-3.5" /> Ask Pi
+        </button>
       )}
     </div>,
     document.body

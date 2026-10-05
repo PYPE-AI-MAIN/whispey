@@ -9,10 +9,12 @@ import { resolveWhispeyKeyFields } from '@/server/mcpAgentDb'
 
 const BUILTIN = new Set(['end_call', 'knowledge_search', 'update_vad_options', 'voicemail_detection'])
 
+const str = (v: unknown) => (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' ? String(v) : '')
+
 function toBackendTool(input: Record<string, unknown>) {
-  const type = String(input.type || 'custom_function')
-  const name = String(input.name || '').trim()
-  const description = String(input.description || '')
+  const type = str(input.type) || 'custom_function'
+  const name = str(input.name).trim()
+  const description = str(input.description)
   if (BUILTIN.has(type)) {
     return { type, name: name || type, description }
   }
@@ -34,13 +36,13 @@ function toBackendTool(input: Record<string, unknown>) {
     type: 'custom_function',
     name,
     description,
-    api_url: String(input.api_url || '').trim(),
-    http_method: String(input.http_method || 'POST').toUpperCase(),
+    api_url: str(input.api_url).trim(),
+    http_method: (str(input.http_method) || 'POST').toUpperCase(),
     timeout: Number(input.timeout) || 10,
     async: input.async !== false,
     headers,
     parameters,
-    custom_payload: String(input.custom_payload || ''),
+    custom_payload: str(input.custom_payload),
     response_mapping: {},
   }
 }

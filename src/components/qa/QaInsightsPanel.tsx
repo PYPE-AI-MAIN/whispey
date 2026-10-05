@@ -139,6 +139,18 @@ function Delta({ value, goodWhenDown = true }: Readonly<{ value: number | null; 
   )
 }
 
+function AskQaLabel({ asking, asked }: Readonly<{ asking: boolean; asked: boolean }>) {
+  if (asking) return <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Asking QA…</>
+  if (asked) return <><Check className="mr-1.5 h-3.5 w-3.5" />QA has been asked</>
+  return <><Headphones className="mr-1.5 h-3.5 w-3.5" />Ask QA to check this</>
+}
+
+function askedMessage(body: { alreadyRequested?: boolean; mailed?: boolean } | null): string {
+  if (body?.alreadyRequested) return 'QA has already been asked about this.'
+  if (body?.mailed) return "We've mailed the Pype QA team — they'll follow up."
+  return "Added to the QA team's review queue."
+}
+
 function InsightCard({
   insight, canWrite, asked, asking, onReviewPatch, onAskQa, onDismiss,
 }: Readonly<{
@@ -193,8 +205,7 @@ function InsightCard({
           </Button>
         )}
         <Button size="sm" variant="outline" onClick={onAskQa} disabled={asked || asking}>
-          {asking ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : asked ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Headphones className="mr-1.5 h-3.5 w-3.5" />}
-          {asking ? 'Asking QA…' : asked ? 'QA has been asked' : 'Ask QA to check this'}
+          <AskQaLabel asking={asking} asked={asked} />
         </Button>
         <Button size="sm" variant="ghost" onClick={onDismiss}>
           Dismiss
@@ -492,13 +503,7 @@ export default function QaInsightsPanel({
         return
       }
       setAskedIds((ids) => [...ids, insight.id])
-      toast.success(
-        body?.alreadyRequested
-          ? 'QA has already been asked about this.'
-          : body?.mailed
-            ? "We've mailed the Pype QA team — they'll follow up."
-            : "Added to the QA team's review queue.",
-      )
+      toast.success(askedMessage(body))
       setTab('review')
       refetch()
     } catch {

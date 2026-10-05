@@ -332,6 +332,17 @@ function renderContextHeader(config: SidebarConfig, isCollapsed: boolean, isMobi
   return null
 }
 
+function navItemTone(disabled: boolean | undefined, isActive: boolean): string {
+  if (disabled) return 'cursor-not-allowed text-gray-400 dark:text-gray-600'
+  if (isActive) return 'cursor-pointer bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+  return 'cursor-pointer text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
+}
+
+function navIconTone(disabled: boolean | undefined, isActive: boolean): string {
+  if (disabled) return 'text-gray-300 dark:text-gray-700'
+  return isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'
+}
+
 function renderNavigationItem(
   item: NavigationItem,
   opts: {
@@ -360,15 +371,10 @@ function renderNavigationItem(
   const content = (
     <div className={`
       flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200
-      ${item.disabled
-        ? 'cursor-not-allowed text-gray-400 dark:text-gray-600'
-        : isActive
-        ? 'cursor-pointer bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
-        : 'cursor-pointer text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-      }
+      ${navItemTone(item.disabled, isActive)}
       ${isCollapsed && !isMobile ? 'justify-center px-2' : ''}
     `}>
-      <Icon className={`w-4 h-4 flex-shrink-0 ${item.disabled ? 'text-gray-300 dark:text-gray-700' : isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`} />
+      <Icon className={`w-4 h-4 flex-shrink-0 ${navIconTone(item.disabled, isActive)}`} />
       {(!isCollapsed || isMobile) && (
         <>
           <span className="truncate">{item.name}</span>

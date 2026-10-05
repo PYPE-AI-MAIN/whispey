@@ -98,11 +98,17 @@ function ChartTooltip({
   )
 }
 
+/** Module scope, not defined inside ChartCard's render. */
+function pieLegendLabel(v: unknown) {
+  return <span className={cn('text-[11px]', MUTED)} title={String(v)}>{shortLabel(String(v), 16)}</span>
+}
+
 function Segmented<T extends string>({
   value, onChange, options, label, iconOnly,
 }: Readonly<{ value: T; onChange: (v: T) => void; label: string; iconOnly?: boolean; options: { value: T; label: string; icon?: React.ReactNode; disabled?: boolean }[] }>) {
   return (
-    <div role="group" aria-label={label} className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-gray-800 dark:bg-gray-900">
+    <fieldset className="m-0 inline-flex min-w-0 rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-gray-800 dark:bg-gray-900">
+      <legend className="sr-only">{label}</legend>
       {options.map((o) => (
         <button
           key={o.value}
@@ -120,7 +126,7 @@ function Segmented<T extends string>({
           {iconOnly && o.icon ? <span className="sr-only">{o.label}</span> : <span>{o.label}</span>}
         </button>
       ))}
-    </div>
+    </fieldset>
   )
 }
 
@@ -277,14 +283,14 @@ function EmptyState({ projectId }: Readonly<{ projectId: string }>) {
     "payload": { "delivery_status": "delivered", "reachout_count": 2 }
   }'`
 
-  const steps: React.ReactNode[] = [
-    <>Get a token for this project — open{' '}
+  const steps: { id: string; node: React.ReactNode }[] = [
+    { id: 'token', node: <>Get a token for this project — open{' '}
       <Link href={`/${projectId}/agents/api-keys`} className="font-medium text-blue-600 hover:underline dark:text-blue-400">Project API Key</Link>{' '}
-      and copy it (create one if none exists).</>,
-    <>Call the endpoint below with that token. This one call creates the campaign and the journey automatically — nothing to set up beforehand.</>,
-    <>Call it again for every later step that same person reaches, reusing the same <code className={code}>campaign_key</code> and{' '}
-      <code className={code}>identity_key</code>, changing <code className={code}>step</code>/<code className={code}>action</code> each time.</>,
-    <>Come back to this tab — the campaign shows up by its key, with this identity under "Recent journeys."</>,
+      and copy it (create one if none exists).</> },
+    { id: 'first-call', node: <>Call the endpoint below with that token. This one call creates the campaign and the journey automatically — nothing to set up beforehand.</> },
+    { id: 'later-steps', node: <>Call it again for every later step that same person reaches, reusing the same <code className={code}>campaign_key</code> and{' '}
+      <code className={code}>identity_key</code>, changing <code className={code}>step</code>/<code className={code}>action</code> each time.</> },
+    { id: 'come-back', node: <>Come back to this tab — the campaign shows up by its key, with this identity under "Recent journeys."</> },
   ]
 
   return (
@@ -298,9 +304,9 @@ function EmptyState({ projectId }: Readonly<{ projectId: string }>) {
       </div>
       <ol className={cn(CARD, 'w-full divide-y divide-gray-100 dark:divide-gray-800')}>
         {steps.map((s, i) => (
-          <li key={i} className="flex gap-3 p-4 text-sm text-gray-700 dark:text-gray-300">
+          <li key={s.id} className="flex gap-3 p-4 text-sm text-gray-700 dark:text-gray-300">
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">{i + 1}</span>
-            <span className="pt-0.5">{s}</span>
+            <span className="pt-0.5">{s.node}</span>
           </li>
         ))}
       </ol>
@@ -412,11 +418,12 @@ function Funnel({
             const conv = prev && prev.reached_count > 0 ? Math.round((s.reached_count / prev.reached_count) * 100) : null
             const lost = prev ? prev.reached_count - s.reached_count : 0
             const isWorst = drop?.index === i
+            const lostNote = prev ? ` · ${fmt(lost)} lost vs “${prev.label}”` : ''
             return (
               <li
                 key={s.step_key}
                 className="group grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-1 py-0.5 transition hover:bg-gray-50 dark:hover:bg-gray-800/50 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)_5.5rem_6.5rem]"
-                title={`${s.label}: ${fmt(s.reached_count)} reached${prev ? ` · ${fmt(lost)} lost vs “${prev.label}”` : ''}`}
+                title={`${s.label}: ${fmt(s.reached_count)} reached${lostNote}`}
               >
                 <span className="flex items-center gap-2 truncate text-xs text-gray-700 dark:text-gray-300">
                   <span className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold', 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300')}>{i + 1}</span>
@@ -605,7 +612,7 @@ function ChartCard({
                 {shown.map((p, i) => <Cell key={p.bucket} fill={SERIES_COLORS[i % SERIES_COLORS.length]} />)}
               </Pie>
               <Tooltip content={<ChartTooltip valueName={metricLabel} total={total} />} />
-              <Legend verticalAlign="bottom" iconType="circle" iconSize={8} formatter={(v: unknown) => <span className={cn('text-[11px]', MUTED)} title={String(v)}>{shortLabel(String(v), 16)}</span>} />
+              <Legend verticalAlign="bottom" iconType="circle" iconSize={8} formatter={pieLegendLabel} />
             </PieChart>
           </ResponsiveContainer>
         )}
@@ -744,15 +751,15 @@ function CustomChartBuilder({
         </div>
       )}
 
-      {saved.isLoading ? (
-        <Skel className="h-48" />
-      ) : charts.length === 0 ? (
+      {saved.isLoading && <Skel className="h-48" />}
+      {!saved.isLoading && charts.length === 0 && (
         <div className={cn(CARD, 'flex flex-col items-center gap-1 border-dashed py-12 text-center')}>
           <BarChart3 className="h-6 w-6 text-gray-300 dark:text-gray-600" />
           <p className={cn('text-sm font-medium', INK)}>No charts yet</p>
           <p className={cn('max-w-sm text-xs', MUTED)}>{canEdit ? 'Tap a quick-add suggestion above or create your own with New chart. Charts are saved for everyone on this project.' : 'Nobody has added a chart to this campaign yet.'}</p>
         </div>
-      ) : (
+      )}
+      {!saved.isLoading && charts.length > 0 && (
         <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
           {charts.map((c) => (
             <ChartCard
@@ -772,15 +779,19 @@ function CustomChartBuilder({
 
 type StepDef = { step: string; label: string }
 
+function statusTone(status: string): string {
+  if (/complet|success|won|convert|done|resolved/i.test(status)) return 'bg-emerald-500'
+  if (/fail|drop|lost|cancel|error|stuck|expired|exhaust/i.test(status)) return 'bg-red-500'
+  if (/active|progress|running|pending|open/i.test(status)) return 'bg-blue-500'
+  return 'bg-gray-400'
+}
+
 function StatusBadge({ status }: Readonly<{ status: string }>) {
-  const tone = /complet|success|won|convert|done|resolved/i.test(status) ? 'bg-emerald-500'
-    : /fail|drop|lost|cancel|error|stuck|expired|exhaust/i.test(status) ? 'bg-red-500'
-    : /active|progress|running|pending|open/i.test(status) ? 'bg-blue-500'
-    : 'bg-gray-400'
+  const tone = statusTone(status)
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-2 py-0.5 text-xs text-gray-700 dark:border-gray-700 dark:text-gray-300">
       <span className={cn('h-1.5 w-1.5 rounded-full', tone)} />
-      {status.replace(/_/g, ' ')}
+      {status.replaceAll('_', ' ')}
     </span>
   )
 }
@@ -792,6 +803,11 @@ function callHref(projectId: string, e: JourneyEvent): string | null {
 }
 
 /** How far a member got along the campaign's steps — one glance per row instead of a wall of chips. */
+function stepSegmentClass(isReached: boolean, isBeforeFurthest: boolean): string {
+  if (isReached) return 'bg-blue-500'
+  return isBeforeFurthest ? 'bg-blue-200 dark:bg-blue-900/70' : 'bg-gray-200 dark:bg-gray-700'
+}
+
 function StepProgress({ steps, events }: Readonly<{ steps: StepDef[]; events: JourneyEvent[] }>) {
   const flow = steps.filter((s) => s.step !== 'joined')
   const reached = new Set(events.map((e) => e.step).filter(Boolean))
@@ -802,7 +818,7 @@ function StepProgress({ steps, events }: Readonly<{ steps: StepDef[]; events: Jo
     <span className="block min-w-0" title={flow.map((s) => `${reached.has(s.step) ? '✓' : '·'} ${s.label}`).join('\n')}>
       <span className="flex items-center gap-1">
         {flow.map((s, i) => (
-          <span key={s.step} className={cn('h-1.5 flex-1 rounded-full', reached.has(s.step) ? 'bg-blue-500' : i < furthest ? 'bg-blue-200 dark:bg-blue-900/70' : 'bg-gray-200 dark:bg-gray-700')} />
+          <span key={s.step} className={cn('h-1.5 flex-1 rounded-full', stepSegmentClass(reached.has(s.step), i < furthest))} />
         ))}
       </span>
       <span className={cn('mt-1 block truncate text-[11px]', MUTED)}>{label}</span>
@@ -815,7 +831,7 @@ const ACTION_LABEL: Record<string, string> = {
   message_failed: 'WhatsApp failed', link_clicked: 'Clicked the form link', call_completed: 'Call answered', call_not_connected: 'Call not connected',
   campaign_exhausted: 'Finished: no more attempts', status_changed: 'Status changed', family_member_added: 'Family member added', converted: 'Converted',
 }
-const actionLabel = (a: string) => ACTION_LABEL[a] ?? a.replace(/_/g, ' ')
+const actionLabel = (a: string) => ACTION_LABEL[a] ?? a.replaceAll('_', ' ')
 
 function EventIcon({ e }: Readonly<{ e: JourneyEvent }>) {
   const cls = 'h-3.5 w-3.5'
@@ -829,18 +845,28 @@ function EventIcon({ e }: Readonly<{ e: JourneyEvent }>) {
 const DETAIL_KEYS = ['call_ended_reason', 'duration_seconds', 'final_disposition', 'template', 'relation', 'age', 'disposition', 'to_status']
 
 type EventFilter = 'all' | 'messages' | 'calls' | 'other'
-const matchesFilter = (e: JourneyEvent, f: EventFilter) =>
-  f === 'all' || (f === 'calls' ? e.action.startsWith('call_') : f === 'messages' ? e.channel === 'whatsapp' : e.channel !== 'whatsapp' && !e.action.startsWith('call_'))
+function matchesFilter(e: JourneyEvent, f: EventFilter): boolean {
+  const isCall = e.action.startsWith('call_')
+  if (f === 'calls') return isCall
+  if (f === 'messages') return e.channel === 'whatsapp'
+  if (f === 'other') return e.channel !== 'whatsapp' && !isCall
+  return true
+}
 
 function Timeline({ projectId, events, steps }: Readonly<{ projectId: string; events: JourneyEvent[]; steps: StepDef[] }>) {
   const stepLabel = (k: string | null) => steps.find((s) => s.step === k)?.label ?? k
   const groups = useMemo(() => {
-    const out: { day: string; items: JourneyEvent[] }[] = []
+    const out: { day: string; items: { key: string; e: JourneyEvent }[] }[] = []
+    const seen = new Map<string, number>()
     for (const e of events) {
       const day = new Date(e.occurred_at).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
-      const last = out[out.length - 1]
-      if (last?.day === day) last.items.push(e)
-      else out.push({ day, items: [e] })
+      const base = `${e.occurred_at}|${e.action}|${e.step ?? ''}|${e.external_ref ?? ''}`
+      const n = seen.get(base) ?? 0
+      seen.set(base, n + 1)
+      const item = { key: n === 0 ? base : `${base}#${n}`, e }
+      const last = out.at(-1)
+      if (last?.day === day) last.items.push(item)
+      else out.push({ day, items: [item] })
     }
     return out
   }, [events])
@@ -852,12 +878,12 @@ function Timeline({ projectId, events, steps }: Readonly<{ projectId: string; ev
         <div key={g.day}>
           <p className={cn('mb-2 text-[11px] font-semibold uppercase tracking-wider', MUTED)}>{g.day}</p>
           <ol className="space-y-3 border-l border-gray-200 pl-4 dark:border-gray-800">
-            {g.items.map((e, i) => {
+            {g.items.map(({ key, e }) => {
               const href = callHref(projectId, e)
               const details = e.payload ? DETAIL_KEYS.filter((k) => e.payload![k] !== undefined && e.payload![k] !== null && e.payload![k] !== '') : []
               const bad = e.action === 'call_not_connected' || e.action === 'message_failed'
               return (
-                <li key={i} className="relative">
+                <li key={key} className="relative">
                   <span className={cn('absolute -left-[26px] top-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white dark:border-gray-900', bad ? 'bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300')}>
                     <EventIcon e={e} />
                   </span>
@@ -868,7 +894,7 @@ function Timeline({ projectId, events, steps }: Readonly<{ projectId: string; ev
                   </div>
                   {(e.step || details.length > 0) && (
                     <p className={cn('mt-0.5 text-xs', MUTED)}>
-                      {[e.step ? stepLabel(e.step) : null, ...details.map((k) => `${k.replace(/_/g, ' ')}: ${String(e.payload![k]).replace(/_/g, ' ')}`)].filter(Boolean).join(' · ')}
+                      {[e.step ? stepLabel(e.step) : null, ...details.map((k) => `${k.replaceAll('_', ' ')}: ${String(e.payload![k]).replaceAll('_', ' ')}`)].filter(Boolean).join(' · ')}
                     </p>
                   )}
                 </li>
@@ -900,7 +926,7 @@ function JourneyDrawer({
               <SheetDescription asChild>
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusBadge status={journey.status} />
-                  {journey.outcome && <span className={cn('text-xs', MUTED)}>{journey.outcome.replace(/_/g, ' ')}</span>}
+                  {journey.outcome && <span className={cn('text-xs', MUTED)}>{journey.outcome.replaceAll('_', ' ')}</span>}
                   <span className={cn('text-xs', MUTED)}>started {new Date(journey.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>
                 </div>
               </SheetDescription>
@@ -973,7 +999,7 @@ function RecentJourneys({
                   className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-4 py-3 text-left transition hover:bg-gray-50 dark:hover:bg-gray-800/40 md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_9rem_5rem]">
                   <span className={cn('truncate text-sm font-medium', INK)} title={j.identity_key}>{j.identity_key}</span>
                   <span className="order-last col-span-2 md:order-none md:col-span-1"><StepProgress steps={steps} events={j.events} /></span>
-                  <span className="flex flex-col items-start gap-1"><StatusBadge status={j.status} />{j.outcome && <span className={cn('max-w-full truncate text-[11px]', MUTED)} title={j.outcome}>{j.outcome.replace(/_/g, ' ')}</span>}</span>
+                  <span className="flex flex-col items-start gap-1"><StatusBadge status={j.status} />{j.outcome && <span className={cn('max-w-full truncate text-[11px]', MUTED)} title={j.outcome}>{j.outcome.replaceAll('_', ' ')}</span>}</span>
                   <span className={cn('hidden text-right text-xs tabular-nums md:block', MUTED)} title={new Date(j.updated_at).toLocaleString()}>{timeAgo(j.updated_at)}</span>
                 </button>
               </li>

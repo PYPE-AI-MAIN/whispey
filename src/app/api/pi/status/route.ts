@@ -12,7 +12,9 @@ export async function GET() {
 
   const hasAzure = !!(process.env.AZURE_OPENAI_API_KEY && process.env.AZURE_OPENAI_ENDPOINT)
   const hasOpenAi = !!process.env.OPENAI_API_KEY
-  const provider = hasAzure ? 'azure' : hasOpenAi ? 'openai' : 'none'
+  let provider = 'none'
+  if (hasAzure) provider = 'azure'
+  else if (hasOpenAi) provider = 'openai'
 
   return NextResponse.json({
     provider,

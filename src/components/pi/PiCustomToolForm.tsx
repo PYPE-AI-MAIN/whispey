@@ -3,6 +3,10 @@
 import { useState } from 'react'
 
 type Param = { name: string; type: string; description: string; required: boolean }
+type ParamRow = Param & { id: number } // id is only a stable React key, never sent to the server
+
+let paramSeq = 0
+const withId = (p: Param): ParamRow => ({ ...p, id: ++paramSeq })
 
 export type ToolDraft = {
   type?: string
@@ -45,11 +49,12 @@ export default function PiCustomToolForm({
   const [description, setDescription] = useState(draft.description || '')
   const [apiUrl, setApiUrl] = useState(draft.api_url || '')
   const [method, setMethod] = useState(draft.http_method || 'POST')
-  const [timeout, setTimeoutSec] = useState(String(draft.timeout ?? 10))
+  const [timeoutSec, setTimeoutSec] = useState(String(draft.timeout ?? 10))
   const [asyncExec, setAsyncExec] = useState(draft.async !== false)
   const [headers, setHeaders] = useState(JSON.stringify(draft.headers && Object.keys(draft.headers).length ? draft.headers : { 'Content-Type': 'application/json' }, null, 2))
   const [payload, setPayload] = useState(draft.custom_payload || '')
-  const [params, setParams] = useState<Param[]>(draft.parameters?.length ? draft.parameters : [{ name: '', type: 'str', description: '', required: true }])
+  const [params, setParams] = useState<ParamRow[]>(() => (draft.parameters?.length ? draft.parameters : [{ name: '', type: 'str', description: '', required: true }]).map(withId))
+  const updateParam = (id: number, patch: Partial<Param>) => setParams((rows) => rows.map((row) => (row.id === id ? { ...row, ...patch } : row)))
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>(() => {
     try { return sessionStorage.getItem(addedKey(toolCallId)) ? 'saved' : 'idle' } catch { return 'idle' }
   })
@@ -84,10 +89,10 @@ export default function PiCustomToolForm({
           description,
           api_url: apiUrl,
           http_method: method,
-          timeout: Number(timeout) || 10,
+          timeout: Number(timeoutSec) || 10,
           async: asyncExec,
           headers: parsedHeaders,
-          parameters: params.filter((p) => p.name.trim()),
+          parameters: params.filter((p) => p.name.trim()).map(({ id: _id, ...rest }) => rest),
           custom_payload: payload,
         },
       }),
@@ -115,68 +120,68 @@ export default function PiCustomToolForm({
     <div className="mt-3 min-w-0 max-w-full space-y-2 overflow-hidden rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
       <p className="text-[13px] font-medium text-gray-800 dark:text-gray-200">Add a tool to {label}</p>
       <label className="block text-[12px] text-gray-500">
-        Type
+        <span>Type</span>
         <select className={`${field} mt-1`} value={type} onChange={(e) => setType(e.target.value)}>
           {TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
         </select>
       </label>
       <label className="block text-[12px] text-gray-500">
-        Name
+        <span>Name</span>
         <input className={`${field} mt-1`} value={name} onChange={(e) => setName(e.target.value)} placeholder="book_slot" />
       </label>
       <label className="block text-[12px] text-gray-500">
-        Description
+        <span>Description</span>
         <input className={`${field} mt-1`} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What the tool does" />
       </label>
       {custom && (
         <>
           <div className="grid grid-cols-2 gap-2">
             <label className="block text-[12px] text-gray-500">
-              Method
+              <span>Method</span>
               <select className={`${field} mt-1`} value={method} onChange={(e) => setMethod(e.target.value)}>
                 {METHODS.map((m) => <option key={m}>{m}</option>)}
               </select>
             </label>
             <label className="block text-[12px] text-gray-500">
-              Timeout (seconds)
-              <input className={`${field} mt-1`} type="number" min={1} max={120} value={timeout} onChange={(e) => setTimeoutSec(e.target.value)} />
+              <span>Timeout (seconds)</span>
+              <input className={`${field} mt-1`} type="number" min={1} max={120} value={timeoutSec} onChange={(e) => setTimeoutSec(e.target.value)} />
             </label>
           </div>
           <label className="block text-[12px] text-gray-500">
-            API URL
+            <span>API URL</span>
             <input className={`${field} mt-1`} value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} placeholder="https://api.example.com/book" />
           </label>
           <label className="flex items-center gap-2 text-[12px] text-gray-600 dark:text-gray-300">
             <input type="checkbox" checked={asyncExec} onChange={(e) => setAsyncExec(e.target.checked)} />
-            Run async
+            <span>Run async</span>
           </label>
           <div className="space-y-1">
             <p className="text-[12px] text-gray-500">Parameters</p>
-            {params.map((p, i) => (
-              <div key={i} className="min-w-0 space-y-1 rounded-lg border border-gray-200 p-2 dark:border-gray-800">
-                <input className={field} placeholder="name" value={p.name} onChange={(e) => setParams((rows) => rows.map((row, j) => j === i ? { ...row, name: e.target.value } : row))} />
+            {params.map((p) => (
+              <div key={p.id} className="min-w-0 space-y-1 rounded-lg border border-gray-200 p-2 dark:border-gray-800">
+                <input className={field} placeholder="name" value={p.name} onChange={(e) => updateParam(p.id, { name: e.target.value })} />
                 <div className="flex min-w-0 items-center gap-2">
-                  <select className={`${field} max-w-[8rem]`} value={p.type || 'str'} onChange={(e) => setParams((rows) => rows.map((row, j) => j === i ? { ...row, type: e.target.value } : row))}>
+                  <select className={`${field} max-w-[8rem]`} value={p.type || 'str'} onChange={(e) => updateParam(p.id, { type: e.target.value })}>
                     {['str', 'int', 'float', 'bool'].map((t) => <option key={t}>{t}</option>)}
                   </select>
                   <label className="flex items-center gap-1 text-[11px] text-gray-500">
-                    <input type="checkbox" checked={p.required} onChange={(e) => setParams((rows) => rows.map((row, j) => j === i ? { ...row, required: e.target.checked } : row))} />
-                    required
+                    <input type="checkbox" checked={p.required} onChange={(e) => updateParam(p.id, { required: e.target.checked })} />
+                    <span>required</span>
                   </label>
                 </div>
-                <input className={field} placeholder="description" value={p.description} onChange={(e) => setParams((rows) => rows.map((row, j) => j === i ? { ...row, description: e.target.value } : row))} />
+                <input className={field} placeholder="description" value={p.description} onChange={(e) => updateParam(p.id, { description: e.target.value })} />
               </div>
             ))}
-            <button type="button" className="text-[12px] text-blue-600 dark:text-blue-400" onClick={() => setParams((rows) => [...rows, { name: '', type: 'str', description: '', required: false }])}>
+            <button type="button" className="text-[12px] text-blue-600 dark:text-blue-400" onClick={() => setParams((rows) => [...rows, withId({ name: '', type: 'str', description: '', required: false })])}>
               Add parameter
             </button>
           </div>
           <label className="block text-[12px] text-gray-500">
-            Body template
+            <span>Body template</span>
             <textarea className={`${field} mt-1 font-mono`} rows={3} value={payload} onChange={(e) => setPayload(e.target.value)} placeholder='{"when":"__date__","at":"__timestamp__"}' />
           </label>
           <label className="block text-[12px] text-gray-500">
-            Headers (JSON)
+            <span>Headers (JSON)</span>
             <textarea className={`${field} mt-1 font-mono`} rows={3} value={headers} onChange={(e) => setHeaders(e.target.value)} />
           </label>
         </>
