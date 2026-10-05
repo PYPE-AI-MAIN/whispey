@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Plus, Trash2, Edit2, Languages, AlertTriangle, Info } from 'lucide-react'
 import SelectTTS from '../SelectTTSDialog'
 import SelectSTT from '../SelectSTTDialog'
+import { RAYA_PROVIDER, rayaConfigFromTts, rayaTtsPayload } from '@/lib/tts/raya'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -243,6 +244,8 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
         voice_name: voiceId,
         ...(config?.gender && { gender: config.gender }),
       }
+    } else if (normalizedProvider === RAYA_PROVIDER) {
+      tts = rayaTtsPayload(voiceId, model, config)
     }
 
     setDraft(prev => ({ ...prev, tts }))
@@ -270,6 +273,8 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
       }
     } else if (t.name === 'google') {
       return { voice_name: t.voice_name || '', gender: t.gender }
+    } else if (t.name === RAYA_PROVIDER) {
+      return rayaConfigFromTts(t)
     }
     return undefined
   }
@@ -383,6 +388,7 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
                   {draft.tts.name === 'sarvam' && `Sarvam · ${draft.tts.model || ''} · ${draft.tts.speaker || ''}`}
                   {draft.tts.name === 'elevenlabs' && `ElevenLabs · ${draft.tts.model || ''}`}
                   {draft.tts.name === 'google' && `Google · ${draft.tts.voice_name || ''}`}
+                  {draft.tts.name === RAYA_PROVIDER && `Raya · ${draft.tts.model || ''} · ${draft.tts.language || ''}`}
                 </p>
               )}
               <div className="flex items-center justify-between pt-1">

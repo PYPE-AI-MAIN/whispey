@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowUp, Mic } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
+import { internalPiHref } from '@/lib/piLinks'
 import { useVoiceAgent } from '@/hooks/useVoiceAgent'
 import PiCustomToolForm, { type ToolDraft } from '@/components/pi/PiCustomToolForm'
 import { closeOpenMarkdown, nextRevealLength, splitBlocks } from '@/lib/piMarkdown'
@@ -54,13 +55,14 @@ const MARKDOWN_COMPONENTS = {
     <blockquote className="border-l-2 border-gray-300 pl-3 not-first:mt-3 text-gray-600 dark:border-gray-600 dark:text-gray-400">{children}</blockquote>
   ),
   hr: () => <hr className="my-6 border-gray-200 dark:border-gray-800" />,
-  a: ({ children, href }: { children?: React.ReactNode; href?: string }) => (
-    href?.startsWith('/') && !href.startsWith('//')
-      // new tab for a link Pi drops inline (e.g. naming an agent) — clicking
-      // it shouldn't navigate away from the chat you're in the middle of
-      ? <Link href={href} target="_blank" rel="noreferrer" className="text-blue-600 underline underline-offset-2 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">{children}</Link>
-      : <a href={href} target="_blank" rel="noreferrer" className="text-blue-600 underline underline-offset-2 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">{children}</a>
-  ),
+  a: ({ children, href }: { children?: React.ReactNode; href?: string }) => {
+    const internal = internalPiHref(href)
+    // not a path this app serves — show the words, drop the link (internalPiHref)
+    if (!internal) return <>{children}</>
+    // new tab for a link Pi drops inline (e.g. naming an agent) — clicking
+    // it shouldn't navigate away from the chat you're in the middle of
+    return <Link href={internal} target="_blank" rel="noreferrer" className="text-blue-600 underline underline-offset-2 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">{children}</Link>
+  },
 }
 
 export type { Message, ToolCall } from '@/lib/piStream'

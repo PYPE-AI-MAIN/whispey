@@ -917,6 +917,8 @@ export default function PipecatAgentConfig({
                   initialModel={ttsModel}
                   initialConfig={ttsConfig}
                   onVoiceSelect={handleVoiceSelect}
+                  // Pipecat's runtime has no Raya plugin; offering it would save an agent that can't speak.
+                  excludeProviders={['raya']}
                 />
               </div>
             </div>

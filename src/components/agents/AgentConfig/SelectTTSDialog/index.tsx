@@ -2,14 +2,17 @@ import React, { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Badge } from '@/components/ui/badge'
-import { Volume2, Sparkles, Settings, RotateCcw, AlertTriangle } from 'lucide-react'
+import { Tabs } from '@/components/ui/tabs'
+import { Volume2, Sparkles, RotateCcw, AlertTriangle } from 'lucide-react'
 
-import VoiceSelectionPanel from './VoiceSelectionPanel'
+import VoiceSelectionPanel, { filterCompatibleSarvamVoices } from './VoiceSelectionPanel'
 import SettingsPanel from './SettingsPanel'
 import HeaderVoiceDisplay from './HeaderVoiceDisplay'
+import ProviderRail from './ProviderRail'
+import { TTS_PROVIDERS, getTtsProvider, normalizeTtsProvider } from './providers'
+import { useRayaVoices } from './raya/useRayaVoices'
 import { bulbulV4Voices, bulbulV4LanguageCode, isBulbulV4Model } from './bulbulV4Voices'
+import { RAYA_PROVIDER, normalizeRayaConfig, type RayaConfig, type RayaVoice } from '@/lib/tts/raya'
 
 // Types
 interface SarvamVoice {
@@ -80,7 +83,16 @@ interface SelectTTSProps {
   initialModel?: string;
   initialConfig?: any;
   onVoiceSelect?: (voiceId: string, provider: string, model?: string, config?: any) => void;
+  /** Provider keys to hide here, for screens whose backend doesn't support them (e.g. Pipecat). */
+  excludeProviders?: string[];
 }
+
+// Raya's settings as the dialog edits them. Stored configs arrive in the same shape
+// (see rayaTtsPayload / rayaConfigFromTts), so this only normalises and clamps.
+const buildRayaConfig = (provider: string | undefined, model: string | undefined, config: any): RayaConfig =>
+  normalizeRayaConfig(
+    normalizeTtsProvider(provider) === RAYA_PROVIDER ? { ...config, model: model || config?.model } : {},
+  )
 
 // Voice data
 const allSarvamVoices: (SarvamVoice & { compatibleModels: string[] })[] = [
@@ -136,8 +148,120 @@ const allSarvamVoices: (SarvamVoice & { compatibleModels: string[] })[] = [
   ...bulbulV4Voices,
 ]
 
+const isSarvamProvider = (provider?: string) => normalizeTtsProvider(provider) === 'sarvam'
+
+// Initial values for each provider's settings. Used both for first render and for "Reset",
+// so the two can't drift apart. Only the provider that is actually saved contributes its
+// stored config; the others start from defaults.
+function buildSarvamConfig(provider: string | undefined, model: string | undefined, config: any, voice: string): SarvamConfig {
+  const isSarvam = isSarvamProvider(provider)
+  const cfg = isSarvam && config ? config : {}
+  // "bulbul:v3" is stored under the plugin's real model string
+  const storedModel = model === 'bulbul:v3' ? 'bulbul:v3-beta' : model
+  return {
+    target_language_code: cfg.target_language_code || cfg.language || 'en-IN',
+    model: isSarvam && storedModel ? storedModel : 'bulbul:v3-beta',
+    speaker: voice || '',
+    pace: Math.max(0.5, Math.min(2, Number(cfg.pace ?? cfg.speed ?? 1))),
+    loudness: Math.max(0.5, Math.min(2, Number(cfg.loudness ?? 1))),
+    enable_preprocessing: cfg.enable_preprocessing ?? false,
+    pitch: Math.max(-20, Math.min(20, Number(cfg.pitch ?? 0))),
+  }
+}
+
+function buildElevenLabsConfig(provider: string | undefined, model: string | undefined, config: any, voice: string): ElevenLabsConfig {
+  const saved = provider === 'elevenlabs' && config ? config : null
+  return {
+    voiceId: voice || '',
+    language: saved?.language || 'en',
+    model: (saved && model) || 'eleven_multilingual_v2',
+    similarityBoost: saved?.similarityBoost || 0.75,
+    stability: saved?.stability || 0.5,
+    style: saved?.style || 0,
+    useSpeakerBoost: saved?.useSpeakerBoost === undefined ? true : saved.useSpeakerBoost,
+    speed: saved?.speed || 1,
+  }
+}
+
+function buildGoogleConfig(provider: string | undefined, config: any, voice: string): GoogleTTSConfig {
+  const saved = provider === 'google' && config ? config : null
+  return { voice_name: voice || saved?.voice_name || '', gender: saved?.gender }
+}
+
+function googleGender(ssmlGender?: string): string | undefined {
+  if (!ssmlGender) return undefined
+  const gender = ssmlGender.toLowerCase()
+  return gender === 'female' || gender === 'male' ? gender : 'neutral'
+}
+
+// Which provider's settings "Apply" should save. currentProvider wins, but the active tab is
+// the fallback so a Sarvam-tab selection never saves another provider's config.
+function resolveConfirmProvider(currentProvider: string, activeTab: string): string {
+  if (currentProvider && !(activeTab === 'sarvam' && currentProvider !== 'sarvam')) return currentProvider
+  return activeTab === 'sarvam' ? 'sarvam' : 'elevenlabs'
+}
+
+// What the closed dialog's trigger shows for the saved voice. `loading` is rendered as a skeleton.
+type TriggerLabel = { kind: 'text'; text: string } | { kind: 'loading' }
+const labelText = (text: string): TriggerLabel => ({ kind: 'text', text })
+const LABEL_LOADING: TriggerLabel = { kind: 'loading' }
+
+interface TriggerLabelContext {
+  selectedVoice: string
+  sarvamVoices: { id: string; name: string }[]
+  googleVoices: GoogleTTSVoice[]
+  elevenLabsVoices: ElevenLabsVoice[]
+  rayaVoices: RayaVoice[]
+  rayaStatus: string
+  savedProviderIsRaya: boolean
+  isLoadingElevenLabs: boolean
+  elevenLabsError: string | null
+  isElevenLabsProvider: boolean
+}
+
+function resolveRayaLabel(ctx: TriggerLabelContext): TriggerLabel {
+  const voice = ctx.rayaVoices.find((v) => v.id === ctx.selectedVoice)
+  if (voice) return labelText(voice.name)
+  if (ctx.rayaStatus === 'loading' || ctx.rayaStatus === 'idle') return LABEL_LOADING
+  return labelText('Raya Voice')
+}
+
+function resolveElevenLabsLabel(ctx: TriggerLabelContext): TriggerLabel {
+  if (ctx.isLoadingElevenLabs && ctx.selectedVoice) return LABEL_LOADING
+  // API unavailable: if a voice is configured show a stable label so the user knows there IS a
+  // voice stored; only show "No Input" when no voice was selected
+  if (ctx.elevenLabsError && ctx.selectedVoice) return labelText('ElevenLabs Voice')
+  if (ctx.elevenLabsError && ctx.isElevenLabsProvider) return labelText('No Input')
+  if (!ctx.selectedVoice) return labelText('Choose Voice')
+  const voice = ctx.elevenLabsVoices.find((v) => v.voice_id === ctx.selectedVoice)
+  return labelText(voice ? voice.name : 'Voice Selected')
+}
+
+function resolveTriggerLabel(ctx: TriggerLabelContext): TriggerLabel {
+  if (ctx.selectedVoice) {
+    // Sarvam and Google lists are local, so they never wait on the ElevenLabs API
+    const sarvam = ctx.sarvamVoices.find((v) => v.id === ctx.selectedVoice)
+    if (sarvam) return labelText(sarvam.name)
+    const google = ctx.googleVoices.find((v) => v.name === ctx.selectedVoice)
+    if (google) return labelText(google.displayName)
+    if (ctx.savedProviderIsRaya) return resolveRayaLabel(ctx)
+  }
+  return resolveElevenLabsLabel(ctx)
+}
+
+function LabelSkeleton() {
+  return (
+    <div className="flex items-center gap-2">
+      <Skeleton className="w-3 h-3" />
+      <Skeleton className="w-16 h-3" />
+    </div>
+  )
+}
+
 // Main Component
-function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig, onVoiceSelect }: SelectTTSProps) {
+const NO_EXCLUDED_PROVIDERS: string[] = []
+
+function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig, onVoiceSelect, excludeProviders = NO_EXCLUDED_PROVIDERS }: Readonly<SelectTTSProps>) {
   const [isOpen, setIsOpen] = useState(false)
   const [elevenLabsVoices, setElevenLabsVoices] = useState<ElevenLabsVoice[]>([])
   const [isLoadingElevenLabs, setIsLoadingElevenLabs] = useState(false)
@@ -151,136 +275,39 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
   
   // Single source of truth for current selection (internal state)
   const [currentVoiceId, setCurrentVoiceId] = useState(selectedVoice || '')
-  const [currentProvider, setCurrentProvider] = useState(() => {
-    const normalized = initialProvider === 'sarvam_tts' ? 'sarvam' : initialProvider
-    return normalized || ''
-  })
+  const [currentProvider, setCurrentProvider] = useState(() => normalizeTtsProvider(initialProvider))
   
   // Determine active tab based on current provider
-  const [activeTab, setActiveTab] = useState(() => {
-    if (currentProvider === 'sarvam' || currentProvider === 'sarvam_tts') return 'sarvam'
-    if (currentProvider === 'elevenlabs') return 'elevenlabs'
-    if (currentProvider === 'google') return 'google'
-    return 'sarvam' // Default
-  })
+  const [activeTab, setActiveTab] = useState(() => getTtsProvider(currentProvider)?.key ?? 'sarvam')
   
-  // FIX 2: sarvamConfig initial state — no v3/v2 branching, no temperature,
-  // pace replaces speed, all fields always present.
-  const [sarvamConfig, setSarvamConfig] = useState<SarvamConfig>(() => {
-    const model = ((initialProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialModel)
-      ? (initialModel === 'bulbul:v3' ? 'bulbul:v3-beta' : initialModel)
-      : 'bulbul:v3-beta'
-    const cfg = ((initialProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialConfig)
-      ? initialConfig
-      : {}
-    return {
-      target_language_code: cfg.target_language_code || cfg.language || 'en-IN',
-      model,
-      speaker: selectedVoice || '',
-      pace: Math.max(0.5, Math.min(2.0, Number(cfg.pace ?? cfg.speed ?? 1.0))),
-      loudness: Math.max(0.5, Math.min(2.0, Number(cfg.loudness ?? 1.0))),
-      enable_preprocessing: cfg.enable_preprocessing ?? false,
-      pitch: Math.max(-20.0, Math.min(20.0, Number(cfg.pitch ?? 0.0))),
-    }
-  })
+  const [sarvamConfig, setSarvamConfig] = useState<SarvamConfig>(() =>
+    buildSarvamConfig(initialProvider, initialModel, initialConfig, selectedVoice),
+  )
+  const [elevenLabsConfig, setElevenLabsConfig] = useState<ElevenLabsConfig>(() =>
+    buildElevenLabsConfig(initialProvider, initialModel, initialConfig, selectedVoice),
+  )
+  const [googleTTSConfig, setGoogleTTSConfig] = useState<GoogleTTSConfig>(() =>
+    buildGoogleConfig(initialProvider, initialConfig, selectedVoice),
+  )
+  const [rayaConfig, setRayaConfig] = useState<RayaConfig>(() =>
+    buildRayaConfig(initialProvider, initialModel, initialConfig),
+  )
 
-  // Initialize ElevenLabs configuration with defaults
-  const [elevenLabsConfig, setElevenLabsConfig] = useState<ElevenLabsConfig>(() => {
-    if (currentProvider === 'elevenlabs' && initialConfig) {
-      // Only use initialModel if provider is ElevenLabs, otherwise use default
-      const model = initialProvider === 'elevenlabs' && initialModel 
-        ? initialModel 
-        : 'eleven_multilingual_v2'
-      return {
-        voiceId: selectedVoice || '',
-        language: initialConfig.language || 'en',
-        model: model,
-        similarityBoost: initialConfig.similarityBoost || 0.75,
-        stability: initialConfig.stability || 0.5,
-        style: initialConfig.style || 0,
-        useSpeakerBoost: initialConfig.useSpeakerBoost !== undefined ? initialConfig.useSpeakerBoost : true,
-        speed: initialConfig.speed || 1.0
-      }
-    }
-    return {
-      voiceId: selectedVoice || '',
-      language: 'en',
-      model: 'eleven_multilingual_v2',
-      similarityBoost: 0.75,
-      stability: 0.5,
-      style: 0,
-      useSpeakerBoost: true,
-      speed: 1.0
-    }
-  })
-
-  // Initialize Google TTS configuration with defaults
-  const [googleTTSConfig, setGoogleTTSConfig] = useState<GoogleTTSConfig>(() => {
-    if (currentProvider === 'google' && initialConfig) {
-      return {
-        voice_name: selectedVoice || initialConfig.voice_name || '',
-        gender: initialConfig.gender
-      }
-    }
-    return {
-      voice_name: selectedVoice || '',
-      gender: undefined
-    }
-  })
+  // Raya's voice list is account-scoped and needs a server key, so it loads only once it can
+  // matter: the dialog is open, or this slot is already configured with a Raya voice (so the
+  // trigger can show its name). The store is shared, so several dialogs make one request.
+  const savedProviderIsRaya = normalizeTtsProvider(initialProvider) === RAYA_PROVIDER
+  const rayaCatalogue = useRayaVoices(isOpen || savedProviderIsRaya)
 
   const [showSettings, setShowSettings] = useState(true)
 
-  // FIX 3: originalValues sarvamConfig — same logic as initial state above,
-  // no hardcoded bulbul:v2, no temperature, pace not speed.
   const originalValues = {
     voiceId: selectedVoice || '',
-    provider: initialProvider === 'sarvam_tts' ? 'sarvam' : (initialProvider || ''),
-    sarvamConfig: (() => {
-      const model = ((initialProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialModel)
-        ? (initialModel === 'bulbul:v3' ? 'bulbul:v3-beta' : initialModel)
-        : 'bulbul:v3-beta'
-      const cfg = ((initialProvider === 'sarvam' || initialProvider === 'sarvam_tts') && initialConfig)
-        ? initialConfig
-        : {}
-      return {
-        target_language_code: cfg.target_language_code || cfg.language || 'en-IN',
-        model,
-        speaker: selectedVoice || '',
-        pace: Math.max(0.5, Math.min(2.0, Number(cfg.pace ?? cfg.speed ?? 1.0))),
-        loudness: Math.max(0.5, Math.min(2.0, Number(cfg.loudness ?? 1.0))),
-        enable_preprocessing: cfg.enable_preprocessing ?? false,
-        pitch: Math.max(-20.0, Math.min(20.0, Number(cfg.pitch ?? 0.0))),
-      }
-    })(),
-    elevenLabsConfig: (initialProvider === 'elevenlabs' && initialConfig) ? {
-      voiceId: selectedVoice || '',
-      language: initialConfig.language || 'en',
-      // Only use initialModel if provider is ElevenLabs, otherwise use default
-      model: initialProvider === 'elevenlabs' && initialModel 
-        ? initialModel 
-        : 'eleven_multilingual_v2',
-      similarityBoost: initialConfig.similarityBoost || 0.75,
-      stability: initialConfig.stability || 0.5,
-      style: initialConfig.style || 0,
-      useSpeakerBoost: initialConfig.useSpeakerBoost !== undefined ? initialConfig.useSpeakerBoost : true,
-      speed: initialConfig.speed || 1.0
-    } : {
-      voiceId: selectedVoice || '',
-      language: 'en',
-      model: 'eleven_multilingual_v2',
-      similarityBoost: 0.75,
-      stability: 0.5,
-      style: 0,
-      useSpeakerBoost: true,
-      speed: 1.0
-    },
-    googleTTSConfig: (initialProvider === 'google' && initialConfig) ? {
-      voice_name: selectedVoice || initialConfig.voice_name || '',
-      gender: initialConfig.gender
-    } : {
-      voice_name: selectedVoice || '',
-      gender: undefined
-    }
+    provider: normalizeTtsProvider(initialProvider),
+    sarvamConfig: buildSarvamConfig(initialProvider, initialModel, initialConfig, selectedVoice),
+    elevenLabsConfig: buildElevenLabsConfig(initialProvider, initialModel, initialConfig, selectedVoice),
+    rayaConfig: buildRayaConfig(initialProvider, initialModel, initialConfig),
+    googleTTSConfig: buildGoogleConfig(initialProvider, initialConfig, selectedVoice),
   }
 
 
@@ -290,15 +317,11 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
     setSarvamConfig(originalValues.sarvamConfig)
     setElevenLabsConfig(originalValues.elevenLabsConfig)
     setGoogleTTSConfig(originalValues.googleTTSConfig)
+    setRayaConfig(originalValues.rayaConfig)
     
     // Set correct tab based on original provider
-    if (originalValues.provider === 'sarvam') {
-      setActiveTab('sarvam')
-    } else if (originalValues.provider === 'elevenlabs') {
-      setActiveTab('elevenlabs')
-    } else if (originalValues.provider === 'google') {
-      setActiveTab('google')
-    }
+    const originalTab = getTtsProvider(originalValues.provider)
+    if (originalTab) setActiveTab(originalTab.key)
   }
 
   // Pre-load ElevenLabs voices on component mount
@@ -346,15 +369,9 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
       setCurrentVoiceId(selectedVoice || '')
     }
     if (initialProvider !== currentProvider) {
-      const normalized = initialProvider === 'sarvam_tts' ? 'sarvam' : initialProvider
-      setCurrentProvider(normalized || '')
-      if (initialProvider === 'sarvam' || initialProvider === 'sarvam_tts') {
-        setActiveTab('sarvam')
-      } else if (initialProvider === 'elevenlabs') {
-        setActiveTab('elevenlabs')
-      } else if (initialProvider === 'google') {
-        setActiveTab('google')
-      }
+      setCurrentProvider(normalizeTtsProvider(initialProvider))
+      const tab = getTtsProvider(initialProvider)
+      if (tab) setActiveTab(tab.key)
     }
   }, [selectedVoice, initialProvider, isOpen])
 
@@ -382,7 +399,7 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
   // MAIN VOICE SELECT HANDLER - this updates internal state immediately
   const handleVoiceSelect = (voiceId: string, provider: string) => {
     
-    const normalizedProvider = provider === 'sarvam_tts' ? 'sarvam' : provider
+    const normalizedProvider = normalizeTtsProvider(provider)
     
     // Update internal state immediately
     setCurrentVoiceId(voiceId)
@@ -398,27 +415,17 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
       }))
     } else if (normalizedProvider === 'elevenlabs') {
       setElevenLabsConfig(prev => ({ ...prev, voiceId }))
+    } else if (normalizedProvider === RAYA_PROVIDER) {
+      // Raya's voice-specific language/model are applied by its panel via setRayaConfig.
     } else if (normalizedProvider === 'google') {
       // Auto-detect gender from selected voice
-      const selectedVoice = googleTTSVoices.find(v => v.name === voiceId)
-      const gender = selectedVoice?.ssmlGender 
-        ? selectedVoice.ssmlGender.toLowerCase() === 'female' ? 'female'
-        : selectedVoice.ssmlGender.toLowerCase() === 'male' ? 'male'
-        : 'neutral'
-        : undefined
-      
-      setGoogleTTSConfig(prev => ({ 
-        ...prev, 
-        voice_name: voiceId,
-        gender: gender
-      }))
+      const gender = googleGender(googleTTSVoices.find(v => v.name === voiceId)?.ssmlGender)
+      setGoogleTTSConfig(prev => ({ ...prev, voice_name: voiceId, gender }))
     }
     
     // Switch tab if needed
-    if ((normalizedProvider === 'sarvam' && activeTab !== 'sarvam') || 
-        (normalizedProvider === 'elevenlabs' && activeTab !== 'elevenlabs') ||
-        (normalizedProvider === 'google' && activeTab !== 'google')) {
-      setActiveTab(normalizedProvider === 'sarvam' ? 'sarvam' : normalizedProvider === 'elevenlabs' ? 'elevenlabs' : 'google')
+    if (getTtsProvider(normalizedProvider) && activeTab !== normalizedProvider) {
+      setActiveTab(normalizedProvider)
     }
     
     // Show settings panel when a voice is selected
@@ -436,15 +443,14 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
 
   const handleConfirm = () => {
     if (currentVoiceId && onVoiceSelect) {
-      // Determine provider: prioritize currentProvider, but use activeTab as definitive fallback
-      // This ensures that if user is on Sarvam tab, we use Sarvam config even if currentProvider is not set
-      let provider = currentProvider
-      if (!provider || (activeTab === 'sarvam' && provider !== 'sarvam')) {
-        provider = activeTab === 'sarvam' ? 'sarvam' : 'elevenlabs'
-      }
+      const provider = resolveConfirmProvider(currentProvider, activeTab)
       
-      const config = provider === 'sarvam' ? sarvamConfig : provider === 'elevenlabs' ? elevenLabsConfig : googleTTSConfig
-      const model = provider === 'sarvam' ? sarvamConfig.model : provider === 'elevenlabs' ? elevenLabsConfig.model : undefined
+      const configByProvider: Record<string, { config: any; model?: string }> = {
+        sarvam: { config: sarvamConfig, model: sarvamConfig.model },
+        elevenlabs: { config: elevenLabsConfig, model: elevenLabsConfig.model },
+        [RAYA_PROVIDER]: { config: rayaConfig, model: rayaConfig.model },
+      }
+      const { config, model } = configByProvider[provider] ?? { config: googleTTSConfig }
       onVoiceSelect(currentVoiceId, provider, model, config)
     }
     setIsOpen(false)
@@ -452,56 +458,36 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
 
   const isElevenLabsProvider = initialProvider === 'elevenlabs' || currentProvider === 'elevenlabs'
 
-  // True when ElevenLabs key is invalid and the configured voice is an ElevenLabs voice
-  // (or the provider is explicitly set to ElevenLabs)
-  const isVoiceInputError = !!(
-    elevenLabsError && (
-      isElevenLabsProvider ||
-      (selectedVoice &&
-        !allSarvamVoices.some(v => v.id === selectedVoice) &&
-        !googleTTSVoices.some(v => v.name === selectedVoice))
-    )
-  )
-
-  const getSelectedVoiceName = () => {
-    // Check Sarvam first — hardcoded list, never needs ElevenLabs API
-    if (selectedVoice) {
-      const sarvamVoice = allSarvamVoices.find(v => v.id === selectedVoice)
-      if (sarvamVoice) return sarvamVoice.name
-
-      const googleTTSVoice = googleTTSVoices.find(v => v.name === selectedVoice)
-      if (googleTTSVoice) return googleTTSVoice.displayName
-    }
-
-    // ElevenLabs path — requires API key
-    if (isLoadingElevenLabs && selectedVoice) {
-      return (
-        <div className="flex items-center gap-2">
-          <Skeleton className="w-3 h-3" />
-          <Skeleton className="w-16 h-3" />
-        </div>
-      )
-    }
-
-    // API unavailable — if a voice is configured show a stable label so the user
-    // knows there IS a voice stored; only show "No Input" when no voice was selected
-    if (elevenLabsError) {
-      if (selectedVoice) {
-        return "ElevenLabs Voice"
-      }
-      if (isElevenLabsProvider) {
-        return "No Input"
-      }
-    }
-
-    if (!selectedVoice) return "Choose Voice"
-
-    const elevenLabsVoice = elevenLabsVoices.find(v => v.voice_id === selectedVoice)
-    if (elevenLabsVoice) return elevenLabsVoice.name
-
-    return "Voice Selected"
+  const providers = TTS_PROVIDERS.filter((p) => !excludeProviders.includes(p.key))
+  // A count only appears once that provider's list is known, so nothing flashes "0" while loading.
+  const rayaKnown = rayaCatalogue.status === 'ready' || rayaCatalogue.voices.length > 0
+  const providerCounts: Record<string, number | undefined> = {
+    sarvam: filterCompatibleSarvamVoices(allSarvamVoices, sarvamConfig.model).length,
+    elevenlabs: elevenLabsFetched ? elevenLabsVoices.length : undefined,
+    google: googleTTSFetched ? googleTTSVoices.length : undefined,
+    [RAYA_PROVIDER]: rayaKnown ? rayaCatalogue.voices.filter((v) => v.model === rayaConfig.model).length : undefined,
   }
 
+  // True when ElevenLabs key is invalid and the configured voice is an ElevenLabs voice
+  // (or the provider is explicitly set to ElevenLabs)
+  const voiceIsUnlisted =
+    !!selectedVoice &&
+    !allSarvamVoices.some(v => v.id === selectedVoice) &&
+    !googleTTSVoices.some(v => v.name === selectedVoice)
+  const isVoiceInputError = !!elevenLabsError && !savedProviderIsRaya && (isElevenLabsProvider || voiceIsUnlisted)
+
+  const triggerLabel = resolveTriggerLabel({
+    selectedVoice,
+    sarvamVoices: allSarvamVoices,
+    googleVoices: googleTTSVoices,
+    elevenLabsVoices,
+    rayaVoices: rayaCatalogue.voices,
+    rayaStatus: rayaCatalogue.status,
+    savedProviderIsRaya,
+    isLoadingElevenLabs,
+    elevenLabsError,
+    isElevenLabsProvider,
+  })
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -519,7 +505,7 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
             ? <AlertTriangle className="w-3.5 h-3.5 mr-2 text-amber-500 flex-shrink-0" />
             : <Volume2 className="w-3.5 h-3.5 mr-2 flex-shrink-0" />
           }
-          {getSelectedVoiceName()}
+          {triggerLabel.kind === 'loading' ? <LabelSkeleton /> : triggerLabel.text}
         </Button>
       </DialogTrigger>
       
@@ -557,6 +543,7 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
                 allSarvamVoices={allSarvamVoices}
                 elevenLabsVoices={elevenLabsVoices}
                 googleTTSVoices={googleTTSVoices}
+                rayaVoices={rayaCatalogue.voices}
                 showSettings={true}
                 onToggleSettings={() => {}}
               />
@@ -564,41 +551,60 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
           </div>
         </DialogHeader>
         
-        <div className="flex-1 flex overflow-hidden">
-          {/* Voice Selection Panel - uses internal state */}
-          <VoiceSelectionPanel
-            activeTab={activeTab}
-            onTabChange={handleTabChange}
-            showSettings={showSettings}
-            selectedVoiceId={currentVoiceId}
-            selectedProvider={currentProvider}
-            onVoiceSelect={handleVoiceSelect}
-            sarvamConfig={sarvamConfig}
-            setSarvamConfig={setSarvamConfig}
-            elevenLabsVoices={elevenLabsVoices}
-            setElevenLabsVoices={setElevenLabsVoices}
-            allSarvamVoices={allSarvamVoices}
-            googleTTSVoices={googleTTSVoices}
-            setGoogleTTSVoices={setGoogleTTSVoices}
-            isLoadingGoogleTTS={isLoadingGoogleTTS}
-            googleTTSError={googleTTSError}
-            googleTTSFetched={googleTTSFetched}
-            onFetchGoogleTTS={fetchGoogleTTSVoices}
+        {/* One Tabs root for the rail (triggers) and the voice panel (contents). */}
+        <Tabs
+          value={activeTab}
+          onValueChange={handleTabChange}
+          orientation="vertical"
+          className="flex-1 min-h-0 flex flex-col md:flex-row gap-0 overflow-hidden"
+        >
+          <ProviderRail
+            providers={providers}
+            counts={providerCounts}
+            appliedProvider={currentVoiceId ? currentProvider : ''}
+            activeProvider={activeTab}
           />
-          
-          {/* Settings Panel - uses internal state */}
-          {showSettings && (
-            <SettingsPanel
+
+          <div className="flex-1 min-w-0 min-h-0 flex overflow-hidden">
+            {/* Voice Selection Panel - uses internal state */}
+            <VoiceSelectionPanel
+              activeTab={activeTab}
+              showSettings={showSettings}
+              selectedVoiceId={currentVoiceId}
               selectedProvider={currentProvider}
+              onVoiceSelect={handleVoiceSelect}
               sarvamConfig={sarvamConfig}
               setSarvamConfig={setSarvamConfig}
-              elevenLabsConfig={elevenLabsConfig}
-              setElevenLabsConfig={setElevenLabsConfig}
-              googleTTSConfig={googleTTSConfig}
-              setGoogleTTSConfig={setGoogleTTSConfig}
+              elevenLabsVoices={elevenLabsVoices}
+              setElevenLabsVoices={setElevenLabsVoices}
+              allSarvamVoices={allSarvamVoices}
+              googleTTSVoices={googleTTSVoices}
+              setGoogleTTSVoices={setGoogleTTSVoices}
+              isLoadingGoogleTTS={isLoadingGoogleTTS}
+              googleTTSError={googleTTSError}
+              googleTTSFetched={googleTTSFetched}
+              onFetchGoogleTTS={fetchGoogleTTSVoices}
+              rayaConfig={rayaConfig}
+              setRayaConfig={setRayaConfig}
+              rayaCatalogue={rayaCatalogue}
             />
-          )}
-        </div>
+
+            {/* Settings Panel - uses internal state */}
+            {showSettings && (
+              <SettingsPanel
+                selectedProvider={currentProvider}
+                sarvamConfig={sarvamConfig}
+                setSarvamConfig={setSarvamConfig}
+                elevenLabsConfig={elevenLabsConfig}
+                setElevenLabsConfig={setElevenLabsConfig}
+                googleTTSConfig={googleTTSConfig}
+                setGoogleTTSConfig={setGoogleTTSConfig}
+                rayaConfig={rayaConfig}
+                setRayaConfig={setRayaConfig}
+              />
+            )}
+          </div>
+        </Tabs>
         
         {/* Footer */}
         <div className="p-6 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 flex justify-between items-center flex-shrink-0">

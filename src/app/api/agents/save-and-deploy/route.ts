@@ -4,6 +4,7 @@ import { decryptWithWhispeyKey } from '@/lib/whispey-crypto'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { deployAgentConfig } from '@/lib/deployAgentConfig'
 import { resolveDeploymentTargetForUser } from '@/lib/resolveDeploymentTarget'
+import { RAYA_PROVIDER, rayaConfigFromTts, rayaTtsPayload } from '@/lib/tts/raya'
 
 // Deploying to a running agent hot-reloads its worker on the backend (20-30s);
 // don't let Vercel kill this route at the default 10-15s.
@@ -106,6 +107,7 @@ function serializeLanguageSwitchTTSRoute(tts: any): any {
   if (tts.name === 'sarvam') return serializeSarvamLanguageSwitchTTSRoute(tts)
   if (tts.name === 'elevenlabs') return serializeElevenlabsLanguageSwitchTTSRoute(tts)
   if (tts.name === 'google') return serializeGoogleLanguageSwitchTTSRoute(tts)
+  if (tts.name === RAYA_PROVIDER) return rayaTtsPayload(tts.voice_id || '', tts.model, rayaConfigFromTts(tts))
   return { name: tts.name }
 }
 

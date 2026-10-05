@@ -32,11 +32,13 @@ export type OrgOverviewData = {
 
 const WIDGET_IDS = {
   totalCalls: 'total_calls',
-  pickedUpCalls: 'picked_up_calls',
+  uniqueCallees: 'unique_callees',
+  pickedUpCallees: 'picked_up_callees',
   avgLatency: 'avg_latency',
   billingMinutes: 'billing_minutes',
   callsByAgent: 'calls_by_agent',
-  pickedUpByAgent: 'picked_up_by_agent',
+  calleesByAgent: 'callees_by_agent',
+  pickedUpCalleesByAgent: 'picked_up_callees_by_agent',
   latencyByAgent: 'latency_by_agent',
 } as const
 
@@ -46,13 +48,24 @@ const WIDGET_IDS = {
  * that was answered but then dropped (error, crash, network failure) before
  * finishing — this definition deliberately excludes those: only
  * `call_ended_reason = 'completed'` counts.
+ *
+ * Pickup % is a *per-person* rate, not a per-call one: both sides count
+ * distinct `customer_number` (normalised to the last ten digits by the query
+ * builder), so someone retried five times counts once whether they picked up
+ * on the first attempt or the last. Counting rows instead let retries inflate
+ * the denominator and pushed the rate down.
  */
 const PICKED_UP_HAVING = [{ field: { col: 'call_ended_reason' }, op: 'eq' as const, value: 'completed' }]
+const CALLEE = { col: 'customer_number' }
 
-function specsFor(range: OverviewRange): { id: string; spec: SpecInput }[] {
+export function specsFor(range: OverviewRange): { id: string; spec: SpecInput }[] {
   return [
     { id: WIDGET_IDS.totalCalls, spec: { spec_version: 1, agg: { fn: 'count' }, range } },
-    { id: WIDGET_IDS.pickedUpCalls, spec: { spec_version: 1, agg: { fn: 'count' }, having: PICKED_UP_HAVING, range } },
+    { id: WIDGET_IDS.uniqueCallees, spec: { spec_version: 1, agg: { fn: 'count_distinct', field: CALLEE }, range } },
+    {
+      id: WIDGET_IDS.pickedUpCallees,
+      spec: { spec_version: 1, agg: { fn: 'count_distinct', field: CALLEE }, having: PICKED_UP_HAVING, range },
+    },
     { id: WIDGET_IDS.avgLatency, spec: { spec_version: 1, agg: { fn: 'avg', field: { col: 'avg_latency' } }, range } },
     {
       id: WIDGET_IDS.billingMinutes,
@@ -63,8 +76,18 @@ function specsFor(range: OverviewRange): { id: string; spec: SpecInput }[] {
       spec: { spec_version: 1, agg: { fn: 'count' }, dimension: { field: { col: 'agent_id' } }, range },
     },
     {
-      id: WIDGET_IDS.pickedUpByAgent,
-      spec: { spec_version: 1, agg: { fn: 'count' }, dimension: { field: { col: 'agent_id' } }, having: PICKED_UP_HAVING, range },
+      id: WIDGET_IDS.calleesByAgent,
+      spec: { spec_version: 1, agg: { fn: 'count_distinct', field: CALLEE }, dimension: { field: { col: 'agent_id' } }, range },
+    },
+    {
+      id: WIDGET_IDS.pickedUpCalleesByAgent,
+      spec: {
+        spec_version: 1,
+        agg: { fn: 'count_distinct', field: CALLEE },
+        dimension: { field: { col: 'agent_id' } },
+        having: PICKED_UP_HAVING,
+        range,
+      },
     },
     {
       id: WIDGET_IDS.latencyByAgent,
@@ -162,7 +185,8 @@ export function useOrgOverview(
   }, [projectId, rangeKey, agentIdsKey, enabled])
 
   const callsByAgent = byAgent(results.get(WIDGET_IDS.callsByAgent)?.data)
-  const pickedUpByAgent = byAgent(results.get(WIDGET_IDS.pickedUpByAgent)?.data)
+  const calleesByAgent = byAgent(results.get(WIDGET_IDS.calleesByAgent)?.data)
+  const pickedUpCalleesByAgent = byAgent(results.get(WIDGET_IDS.pickedUpCalleesByAgent)?.data)
   const latencyByAgent = byAgent(results.get(WIDGET_IDS.latencyByAgent)?.data)
 
   const agentIdSet = selectedAgentIds ? new Set(selectedAgentIds) : null
@@ -170,22 +194,24 @@ export function useOrgOverview(
     .filter((a) => !agentIdSet || agentIdSet.has(a.id))
     .map((a) => {
     const calls = callsByAgent.get(a.id) ?? null
-    const pickedUp = pickedUpByAgent.get(a.id) ?? null
+    const callees = calleesByAgent.get(a.id) ?? null
+    const pickedUp = pickedUpCalleesByAgent.get(a.id) ?? null
     return {
       id: a.id,
       name: a.display_name || a.name,
       is_active: a.is_active,
       calls,
-      pickupPct: calls ? ((pickedUp ?? 0) / calls) * 100 : null,
+      pickupPct: callees ? ((pickedUp ?? 0) / callees) * 100 : null,
       latency: latencyByAgent.get(a.id) ?? null,
     }
   })
 
   const totalCalls = firstValue(results.get(WIDGET_IDS.totalCalls)?.data)
-  const pickedUpCalls = firstValue(results.get(WIDGET_IDS.pickedUpCalls)?.data)
+  const uniqueCallees = firstValue(results.get(WIDGET_IDS.uniqueCallees)?.data)
+  const pickedUpCallees = firstValue(results.get(WIDGET_IDS.pickedUpCallees)?.data)
   const data: OrgOverviewData = {
     totalCalls,
-    pickupPct: totalCalls ? ((pickedUpCalls ?? 0) / totalCalls) * 100 : null,
+    pickupPct: uniqueCallees ? ((pickedUpCallees ?? 0) / uniqueCallees) * 100 : null,
     avgLatency: firstValue(results.get(WIDGET_IDS.avgLatency)?.data),
     billingMinutes: firstValue(results.get(WIDGET_IDS.billingMinutes)?.data),
     agents,

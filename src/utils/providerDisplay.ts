@@ -16,6 +16,7 @@ export const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   playht: "PlayHT",
   rime: "Rime",
   smallestai: "Smallest AI",
+  raya: "Raya",
   aws: "AWS",
   cerebras: "Cerebras",
   livekit: "LiveKit Inference",
