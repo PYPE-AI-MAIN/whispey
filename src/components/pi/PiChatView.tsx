@@ -1,11 +1,11 @@
 'use client'
 
-import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createContext, memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowUp, Mic } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
-import { internalPiHref } from '@/lib/piLinks'
+import { buildAgentLinkMap, resolvePiHref } from '@/lib/piLinks'
 import { fetchWithBackoff } from '@/lib/piFetch'
 import { useVoiceAgent } from '@/hooks/useVoiceAgent'
 import PiCustomToolForm, { type ToolDraft } from '@/components/pi/PiCustomToolForm'
@@ -14,6 +14,21 @@ import {
   applyEvent, classifyEvent, consumeSse, failAssistant, navigationTarget, parseSseLine, withToolCallResult,
   type Classified, type ContextUsage, type Message, type ToolCall,
 } from '@/lib/piStream'
+
+const AgentLinksContext = createContext<Map<string, string>>(new Map())
+
+const textOf = (node: React.ReactNode): string =>
+  typeof node === 'string' || typeof node === 'number' ? String(node) : Array.isArray(node) ? node.map(textOf).join('') : ''
+
+function PiLink({ children, href }: Readonly<{ children?: React.ReactNode; href?: string }>) {
+  const agentLinks = useContext(AgentLinksContext)
+  const target = resolvePiHref(href, textOf(children), agentLinks)
+  // not a path this app serves and no known agent by that name — show the words, drop the link (piLinks.ts)
+  if (!target) return <>{children}</>
+  // new tab for a link Pi drops inline (e.g. naming an agent) — clicking
+  // it shouldn't navigate away from the chat you're in the middle of
+  return <Link href={target} target="_blank" rel="noreferrer" className="text-blue-600 underline underline-offset-2 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">{children}</Link>
+}
 
 const MARKDOWN_COMPONENTS = {
   h1: ({ children }: { children?: React.ReactNode }) => (
@@ -56,14 +71,7 @@ const MARKDOWN_COMPONENTS = {
     <blockquote className="border-l-2 border-gray-300 pl-3 not-first:mt-3 text-gray-600 dark:border-gray-600 dark:text-gray-400">{children}</blockquote>
   ),
   hr: () => <hr className="my-6 border-gray-200 dark:border-gray-800" />,
-  a: ({ children, href }: { children?: React.ReactNode; href?: string }) => {
-    const internal = internalPiHref(href)
-    // not a path this app serves — show the words, drop the link (internalPiHref)
-    if (!internal) return <>{children}</>
-    // new tab for a link Pi drops inline (e.g. naming an agent) — clicking
-    // it shouldn't navigate away from the chat you're in the middle of
-    return <Link href={internal} target="_blank" rel="noreferrer" className="text-blue-600 underline underline-offset-2 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">{children}</Link>
-  },
+  a: PiLink,
 }
 
 export type { Message, ToolCall } from '@/lib/piStream'
@@ -850,6 +858,7 @@ export default function PiChatView({
   }
 
   const latest = latestToolIds(messages)
+  const agentLinks = useMemo(() => buildAgentLinkMap(messages, projectId), [messages, projectId])
   const micSupported = !!globalThis.navigator?.mediaDevices?.getUserMedia && globalThis.RTCPeerConnection !== undefined
 
   const showContextHint = messages.length > 0 || !!sessionIdRef.current
@@ -902,7 +911,7 @@ export default function PiChatView({
                       ))}
                     </div>
                   )}
-                  {m.content && <StreamedMarkdown content={m.content} isFinal={m.isFinal} />}
+                  {m.content && <AgentLinksContext.Provider value={agentLinks}><StreamedMarkdown content={m.content} isFinal={m.isFinal} /></AgentLinksContext.Provider>}
                   {!m.content && !m.isFinal && <ThinkingIndicator />}
                   {m.toolCalls?.map((tc) => (
                     <ToolCallBlock
