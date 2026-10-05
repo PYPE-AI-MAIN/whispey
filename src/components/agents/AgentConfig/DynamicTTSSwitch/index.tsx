@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import SelectTTS from '../SelectTTSDialog'
 import { Badge } from '@/components/ui/badge'
+import { RAYA_PROVIDER, rayaConfigFromTts, rayaTtsPayload } from '@/lib/tts/raya'
 
 interface DynamicTTSConfig {
   tool_name: string
@@ -139,6 +140,12 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
           }
         })
       }
+    } else if (normalizedProvider === RAYA_PROVIDER) {
+      // Raya format: normalised so a stale or hand-edited entry can't ship an unsupported language/rate
+      configToSave = {
+        ...configToSave,
+        ...rayaTtsPayload(currentConfig.voice_id || '', currentConfig.model, rayaConfigFromTts(currentConfig)),
+      }
     } else if (normalizedProvider === 'google') {
       // Google format
       configToSave = {
@@ -183,6 +190,7 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
 
   const handleVoiceSelect = (voiceId: string, provider: string, model?: string, config?: any) => {
     const normalizedProvider = provider === 'sarvam_tts' ? 'sarvam' : provider
+    const rayaVoiceSettings = rayaTtsPayload(voiceId, model, config).voice_settings
     setCurrentConfig(prev => ({
       ...prev,
       name: normalizedProvider,
@@ -191,7 +199,7 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
       voice_name: normalizedProvider === 'google' ? voiceId : prev.voice_name,
       model: model || prev.model,
       language: config?.language || config?.target_language_code || prev.language,
-      voice_settings: normalizedProvider === 'elevenlabs' ? {
+      voice_settings: normalizedProvider === RAYA_PROVIDER ? rayaVoiceSettings : normalizedProvider === 'elevenlabs' ? {
         similarity_boost: config?.similarityBoost || 0.75,
         stability: config?.stability || 0.5,
         style: config?.style || 0,
@@ -216,6 +224,7 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
     if (name === 'sarvam' || name === 'sarvam_tts') return 'Sarvam'
     if (name === 'elevenlabs') return 'ElevenLabs'
     if (name === 'google') return 'Google TTS'
+    if (name === RAYA_PROVIDER) return 'Raya'
     return name
   }
 
@@ -373,6 +382,8 @@ const DynamicTTSSwitch: React.FC<DynamicTTSSwitchProps> = ({
                           voice_name: currentConfig.voice_name || '',
                           gender: currentConfig.gender
                         }
+                      } else if (currentConfig.name === RAYA_PROVIDER) {
+                        return rayaConfigFromTts(currentConfig)
                       }
                       return currentConfig.voice_settings || currentConfig
                     })()}

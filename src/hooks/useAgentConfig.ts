@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react"
 import { AGENT_DEFAULT_CONFIG, getFallback, getFormDefaults } from "@/config/agentDefaults"
 import { languageOptions } from "@/utils/constants"
+import { RAYA_PROVIDER, rayaConfigFromTts } from "@/lib/tts/raya"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 
 // Interface definitions remain the same...
@@ -769,7 +770,7 @@ function deriveBackgroundAudioMode(backgroundAudio: any): 'disabled' | 'single' 
   return 'disabled'
 }
 
-function deriveTtsVoiceConfig(tts: any): any {
+export function deriveTtsVoiceConfig(tts: any): any {
   if (!tts?.name) return {}
 
   if (tts.name === "sarvam" || tts.name === "sarvam_tts") {
@@ -801,6 +802,8 @@ function deriveTtsVoiceConfig(tts: any): any {
     }
   }
 
+  if (tts.name === RAYA_PROVIDER) return rayaConfigFromTts(tts)
+
   return {}
 }
 
@@ -816,7 +819,7 @@ function deriveSttConfig(stt: any): any {
   }
 }
 
-function deriveFallbackTtsVoiceConfig(fb: any): any {
+export function deriveFallbackTtsVoiceConfig(fb: any): any {
   if (!fb) return {}
   const name = fb.name
   if (name === 'sarvam' || name === 'sarvam_tts') {
@@ -834,6 +837,7 @@ function deriveFallbackTtsVoiceConfig(fb: any): any {
       gender: fb.gender,
     }
   }
+  if (name === RAYA_PROVIDER) return rayaConfigFromTts(fb)
   // ElevenLabs or any other provider
   return {
     voiceId: fb.voice_id || '',
