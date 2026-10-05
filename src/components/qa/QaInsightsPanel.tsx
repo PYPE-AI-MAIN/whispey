@@ -18,7 +18,7 @@ import toast from 'react-hot-toast'
 import {
   ArrowDownRight, ArrowUpRight, CheckCircle2, ChevronRight,
   Headphones, Minus, Sparkles, Clock, Settings, Mail,
-  AlertTriangle, AlertCircle, Info,
+  AlertTriangle, AlertCircle, Info, Check, Loader2,
 } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { Button } from '@/components/ui/button'
@@ -61,6 +61,7 @@ type Payload = {
   today: { date: string; callsTotal: number; sampled: number; flagged: number; random: number } | null
   lastRun: { date: string; status: string; callsSeen: number; finishedAt: string | null; error: string | null } | null
   currentInsight: Insight | null
+  reviewRequested?: boolean
   insights: Insight[]
   issues: Issue[]
   metrics: Metric[]
@@ -138,12 +139,26 @@ function Delta({ value, goodWhenDown = true }: Readonly<{ value: number | null; 
   )
 }
 
+function AskQaLabel({ asking, asked }: Readonly<{ asking: boolean; asked: boolean }>) {
+  if (asking) return <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />Asking QA…</>
+  if (asked) return <><Check className="mr-1.5 h-3.5 w-3.5" />QA has been asked</>
+  return <><Headphones className="mr-1.5 h-3.5 w-3.5" />Ask QA to check this</>
+}
+
+function askedMessage(body: { alreadyRequested?: boolean; mailed?: boolean } | null): string {
+  if (body?.alreadyRequested) return 'QA has already been asked about this.'
+  if (body?.mailed) return "We've mailed the Pype QA team — they'll follow up."
+  return "Added to the QA team's review queue."
+}
+
 function InsightCard({
-  insight, canWrite, onReviewPatch, onAskQa, onDismiss,
+  insight, canWrite, asked, asking, onReviewPatch, onAskQa, onDismiss,
 }: Readonly<{
   insight: Insight
   canWrite: boolean
   onReviewPatch: () => void
+  asked: boolean
+  asking: boolean
   onAskQa: () => void
   onDismiss: () => void
 }>) {
@@ -189,9 +204,8 @@ function InsightCard({
             Review prompt change
           </Button>
         )}
-        <Button size="sm" variant="outline" onClick={onAskQa}>
-          <Headphones className="mr-1.5 h-3.5 w-3.5" />
-          Ask QA to check this
+        <Button size="sm" variant="outline" onClick={onAskQa} disabled={asked || asking}>
+          <AskQaLabel asking={asking} asked={asked} />
         </Button>
         <Button size="sm" variant="ghost" onClick={onDismiss}>
           Dismiss
@@ -470,21 +484,33 @@ export default function QaInsightsPanel({
     return `Checked overnight · ${date} · ${callsSeen} calls`
   }, [data?.lastRun])
 
+  const [asking, setAsking] = useState(false)
+  const [askedIds, setAskedIds] = useState<string[]>([])
+  const askedAlready = Boolean(insight && (data?.reviewRequested || askedIds.includes(insight.id)))
+
   const askQaToCheck = async () => {
-    if (!insight) return
-    const res = await fetch('/api/qa/review', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ agentId, insightId: insight.id }),
-    })
-    const body = await res.json().catch(() => null)
-    toast.success(
-      body?.mailed
-        ? "We've mailed the Pype QA team — they'll follow up."
-        : "Added to the QA team's review queue.",
-    )
-    setTab('review')
-    refetch()
+    if (!insight || asking || askedAlready) return
+    setAsking(true)
+    try {
+      const res = await fetch('/api/qa/review', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ agentId, insightId: insight.id }),
+      })
+      const body = await res.json().catch(() => null)
+      if (!res.ok) {
+        toast.error(body?.error || 'Could not ask QA right now. Please try again.')
+        return
+      }
+      setAskedIds((ids) => [...ids, insight.id])
+      toast.success(askedMessage(body))
+      setTab('review')
+      refetch()
+    } catch {
+      toast.error('Could not reach the server. Please try again.')
+    } finally {
+      setAsking(false)
+    }
   }
 
   const dismissInsight = async () => {
@@ -596,6 +622,8 @@ export default function QaInsightsPanel({
                 insight={insight}
                 canWrite={data.canWrite}
                 onReviewPatch={() => setPatchOpen(true)}
+                asked={askedAlready}
+                asking={asking}
                 onAskQa={askQaToCheck}
                 onDismiss={dismissInsight}
               />
