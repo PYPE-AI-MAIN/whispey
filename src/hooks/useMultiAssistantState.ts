@@ -3,6 +3,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { FormikProps } from 'formik'
 import { getFallback } from '@/config/agentDefaults'
 import { getModelBaseUrl } from '@/components/agents/AgentConfig/ModelSelector'
+import { RAYA_PROVIDER, rayaConfigFromTts, rayaTtsPayload } from '@/lib/tts/raya'
 
 function serializeSarvamLanguageSwitchSTT(stt: any): any {
   const out: any = { name: stt.name, language: stt.language, model: stt.model }
@@ -94,11 +95,13 @@ function serializeGoogleLanguageSwitchTTS(tts: any): any {
   return out
 }
 
-function serializeLanguageSwitchTTS(tts: any): any {
+export function serializeLanguageSwitchTTS(tts: any): any {
   if (!tts) return {}
   if (tts.name === 'sarvam') return serializeSarvamLanguageSwitchTTS(tts)
   if (tts.name === 'elevenlabs') return serializeElevenlabsLanguageSwitchTTS(tts)
   if (tts.name === 'google') return serializeGoogleLanguageSwitchTTS(tts)
+  // Without this a Raya entry would collapse to `{ name }` and lose its voice, language and speed.
+  if (tts.name === RAYA_PROVIDER) return rayaTtsPayload(tts.voice_id || '', tts.model, rayaConfigFromTts(tts))
   return { name: tts.name }
 }
 
@@ -121,7 +124,7 @@ export function buildAgentEnvelope(name: string, type: string, assistant: any[],
   return { agent: { name, type, ...(agentId ? { agent_id: agentId } : {}), ...agentLevel, assistant } }
 }
 
-function buildFallbackTtsPayload(formValues: any) {
+export function buildFallbackTtsPayload(formValues: any) {
   const provider = formValues.fallbackTtsProvider
   // cfg is either already normalized (camelCase from SelectTTS) or raw (snake_case from backend).
   // All lookups try the normalized key first, then fall back to voice_settings nested format.
@@ -145,6 +148,8 @@ function buildFallbackTtsPayload(formValues: any) {
         pitch: cfg.pitch ?? cfg.voice_settings?.pitch ?? 0.0,
       },
     }
+  } else if (provider === RAYA_PROVIDER) {
+    return rayaTtsPayload(formValues.fallbackTtsVoiceId, formValues.fallbackTtsModel, cfg)
   } else if (provider === 'google') {
     const result: any = {
       name: 'google',
@@ -456,7 +461,7 @@ export function buildSingleAssistantLlmPayload(formValues: any, currentAzureConf
   }
 }
 
-function buildSingleAssistantTtsPayload(formValues: any, currentTtsConfig: any): any {
+export function buildSingleAssistantTtsPayload(formValues: any, currentTtsConfig: any): any {
   const ttsProvider = currentTtsConfig?.provider || formValues.ttsProvider || getFallback(null, 'tts.name')
   const isSarvam = ttsProvider === 'sarvam' || ttsProvider === 'sarvam_tts'
   const isGoogle = ttsProvider === 'google'
@@ -485,6 +490,16 @@ function buildSingleAssistantTtsPayload(formValues: any, currentTtsConfig: any):
         loudness: sarvamLoudness,
         enable_preprocessing: currentTtsConfig?.config?.enable_preprocessing ?? formValues.ttsVoiceConfig?.enable_preprocessing ?? true
       },
+      ...fallbackTtsPayload,
+    }
+  }
+
+  if (ttsProvider === RAYA_PROVIDER) {
+    // Unlike the generic branch below, no ElevenLabs defaults: getFallback() voice ids and
+    // voice_settings would be wrong for Raya, whose voice ids are bound to its own models.
+    const rayaConfig = { ...formValues.ttsVoiceConfig, ...currentTtsConfig?.config }
+    return {
+      ...rayaTtsPayload(formValues.selectedVoice || '', currentTtsConfig?.model || formValues.ttsModel, rayaConfig),
       ...fallbackTtsPayload,
     }
   }

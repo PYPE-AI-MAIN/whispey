@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Settings, ChevronDown, Copy, Check } from 'lucide-react'
 import { BULBUL_V4_LANGUAGE_CODES, isBulbulV4Model } from './bulbulV4Voices'
+import type { RayaConfig } from '@/lib/tts/raya'
+import RayaSettings from './raya/RayaSettings'
+import { getTtsProvider, normalizeTtsProvider } from './providers'
 
 // IMPORTANT: field is `pace` not `speed` — matches livekit-plugins-sarvam 1.4.2 TTS.__init__
 // `temperature` is NOT a valid param in 1.4.2 — removed entirely
@@ -48,6 +51,8 @@ interface SettingsPanelProps {
   setElevenLabsConfig: React.Dispatch<React.SetStateAction<ElevenLabsConfig>>
   googleTTSConfig: GoogleTTSConfig
   setGoogleTTSConfig: React.Dispatch<React.SetStateAction<GoogleTTSConfig>>
+  rayaConfig: RayaConfig
+  setRayaConfig: React.Dispatch<React.SetStateAction<RayaConfig>>
 }
 
 const CopyButton = ({ text, className = '' }: { text: string; className?: string }) => {
@@ -96,11 +101,14 @@ const NotAppliedBadge = () => (
   <span className="text-xs text-amber-500 dark:text-amber-400">not applied for this model</span>
 )
 
+// Kept as-is for the providers that already shipped; newer providers take the registry label.
 const PROVIDER_TITLES: Record<string, string> = {
   sarvam: 'Sarvam',
   elevenlabs: 'ElevenLabs',
   google: 'Google TTS',
 }
+const providerTitle = (provider: string): string | undefined =>
+  PROVIDER_TITLES[provider] ?? getTtsProvider(provider)?.label
 
 const SarvamSettings = ({
   sarvamConfig,
@@ -258,9 +266,11 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   setElevenLabsConfig,
   googleTTSConfig,
   setGoogleTTSConfig,
+  rayaConfig,
+  setRayaConfig,
 }) => {
   const [showAdvanced, setShowAdvanced] = useState(false)
-  const normalizedProvider = selectedProvider === 'sarvam_tts' ? 'sarvam' : selectedProvider
+  const normalizedProvider = normalizeTtsProvider(selectedProvider)
 
   return (
     <div className="w-1/2 flex flex-col">
@@ -268,7 +278,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         <div className="flex items-center gap-2">
           <Settings className="w-5 h-5 text-gray-500" />
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            {PROVIDER_TITLES[normalizedProvider] ?? 'TTS'}{' '}
+            {providerTitle(normalizedProvider) ?? 'TTS'}{' '}
             Settings
           </h3>
         </div>
@@ -428,6 +438,9 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
         )}
 
+        {/* ───── RAYA ───── */}
+        {normalizedProvider === 'raya' && <RayaSettings config={rayaConfig} setConfig={setRayaConfig} />}
+
         {/* ───── GOOGLE ───── */}
         {normalizedProvider === 'google' && (
           <ConfigSection title="Basic Settings">
@@ -451,7 +464,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
           </ConfigSection>
         )}
 
-        {!PROVIDER_TITLES[normalizedProvider] && (
+        {!providerTitle(normalizedProvider) && (
           <div className="flex items-center justify-center h-full">
             <div className="text-center space-y-3">
               <Settings className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto" />

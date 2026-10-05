@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Badge } from '@/components/ui/badge'
+import { TabsContent } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -22,6 +21,9 @@ import {
 
 // Import shared SarvamConfig type from SettingsPanel
 import type { SarvamConfig } from './SettingsPanel'
+import type { RayaConfig } from '@/lib/tts/raya'
+import RayaVoicePanel from './raya/RayaVoicePanel'
+import type { RayaVoicesState } from './raya/useRayaVoices'
 
 interface SarvamVoice {
   id: string
@@ -52,7 +54,6 @@ interface GoogleTTSVoice {
 
 interface VoiceSelectionPanelProps {
   activeTab: string
-  onTabChange: (tab: string) => void
   showSettings: boolean
   selectedVoiceId: string
   selectedProvider: string
@@ -68,6 +69,27 @@ interface VoiceSelectionPanelProps {
   googleTTSError: string | null
   googleTTSFetched: boolean
   onFetchGoogleTTS: () => void
+  rayaConfig: RayaConfig
+  setRayaConfig: React.Dispatch<React.SetStateAction<RayaConfig>>
+  rayaCatalogue: RayaVoicesState & { refresh: () => Promise<void> | void }
+}
+
+// "bulbul:v3" is an alias for the plugin's actual "bulbul:v3-beta" model string (the
+// plugin's SarvamTTSModels only has "bulbul:v2" | "bulbul:v3-beta"). Exported so the
+// provider rail can show the same count the list renders.
+export function filterCompatibleSarvamVoices<T extends { compatibleModels: string[] }>(
+  allVoices: T[],
+  model: string,
+): Omit<T, 'compatibleModels'>[] {
+  const isV3 = model === 'bulbul:v3-beta' || model === 'bulbul:v3'
+  const isV2 = model === 'bulbul:v2'
+  return allVoices
+    .filter((voice) => {
+      if (isV3) return voice.compatibleModels.some((m) => m.startsWith('bulbul:v3'))
+      if (isV2) return voice.compatibleModels.includes('bulbul:v2')
+      return voice.compatibleModels.includes(model)
+    })
+    .map(({ compatibleModels, ...voice }) => voice)
 }
 
 const CopyButton = ({ text, className = '' }: { text: string; className?: string }) => {
@@ -309,7 +331,6 @@ const EmptyState = ({
 
 const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
   activeTab,
-  onTabChange,
   showSettings,
   selectedVoiceId,
   selectedProvider,
@@ -325,6 +346,9 @@ const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
   googleTTSError,
   googleTTSFetched,
   onFetchGoogleTTS,
+  rayaConfig,
+  setRayaConfig,
+  rayaCatalogue,
 }) => {
   const [searchTerm, setSearchTerm] = useState('')
   const [isLoadingElevenLabs, setIsLoadingElevenLabs] = useState(false)
@@ -503,20 +527,8 @@ const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
     }
   }
 
-  // FIX: model compatibility now uses "bulbul:v3-beta" as the actual model string.
-  // "bulbul:v3" in compatibleModels is treated as an alias for "bulbul:v3-beta"
-  // since the plugin's SarvamTTSModels only has "bulbul:v2" | "bulbul:v3-beta".
-  const getCompatibleSarvamVoices = (model: string): SarvamVoice[] => {
-    const isV3 = model === 'bulbul:v3-beta' || model === 'bulbul:v3'
-    const isV2 = model === 'bulbul:v2'
-    return allSarvamVoices
-      .filter((voice) => {
-        if (isV3) return voice.compatibleModels.some((m) => m.startsWith('bulbul:v3'))
-        if (isV2) return voice.compatibleModels.includes('bulbul:v2')
-        return voice.compatibleModels.includes(model)
-      })
-      .map(({ compatibleModels, ...voice }) => voice)
-  }
+  const getCompatibleSarvamVoices = (model: string): SarvamVoice[] =>
+    filterCompatibleSarvamVoices(allSarvamVoices, model)
 
   const handleModelChange = (newModel: string) => {
     setSarvamConfig((prev) => ({ ...prev, model: newModel }))
@@ -559,39 +571,8 @@ const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
         showSettings ? 'border-r border-gray-200 dark:border-gray-800' : ''
       } flex flex-col`}
     >
-      <Tabs value={activeTab} onValueChange={onTabChange} className="flex flex-col flex-1 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
-          <TabsList className="grid w-full grid-cols-3 h-10">
-            <TabsTrigger value="sarvam" className="text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-gradient-to-r from-orange-400 to-red-500 rounded-full" />
-                Sarvam AI
-                <Badge variant="secondary" className="text-xs">
-                  {getCompatibleSarvamVoices(sarvamConfig.model).length}
-                </Badge>
-              </div>
-            </TabsTrigger>
-            <TabsTrigger value="elevenlabs" className="text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-gradient-to-r from-purple-400 to-purple-600 rounded-full" />
-                ElevenLabs
-                <Badge variant="secondary" className="text-xs">
-                  {elevenLabsVoices.length}
-                </Badge>
-              </div>
-            </TabsTrigger>
-            <TabsTrigger value="google" className="text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full" />
-                Google TTS
-                <Badge variant="secondary" className="text-xs">
-                  {googleTTSVoices.length}
-                </Badge>
-              </div>
-            </TabsTrigger>
-          </TabsList>
-        </div>
-
+      {/* Provider switching lives in ProviderRail; the Tabs root is in index.tsx. */}
+      <div className="flex flex-col flex-1 overflow-hidden">
         <div className="flex-1 min-h-0 overflow-hidden">
           {/* ───── SARVAM ───── */}
           <TabsContent value="sarvam" className="h-full p-6 mt-0 flex flex-col overflow-hidden">
@@ -785,8 +766,20 @@ const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
               )}
             </div>
           </TabsContent>
+
+          {/* ───── RAYA ───── */}
+          <TabsContent value="raya" className="h-full mt-0 overflow-hidden">
+            <RayaVoicePanel
+              config={rayaConfig}
+              setConfig={setRayaConfig}
+              selectedVoiceId={selectedVoiceId}
+              selectedProvider={selectedProvider}
+              onVoiceSelect={onVoiceSelect}
+              catalogue={rayaCatalogue}
+            />
+          </TabsContent>
         </div>
-      </Tabs>
+      </div>
     </div>
   )
 }
