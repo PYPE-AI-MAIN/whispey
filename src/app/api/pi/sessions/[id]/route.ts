@@ -1,9 +1,7 @@
 // src/app/api/pi/sessions/[id]/route.ts
 //
-// One session: full history (to resume or, for an owner/admin, to audit what
-// someone else asked Pi), rename, delete. Rename/delete are the session's own
-// user only — reading is also open to a project owner/admin, same trust level
-// they already have over every other call log and analytics number here.
+// One session: full history (to resume), rename, delete. All three are the
+// session's own user only — no role can read someone else's chat.
 
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
@@ -33,9 +31,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
   const access = await getProjectRoleForApi(session.project_id)
   if (!access) return NextResponse.json({ error: 'Not a member of this project' }, { status: 403 })
-  const isOwner = session.user_id === userId
-  const isAdmin = access.role === 'owner' || access.role === 'admin'
-  if (!isOwner && !isAdmin) return NextResponse.json({ error: 'Not your session' }, { status: 403 })
+  if (session.user_id !== userId) return NextResponse.json({ error: 'Not your session' }, { status: 403 })
 
   return NextResponse.json(session)
 }
