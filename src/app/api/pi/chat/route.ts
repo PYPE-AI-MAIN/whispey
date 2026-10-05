@@ -27,6 +27,7 @@ import { PI_AGENT_INTELLIGENCE_DOC } from '@/lib/piAgentIntelligence'
 import { PI_ANALYTICS_RECIPES_DOC } from '@/lib/piAnalyticsRecipes'
 import { createGuardedSpamCheck } from '@/lib/piSpamCheck'
 import { validateToolArgs } from '@/lib/piToolArgs'
+import { isReasoningModel, piModels, samplingFor } from '@/lib/piModels'
 import { PI_MANDATORY_ANALYTICS_TOOLS_DOC, runCallVolumeTrend, runCompletionInsights } from '@/lib/piAnalyticsTools'
 import { resolveWhispeyKeyFields } from '@/server/mcpAgentDb'
 import { resolveScope, isDenied } from '@/server/analytics/context'
@@ -64,6 +65,7 @@ const MAX_TOOL_RESULT_CHARS = 3000
 // Context windows by model family — AZURE_DEPLOYMENT_NAME is an arbitrary deployment
 // name (e.g. "gpt-4.1-mini-2"), so match by substring rather than exact value.
 function contextWindowFor(model: string): number {
+  if (model.includes('gpt-5')) return 400_000
   if (model.includes('gpt-4.1')) return 1_047_576
   if (model.includes('gpt-4o')) return 128_000
   return 128_000 // conservative default for an unrecognized model
@@ -1504,8 +1506,8 @@ async function generateTitle(client: OpenAI, model: string, firstMessage: string
   try {
     const resp = await client.chat.completions.create({
       model,
-      temperature: 0.3,
-      max_tokens: 20,
+      // a reasoning model spends its output budget thinking first, so a 20-token cap would return an empty title
+      ...(isReasoningModel(model) ? { max_completion_tokens: 300 } : { temperature: 0.3, max_tokens: 20 }),
       messages: [
         { role: 'system', content: 'Summarize the user\'s request in 3-6 words, title case, no punctuation, no quotes. Reply with only the title.' },
         { role: 'user', content: firstMessage.slice(0, 500) },
@@ -1526,6 +1528,10 @@ type TurnContext = {
   controller: ReadableStreamDefaultController<Uint8Array>
   client: OpenAI
   model: string
+  /** Tried once, for the rest of the turn, if a request to `model` fails. */
+  fallbackModel: string | null
+  /** Titles are a tiny task — use the cheaper model rather than spend reasoning tokens on 5 words. */
+  titleModel: string
   tools: OpenAI.Chat.ChatCompletionTool[]
   projectId: string
   userId: string
@@ -1750,18 +1756,32 @@ async function runToolCalls(pendingCalls: Record<number, PendingToolCall>, textC
   }
 }
 
+/** One streamed completion; if the request itself fails, switch to the fallback model once and keep it for the rest of the turn. */
+async function createCompletionStream(ctx: TurnContext) {
+  const request = (model: string) => ctx.client.chat.completions.create({
+    model,
+    messages: ctx.conversation,
+    stream: true,
+    stream_options: { include_usage: true },
+    ...samplingFor(model, 0.2),
+    tools: ctx.tools,
+    tool_choice: 'auto',
+  })
+  try {
+    return await request(ctx.model)
+  } catch (err: any) {
+    if (!ctx.fallbackModel) throw err
+    console.error(`[pi/chat] ${ctx.model} failed (${err?.status ?? err?.message ?? 'error'}); falling back to ${ctx.fallbackModel}`)
+    ctx.model = ctx.fallbackModel
+    ctx.fallbackModel = null
+    return request(ctx.model)
+  }
+}
+
 /** Ask the model, run any tools it calls, and go again — up to MAX_TOOL_ITERATIONS round trips. */
 async function runModelLoop(ctx: TurnContext, turn: TurnState) {
   for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
-    const stream = await ctx.client.chat.completions.create({
-      model: ctx.model,
-      messages: ctx.conversation,
-      stream: true,
-      stream_options: { include_usage: true },
-      temperature: 0.2,
-      tools: ctx.tools,
-      tool_choice: 'auto',
-    })
+    const stream = await createCompletionStream(ctx)
     const { textContent, finishReason, pendingCalls } = await readCompletion(stream, ctx, turn)
     turn.assistantText += textContent
     if (finishReason !== 'tool_calls') return
@@ -1773,7 +1793,7 @@ async function finishTurn(ctx: TurnContext, turn: TurnState) {
   const reply: StoredMessage = { role: 'assistant', content: turn.assistantText, toolCalls: toolCallsOrUndefined(turn.assistantToolCalls) }
   let title: string | undefined
   if (ctx.isFirstTurn) {
-    title = (await generateTitle(ctx.client, ctx.model, ctx.message)) ?? undefined
+    title = (await generateTitle(ctx.client, ctx.titleModel, ctx.message)) ?? undefined
     if (title) ctx.controller.enqueue(sseChunk(JSON.stringify({ title })))
   }
   turn.savedReply = await ctx.saveSession([...ctx.userTurn, reply], title)
@@ -1815,7 +1835,7 @@ function chatStream(base: Omit<TurnContext, 'controller'>, sessionId: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, projectId, sessionId: incomingSessionId, resolveAction } = await request.json()
+    const { message, projectId, sessionId: incomingSessionId, resolveAction, model: requestedModel } = await request.json()
     if (!projectId) return NextResponse.json({ error: 'projectId is required' }, { status: 400 })
     if (!resolveAction && (!message || typeof message !== 'string')) return NextResponse.json({ error: 'message is required' }, { status: 400 })
 
@@ -1842,9 +1862,12 @@ export async function POST(request: NextRequest) {
       return !error
     }
 
+    const models = piModels(process.env, !!(process.env.AZURE_OPENAI_API_KEY && process.env.AZURE_OPENAI_ENDPOINT), requestedModel)
     const readable = chatStream({
       client,
-      model: process.env.AZURE_DEPLOYMENT_NAME || 'gpt-4o-mini',
+      model: models.primary,
+      fallbackModel: models.fallback,
+      titleModel: models.fallback ?? models.primary,
       tools: toolSchemas(canWrite),
       projectId,
       userId,

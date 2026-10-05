@@ -287,6 +287,64 @@ describe('Confirm / Cancel', () => {
   })
 })
 
+describe('model selection and fallback (Azure)', () => {
+  beforeEach(() => { vi.stubEnv('AZURE_OPENAI_API_KEY', 'k'); vi.stubEnv('AZURE_OPENAI_ENDPOINT', 'https://azure.test') })
+  const mainCalls = () => state.llmCalls.filter((c: any) => c.stream)
+
+  it('uses gpt-5.6-luna by default, without the parameters a reasoning model rejects', async () => {
+    state.llm.push([text('hi'), stop])
+    await sse({ projectId: P, message: 'hello' })
+    const call = mainCalls()[0]
+    expect(call.model).toBe('gpt-5.6-luna')
+    expect(call).not.toHaveProperty('temperature')
+    expect(call).not.toHaveProperty('max_tokens')
+  })
+
+  it('uses the model the user picked, and keeps temperature for a non-reasoning one', async () => {
+    state.llm.push([text('hi'), stop])
+    await sse({ projectId: P, message: 'hello', model: 'gpt-4.1' })
+    expect(mainCalls()[0]).toMatchObject({ model: 'gpt-4.1', temperature: 0.2 })
+  })
+
+  it('ignores a model that is not on the list', async () => {
+    state.llm.push([text('hi'), stop])
+    await sse({ projectId: P, message: 'hello', model: 'DeepSeek-V4-Flash' })
+    expect(mainCalls()[0].model).toBe('gpt-5.6-luna')
+  })
+
+  it('falls back to gpt-4.1-mini when the first request fails, and still answers', async () => {
+    let n = 0
+    state.createImpl = async (args: any) => {
+      state.llmCalls.push({ ...args, messages: JSON.parse(JSON.stringify(args.messages)) })
+      if (!args.stream) return { choices: [{ message: { content: state.title } }] }
+      if (++n === 1) throw Object.assign(new Error('deployment overloaded'), { status: 429 })
+      return (async function* () { yield text('from the fallback'); yield stop })()
+    }
+    const { frames } = await sse({ projectId: P, message: 'hello' })
+    expect(mainCalls().map((c: any) => c.model)).toEqual(['gpt-5.6-luna', 'gpt-4.1-mini-2'])
+    expect(frames.some((f: any) => f.error)).toBe(false)
+    expect(frames.at(-1)).toBe('[DONE]')
+  })
+
+  it('reports the error when the fallback fails too', async () => {
+    state.createImpl = async (args: any) => {
+      state.llmCalls.push({ ...args, messages: JSON.parse(JSON.stringify(args.messages)) })
+      if (!args.stream) return { choices: [{ message: { content: state.title } }] }
+      throw new Error('everything is down')
+    }
+    const { frames } = await sse({ projectId: P, message: 'hello' })
+    expect(frames.find((f: any) => f.error).error).toContain('everything is down')
+    expect(mainCalls()).toHaveLength(2)
+  })
+
+  it('writes the first-turn title with the cheap model, not the reasoning one', async () => {
+    state.llm.push([text('hi'), stop])
+    await sse({ projectId: P, message: 'hello' })
+    const titleCall = state.llmCalls.find((c: any) => !c.stream)
+    expect(titleCall.model).toBe('gpt-4.1-mini-2')
+  })
+})
+
 describe('tool argument validation', () => {
   it('never shows a Confirm card for arguments that could not run', async () => {
     state.llm.push(toolCall('bad1', 'attach_inbound_number', { agent_id: 'a1' }), [text('ok'), stop])

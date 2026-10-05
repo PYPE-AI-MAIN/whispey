@@ -7,6 +7,7 @@ import { ArrowUp, Mic } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { buildAgentLinkMap, resolvePiHref } from '@/lib/piLinks'
 import { fetchWithBackoff } from '@/lib/piFetch'
+import { DEFAULT_PI_MODEL, PI_MODEL_OPTIONS, isPiModelOption } from '@/lib/piModels'
 import { useVoiceAgent } from '@/hooks/useVoiceAgent'
 import PiCustomToolForm, { type ToolDraft } from '@/components/pi/PiCustomToolForm'
 import { closeOpenMarkdown, nextRevealLength, splitBlocks } from '@/lib/piMarkdown'
@@ -552,6 +553,19 @@ export default function PiChatView({
   const router = useRouter()
   const [messages, setMessages] = useState<Message[]>(initialMessages ?? [])
   const [input, setInput] = useState('')
+  // Remembered per browser, not per chat — switching mid-chat is fine, the history is model-agnostic.
+  // The server re-checks the value against its own list, so a stale or edited one just falls back to the default.
+  const [model, setModel] = useState<string>(DEFAULT_PI_MODEL)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('pi-model')
+      if (isPiModelOption(saved)) setModel(saved)
+    } catch {}
+  }, [])
+  const chooseModel = (value: string) => {
+    setModel(value)
+    try { localStorage.setItem('pi-model', value) } catch {}
+  }
   const [isStreaming, setIsStreaming] = useState(false)
 
   // `messages` only reads `initialMessages` once, at mount. If this component
@@ -722,7 +736,7 @@ export default function PiChatView({
       const res = await fetchWithBackoff('/api/pi/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userContent, projectId, sessionId: sessionIdRef.current }),
+        body: JSON.stringify({ message: userContent, projectId, sessionId: sessionIdRef.current, model }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Request failed' }))
@@ -739,7 +753,7 @@ export default function PiChatView({
     } finally {
       setIsStreaming(false)
     }
-  }, [isStreaming, projectId, readOnly, onTurnComplete, pinToBottom, handleStreamLine])
+  }, [isStreaming, projectId, readOnly, model, onTurnComplete, pinToBottom, handleStreamLine])
 
   const autoGrow = useCallback(() => {
     const el = textareaRef.current
@@ -1010,6 +1024,17 @@ export default function PiChatView({
               )
             })()}
             <div className="mt-2 flex items-center justify-center gap-1.5">
+              {!readOnly && (
+                <select
+                  aria-label="Model"
+                  value={model}
+                  disabled={isStreaming}
+                  onChange={(e) => chooseModel(e.target.value)}
+                  className="rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-medium text-gray-600 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                >
+                  {PI_MODEL_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                </select>
+              )}
               <span
                 className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
                 title="Phone numbers are masked before reaching the model, both when a field is deliberately grouped by and as a general backstop over every tool result — never sent to the LLM in full."
