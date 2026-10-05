@@ -256,11 +256,11 @@ function IntegrationDocs({ campaignKey }: Readonly<{ campaignKey: string }>) {
       <PopoverContent align="end" className="w-[420px]">
         <p className={cn('mb-1 text-sm font-medium', INK)}>Send events to this campaign</p>
         <p className={cn('mb-3 text-xs', MUTED)}>
-          Any workflow can post a step for a journey — a new <code className={code}>identity_key</code> starts one automatically. Required:{' '}
+          Any automation can post a step for a workflow — a new <code className={code}>identity_key</code> starts one automatically. Required:{' '}
           <code className={code}>campaign_key</code>, <code className={code}>identity_key</code>, <code className={code}>channel</code>,{' '}
           <code className={code}>step</code>, <code className={code}>action</code>. <code className={code}>step</code> and{' '}
           <code className={code}>channel</code> are free text — reuse the names your system already has. Anything else you track goes in{' '}
-          <code className={code}>payload</code>, stored as-is and shown on each journey's timeline. Limits: 8KB per request, 600 requests/min per token.
+          <code className={code}>payload</code>, stored as-is and shown on each workflow's timeline. Limits: 8KB per request, 600 requests/min per token.
         </p>
         <CodeBlock code={snippet} />
       </PopoverContent>
@@ -287,10 +287,10 @@ function EmptyState({ projectId }: Readonly<{ projectId: string }>) {
     { id: 'token', node: <>Get a token for this project — open{' '}
       <Link href={`/${projectId}/agents/api-keys`} className="font-medium text-blue-600 hover:underline dark:text-blue-400">Project API Key</Link>{' '}
       and copy it (create one if none exists).</> },
-    { id: 'first-call', node: <>Call the endpoint below with that token. This one call creates the campaign and the journey automatically — nothing to set up beforehand.</> },
+    { id: 'first-call', node: <>Call the endpoint below with that token. This one call creates the campaign and the workflow automatically — nothing to set up beforehand.</> },
     { id: 'later-steps', node: <>Call it again for every later step that same person reaches, reusing the same <code className={code}>campaign_key</code> and{' '}
       <code className={code}>identity_key</code>, changing <code className={code}>step</code>/<code className={code}>action</code> each time.</> },
-    { id: 'come-back', node: <>Come back to this tab — the campaign shows up by its key, with this identity under "Recent journeys."</> },
+    { id: 'come-back', node: <>Come back to this tab — the campaign shows up by its key, with this identity under "Recent workflows."</> },
   ]
 
   return (
@@ -299,7 +299,7 @@ function EmptyState({ projectId }: Readonly<{ projectId: string }>) {
         <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
           <Flag className="h-6 w-6" />
         </span>
-        <h2 className={cn('text-lg font-semibold', INK)}>No journeys yet</h2>
+        <h2 className={cn('text-lg font-semibold', INK)}>No workflows yet</h2>
         <p className={cn('mt-1 text-sm', MUTED)}>Send your first event and a campaign appears here, with its funnel and timelines.</p>
       </div>
       <ol className={cn(CARD, 'w-full divide-y divide-gray-100 dark:divide-gray-800')}>
@@ -367,7 +367,7 @@ function KpiRow({
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <StatTile
-        label="Journeys" icon={<Users className="h-3.5 w-3.5" />} loading={funnel.isLoading}
+        label="Workflows" icon={<Users className="h-3.5 w-3.5" />} loading={funnel.isLoading}
         value={fmt(funnel.data?.journeyCount ?? 0)} sub="started in this range"
       />
       <StatTile
@@ -458,7 +458,7 @@ function ActiveJourneysChart({
 
   return (
     <div className={cn(CARD, 'flex h-full min-h-[260px] flex-col p-4')}>
-      <p className={cn('mb-3', CARD_TITLE)}>Active journeys per day</p>
+      <p className={cn('mb-3', CARD_TITLE)}>Active workflows per day</p>
       <div className="min-h-0 flex-1">
         {isLoading && <Skel className="h-full" />}
         {!isLoading && (!points || points.length === 0) && <div className={cn('flex h-full items-center justify-center text-sm', MUTED)}>No activity in this range.</div>}
@@ -476,9 +476,9 @@ function ActiveJourneysChart({
               <YAxis tick={AXIS} tickLine={false} axisLine={false} width={36} allowDecimals={false} />
               <Tooltip
                 cursor={{ stroke: 'currentColor', strokeOpacity: 0.25, strokeDasharray: '3 3' }}
-                content={<ChartTooltip valueName="Active journeys" labelFormatter={(d) => formatBucket(d, 'day')} />}
+                content={<ChartTooltip valueName="Active workflows" labelFormatter={(d) => formatBucket(d, 'day')} />}
               />
-              <Area type="monotone" dataKey="active_count" name="Active journeys" stroke="var(--analytics-series-1)" strokeWidth={2} fill="url(#journey-active-fill)" activeDot={{ r: 4, strokeWidth: 2, className: 'stroke-white dark:stroke-gray-900' }} />
+              <Area type="monotone" dataKey="active_count" name="Active workflows" stroke="var(--analytics-series-1)" strokeWidth={2} fill="url(#journey-active-fill)" activeDot={{ r: 4, strokeWidth: 2, className: 'stroke-white dark:stroke-gray-900' }} />
             </AreaChart>
           </ResponsiveContainer>
         )}
@@ -543,7 +543,7 @@ function ChartCard({
   const [asTable, setAsTable] = useState(false)
   const isTime = chart.dimension === '__time__'
   const kind: ChartKind = isTime ? 'line' : chart.kind
-  const metricLabel = chart.metric === 'journeys' ? 'Distinct journeys' : 'Events'
+  const metricLabel = chart.metric === 'journeys' ? 'Distinct workflows' : 'Events'
 
   const { shown, hidden } = useMemo(() => {
     if (!points) return { shown: [] as CustomChartPoint[], hidden: 0 }
@@ -665,9 +665,9 @@ function ChartCard({
 }
 
 const PRESETS: { label: string; dimension: string; metric: ChartMetric; kind: ChartKind }[] = [
-  { label: 'Journeys by step', dimension: 'step', metric: 'journeys', kind: 'bar' },
+  { label: 'Workflows by step', dimension: 'step', metric: 'journeys', kind: 'bar' },
   { label: 'Events by channel', dimension: 'channel', metric: 'events', kind: 'pie' },
-  { label: 'Journeys by outcome', dimension: 'outcome', metric: 'journeys', kind: 'bar' },
+  { label: 'Workflows by outcome', dimension: 'outcome', metric: 'journeys', kind: 'bar' },
   { label: 'Events over time', dimension: '__time__', metric: 'events', kind: 'line' },
 ]
 
@@ -727,7 +727,7 @@ function CustomChartBuilder({
               </div>
               <div>
                 <p className={cn('mb-1 text-[11px] font-medium', MUTED)}>Measure</p>
-                <Segmented<ChartMetric> label="Measure" value={draftMetric} onChange={setDraftMetric} options={[{ value: 'events', label: 'Events' }, { value: 'journeys', label: 'Distinct journeys' }]} />
+                <Segmented<ChartMetric> label="Measure" value={draftMetric} onChange={setDraftMetric} options={[{ value: 'events', label: 'Events' }, { value: 'journeys', label: 'Distinct workflows' }]} />
               </div>
               {!isTime && (
                 <div>
@@ -975,7 +975,7 @@ function RecentJourneys({
   return (
     <section>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className={cn('text-xs', MUTED)}>Most recently active first. Select a journey to see everything that happened to that member.</p>
+        <p className={cn('text-xs', MUTED)}>Most recently active first. Select a workflow to see everything that happened to that member.</p>
         <div className="relative">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
           <input
@@ -989,7 +989,7 @@ function RecentJourneys({
           <span>Member</span><span>Progress</span><span>Status</span><span className="text-right">Active</span>
         </div>
         {isLoading && <div className="space-y-px p-3">{Array.from({ length: 8 }, (_, i) => <Skel key={i} className="h-12" />)}</div>}
-        {!isLoading && journeys.length === 0 && <div className={cn('flex h-40 items-center justify-center text-sm', MUTED)}>No journeys for this campaign yet.</div>}
+        {!isLoading && journeys.length === 0 && <div className={cn('flex h-40 items-center justify-center text-sm', MUTED)}>No workflows for this campaign yet.</div>}
         {!isLoading && journeys.length > 0 && visible.length === 0 && <div className={cn('flex h-40 items-center justify-center text-sm', MUTED)}>No member on this page matches “{query}”.</div>}
         {!isLoading && visible.length > 0 && (
           <ul>
@@ -1027,7 +1027,7 @@ type View = 'overview' | 'charts' | 'journeys'
 const VIEWS: { id: View; label: string; hint: string }[] = [
   { id: 'overview', label: 'Overview', hint: 'Numbers, funnel and activity' },
   { id: 'charts', label: 'Charts', hint: 'Your own breakdowns' },
-  { id: 'journeys', label: 'Journeys', hint: 'Every member, one by one' },
+  { id: 'journeys', label: 'Workflows', hint: 'Every member, one by one' },
 ]
 const VIEW_KEY = 'whispey:journeys-view'
 
@@ -1085,7 +1085,7 @@ export function JourneysTab({ projectId, isActive }: Readonly<{ projectId: strin
     return (
       <div className="flex h-full items-center justify-center bg-gray-50 px-6 dark:bg-gray-900">
         <div className={cn(CARD, 'max-w-md p-6 text-center')}>
-          <p className={cn('text-sm font-semibold', INK)}>Couldn't load journeys</p>
+          <p className={cn('text-sm font-semibold', INK)}>Couldn't load workflows</p>
           <p className={cn('mt-1 text-xs', MUTED)}>{campaignsError instanceof Error ? campaignsError.message : 'Something went wrong.'} This is a loading problem, not missing data. Nothing was deleted.</p>
           <Button size="sm" variant="outline" className="mt-4" onClick={() => refetchCampaigns()}>Try again</Button>
         </div>
@@ -1123,7 +1123,7 @@ export function JourneysTab({ projectId, isActive }: Readonly<{ projectId: strin
               {campaign && <IntegrationDocs campaignKey={campaign.key} />}
             </div>
           </div>
-          <nav className="-mb-px flex gap-1" aria-label="Journeys sections">
+          <nav className="-mb-px flex gap-1" aria-label="Workflows sections">
             {VIEWS.map((v) => (
               <button
                 key={v.id} type="button" onClick={() => changeView(v.id)} title={v.hint} aria-current={view === v.id ? 'page' : undefined}

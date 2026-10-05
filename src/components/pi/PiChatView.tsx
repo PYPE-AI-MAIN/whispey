@@ -902,9 +902,9 @@ export default function PiChatView({
       </div>
 
       {!readOnly && (
-        <div className="shrink-0 border-t border-gray-800 bg-gray-900 px-4 py-4 sm:px-6">
+        <div className="shrink-0 border-t border-gray-200 bg-white px-4 py-4 dark:border-gray-800 dark:bg-gray-900 sm:px-6">
           <div className="mx-auto max-w-3xl">
-            <div className="rounded-2xl border border-gray-700 bg-gray-950 px-3 py-2.5 focus-within:border-gray-600">
+            <div className="rounded-2xl border border-gray-300 bg-white px-3 py-2.5 focus-within:border-gray-400 dark:border-gray-700 dark:bg-gray-950 dark:focus-within:border-gray-600">
               <textarea
                 ref={textareaRef}
                 value={composeInput(recording, partialText, input)}
@@ -913,7 +913,7 @@ export default function PiChatView({
                 placeholder="Ask Pi…"
                 rows={1}
                 disabled={isStreaming || recording}
-                className="w-full resize-none bg-transparent px-1 py-1 text-[15px] leading-6 text-gray-100 placeholder:text-gray-500 focus:outline-none disabled:opacity-60"
+                className="w-full resize-none bg-transparent px-1 py-1 text-[15px] leading-6 text-gray-900 placeholder:text-gray-500 dark:text-gray-100 focus:outline-none disabled:opacity-60"
                 style={{ maxHeight: MAX_TEXTAREA_PX }}
               />
               <div className="mt-1 flex items-center justify-end gap-1.5">
@@ -922,7 +922,7 @@ export default function PiChatView({
                     type="button"
                     onClick={toggleRecording}
                     aria-label={recording ? 'Stop voice input' : 'Start voice input'}
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition disabled:cursor-wait ${recording ? 'animate-pulse bg-red-500/20 text-red-400' : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'}`}
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition disabled:cursor-wait ${recording ? 'animate-pulse bg-red-500/20 text-red-400' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200'}`}
                   >
                     <Mic className="h-4 w-4" />
                   </button>
@@ -931,7 +931,7 @@ export default function PiChatView({
                   type="button"
                   onClick={handleSubmit}
                   disabled={isStreaming || !input.trim()}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-30"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-900 text-white transition hover:bg-gray-700 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white disabled:cursor-not-allowed disabled:opacity-30"
                   aria-label="Send"
                 >
                   <ArrowUp className="h-4 w-4" />
@@ -945,7 +945,7 @@ export default function PiChatView({
               const pct = Math.min(100, Math.round((contextUsage.used / contextUsage.limit) * 100))
               return (
                 <div className="mt-2 flex items-center justify-center gap-2" title={`${contextUsage.used.toLocaleString()} / ${contextUsage.limit.toLocaleString()} tokens used this turn`}>
-                  <div className="h-1 w-24 overflow-hidden rounded-full bg-gray-800">
+                  <div className="h-1 w-24 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800">
                     <div
                       className={`h-full rounded-full ${usageBarColor(pct)}`}
                       style={{ width: `${pct}%` }}
