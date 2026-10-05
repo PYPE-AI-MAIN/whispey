@@ -214,6 +214,14 @@ export default function SessionBehaviourSettings({
               </p>
             </div>
           )}
+          {turn_detection === 'v1-mini' && (
+            <div className="flex items-start gap-2 p-2.5 bg-amber-50 dark:bg-amber-900/20 rounded-md border border-amber-200 dark:border-amber-800">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-600 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                V1 Mini requires the VAD's Min Silence Duration (Voice Activity Detection section) to be at least 0.25s — the call fails to start otherwise. 0.55s is recommended.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Unlikely Threshold - Only show for English and Multilingual */}
