@@ -373,7 +373,7 @@ function toolSchemas(canWrite: boolean): OpenAI.Chat.ChatCompletionTool[] {
       type: 'function',
       function: {
         name: 'check_spam_number',
-        description: 'Check whether ONE phone number is flagged as spam/fraud (also returns operator and country). Read-only. Call it when the user gives a number and asks if it is spam, a scam or safe. Pass the number as the user typed it. Report is_spam, operator and country plainly; do not guess when it errors.',
+        description: 'Check whether ONE phone number is flagged as spam/fraud (also returns operator and country). Read-only. Call it when the user gives a number and asks if it is spam, a scam or safe. Pass the number exactly as the user typed it, keeping a leading + (a number with +91 is read as international, one without as local). Report is_spam, operator and country plainly; do not guess when it errors.',
         parameters: { type: 'object', properties: { number: { type: 'string', description: 'The phone number to check, with or without country code' } }, required: ['number'] },
       },
     },

@@ -1,16 +1,16 @@
 import { describe, it, expect, vi } from 'vitest'
-import { checkSpamNumber, createGuardedSpamCheck } from '@/lib/piSpamCheck'
+import { checkSpamNumber, createGuardedSpamCheck, resetSpamTokenCache } from '@/lib/piSpamCheck'
 
 const env = { SCAM_CHECK_TOKEN: 'tok' }
 const reply = (body: unknown, status = 200) => vi.fn(async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch
 
 describe('checkSpamNumber', () => {
-  it('sends digits only with the bearer token and returns the typed fields', async () => {
+  it('sends the number URL-encoded with its + kept, a bearer token, and returns the typed fields', async () => {
     const f = reply({ phone_number: '7988307935', operator: 'Jio', country_code: 'IN', is_spam: true, assessment: 'SPAM/FRAUD FLAGGED', extra: 'ignore me' })
     const out = await checkSpamNumber('+91 79883-07935', f, env)
     expect(out).toEqual({ success: true, result: { phone_number: '7988307935', is_spam: true, assessment: 'SPAM/FRAUD FLAGGED', operator: 'Jio', country_code: 'IN' } })
     const [url, init] = (f as any).mock.calls[0]
-    expect(url).toBe('https://scam-check.pypeai.com/api/v1/check?number=917988307935')
+    expect(url).toBe('https://scam-check.pypeai.com/api/v1/check?number=%2B917988307935')
     expect(init.headers.Authorization).toBe('Bearer tok')
   })
 
@@ -28,10 +28,10 @@ describe('checkSpamNumber', () => {
 
   it('says so when no token is configured', async () => {
     const out = await checkSpamNumber('7988307935', reply({}), {})
-    expect(out).toMatchObject({ success: false, result: { error: expect.stringContaining('SCAM_CHECK_TOKEN') } })
+    expect(out).toMatchObject({ success: false, result: { error: expect.stringContaining('SCAM_CHECK_CLIENT_ID') } })
   })
 
-  it.each([[401, 'token'], [403, 'token'], [500, 'HTTP 500']])('maps HTTP %s to a clear error', async (status, text) => {
+  it.each([[401, 'credentials'], [403, 'credentials'], [400, 'country code'], [422, 'country code'], [500, 'HTTP 500']])('maps HTTP %s to a clear error', async (status, text) => {
     const out = await checkSpamNumber('7988307935', reply({}, status), env)
     expect(out).toMatchObject({ success: false, result: { error: expect.stringContaining(text) } })
   })
@@ -45,6 +45,67 @@ describe('checkSpamNumber', () => {
   it('does not pass service text longer than the cap to the model', async () => {
     const out = await checkSpamNumber('7988307935', reply({ is_spam: false, assessment: 'x'.repeat(5000) }), env)
     expect((out.result.assessment as string).length).toBe(200)
+  })
+
+  it('keeps a number typed without + as typed (the service reads that as a local number)', async () => {
+    for (const [typed, sent] of [['7988307935', '7988307935'], ['917988307935', '917988307935'], ['+917988307935', '%2B917988307935']]) {
+      const f = reply({ is_spam: false })
+      await checkSpamNumber(typed, f, env)
+      expect((f as any).mock.calls[0][0]).toBe(`https://scam-check.pypeai.com/api/v1/check?number=${sent}`)
+    }
+  })
+
+  describe('client credentials', () => {
+    const creds = { SCAM_CHECK_CLIENT_ID: 'pype', SCAM_CHECK_CLIENT_SECRET: 's3' }
+    const route = (handlers: { token?: () => Response; check?: (auth: string) => Response }) =>
+      vi.fn(async (url: string, init: any) =>
+        url.endsWith('/auth/token') ? (handlers.token ?? (() => new Response(JSON.stringify({ access_token: 'jwt-1', expires_in: 3600 }))))() : (handlers.check ?? (() => new Response(JSON.stringify({ is_spam: false }))))(init.headers.Authorization),
+      ) as unknown as typeof fetch
+    const callsTo = (f: any, suffix: string) => f.mock.calls.filter((c: any[]) => c[0].includes(suffix))
+
+    it('exchanges the credentials for a token, uses it, and reuses it until it expires', async () => {
+      resetSpamTokenCache()
+      const f = route({})
+      await checkSpamNumber('7988307935', f, creds)
+      await checkSpamNumber('7988307936', f, creds)
+      expect(callsTo(f, '/auth/token')).toHaveLength(1)
+      expect(JSON.parse(callsTo(f, '/auth/token')[0][1].body)).toEqual({ client_id: 'pype', client_secret: 's3' })
+      expect(callsTo(f, '/api/v1/check')[0][1].headers.Authorization).toBe('Bearer jwt-1')
+    })
+
+    it('fetches a new token after a 401 and retries once', async () => {
+      resetSpamTokenCache()
+      let issued = 0
+      const f = route({
+        token: () => new Response(JSON.stringify({ access_token: `jwt-${++issued}`, expires_in: 3600 })),
+        check: (auth) => (auth === 'Bearer jwt-1' ? new Response('', { status: 401 }) : new Response(JSON.stringify({ is_spam: true, assessment: 'SPAM' }))),
+      })
+      const out = await checkSpamNumber('7988307935', f, creds)
+      expect(out.success).toBe(true)
+      expect(issued).toBe(2)
+    })
+
+    it('does not loop when a fresh token is refused too', async () => {
+      resetSpamTokenCache()
+      const f = route({ check: () => new Response('', { status: 401 }) })
+      const out = await checkSpamNumber('7988307935', f, creds)
+      expect(out).toMatchObject({ success: false, result: { error: expect.stringContaining('credentials') } })
+      expect(callsTo(f, '/api/v1/check')).toHaveLength(2)
+    })
+
+    it.each([[401, 'rejected its client credentials'], [500, 'Could not get a token']])('reports a failed token exchange (%s)', async (status, text) => {
+      resetSpamTokenCache()
+      const f = route({ token: () => new Response('', { status }) })
+      expect(await checkSpamNumber('7988307935', f, creds)).toMatchObject({ success: false, result: { error: expect.stringContaining(text) } })
+      expect(callsTo(f, '/api/v1/check')).toHaveLength(0)
+    })
+
+    it('prefers the credentials over a fixed token', async () => {
+      resetSpamTokenCache()
+      const f = route({})
+      await checkSpamNumber('7988307935', f, { ...creds, SCAM_CHECK_TOKEN: 'fixed' })
+      expect(callsTo(f, '/api/v1/check')[0][1].headers.Authorization).toBe('Bearer jwt-1')
+    })
   })
 
   describe('retry with backoff', () => {

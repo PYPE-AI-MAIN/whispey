@@ -1,8 +1,10 @@
 /**
- * Pi's spam/fraud lookup: GET {SCAM_CHECK_URL}/api/v1/check?number=… on the internal
- * Scam Checker service (JWT, token in SCAM_CHECK_TOKEN). Only a fixed set of typed
- * fields is passed back to the model — the service's free text is not trusted as
- * instructions, and the number is sent as digits only so it cannot alter the URL.
+ * Pi's spam/fraud lookup: GET {SCAM_CHECK_URL}/api/v1/check?number=… on the internal Scam Checker
+ * service (host: pype-internal-services EC2, spec at /openapi.json). Its bearer is a short-lived JWT, so the
+ * preferred setup is SCAM_CHECK_CLIENT_ID + SCAM_CHECK_CLIENT_SECRET: a token is fetched from POST /auth/token,
+ * cached until it expires, and refreshed on a 401. A fixed SCAM_CHECK_TOKEN still works but cannot refresh.
+ * Only a fixed set of typed fields is passed back to the model — the service's free text is not trusted as
+ * instructions — and the number is URL-encoded digits (with a leading + if given) so it cannot alter the URL.
  */
 const DEFAULT_URL = 'https://scam-check.pypeai.com'
 const ATTEMPT_TIMEOUT_MS = 6_000
@@ -27,28 +29,49 @@ type SpamResult = { success: boolean; result: Record<string, unknown>; transient
 /** Digits of a string or number; anything else (object, array, null) has none, instead of stringifying to "[object Object]". */
 const digitsOf = (v: unknown) => (typeof v === 'string' || typeof v === 'number' ? String(v).replaceAll(/\D/g, '') : '')
 
-const str = (v: unknown, max = 200) => (typeof v === 'string' ? v.slice(0, max) : null)
+/** The service reads "+917988307935" as international and "7988307935" as local, so a leading + the user typed must survive. */
+const withPlus = (raw: unknown, digits: string) => (typeof raw === 'string' && raw.trim().startsWith('+') ? `+${digits}` : digits)
 
-export async function checkSpamNumber(
-  number: unknown,
-  fetchImpl: typeof fetch = fetch,
-  env: Record<string, string | undefined> = process.env,
-  wait: (ms: number) => Promise<void> = sleep,
-): Promise<SpamResult> {
-  const digits = digitsOf(number)
-  if (digits.length < 7 || digits.length > 15) {
-    return { success: false, result: { error: 'Give a phone number with 7–15 digits, e.g. 7988307935 or +919876543210' } }
+type Env = Record<string, string | undefined>
+const tokenCache = new Map<string, { token: string; expiresAt: number }>()
+export const resetSpamTokenCache = () => tokenCache.clear()
+
+/** A bearer for the service, or null when neither client credentials nor a fixed token are configured. */
+async function bearerFor(base: string, env: Env, fetchImpl: typeof fetch, force: boolean): Promise<{ token: string; refreshable: boolean } | { error: string } | null> {
+  const id = env.SCAM_CHECK_CLIENT_ID?.trim()
+  const secret = env.SCAM_CHECK_CLIENT_SECRET?.trim()
+  if (!id || !secret) {
+    const fixed = env.SCAM_CHECK_TOKEN?.trim()
+    return fixed ? { token: fixed, refreshable: false } : null
   }
-  const token = env.SCAM_CHECK_TOKEN?.trim()
-  if (!token) return { success: false, result: { error: 'The spam checker is not configured (SCAM_CHECK_TOKEN is missing on the server)' } }
+  const key = `${base}|${id}`
+  const cached = tokenCache.get(key)
+  if (!force && cached && cached.expiresAt > Date.now()) return { token: cached.token, refreshable: true }
+  try {
+    const res = await fetchImpl(`${base}/auth/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_id: id, client_secret: secret }),
+      signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS),
+    })
+    if (res.status === 401 || res.status === 403) return { error: 'The spam checker rejected its client credentials' }
+    const data: any = res.ok ? await res.json().catch(() => null) : null
+    if (typeof data?.access_token !== 'string') return { error: 'Could not get a token from the spam checker' }
+    const ttlMs = Math.max(Number(data.expires_in) || 0, 0) * 1000
+    // refresh a minute early so a token never expires mid-request; a very short ttl is simply not cached
+    tokenCache.set(key, { token: data.access_token, expiresAt: Date.now() + ttlMs - 60_000 })
+    return { token: data.access_token, refreshable: true }
+  } catch {
+    return { error: 'Could not reach the spam checker service' }
+  }
+}
 
-  const base = (env.SCAM_CHECK_URL?.trim() || DEFAULT_URL).replace(/\/$/, '')
-  const url = `${base}/api/v1/check?number=${encodeURIComponent(digits)}`
-  const init = () => ({ headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS) })
+/** One GET with retry + backoff on transient failures; null when the service could not be reached at all. */
+async function getWithRetry(url: string, token: string, fetchImpl: typeof fetch, wait: (ms: number) => Promise<void>): Promise<Response | null> {
   let resp: Response | null = null
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
-      resp = await fetchImpl(url, init())
+      resp = await fetchImpl(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS) })
       if (!RETRYABLE_STATUS.has(resp.status) || attempt === MAX_RETRIES) break
       await wait(retryDelay(attempt, resp.headers.get('retry-after')))
     } catch {
@@ -57,11 +80,39 @@ export async function checkSpamNumber(
       await wait(retryDelay(attempt, null))
     }
   }
+  return resp
+}
+
+const str = (v: unknown, max = 200) => (typeof v === 'string' ? v.slice(0, max) : null)
+
+export async function checkSpamNumber(
+  number: unknown,
+  fetchImpl: typeof fetch = fetch,
+  env: Env = process.env,
+  wait: (ms: number) => Promise<void> = sleep,
+): Promise<SpamResult> {
+  const digits = digitsOf(number)
+  if (digits.length < 7 || digits.length > 15) {
+    return { success: false, result: { error: 'Give a phone number with 7–15 digits, e.g. 7988307935 or +919876543210' } }
+  }
+  const base = (env.SCAM_CHECK_URL?.trim() || DEFAULT_URL).replace(/\/$/, '')
+  const bearer = await bearerFor(base, env, fetchImpl, false)
+  if (!bearer) return { success: false, result: { error: 'The spam checker is not configured (set SCAM_CHECK_CLIENT_ID and SCAM_CHECK_CLIENT_SECRET, or SCAM_CHECK_TOKEN, on the server)' } }
+  if ('error' in bearer) return { success: false, result: { error: bearer.error }, transient: bearer.error.includes('reach') }
+
+  const url = `${base}/api/v1/check?number=${encodeURIComponent(withPlus(number, digits))}`
+  let resp = await getWithRetry(url, bearer.token, fetchImpl, wait)
+  // an expired JWT: get a fresh one and try once more (only possible when we hold the client credentials)
+  if (resp?.status === 401 && bearer.refreshable) {
+    const fresh = await bearerFor(base, env, fetchImpl, true)
+    if (fresh && !('error' in fresh)) resp = await getWithRetry(url, fresh.token, fetchImpl, wait)
+  }
   if (!resp) {
     console.error(`[pi/spam-check] unreachable after ${MAX_RETRIES + 1} attempts (…${digits.slice(-4)})`)
     return { success: false, result: { error: 'Could not reach the spam checker service' }, transient: true }
   }
-  if (resp.status === 401 || resp.status === 403) return { success: false, result: { error: 'The spam checker rejected its token — it may have expired' } }
+  if (resp.status === 401 || resp.status === 403) return { success: false, result: { error: 'The spam checker rejected its credentials — they may be wrong or expired' } }
+  if (resp.status === 400 || resp.status === 422) return { success: false, result: { error: 'The spam checker could not read that as a phone number — try it with the country code, like +919876543210' } }
   if (!resp.ok) {
     console.error(`[pi/spam-check] HTTP ${resp.status} (…${digits.slice(-4)})`)
     return { success: false, result: { error: `Spam checker failed (HTTP ${resp.status})` }, transient: resp.status >= 500 || resp.status === 429 }
