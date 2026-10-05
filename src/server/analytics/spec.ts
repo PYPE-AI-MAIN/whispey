@@ -76,7 +76,7 @@ export const EXPRESSION_SOURCES: Record<string, string[]> = {
 
 export const SCALAR_COLS = [...TEXT_COLS, ...NUMERIC_COLS] as const
 
-const ALL_COLS = new Set<string>([...JSON_COLS, ...SCALAR_COLS, ELEMENT_COL])
+export const ALL_COLS = new Set<string>([...JSON_COLS, ...SCALAR_COLS, ELEMENT_COL])
 const JSON_COL_SET = new Set<string>([...JSON_COLS, ELEMENT_COL])
 export const NUMERIC_COL_SET = new Set<string>(NUMERIC_COLS)
 
