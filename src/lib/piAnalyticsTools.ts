@@ -31,7 +31,7 @@ export async function runCallVolumeTrend(
   query: PiQueryRunner,
   args: { days?: number; agent_id?: string }
 ) {
-  const days = Math.min(Math.max(args.days ?? 30, 1), 90)
+  const days = Math.min(Math.max(Number.isFinite(Number(args.days)) ? Number(args.days) : 30, 1), 90)
   const out = await query(projectId, {
     agent_id: args.agent_id,
     spec: callVolumeTrendSpec(days),
@@ -54,7 +54,7 @@ export async function runCompletionInsights(
   listFields: (projectId: string, args: { agent_id?: string }) => Promise<{ success: boolean; result: any }>,
   args: { days?: number; agent_id?: string }
 ) {
-  const days = Math.min(Math.max(args.days ?? 7, 1), 60)
+  const days = Math.min(Math.max(Number.isFinite(Number(args.days)) ? Number(args.days) : 7, 1), 60)
   const listed = await listFields(projectId, { agent_id: args.agent_id })
   if (!listed.success) return listed
 
