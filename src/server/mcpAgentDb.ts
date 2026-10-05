@@ -27,7 +27,8 @@ export async function resolveWhispeyKeyFields(supabase: Supabase, projectId: str
   const fields: Record<string, string> = {}
   if (row.id) fields.whispey_key_id = row.id
 
-  if (row.token_hash_master) {
+  // Some rows store a non-ciphertext value. Skip those instead of throwing.
+  if (row.token_hash_master?.split(':').length === 3) {
     try {
       fields.whispey_api_key = decryptWithWhispeyKey(row.token_hash_master)
       return fields

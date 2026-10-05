@@ -207,7 +207,7 @@ function autoBucket(days: number): 'hour' | 'day' | 'week' | 'month' {
 // PR, not a side effect of a lint pass.
 /** A field whose values are phone numbers, by the name it is stored under. */
 const PHONE_FIELD = /(^|_)(phone|mobile|number|msisdn)($|_)/i
-function isPhoneField(ref: { col: string; path?: string[] }): boolean {
+export function isPhoneField(ref: { col: string; path?: string[] }): boolean {
   const leaf = ref.path?.at(-1) ?? ref.col
   return PHONE_FIELD.test(leaf)
 }

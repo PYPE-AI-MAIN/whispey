@@ -9,6 +9,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { 
   ArrowLeft,
@@ -44,7 +45,8 @@ import {
   PanelRightClose,
   BookOpen,
   FlaskConical,
-  GitBranch
+  GitBranch,
+  Pi
 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -55,14 +57,14 @@ import ProjectCreationDialog from '../projects/ProjectCreationDialog'
 
 // Extended icon mapping to support new page types
 const ICONS = {
-  Activity, 
-  BarChart3, 
-  Settings, 
-  Key, 
-  Users, 
-  List, 
-  FileText, 
-  Home, 
+  Activity,
+  BarChart3,
+  Settings,
+  Key,
+  Users,
+  List,
+  FileText,
+  Home,
   Webhook,
   Phone,
   Download,
@@ -80,7 +82,8 @@ const ICONS = {
   X,
   BookOpen,
   FlaskConical,
-  GitBranch
+  GitBranch,
+  Pi
 } as const
 
 interface NavigationItem {
@@ -90,6 +93,8 @@ interface NavigationItem {
   path: string
   external?: boolean
   group?: string
+  disabled?: boolean
+  badge?: string
 }
 
 interface NavigationGroup {
@@ -327,6 +332,17 @@ function renderContextHeader(config: SidebarConfig, isCollapsed: boolean, isMobi
   return null
 }
 
+function navItemTone(disabled: boolean | undefined, isActive: boolean): string {
+  if (disabled) return 'cursor-not-allowed text-gray-400 dark:text-gray-600'
+  if (isActive) return 'cursor-pointer bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+  return 'cursor-pointer text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
+}
+
+function navIconTone(disabled: boolean | undefined, isActive: boolean): string {
+  if (disabled) return 'text-gray-300 dark:text-gray-700'
+  return isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'
+}
+
 function renderNavigationItem(
   item: NavigationItem,
   opts: {
@@ -354,19 +370,36 @@ function renderNavigationItem(
 
   const content = (
     <div className={`
-      flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer
-      ${isActive
-        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
-        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-      }
+      flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200
+      ${navItemTone(item.disabled, isActive)}
       ${isCollapsed && !isMobile ? 'justify-center px-2' : ''}
     `}>
-      <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`} />
+      <Icon className={`w-4 h-4 flex-shrink-0 ${navIconTone(item.disabled, isActive)}`} />
       {(!isCollapsed || isMobile) && (
-        <span className="truncate">{item.name}</span>
+        <>
+          <span className="truncate">{item.name}</span>
+          {item.badge && (
+            <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0 h-4 font-medium rounded-full">{item.badge}</Badge>
+          )}
+        </>
       )}
     </div>
   )
+
+  if (item.disabled) {
+    const disabledItem = <div key={item.id} aria-disabled="true">{content}</div>
+    if (isCollapsed && !isMobile) {
+      return (
+        <TooltipProvider key={item.id}>
+          <Tooltip>
+            <TooltipTrigger asChild>{disabledItem}</TooltipTrigger>
+            <TooltipContent side="right"><p>{item.name} ({item.badge ?? 'Beta'})</p></TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )
+    }
+    return disabledItem
+  }
 
   const navItem = item.external ? (
     <a key={item.id} href={item.path} target="_blank" rel="noopener noreferrer" onClick={handleClick}>

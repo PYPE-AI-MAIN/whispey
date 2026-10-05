@@ -48,6 +48,41 @@ const PostBody = z.object({
   ask: z.string().max(2000).optional(),
 })
 
+type Bullet = { issue_key?: string; call_ids?: string[]; text?: string }
+
+/** One request per insight: a second click (or a teammate's) must not notify or mail the QA team again. */
+async function alreadyRequested(agentId: string, insightId: string | undefined): Promise<boolean> {
+  if (!insightId) return false
+  const { data } = await qaDb
+    .from('qa_notifications')
+    .select('id')
+    .eq('agent_id', agentId)
+    .eq('insight_id', insightId)
+    .eq('kind', 'review_request')
+    .limit(1)
+  return !!data?.length
+}
+
+async function loadBullets(insightId: string | undefined): Promise<Bullet[]> {
+  if (!insightId) return []
+  const { data } = await qaDb.from('qa_insights').select('bullets').eq('id', insightId).maybeSingle()
+  return (data?.bullets as Bullet[]) || []
+}
+
+/** The calls behind each bullet of an insight, one review row per call, ranked by bullet order. */
+function rowsFromBullets(bullets: Bullet[]): Array<{ call_log_id: string; reason: string; rank: number }> {
+  const rows: Array<{ call_log_id: string; reason: string; rank: number }> = []
+  const seen = new Set<string>()
+  bullets.forEach((b, i) => {
+    for (const callId of (b.call_ids || []).slice(0, 5)) {
+      if (seen.has(callId)) continue
+      seen.add(callId)
+      rows.push({ call_log_id: callId, reason: b.text?.slice(0, 300) || 'From the current insight', rank: i + 1 })
+    }
+  })
+  return rows
+}
+
 export const POST = guarded('qa/review:create', async (req: NextRequest) => {
   const parsed = PostBody.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
@@ -58,6 +93,8 @@ export const POST = guarded('qa/review:create', async (req: NextRequest) => {
 
   const user = await currentUser()
   const requestedBy = user?.emailAddresses?.[0]?.emailAddress || 'unknown'
+
+  if (await alreadyRequested(agentId, insightId)) return NextResponse.json({ ok: true, alreadyRequested: true, mailed: false })
 
   // The night job already wrote a ranked list alongside the insight. Asking QA
   // to check it is about telling a person, not about recomputing anything.
@@ -73,21 +110,7 @@ export const POST = guarded('qa/review:create', async (req: NextRequest) => {
 
   if (!items.length) {
     // No pre-built list — fall back to the calls behind the insight's bullets.
-    const { data: insight } = insightId
-      ? await qaDb.from('qa_insights').select('bullets').eq('id', insightId).maybeSingle()
-      : { data: null }
-
-    const bullets = (insight?.bullets as Array<{ issue_key?: string; call_ids?: string[]; text?: string }>) || []
-    const rows: Array<{ call_log_id: string; reason: string; rank: number }> = []
-    const seen = new Set<string>()
-
-    bullets.forEach((b, i) => {
-      for (const callId of (b.call_ids || []).slice(0, 5)) {
-        if (seen.has(callId)) continue
-        seen.add(callId)
-        rows.push({ call_log_id: callId, reason: b.text?.slice(0, 300) || 'From the current insight', rank: i + 1 })
-      }
-    })
+    const rows = rowsFromBullets(await loadBullets(insightId))
 
     if (!rows.length) {
       return NextResponse.json({ error: 'There are no calls to review for this agent right now' }, { status: 404 })

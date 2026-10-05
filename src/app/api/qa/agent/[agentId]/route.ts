@@ -174,6 +174,11 @@ export const GET = guarded('qa/agent', async (req: NextRequest, ctx: { params: P
 
   const lastRun = runs.find((r) => r.stage === 'insight') || runs[0] || null
 
+  const currentInsight = insights.find((i) => i.status === 'open') || null
+  const { data: askedRows } = currentInsight
+    ? await qaDb.from('qa_notifications').select('id').eq('agent_id', agentId).eq('insight_id', currentInsight.id).eq('kind', 'review_request').limit(1)
+    : { data: null }
+
   return NextResponse.json({
     agent: {
       id: access.agent.id,
@@ -195,7 +200,8 @@ export const GET = guarded('qa/agent', async (req: NextRequest, ctx: { params: P
     lastRun: lastRun
       ? { date: lastRun.run_date, status: lastRun.status, callsSeen: lastRun.calls_seen, finishedAt: lastRun.finished_at, error: lastRun.error }
       : null,
-    currentInsight: insights.find((i) => i.status === 'open') || null,
+    currentInsight,
+    reviewRequested: (askedRows?.length ?? 0) > 0,
     insights,
     issues,
     metrics,

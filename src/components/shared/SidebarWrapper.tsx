@@ -90,6 +90,8 @@ interface NavigationItem {
   path: string
   group?: string
   external?: boolean
+  disabled?: boolean
+  badge?: string
 }
 
 export interface SidebarConfig {
@@ -104,7 +106,9 @@ export interface SidebarConfig {
 const matchRoute = (pathname: string, pattern: string): RouteParams | null => {
   if (pattern.endsWith('*')) {
     const basePattern = pattern.slice(0, -1)
-    if (!pathname.startsWith(basePattern)) {
+    // Literal prefixes only (`/sign*`). `/:projectId/pi*` cannot startsWith the
+    // unsubstituted pattern, and would miss every real /{uuid}/pi URL.
+    if (!basePattern.includes(':') && !pathname.startsWith(basePattern)) {
       return null
     }
     
@@ -187,7 +191,9 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/settings/dnc' },
       { pattern: '/:projectId/campaigns/:campaignId' },
       { pattern: '/:projectId/campaigns/create' },
-      { pattern: '/:projectId/analytics' }, 
+      { pattern: '/:projectId/analytics' },
+      { pattern: '/:projectId/pi' },
+      { pattern: '/:projectId/pi/:sessionId' },
     ],
     getSidebarConfig: (params, context) => {
       const { projectId } = params
@@ -207,6 +213,14 @@ const sidebarRoutes: SidebarRoute[] = [
           icon: 'Activity',
           path: `/${projectId}/agents`,
           group: 'Agents'
+        },
+        {
+          id: 'ask-pi',
+          name: 'Ask Pi',
+          icon: 'Pi',
+          path: `/${projectId}/pi`,
+          group: 'Agents',
+          ...(isOwnerOrAdmin ? {} : { disabled: true, badge: 'Beta' })
         }
       ]
 
@@ -675,7 +689,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
             </Sheet>
           </div>
           
-          <main className="flex-1 pt-14 overflow-auto">
+          <main className={`flex-1 pt-14 min-h-0 ${pathname?.includes('/pi') ? 'overflow-hidden' : 'overflow-auto'}`}>
             {children}
           </main>
         </>
@@ -693,7 +707,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
             />
           </div>
           
-          <main className="flex-1 overflow-auto">
+          <main className={`flex-1 min-h-0 ${pathname?.includes('/pi') ? 'overflow-hidden' : 'overflow-auto'}`}>
             {children}
           </main>
         </>

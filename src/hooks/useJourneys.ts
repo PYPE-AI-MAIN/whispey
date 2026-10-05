@@ -5,10 +5,10 @@
  * needs to re-fetch the last two.
  */
 import { useCallback, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { OverviewRange } from './useOrgOverview'
 
-const RECENT_PAGE_SIZE = 10
+const RECENT_PAGE_SIZE = 20
 
 export type Campaign = {
   id: string
@@ -204,4 +204,73 @@ export function useJourneyFilterOptions(projectId: string, campaignId: string | 
     queryFn: () => getJSON<JourneyFilterOptions>(`/api/journeys/filters?projectId=${projectId}&campaignId=${campaignId}`),
     enabled: enabled && !!projectId && !!campaignId,
   })
+}
+
+export type ChartKind = 'bar' | 'line' | 'pie'
+export type SavedChart = { id: string; dimension: string; metric: ChartMetric; kind: ChartKind }
+
+async function sendJSON<T>(url: string, method: 'POST' | 'PATCH' | 'DELETE', body?: unknown): Promise<T> {
+  const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
+  const data = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status})`)
+  return data as T
+}
+
+/** Charts built on the Journeys tab — saved in the database, shared by everyone on the project, per campaign. */
+export function useJourneyCharts(projectId: string, campaignId: string | null, enabled: boolean) {
+  const qc = useQueryClient()
+  const key = ['journeys', 'charts', projectId, campaignId]
+  type Cached = { charts: SavedChart[]; canEdit: boolean }
+  const [error, setError] = useState('')
+
+  const query = useQuery({
+    queryKey: key,
+    queryFn: () => getJSON<Cached>(`/api/journeys/charts?projectId=${projectId}&campaignId=${campaignId}`),
+    enabled: enabled && !!projectId && !!campaignId,
+  })
+
+  const fail = (e: Error) => setError(e.message)
+  const ok = () => setError('')
+
+  const add = useMutation({
+    mutationFn: (charts: Omit<SavedChart, 'id'>[]) => sendJSON<{ charts: SavedChart[] }>('/api/journeys/charts', 'POST', { projectId, campaignId, charts }),
+    onSuccess: (r) => { qc.setQueryData<Cached>(key, (old) => ({ canEdit: old?.canEdit ?? true, charts: r.charts })); ok() },
+    onError: fail,
+  })
+
+  const optimistic = async (change: (charts: SavedChart[]) => SavedChart[]) => {
+    await qc.cancelQueries({ queryKey: key })
+    const previous = qc.getQueryData<Cached>(key)
+    if (previous) qc.setQueryData<Cached>(key, { ...previous, charts: change(previous.charts) })
+    return { previous }
+  }
+  const rollback = (e: Error, _v: unknown, ctx?: { previous?: Cached }) => {
+    if (ctx?.previous) qc.setQueryData(key, ctx.previous)
+    fail(e)
+  }
+
+  const changeKind = useMutation({
+    mutationFn: (v: { id: string; kind: ChartKind }) => sendJSON('/api/journeys/charts', 'PATCH', { projectId, ...v }),
+    onMutate: (v) => optimistic((c) => c.map((x) => (x.id === v.id ? { ...x, kind: v.kind } : x))),
+    onError: rollback,
+    onSuccess: ok,
+  })
+
+  const remove = useMutation({
+    mutationFn: (id: string) => sendJSON(`/api/journeys/charts?projectId=${projectId}&id=${id}`, 'DELETE'),
+    onMutate: (id) => optimistic((c) => c.filter((x) => x.id !== id)),
+    onError: rollback,
+    onSuccess: ok,
+  })
+
+  return {
+    charts: query.data?.charts ?? [],
+    canEdit: query.data?.canEdit ?? false,
+    isLoading: query.isLoading,
+    error: error || (query.error instanceof Error ? query.error.message : ''),
+    add: add.mutate,
+    adding: add.isPending,
+    changeKind: (id: string, kind: ChartKind) => changeKind.mutate({ id, kind }),
+    remove: remove.mutate,
+  }
 }

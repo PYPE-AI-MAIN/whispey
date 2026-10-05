@@ -4,6 +4,7 @@
 import React, { useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { validateVariables, ValidationResult } from '@/utils/variableValidator';
+import { AskPiPopover } from './AskPiPopover';
 
 // Dynamically import Monaco Editor with no SSR
 const Editor = dynamic(() => import('@monaco-editor/react'), { 
@@ -35,6 +36,7 @@ export const VariableTextarea: React.FC<VariableTextareaProps> = ({
   disabled = false
 }) => {
   const editorRef = useRef<any>(null);
+  const [editorInstance, setEditorInstance] = React.useState<any>(null);
   const monacoRef = useRef<any>(null);
   const [validation, setValidation] = React.useState<ValidationResult>({
     isValid: true,
@@ -109,6 +111,7 @@ export const VariableTextarea: React.FC<VariableTextareaProps> = ({
 
     const handleEditorDidMount = useCallback((editor: any, monaco: any) => {
     editorRef.current = editor;
+    setEditorInstance(editor);
     monacoRef.current = monaco;
     // The find widget's button tooltips open on top of the buttons (no room above
     // the editor) and swallow clicks, so block them for the whole widget.
@@ -140,11 +143,11 @@ export const VariableTextarea: React.FC<VariableTextareaProps> = ({
 
   return (
     <div 
-      className={`var-editor-monaco border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-900 ${className}`}
+      className={`var-editor-monaco relative border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 ${className}`}
       style={{ ...style, minHeight: style?.minHeight || '200px' }}
     >
       {/* Padding wrapper for left/right spacing */}
-      <div className="px-3 h-full">
+      <div className="px-3 h-full overflow-hidden rounded-lg">
         <Editor
           height="100%"
           defaultLanguage="prompt-with-variables"
@@ -193,6 +196,7 @@ export const VariableTextarea: React.FC<VariableTextareaProps> = ({
           }}
         />
       </div>
+      {!disabled && <AskPiPopover editor={editorInstance} fullPrompt={value} />}
     </div>
   );
 };
