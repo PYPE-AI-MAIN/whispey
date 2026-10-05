@@ -1,12 +1,9 @@
 'use client'
 
-// An existing session — your own (resumable) or, for an owner/admin, someone
-// else's (read-only — this is the audit path: see exactly what a teammate
-// asked Pi, not just that they asked something).
+// An existing session — always your own (the API refuses anyone else's), so it is resumable.
 
 import { useMemo } from 'react'
 import { useParams } from 'next/navigation'
-import { useUser } from '@clerk/nextjs'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import PiChatView, { type Message } from '@/components/pi/PiChatView'
 import PiLoading from '@/components/pi/PiLoading'
@@ -29,7 +26,6 @@ export default function PiSessionPage() {
   const params = useParams()
   const projectId = params.projectid as string
   const sessionId = params.sessionid as string
-  const { user } = useUser()
   const queryClient = useQueryClient()
 
   const { data, isLoading, error } = useQuery({
@@ -55,16 +51,12 @@ export default function PiSessionPage() {
     return <div className="h-full flex items-center justify-center text-sm text-red-500">{(error as Error)?.message ?? 'Chat not found'}</div>
   }
 
-  const isOwner = data.user_id === user?.id
-
   return (
     <PiChatView
       key={sessionId}
       projectId={projectId}
       sessionId={sessionId}
       initialMessages={initialMessages}
-      readOnly={!isOwner}
-      readOnlyLabel={isOwner ? undefined : `Viewing ${data.user_email}'s conversation (read-only)`}
       onTurnComplete={() => queryClient.invalidateQueries({ queryKey: ['pi-sessions', projectId] })}
     />
   )
