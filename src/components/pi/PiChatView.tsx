@@ -424,7 +424,7 @@ function closeOpenMarkdown(text: string): string {
   let out = text
   if ((out.match(/^\s*```/gm) ?? []).length % 2) return `${out}\n\`\`\``
   if ((out.match(/\*\*/g) ?? []).length % 2) out += '**'
-  if ((out.replaceAll(/```/g, '').match(/`/g) ?? []).length % 2) out += '`'
+  if ((out.replaceAll('```', '').match(/`/g) ?? []).length % 2) out += '`'
   return out
 }
 

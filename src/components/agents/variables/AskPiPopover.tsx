@@ -176,6 +176,15 @@ export function AskPiPopover({ editor, fullPrompt }: { editor: any; fullPrompt: 
     editor?.focus()
   }, [editor])
 
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.stopPropagation(); close() }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, close])
+
   const send = async (override?: string, retry = false) => {
     const content = (override ?? input).trim()
     if (busy || (!retry && !content)) return
@@ -244,7 +253,6 @@ export function AskPiPopover({ editor, fullPrompt }: { editor: any; fullPrompt: 
           ref={panelRef}
           open
           aria-label="Ask Pi"
-          onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); close() } }}
           className="flex flex-col overflow-hidden rounded-2xl"
           style={{ position: 'static', margin: 0, padding: 0, width: Math.min(PANEL_W, vp.w - 2 * MARGIN), maxHeight: maxH, background: t.panel, color: t.text, border: `1px solid ${t.border}`, boxShadow: t.shadow }}
         >
