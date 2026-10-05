@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, Users, PanelLeftClose, PanelLeft } from 'lucide-react'
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, PanelLeftClose, PanelLeft } from 'lucide-react'
 import PiLoading from '@/components/pi/PiLoading'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
@@ -109,8 +109,7 @@ export default function PiLayout({ children }: Readonly<{ children: React.ReactN
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const router = useRouter()
-  const [scope, setScope] = useState<'mine' | 'team'>('mine')
-  const [search, setSearch] = useState('')
+    const [search, setSearch] = useState('')
   const [collapsed, setCollapsed] = useState(false)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const isIndex = pathname === `/${projectId}/pi`
@@ -132,18 +131,10 @@ export default function PiLayout({ children }: Readonly<{ children: React.ReactN
     try { localStorage.setItem(HISTORY_KEY, JSON.stringify(next)) } catch {}
   }
 
-  const { data: access } = useQuery({
-    queryKey: ['project-role', projectId],
-    queryFn: () => fetchJson(`/api/projects/${projectId}/me`),
-    enabled: !!projectId,
-  })
-  const isAdmin = access?.role === 'owner' || access?.role === 'admin'
-
   const { data: sessions, isLoading } = useQuery<SessionRow[]>({
-    queryKey: ['pi-sessions', projectId, scope],
-    queryFn: () => fetchJson(`/api/pi/sessions?projectId=${projectId}&scope=${scope}`),
+    queryKey: ['pi-sessions', projectId, 'mine'],
+    queryFn: () => fetchJson(`/api/pi/sessions?projectId=${projectId}&scope=mine`),
     enabled: !!projectId,
-    refetchInterval: scope === 'team' ? 15000 : false,
   })
 
   const { data: mineSessions, isLoading: mineLoading } = useQuery<SessionRow[]>({
@@ -169,7 +160,7 @@ export default function PiLayout({ children }: Readonly<{ children: React.ReactN
     return sessions.filter((s) => s.title.toLowerCase().includes(q) || s.user_email.toLowerCase().includes(q))
   }, [sessions, search])
 
-  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [scope, search])
+  useEffect(() => { setVisibleCount(PAGE_SIZE) }, [search])
 
   const visible = filtered.slice(0, visibleCount)
 
@@ -215,22 +206,6 @@ export default function PiLayout({ children }: Readonly<{ children: React.ReactN
           </div>
 
           <div className="px-3 pb-2 space-y-2">
-            {isAdmin && (
-              <div className="flex rounded-md bg-gray-100 dark:bg-gray-900 p-0.5 text-[11px]">
-                <button
-                  onClick={() => setScope('mine')}
-                  className={`flex-1 py-1 rounded ${scope === 'mine' ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500'}`}
-                >
-                  Mine
-                </button>
-                <button
-                  onClick={() => setScope('team')}
-                  className={`flex-1 py-1 rounded flex items-center justify-center gap-1 ${scope === 'team' ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500'}`}
-                >
-                  <Users className="w-3 h-3" /> Team
-                </button>
-              </div>
-            )}
             <div className="relative">
               <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
               <input
@@ -245,7 +220,7 @@ export default function PiLayout({ children }: Readonly<{ children: React.ReactN
           <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-0.5">
             {isLoading && <PiLoading compact />}
             {!isLoading && filtered.length === 0 && (
-              <div className="text-[12px] text-gray-400 px-2 py-6 text-center">{scope === 'team' ? 'No team chats yet' : 'No chats yet'}</div>
+              <div className="text-[12px] text-gray-400 px-2 py-6 text-center">No chats yet</div>
             )}
             {visible.map((s) => (
               <SessionRowItem
@@ -253,8 +228,8 @@ export default function PiLayout({ children }: Readonly<{ children: React.ReactN
                 session={s}
                 isActive={pathname === `/${projectId}/pi/${s.id}`}
                 projectId={projectId}
-                showEmail={scope === 'team'}
-                canManage={scope === 'mine'}
+                showEmail={false}
+                canManage
               />
             ))}
             {filtered.length > visible.length && (
