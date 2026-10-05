@@ -162,10 +162,10 @@ function buildSarvamConfig(provider: string | undefined, model: string | undefin
     target_language_code: cfg.target_language_code || cfg.language || 'en-IN',
     model: isSarvam && storedModel ? storedModel : 'bulbul:v3-beta',
     speaker: voice || '',
-    pace: Math.max(0.5, Math.min(2.0, Number(cfg.pace ?? cfg.speed ?? 1.0))),
-    loudness: Math.max(0.5, Math.min(2.0, Number(cfg.loudness ?? 1.0))),
+    pace: Math.max(0.5, Math.min(2, Number(cfg.pace ?? cfg.speed ?? 1))),
+    loudness: Math.max(0.5, Math.min(2, Number(cfg.loudness ?? 1))),
     enable_preprocessing: cfg.enable_preprocessing ?? false,
-    pitch: Math.max(-20.0, Math.min(20.0, Number(cfg.pitch ?? 0.0))),
+    pitch: Math.max(-20, Math.min(20, Number(cfg.pitch ?? 0))),
   }
 }
 
@@ -178,8 +178,8 @@ function buildElevenLabsConfig(provider: string | undefined, model: string | und
     similarityBoost: saved?.similarityBoost || 0.75,
     stability: saved?.stability || 0.5,
     style: saved?.style || 0,
-    useSpeakerBoost: saved?.useSpeakerBoost !== undefined ? saved.useSpeakerBoost : true,
-    speed: saved?.speed || 1.0,
+    useSpeakerBoost: saved?.useSpeakerBoost === undefined ? true : saved.useSpeakerBoost,
+    speed: saved?.speed || 1,
   }
 }
 

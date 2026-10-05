@@ -44,9 +44,9 @@ const formatSarvam = (c: TtsFields): TtsFields => {
     ...(c.voice_settings && {
       voice_settings: {
         target_language_code: vs.target_language_code || c.language || 'en-IN',
-        pace: Math.min(2.0, Math.max(0.5, vs.pace || vs.speed || 1.0)),
-        loudness: Math.min(2.0, Math.max(0.5, vs.loudness || 1.0)),
-        enable_preprocessing: vs.enable_preprocessing !== undefined ? vs.enable_preprocessing : false,
+        pace: Math.min(2, Math.max(0.5, vs.pace || vs.speed || 1)),
+        loudness: Math.min(2, Math.max(0.5, vs.loudness || 1)),
+        enable_preprocessing: vs.enable_preprocessing === undefined ? false : vs.enable_preprocessing,
       },
     }),
   }
@@ -61,8 +61,8 @@ const formatElevenLabs = (c: TtsFields): TtsFields => ({
       similarity_boost: c.voice_settings.similarity_boost || 0.75,
       stability: c.voice_settings.stability || 0.5,
       style: c.voice_settings.style || 0,
-      use_speaker_boost: c.voice_settings.use_speaker_boost !== undefined ? c.voice_settings.use_speaker_boost : true,
-      speed: c.voice_settings.speed || 1.0,
+      use_speaker_boost: c.voice_settings.use_speaker_boost === undefined ? true : c.voice_settings.use_speaker_boost,
+      speed: c.voice_settings.speed || 1,
     },
   }),
 })
@@ -105,16 +105,16 @@ function draftVoiceSettings(provider: string, voiceId: string, model: string | u
         similarity_boost: config?.similarityBoost || 0.75,
         stability: config?.stability || 0.5,
         style: config?.style || 0,
-        use_speaker_boost: config?.useSpeakerBoost !== undefined ? config.useSpeakerBoost : true,
-        speed: config?.speed || 1.0,
+        use_speaker_boost: config?.useSpeakerBoost === undefined ? true : config.useSpeakerBoost,
+        speed: config?.speed || 1,
       }
     case 'sarvam':
       // SelectTTS sends `pace` (not `speed`); every param is valid for __init__ on all models.
       return {
         target_language_code: config?.target_language_code || config?.language || 'en-IN',
-        pace: Math.min(2.0, Math.max(0.5, config?.pace || config?.speed || 1.0)),
-        loudness: Math.min(2.0, Math.max(0.5, config?.loudness || 1.0)),
-        enable_preprocessing: config?.enable_preprocessing !== undefined ? config.enable_preprocessing : false,
+        pace: Math.min(2, Math.max(0.5, config?.pace || config?.speed || 1)),
+        loudness: Math.min(2, Math.max(0.5, config?.loudness || 1)),
+        enable_preprocessing: config?.enable_preprocessing === undefined ? false : config.enable_preprocessing,
       }
     default:
       return prev
