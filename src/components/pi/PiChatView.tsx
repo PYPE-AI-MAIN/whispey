@@ -17,8 +17,10 @@ import {
 
 const AgentLinksContext = createContext<Map<string, string>>(new Map())
 
-const textOf = (node: React.ReactNode): string =>
-  typeof node === 'string' || typeof node === 'number' ? String(node) : Array.isArray(node) ? node.map(textOf).join('') : ''
+const textOf = (node: React.ReactNode): string => {
+  if (typeof node === 'string' || typeof node === 'number') return String(node)
+  return Array.isArray(node) ? node.map(textOf).join('') : ''
+}
 
 function PiLink({ children, href }: Readonly<{ children?: React.ReactNode; href?: string }>) {
   const agentLinks = useContext(AgentLinksContext)
@@ -935,7 +937,7 @@ export default function PiChatView({
           <div className="absolute bottom-3 right-4">
             <button
               type="button"
-              onClick={() => { const t = lastTurnRef.current; if (t) void sendMessage(t.text, t.history) }}
+              onClick={() => { const t = lastTurnRef.current; if (t) sendMessage(t.text, t.history) }}
               className="rounded-full border border-red-200 bg-white px-3 py-1 text-[12px] text-red-600 shadow-sm hover:bg-red-50 dark:border-red-900 dark:bg-gray-900 dark:text-red-400"
             >
               Try again

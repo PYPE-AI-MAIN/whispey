@@ -69,26 +69,33 @@ export default function PiCustomToolForm({
     setError(message)
   }
 
+  // First problem with the form, or null; parsed headers come back with it so they are only parsed once.
+  const checkForm = (): { error: string } | { headers: Record<string, string> } => {
+    if (!name.trim()) return { error: 'Give the tool a name.' }
+    if (!custom) return { headers: {} }
+    if (!/^https?:\/\/\S+$/i.test(apiUrl.trim())) return { error: 'API URL must start with http:// or https://' }
+    const seconds = Number(timeoutSec)
+    if (!Number.isFinite(seconds) || seconds < 1 || seconds > 120) return { error: 'Timeout must be between 1 and 120 seconds.' }
+    if (!headers.trim()) return { headers: {} }
+    const hint = 'Headers must be a JSON object, like {"Authorization":"Bearer TOKEN"}'
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(headers)
+    } catch {
+      return { error: hint }
+    }
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return { error: hint }
+    return { headers: parsed as Record<string, string> }
+  }
+
   // Not retried automatically: adding a tool is not idempotent, so a lost response could double-add it.
   // A failure re-enables the button and says what happened so the user can retry on purpose.
   const submit = async () => {
     if (status === 'saving') return
     setError('')
-    if (!name.trim()) return fail('Give the tool a name.')
-    if (custom) {
-      if (!/^https?:\/\/\S+$/i.test(apiUrl.trim())) return fail('API URL must start with http:// or https://')
-      const seconds = Number(timeoutSec)
-      if (!Number.isFinite(seconds) || seconds < 1 || seconds > 120) return fail('Timeout must be between 1 and 120 seconds.')
-    }
-    let parsedHeaders: Record<string, string> = {}
-    if (custom && headers.trim()) {
-      try {
-        parsedHeaders = JSON.parse(headers)
-      } catch {
-        return fail('Headers must be JSON, like {"Authorization":"Bearer TOKEN"}')
-      }
-      if (parsedHeaders === null || typeof parsedHeaders !== 'object' || Array.isArray(parsedHeaders)) return fail('Headers must be a JSON object, like {"Authorization":"Bearer TOKEN"}')
-    }
+    const checked = checkForm()
+    if ('error' in checked) return fail(checked.error)
+    const parsedHeaders = checked.headers
     setStatus('saving')
     try {
       const res = await fetch('/api/pi/tools', {

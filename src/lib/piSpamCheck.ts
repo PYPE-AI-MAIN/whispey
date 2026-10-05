@@ -24,6 +24,9 @@ function retryDelay(attempt: number, retryAfter: string | null) {
 /** `transient` marks an outage (unreachable, 429/5xx) as opposed to a bad request or token — only outages trip the circuit breaker. */
 type SpamResult = { success: boolean; result: Record<string, unknown>; transient?: boolean }
 
+/** Digits of a string or number; anything else (object, array, null) has none, instead of stringifying to "[object Object]". */
+const digitsOf = (v: unknown) => (typeof v === 'string' || typeof v === 'number' ? String(v).replaceAll(/\D/g, '') : '')
+
 const str = (v: unknown, max = 200) => (typeof v === 'string' ? v.slice(0, max) : null)
 
 export async function checkSpamNumber(
@@ -32,7 +35,7 @@ export async function checkSpamNumber(
   env: Record<string, string | undefined> = process.env,
   wait: (ms: number) => Promise<void> = sleep,
 ): Promise<SpamResult> {
-  const digits = String(number ?? '').replaceAll(/\D/g, '')
+  const digits = digitsOf(number)
   if (digits.length < 7 || digits.length > 15) {
     return { success: false, result: { error: 'Give a phone number with 7–15 digits, e.g. 7988307935 or +919876543210' } }
   }
@@ -102,7 +105,7 @@ export function createGuardedSpamCheck({ check = checkSpamNumber, now = Date.now
   const strip = ({ success, result }: SpamResult): SpamResult => ({ success, result })
 
   return async (userId: string, number: unknown): Promise<SpamResult> => {
-    const digits = String(number ?? '').replaceAll(/\D/g, '')
+    const digits = digitsOf(number)
     // not a usable number: let the checker say so, and don't spend rate limit or a slot on it
     if (digits.length < 7 || digits.length > 15) return strip(await check(number))
     const t = now()
