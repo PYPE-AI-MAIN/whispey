@@ -80,6 +80,7 @@ const TOOL_LABELS: Record<string, string> = {
   open_custom_tool_form: 'Opening tool form',
   open_page: 'Opening page',
   list_phone_numbers: 'Checking phone numbers',
+  check_spam_number: 'Checking the number for spam',
   search_plivo_numbers: 'Searching Plivo numbers',
   buy_plivo_number: 'Buying the number',
   attach_inbound_number: 'Attaching the number',
@@ -881,7 +882,7 @@ export default function PiChatView({
                       tc={tc}
                       projectId={projectId}
                       latest={latest}
-                      resolving={resolvingIds.has(tc.id)}
+                      resolving={resolvingIds.has(tc.id) || isStreaming}
                       onChoose={(name) => sendMessage(name, messages)}
                       onResolve={resolvePendingAction}
                     />

@@ -25,6 +25,7 @@ import { validateVariables } from '@/utils/variableValidator'
 import { piPlatformSchemaDoc, PI_MODEL_HISTORY_TURNS } from '@/lib/piPlatformSchema'
 import { PI_AGENT_INTELLIGENCE_DOC } from '@/lib/piAgentIntelligence'
 import { PI_ANALYTICS_RECIPES_DOC } from '@/lib/piAnalyticsRecipes'
+import { checkSpamNumber } from '@/lib/piSpamCheck'
 import { PI_MANDATORY_ANALYTICS_TOOLS_DOC, runCallVolumeTrend, runCompletionInsights } from '@/lib/piAnalyticsTools'
 import { resolveWhispeyKeyFields } from '@/server/mcpAgentDb'
 import { resolveScope, isDenied } from '@/server/analytics/context'
@@ -363,6 +364,14 @@ function toolSchemas(canWrite: boolean): OpenAI.Chat.ChatCompletionTool[] {
         name: 'get_talk_link',
         description: 'Show an in-chat Start agent button so the user can talk to this voice agent and stop it here. Do not mention a URL.',
         parameters: { type: 'object', properties: { agent_id: { type: 'string' } }, required: ['agent_id'] },
+      },
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'check_spam_number',
+        description: 'Check whether ONE phone number is flagged as spam/fraud (also returns operator and country). Read-only. Call it when the user gives a number and asks if it is spam, a scam or safe. Pass the number as the user typed it. Report is_spam, operator and country plainly; do not guess when it errors.',
+        parameters: { type: 'object', properties: { number: { type: 'string', description: 'The phone number to check, with or without country code' } }, required: ['number'] },
       },
     },
     {
@@ -1277,7 +1286,8 @@ async function runGetTalkLink(projectId: string, args: any) {
 }
 
 // Phone numbers are Pype-owned inventory, not customer PII, so these tools' results skip the phone-masking backstop.
-const RAW_PHONE_RESULT_TOOLS = new Set(['list_phone_numbers', 'search_plivo_numbers'])
+// check_spam_number echoes back the one number the user themselves typed into the chat, so masking it would only make Pi unable to answer.
+const RAW_PHONE_RESULT_TOOLS = new Set(['list_phone_numbers', 'search_plivo_numbers', 'check_spam_number'])
 const CONFIRMED_TOOLS = new Set(['create_agent', 'edit_agent', 'buy_plivo_number', 'attach_inbound_number'])
 // An unassigned number: no alias, or one of the team's "free" markers. Anything else may be live for another client.
 const isFreePoolAlias = (alias: string | null) => !alias || /free|not.?in.?use|unused/i.test(alias)
@@ -1446,6 +1456,7 @@ const READ_TOOLS: Record<string, ToolRunner> = {
   get_talk_link: (pid, _uid, args) => runGetTalkLink(pid, args),
   open_page: (pid, _uid, args) => runOpenPage(pid, args),
   get_agent_details: (pid, _uid, args) => runGetAgentDetails(pid, args),
+  check_spam_number: (_pid, _uid, args) => checkSpamNumber(args.number),
 }
 
 // everything here needs a non-viewer role; create/edit/buy/attach are additionally held behind a Confirm click (see POST)
