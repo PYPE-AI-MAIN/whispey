@@ -336,6 +336,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
 
   const [draft, setDraft] = useState<Widget[] | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [aiOpen, setAiOpen] = useState(false)
   const [logs, setLogs] = useState<{ widget: ChartWidget; value: string | null | undefined } | null>(null)
   const [orderEditor, setOrderEditor] = useState(false)
   const [droppingKind, setDroppingKind] = useState<ChartKind | null>(null)
@@ -501,6 +502,15 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
       selectChart(card.id)
     },
     [makeChart, selectChart, widgets]
+  )
+
+  /** An AI-built chart is added as a draft but not selected, so the AI chat stays open for the next one. */
+  const addGenerated = useCallback(
+    (title: string, kind: ChartKind, spec: SpecInput) => {
+      const card = { ...makeChart(kind), title, spec }
+      setDraft((prev) => [...(prev ?? widgets), card])
+    },
+    [makeChart, widgets]
   )
 
   const layout = useMemo(() => toGridLayout(widgets), [widgets])
@@ -680,7 +690,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
       )}
 
       {!isMobile && panelOpen && (
-        <div className="relative w-72 shrink-0">
+        <div className={cn('relative shrink-0', aiOpen && !selected ? 'w-96' : 'w-72')}>
           <button
             onClick={togglePanel}
             aria-label="Hide chart settings"
@@ -703,7 +713,10 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
               selected && edit(selected.id, { kind, spec: adaptSpecToKind(selected.spec as SpecInput, kind, catalog) })
             }
             onChangeTitle={(title) => selected && edit(selected.id, { title })}
-            onGenerateChart={addSuggested}
+            aiOpen={aiOpen}
+            onOpenAi={() => setAiOpen(true)}
+            onCloseAi={() => setAiOpen(false)}
+            onGenerateChart={addGenerated}
           />
         </div>
       )}

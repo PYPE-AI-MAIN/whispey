@@ -123,7 +123,8 @@ export function ChartCard({
                 <GripVertical className="h-3.5 w-3.5" />
               </button>
             )}
-            <h3 className="truncate text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            {/* pointer-events-auto so the browser can show the full title on hover when it is cut off; the click still selects the card */}
+            <h3 role="presentation" title={widget.title} onClick={onSelect} className="pointer-events-auto cursor-pointer truncate text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
               {widget.title}
             </h3>
             {calc?.help && (
@@ -160,8 +161,10 @@ export function ChartCard({
             {/* wrapped, not truncated: a definition you cannot read is the
                 same as no definition */}
             <span
-              className={cn('text-gray-400/80 dark:text-gray-500', isKpi ? 'line-clamp-1' : 'line-clamp-2')}
+              className={cn('pointer-events-auto cursor-pointer text-gray-400/80 dark:text-gray-500', isKpi ? 'line-clamp-1' : 'line-clamp-2')}
+              role="presentation"
               title={definition}
+              onClick={onSelect}
             >
               {canEdit ? '· ' : ''}
               {definition}

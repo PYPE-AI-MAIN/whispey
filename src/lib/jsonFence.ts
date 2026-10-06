@@ -19,6 +19,25 @@ export function extractJsonFence(text: string): unknown {
   }
 }
 
+/** Every complete fenced ```json block in `text`, in order, each parsed; blocks that are not valid JSON are skipped. */
+export function extractAllJsonFences(text: string): unknown[] {
+  const out: unknown[] = []
+  let pos = 0
+  while (pos < text.length) {
+    const start = text.indexOf('```json', pos)
+    if (start === -1) break
+    const end = text.indexOf('```', start + 7)
+    if (end === -1) break
+    try {
+      out.push(JSON.parse(text.slice(start + 7, end).trim()))
+    } catch {
+      // an unparseable block is just not a chart
+    }
+    pos = end + 3
+  }
+  return out
+}
+
 /**
  * Replaces every fenced ```json block in `text` with `placeholder` — a past
  * turn's JSON is already summarized elsewhere (a status badge, the current
