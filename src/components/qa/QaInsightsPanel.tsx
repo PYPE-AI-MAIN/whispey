@@ -16,7 +16,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import {
-  ArrowDownRight, ArrowUpRight, CheckCircle2, ChevronRight,
+  ArrowDownRight, ArrowUpRight, CheckCircle2, ChevronDown, ChevronRight,
   Headphones, Minus, Sparkles, Clock, Settings, Mail,
   AlertTriangle, AlertCircle, Info, Check, Loader2,
 } from 'lucide-react'
@@ -72,6 +72,10 @@ type Payload = {
 
 const pct = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${(v * 100).toFixed(0)}%`)
 const pct1 = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${(v * 100).toFixed(1)}%`)
+// below this many calls a change from the usual is mostly noise, so it isn't shown
+const MIN_CALLS_FOR_CHANGE = 20
+const humanize = (key: string) => key.replaceAll('_', ' ').replace(/^./, (c) => c.toUpperCase())
+const daysSince = (isoDate: string) => Math.floor((Date.now() - new Date(`${isoDate}T00:00:00`).getTime()) / 86_400_000)
 
 // One real color, spent on the one thing that deserves it: an urgent insight.
 // Everything else — attention, info, priority badges, the trend lines — stays
@@ -109,32 +113,24 @@ const SEVERITY: Record<string, {
   },
 }
 
-// Weight, not hue: P0 is the darkest badge, P2 the lightest. Keeps the table
-// one color family instead of a red/amber/gray traffic light next to the
-// severity system above.
-const PRIORITY: Record<string, string> = {
-  P0: 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900',
-  P1: 'bg-gray-400 text-white dark:bg-gray-600 dark:text-gray-100',
-  P2: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
-}
-
 const LINE_COLOURS = ['#111827', '#6b7280', '#9ca3af', '#2563eb', '#93c5fd']
 
 const FIXABLE_BY_LABEL: Record<string, string> = { prompt: 'Prompt', pype: 'Pype' }
 const fixableByLabel = (fixableBy: string | null) => FIXABLE_BY_LABEL[fixableBy ?? ''] ?? 'Customer'
 
-/** Up is not always good: for an issue rate, up is bad. */
+/** Up is not always good: for an issue rate, up is bad. Wording over arrows-and-colour alone. */
 function Delta({ value, goodWhenDown = true }: Readonly<{ value: number | null; goodWhenDown?: boolean }>) {
-  if (value === null || Math.abs(value) < 0.005) {
-    return <span className="inline-flex items-center gap-1 text-xs text-gray-400"><Minus className="h-3 w-3" />flat</span>
+  if (value === null) return <span className="text-xs text-gray-400">—</span>
+  if (Math.abs(value) < 0.005) {
+    return <span className="inline-flex items-center gap-1 text-xs text-gray-400"><Minus className="h-3 w-3" />No change</span>
   }
   const rose = value > 0
   const bad = goodWhenDown ? rose : !rose
   const Icon = rose ? ArrowUpRight : ArrowDownRight
   return (
-    <span className={`inline-flex items-center gap-1 text-xs font-medium ${bad ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+    <span className={`inline-flex items-center gap-1 text-xs font-medium ${bad ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
       <Icon className="h-3 w-3" />
-      {rose ? '+' : ''}{(value * 100).toFixed(1)} pts
+      {rose ? 'Up' : 'Down'} {Math.abs(value * 100).toFixed(1)} pts
     </span>
   )
 }
@@ -162,42 +158,25 @@ function InsightCard({
   onAskQa: () => void
   onDismiss: () => void
 }>) {
-  const sev = SEVERITY[insight.severity]
+  const sev = SEVERITY[insight.severity] ?? SEVERITY.info
   return (
     <div className={`overflow-hidden rounded-xl border border-l-4 bg-white shadow-sm dark:bg-gray-900 ${sev.ring} ${sev.accent}`}>
-      <div className={`flex items-start justify-between gap-4 border-b border-gray-100 p-5 dark:border-gray-800 ${sev.wash}`}>
-        <div className="flex min-w-0 gap-3">
-          <sev.Icon className={`mt-0.5 h-5 w-5 flex-none ${sev.dot.replace('bg-', 'text-')}`} />
-          <div className="min-w-0">
-            <div className="mb-2 flex items-center gap-2">
-              <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${sev.chip}`}>{sev.label}</span>
-              <span className="text-xs text-gray-400">{insight.run_date}</span>
-              {insight.trigger && <Badge variant="outline" className="text-xs capitalize">{insight.trigger}</Badge>}
-            </div>
-            <h2 className="text-lg font-semibold leading-snug text-gray-900 dark:text-gray-50">
-              {insight.headline}
-            </h2>
-          </div>
-        </div>
+      <div className="p-6">
+        <p className="mb-2 flex items-center gap-1.5 text-xs text-gray-400" title="Written by AI from the calls checked. Open the calls to verify.">
+          <Sparkles className="h-3 w-3" />AI summary · {insight.run_date}
+        </p>
+        <h2 className="text-lg font-semibold leading-snug text-gray-900 dark:text-gray-50">{insight.headline}</h2>
+        <ul className="mt-4 space-y-2.5">
+          {insight.bullets.slice(0, 3).map((b, i) => (
+            <li key={`${b.issue_key ?? 'b'}-${i}`} className="flex gap-3 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+              <span className={`mt-2 h-1.5 w-1.5 flex-none rounded-full ${sev.dot}`} />
+              <span>{b.text}</span>
+            </li>
+          ))}
+        </ul>
       </div>
 
-      <ul className="space-y-3 p-5">
-        {insight.bullets.map((b, i) => (
-          <li key={`${b.issue_key ?? 'b'}-${i}`} className="flex items-start justify-between gap-4 text-sm text-gray-700 dark:text-gray-300">
-            <span className="flex gap-3">
-              <span className={`mt-1.5 h-1.5 w-1.5 flex-none rounded-full ${sev.dot}`} />
-              <span>{b.text}</span>
-            </span>
-            {b.pct !== null && (
-              <span className="flex-none whitespace-nowrap rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-200">
-                {pct1(b.pct)}
-              </span>
-            )}
-          </li>
-        ))}
-      </ul>
-
-      <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 p-4 dark:border-gray-800">
+      <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 px-6 py-4 dark:border-gray-800">
         {insight.suggested_prompt_patch && (
           <Button size="sm" onClick={onReviewPatch} disabled={!canWrite}>
             <Sparkles className="mr-1.5 h-3.5 w-3.5" />
@@ -207,7 +186,7 @@ function InsightCard({
         <Button size="sm" variant="outline" onClick={onAskQa} disabled={asked || asking}>
           <AskQaLabel asking={asking} asked={asked} />
         </Button>
-        <Button size="sm" variant="ghost" onClick={onDismiss}>
+        <Button size="sm" variant="ghost" onClick={onDismiss} title="Hides this insight for everyone on the project">
           Dismiss
         </Button>
         {!canWrite && insight.suggested_prompt_patch && (
@@ -226,8 +205,8 @@ function QuietState() {
         <div>
           <p className="font-medium text-gray-900 dark:text-gray-50">Nothing new to report</p>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            The calls below were checked. Nothing crossed the line where it is worth interrupting
-            someone — no new issue, nothing worse than last week, no measure down.
+            We checked a sample of recent calls and found nothing worth interrupting anyone for.
+            Everything we looked at is listed below.
           </p>
         </div>
       </div>
@@ -240,17 +219,17 @@ function MetricsGrid({ metrics }: Readonly<{ metrics: Metric[] }>) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
       <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
-        This agent&apos;s measures
-        {' '}<span className="ml-2 font-normal text-gray-400">from the random sample, against the last 30 days</span>
+        Key measures
+        {' '}<span className="ml-2 font-normal text-gray-400">latest check, compared with the last 30 days</span>
       </h3>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {metrics.map((m) => (
           <div key={m.key} className="rounded-lg border border-gray-100 p-3 dark:border-gray-800">
-            <div className="truncate font-mono text-xs text-gray-500 dark:text-gray-400" title={m.key}>{m.key}</div>
+            <div className="truncate text-xs text-gray-500 dark:text-gray-400" title={m.key}>{humanize(m.key)}</div>
             <div className="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-50">{pct(m.rate)}</div>
             <div className="mt-1 flex items-center justify-between">
-              <Delta value={m.delta} goodWhenDown={false} />
-              <span className="text-xs text-gray-400">n={m.n}</span>
+              {m.n >= MIN_CALLS_FOR_CHANGE ? <Delta value={m.delta} goodWhenDown={false} /> : <span className="text-xs text-gray-400">Too few calls to compare</span>}
+              <span className="text-xs text-gray-400">{m.n} calls</span>
             </div>
           </div>
         ))}
@@ -267,7 +246,7 @@ function TrendChart({
     <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900">
       <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-gray-50">
         How the top issues are moving
-        {' '}<span className="ml-2 font-normal text-gray-400">share of random calls</span>
+        {' '}<span className="ml-2 font-normal text-gray-400">share of sampled calls, by day</span>
       </h3>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
@@ -291,6 +270,7 @@ function TrendChart({
                 stroke={LINE_COLOURS[i % LINE_COLOURS.length]}
                 strokeWidth={2}
                 dot={false}
+                connectNulls={false}
               />
             ))}
           </LineChart>
@@ -300,13 +280,50 @@ function TrendChart({
   )
 }
 
-function IssueTable({ issues, projectId, agentId }: Readonly<{ issues: Issue[]; projectId: string; agentId: string }>) {
+/** The glance view: five plain lines, no columns. The full table lives behind "Show details". */
+function TopIssues({
+  issues, projectId, agentId,
+}: Readonly<{ issues: Issue[]; projectId: string; agentId: string }>) {
+  const top = issues.slice(0, 5)
+  if (!top.length) return null
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+      <h3 className="px-6 pt-5 text-sm font-semibold text-gray-900 dark:text-gray-50">What to look at first</h3>
+      <ul className="divide-y divide-gray-100 px-6 pb-2 dark:divide-gray-800">
+        {top.map((issue) => {
+          const callId = issue.example?.callId ?? issue.callIds[0]
+          return (
+            <li key={issue.key} className="flex items-center justify-between gap-4 py-3.5">
+              <span className="text-sm text-gray-800 dark:text-gray-200">{issue.label}</span>
+              <span className="flex flex-none items-center gap-4">
+                <span className="text-sm tabular-nums text-gray-500 dark:text-gray-400">{pct(issue.pct)} of calls</span>
+                {callId ? (
+                  <a
+                    href={`/${projectId}/agents/${agentId}/observability?session_id=${callId}${issue.example?.seconds ? `&t=${issue.example.seconds}` : ''}`}
+                    className="inline-flex w-16 items-center justify-end text-xs text-blue-600 hover:underline dark:text-blue-400"
+                  >
+                    Listen<ChevronRight className="h-3 w-3" />
+                  </a>
+                ) : <span className="w-16" />}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
+function IssueTable({
+  issues, projectId, agentId, sampleSize,
+}: Readonly<{ issues: Issue[]; projectId: string; agentId: string; sampleSize: number }>) {
+  const showChange = sampleSize >= MIN_CALLS_FOR_CHANGE
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
       <div className="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50">
-          Everything found last night
-          {' '}<span className="ml-2 font-normal text-gray-400">ranked by how much it matters, not by count</span>
+          All issues found
+          {' '}<span className="ml-2 font-normal text-gray-400">most important first</span>
         </h3>
       </div>
 
@@ -315,39 +332,38 @@ function IssueTable({ issues, projectId, agentId }: Readonly<{ issues: Issue[]; 
       ) : (
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-100 text-left text-xs uppercase tracking-wide text-gray-400 dark:border-gray-800">
+            <tr className="border-b border-gray-100 text-left text-xs text-gray-400 dark:border-gray-800">
               <th className="px-5 py-2 font-medium">Issue</th>
-              <th className="px-3 py-2 text-right font-medium">Rate</th>
-              <th className="px-3 py-2 text-right font-medium">vs last</th>
-              <th className="px-3 py-2 text-right font-medium">Flagged</th>
-              <th className="px-3 py-2 font-medium">Fix</th>
+              <th className="px-3 py-2 text-right font-medium">Share of calls</th>
+              <th className="px-3 py-2 text-right font-medium" title="Compared with the last 30 days">Change</th>
               <th className="px-3 py-2" />
             </tr>
           </thead>
           <tbody>
             {issues.map((issue) => (
-              <tr key={issue.key} className="border-b border-gray-50 last:border-0 hover:bg-gray-50 dark:border-gray-800/60 dark:hover:bg-gray-800/40">
+              <tr key={issue.key} className="border-b border-gray-50 align-top last:border-0 hover:bg-gray-50 dark:border-gray-800/60 dark:hover:bg-gray-800/40">
                 <td className="px-5 py-3">
-                  <div className="flex items-center gap-2">
-                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${PRIORITY[issue.priority] ?? PRIORITY.P2}`}>
-                      {issue.priority}
-                    </span>
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium text-gray-900 dark:text-gray-100">{issue.label}</span>
-                    {issue.isNew && (
-                      <span className="rounded border border-gray-300 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                        NEW
-                      </span>
+                    {issue.priority === 'P0' && (
+                      <span className="rounded-full bg-gray-900 px-2 py-0.5 text-[10px] font-medium text-white dark:bg-gray-100 dark:text-gray-900">High impact</span>
+                    )}
+                    {issue.isNew && showChange && (
+                      <span className="rounded-full border border-gray-300 px-2 py-0.5 text-[10px] font-medium text-gray-500 dark:border-gray-700 dark:text-gray-400">New</span>
                     )}
                   </div>
+                  <p className="mt-0.5 text-xs text-gray-400">
+                    {issue.category ? `${humanize(issue.category)} · ` : ''}Fixed by {fixableByLabel(issue.fixableBy).toLowerCase()}
+                  </p>
+                  {issue.example?.evidence && (
+                    <p className="mt-1 line-clamp-2 max-w-xl text-xs italic text-gray-500 dark:text-gray-400">“{issue.example.evidence}”</p>
+                  )}
                 </td>
-                <td className="px-3 py-3 text-right font-medium text-gray-900 dark:text-gray-100">{pct1(issue.pct)}</td>
-                <td className="px-3 py-3 text-right"><Delta value={issue.delta} /></td>
-                <td className="px-3 py-3 text-right text-gray-500">{issue.flagged}</td>
-                <td className="px-3 py-3">
-                  <span className="text-xs capitalize text-gray-500">
-                    {fixableByLabel(issue.fixableBy)}
-                  </span>
+                <td className="px-3 py-3 text-right">
+                  <div className="font-medium text-gray-900 dark:text-gray-100">{pct1(issue.pct)}</div>
+                  {sampleSize > 0 && <div className="text-xs text-gray-400">{issue.random} of {sampleSize} calls</div>}
                 </td>
+                <td className="px-3 py-3 text-right">{showChange ? <Delta value={issue.delta} /> : <span className="text-xs text-gray-400">—</span>}</td>
                 <td className="px-3 py-3 text-right">
                   {(issue.example || issue.callIds.length > 0) && (
                     <a
@@ -356,8 +372,7 @@ function IssueTable({ issues, projectId, agentId }: Readonly<{ issues: Issue[]; 
                         // seek straight to the moment when we know it
                         + (issue.example?.seconds ? `&t=${issue.example.seconds}` : '')
                       }
-                      title={issue.example?.evidence ?? undefined}
-                      className="inline-flex items-center text-xs text-blue-600 hover:underline dark:text-blue-400"
+                      className="inline-flex items-center whitespace-nowrap text-xs text-blue-600 hover:underline dark:text-blue-400"
                     >
                       {issue.example?.seconds ? 'Hear it' : 'See a call'}
                       <ChevronRight className="h-3 w-3" />
@@ -414,8 +429,8 @@ function NeverRunState({
 }>) {
   const title = hasConfig ? 'QA has not run for this agent yet' : 'QA is not switched on for this agent'
   const body = hasConfig
-    ? 'It is switched on — the first check runs tonight. 200 calls are sampled and an insight appears here, but only when there is one worth raising.'
-    : 'Switch it on and 200 of this agent’s calls are checked every night. An insight appears here only when there is one worth raising.'
+    ? 'It is switched on — the first check runs tonight. An insight appears here only when there is one worth raising.'
+    : 'Switch it on and a sample of this agent’s calls is checked every night. An insight appears here only when there is one worth raising.'
 
   return (
     <div className="p-6">
@@ -455,6 +470,7 @@ export default function QaInsightsPanel({
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [subscribeOpen, setSubscribeOpen] = useState(false)
   const [tab, setTab] = useState<'insight' | 'review'>('insight')
+  const [showDetails, setShowDetails] = useState(false)
 
   const { data, isLoading, error, refetch } = useQuery<Payload>({
     queryKey: ['qa', 'agent', agentId],
@@ -479,10 +495,13 @@ export default function QaInsightsPanel({
   const lastCheckedLabel = useMemo(() => {
     if (!data?.lastRun) return null
     const { date, callsSeen, status } = data.lastRun
-    if (status === 'failed') return `Last run on ${date} did not finish`
+    if (status === 'failed') return `The check on ${date} did not finish${data.lastRun.error ? ` (${data.lastRun.error})` : ''}`
     if (status === 'skipped') return `Nothing to check on ${date}`
-    return `Checked overnight · ${date} · ${callsSeen} calls`
+    return `Last checked ${date} · ${callsSeen} calls reviewed`
   }, [data?.lastRun])
+
+  const lastDate = data?.today?.date ?? data?.lastRun?.date ?? null
+  const staleDays = lastDate ? daysSince(lastDate) : null
 
   const [asking, setAsking] = useState(false)
   const [askedIds, setAskedIds] = useState<string[]>([])
@@ -515,11 +534,17 @@ export default function QaInsightsPanel({
 
   const dismissInsight = async () => {
     if (!insight) return
-    await fetch(`/api/qa/insights/${insight.id}`, {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ status: 'dismissed' }),
-    })
+    try {
+      const res = await fetch(`/api/qa/insights/${insight.id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ status: 'dismissed' }),
+      })
+      if (!res.ok) throw new Error()
+      toast.success('Insight dismissed')
+    } catch {
+      toast.error('Could not dismiss this insight. Please try again.')
+    }
     refetch()
   }
 
@@ -538,6 +563,7 @@ export default function QaInsightsPanel({
       <div className="p-6">
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
           {(error as Error).message}
+          <Button size="sm" variant="outline" className="ml-3" onClick={() => refetch()}>Try again</Button>
         </div>
       </div>
     )
@@ -563,61 +589,51 @@ export default function QaInsightsPanel({
     <div className="h-full overflow-auto bg-gray-50 p-6 dark:bg-gray-900">
       <div className="mx-auto max-w-5xl space-y-5">
 
-        {/* what was checked — shown on every state, so a quiet night never
-            looks like a broken page */}
+        {staleDays !== null && staleDays >= 2 && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+            These results are {staleDays} days old — the nightly check may not have run since. Numbers below reflect {data.today?.date ?? data.lastRun?.date}.
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+          <p className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400" title={data.today ? `${data.today.sampled} of ${data.today.callsTotal} calls were sampled` : undefined}>
             <Clock className="h-4 w-4" />
-            <span>{lastCheckedLabel ?? 'Not checked yet'}</span>
-            {data.today && (
-              <>
-                <Badge
-                  variant="outline"
-                  className="text-xs"
-                  title={`${data.today.flagged} flagged + ${data.today.random} random, out of ${data.today.callsTotal} calls made. Rates and trends use the random calls only.`}
-                >
-                  {data.today.sampled} calls sampled
-                </Badge>
-                <span className="text-gray-400 dark:text-gray-500">
-                  ({data.today.flagged} flagged, {data.today.random} random, of {data.today.callsTotal} made)
-                </span>
-              </>
-            )}
-          </div>
+            {lastCheckedLabel ?? 'Not checked yet'}
+          </p>
           <div className="flex items-center gap-2">
-          <button
-            onClick={() => setSubscribeOpen(true)}
-            className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-            aria-label="Who gets QA email for this agent"
-            title="Who gets QA email for this agent"
-          >
-            <Mail className="h-4 w-4" />
-          </button>
-          {data.canWrite && (
             <button
-              onClick={() => setSettingsOpen(true)}
+              onClick={() => setSubscribeOpen(true)}
               className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-              aria-label="QA settings"
-              title="QA settings"
+              aria-label="Who gets QA email for this agent"
+              title="Who gets QA email for this agent"
             >
-              <Settings className="h-4 w-4" />
+              <Mail className="h-4 w-4" />
             </button>
-          )}
-          <div className="flex items-center gap-1 rounded-lg bg-white p-1 dark:bg-gray-900">
-            {(['insight', 'review'] as const).map((t) => (
+            {data.canWrite && (
               <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`rounded-md px-3 py-1 text-sm ${
-                  tab === t
-                    ? 'bg-gray-100 font-medium text-gray-900 dark:bg-gray-800 dark:text-gray-50'
-                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
-                }`}
+                onClick={() => setSettingsOpen(true)}
+                className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+                aria-label="QA settings"
+                title="QA settings"
               >
-                {t === 'insight' ? 'Insight' : 'To listen to'}
+                <Settings className="h-4 w-4" />
               </button>
-            ))}
-          </div>
+            )}
+            <div className="flex items-center gap-1 rounded-lg bg-white p-1 dark:bg-gray-900">
+              {(['insight', 'review'] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className={`rounded-md px-3 py-1 text-sm ${
+                    tab === t
+                      ? 'bg-gray-100 font-medium text-gray-900 dark:bg-gray-800 dark:text-gray-50'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
+                  }`}
+                >
+                  {t === 'insight' ? 'Summary' : 'Calls to review'}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -640,10 +656,24 @@ export default function QaInsightsPanel({
               <QuietState />
             )}
 
-            <MetricsGrid metrics={data.metrics} />
-            <TrendChart trend={data.trend} trendKeys={trendKeys} />
-            <IssueTable issues={data.issues} projectId={projectId} agentId={agentId} />
-            <PreviousInsights insights={data.insights} currentId={insight?.id} />
+            <TopIssues issues={data.issues} projectId={projectId} agentId={agentId} />
+
+            <button
+              onClick={() => setShowDetails((v) => !v)}
+              className="mx-auto flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              {showDetails ? 'Hide details' : 'Show full details'}
+              <ChevronDown className={`h-4 w-4 transition-transform ${showDetails ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showDetails && (
+              <>
+                <MetricsGrid metrics={data.metrics} />
+                <TrendChart trend={data.trend} trendKeys={trendKeys} />
+                <IssueTable issues={data.issues} projectId={projectId} agentId={agentId} sampleSize={data.today?.random ?? 0} />
+                <PreviousInsights insights={data.insights} currentId={insight?.id} />
+              </>
+            )}
           </>
         )}
       </div>

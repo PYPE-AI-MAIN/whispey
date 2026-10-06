@@ -128,7 +128,7 @@ export const GET = guarded('qa/agent', async (req: NextRequest, ctx: { params: P
         pct: count.pct ?? null,
         was: was === null ? null : Number(was.toFixed(4)),
         delta: count.pct != null && was !== null ? Number((count.pct - was).toFixed(4)) : null,
-        isNew: seenDays === 0,
+        isNew: seenDays === 0 && checked.length >= 3,
         callIds: count.call_ids || [],
         example: (count.call_ids || [])
           .map((id) => moments.get(`${key}:${id}`))
@@ -168,7 +168,8 @@ export const GET = guarded('qa/agent', async (req: NextRequest, ctx: { params: P
   const trend = trendDays.map((d) => {
     const point: Record<string, unknown> = { date: d.run_date, sampled: d.calls_sampled }
     for (const key of topKeys) {
-      point[key] = (d.issue_counts as Record<string, { pct?: number | null }>)?.[key]?.pct ?? 0
+      // no random calls that day = no measurement (a gap), not 0%
+      point[key] = d.random_n > 0 ? ((d.issue_counts as Record<string, { pct?: number | null }>)?.[key]?.pct ?? 0) : null
     }
     return point
   })
