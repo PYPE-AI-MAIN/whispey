@@ -265,6 +265,8 @@ export const Spec = z
         direction: z.enum(['higher_is_better', 'lower_is_better', 'neutral']).default('neutral'),
         empty_text: z.string().max(200).optional(),
         value_map: z.record(z.string()).optional(),
+        /** The chart's own description, written by whoever built it. Presentational only; replaces the generated sentence. */
+        note: z.string().max(300).optional(),
       })
       .default({ round: 1, direction: 'neutral' }),
   })

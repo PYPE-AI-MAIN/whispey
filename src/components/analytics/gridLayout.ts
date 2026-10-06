@@ -43,6 +43,30 @@ export const MIN_SIZE: Record<ChartKind, { w: number; h: number }> = {
   formula: { w: 2, h: 2 },
 }
 
+/**
+ * How many grid rows a text block needs for its words, so a note does not sit
+ * in a tall empty box. Mirrors TextBlockCard's own sizes (p-4 padding, gap-1,
+ * a heading line, a smaller heading, an 8px blank line, 20px body lines) and
+ * guesses how often a body line wraps from the card's width — close, not exact,
+ * and the card can still be dragged taller or shorter by hand.
+ */
+export function textRows(text: string, widthCols: number): number {
+  const PADDING = 32
+  const GAP = 4
+  const charsPerLine = Math.max(12, widthCols * 12)
+  const lines = text.trim() ? text.split('\n') : ['']
+  let height = PADDING + GAP * (lines.length - 1)
+  for (const line of lines) {
+    if (line.startsWith('## ')) height += 20
+    else if (line.startsWith('# ')) height += 28
+    else if (line.trim()) height += 20 * Math.ceil(line.length / charsPerLine)
+    else height += 8
+  }
+  // a card h rows tall is h * ROW_HEIGHT + (h - 1) * margin pixels
+  const rows = Math.ceil((height + GRID_MARGIN[1]) / (ROW_HEIGHT + GRID_MARGIN[1]))
+  return Math.max(MIN_SIZE.text.h, rows)
+}
+
 export type GridItem = { i: string; x: number; y: number; w: number; h: number; minW: number; minH: number }
 
 const LEGACY_WIDTH: Record<string, number> = { quarter: 3, half: 6, full: 12 }

@@ -123,8 +123,11 @@ export function ChartCard({
                 <GripVertical className="h-3.5 w-3.5" />
               </button>
             )}
-            <h3 className="truncate text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              {widget.title}
+            {/* a real button, pointer-events-auto, so the browser can show the full title on hover when it is cut off; clicking still selects the card */}
+            <h3 className="min-w-0 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <button type="button" title={widget.title} onClick={onSelect} className="pointer-events-auto block max-w-full cursor-pointer truncate text-left uppercase">
+                {widget.title}
+              </button>
             </h3>
             {calc?.help && (
               <TooltipProvider>
@@ -159,13 +162,15 @@ export function ChartCard({
             {/* "Completed calls · 110" is not a number anyone can check */}
             {/* wrapped, not truncated: a definition you cannot read is the
                 same as no definition */}
-            <span
-              className={cn('text-gray-400/80 dark:text-gray-500', isKpi ? 'line-clamp-1' : 'line-clamp-2')}
+            <button
+              type="button"
+              className={cn('pointer-events-auto cursor-pointer text-left text-gray-400/80 dark:text-gray-500', isKpi ? 'line-clamp-1' : 'line-clamp-2')}
               title={definition}
+              onClick={onSelect}
             >
               {canEdit ? '· ' : ''}
               {definition}
-            </span>
+            </button>
           </div>
         </div>
 

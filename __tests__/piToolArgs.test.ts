@@ -41,6 +41,8 @@ describe('validateToolArgs', () => {
     ['check_spam_number', { number: { $ne: 1 } }],
     ['create_agent', { display_name: '' }],
     ['create_agent', { display_name: 'x', dispositions: [{ key: 'k' }] }],
+    ['edit_agent', { agent_id: A, dispositions: [{ key: 'k', description: 'x'.repeat(501) }] }],
+    ['edit_agent', { agent_id: A, dispositions: [{ key: 'Bad Key', description: 'd' }] }],
     ['edit_agent', { agent_id: A, dispositions_mode: 'wipe' }],
     ['edit_agent', { agent_id: A, prompt_patch: { old_string: 'a' } }],
     ['edit_agent', { agent_id: A, variables: ['x'] }],

@@ -10,18 +10,19 @@
  */
 'use client'
 import React, { useMemo } from 'react'
-import { ArrowLeft, BarChart3, Hash, LineChart as LineIcon, Percent, PieChart as PieIcon, Table2, Type as TextIcon } from 'lucide-react'
+import { ArrowLeft, BarChart3, Hash, LineChart as LineIcon, Percent, PieChart as PieIcon, Sparkles, Table2, Type as TextIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { CatalogField, ChartKind, FormulaContent, TextContent, Widget } from '@/types/analytics'
 import type { ChartWidget } from './ChartCard'
 import { ChartFilters } from './FilterBar'
 import { CALCULATIONS, explainSpec } from './explain'
+import { AiChartBuilderPanel } from './AiChartBuilderPanel'
 import { FieldPicker, FieldShape } from './FieldPicker'
 import { identityFields, outcomeField } from './suggest'
 import type { OutcomeRanking } from './OutcomeOrderEditor'
 import type { FilterNodeInput, SpecInput } from '@/server/analytics/spec'
-import { AiChartBuilderDialog } from './AiChartBuilderDialog'
 
 /** What a chart-type tile puts on the drag event, and what the grid reads off it. */
 export const CHART_TYPE_DRAG_TYPE = 'application/x-whispey-chart-type'
@@ -125,8 +126,8 @@ function ChartTypeTile({
   )
 }
 
-export function SidePanel({
-  selected, agentId, fields, ranking, canEdit, onAddChart, onDragChartType, onChange, onChangeKind, onChangeTitle, onBack, onGenerateChart,
+function SidePanelContent({
+  selected, agentId, fields, ranking, canEdit, onAddChart, onDragChartType, onChange, onChangeKind, onChangeTitle, onBack, onOpenAi,
 }: Readonly<{
   selected: Widget | null
   /** For the AI Chart Builder's request only — which agent's fields it's allowed
@@ -148,14 +149,21 @@ export function SidePanel({
   onChange: (spec: SpecInput | TextContent | FormulaContent) => void
   onChangeKind: (kind: ChartKind) => void
   onChangeTitle: (title: string) => void
-  /** Drops an AI-built chart on the canvas, already configured — same shape the SUGGESTED strip applies. */
-  onGenerateChart: (title: string, kind: ChartKind, spec: SpecInput) => void
+  onOpenAi: () => void
 }>) {
   if (!selected) {
     return (
       <Panel title="Chart types">
         {canEdit && agentId && (
-          <AiChartBuilderDialog agentId={agentId} fields={fields} ranking={ranking} canEdit={canEdit} onAdd={onGenerateChart} />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onOpenAi}
+            className="mb-3 w-full justify-center gap-1.5 border-dashed border-blue-300 text-blue-700 hover:border-blue-400 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950/30"
+          >
+            <Sparkles className="h-3.5 w-3.5" /> Generate with AI
+          </Button>
         )}
         <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
           {canEdit
@@ -214,6 +222,42 @@ export function SidePanel({
       onChangeKind={onChangeKind}
       onChangeTitle={onChangeTitle}
     />
+  )
+}
+
+/**
+ * The panel on the right of the dashboard. "Generate with AI" turns it into a
+ * chat; the chat stays mounted (just hidden) while a chart's settings are open,
+ * so going to tweak one chart does not throw the conversation away.
+ */
+export function SidePanel({
+  aiOpen, onOpenAi, onCloseAi, onGenerateChart, ...rest
+}: Readonly<
+  Omit<React.ComponentProps<typeof SidePanelContent>, 'onOpenAi'> & {
+    aiOpen: boolean
+    onOpenAi: () => void
+    onCloseAi: () => void
+    /** Puts an AI-built chart on the canvas as a draft without selecting it, so the chat stays on screen. */
+    onGenerateChart: (title: string, kind: ChartKind, spec: SpecInput) => void
+  }
+>) {
+  const showAi = aiOpen && !rest.selected
+  return (
+    <>
+      {rest.canEdit && rest.agentId && (
+        <div className={showAi ? 'h-full' : 'hidden'}>
+          <AiChartBuilderPanel
+            agentId={rest.agentId}
+            fields={rest.fields}
+            ranking={rest.ranking}
+            visible={showAi}
+            onBack={onCloseAi}
+            onAdd={onGenerateChart}
+          />
+        </div>
+      )}
+      {!showAi && <SidePanelContent {...rest} onOpenAi={onOpenAi} />}
+    </>
   )
 }
 
@@ -448,10 +492,39 @@ function ChartSettings({
 
   return (
     <Panel title="Chart settings" onBack={onBack}>
-      {/* the same sentence the card shows, but with room to read it */}
-      <p className="mb-3 rounded-md bg-gray-100/70 px-2.5 py-2 text-[11px] leading-relaxed text-gray-600 dark:bg-gray-800/60 dark:text-gray-300">
-        {explainSpec(spec, fields)}
-      </p>
+      {/* the same sentence the card shows, but with room to read it. Editors can replace it with their own wording */}
+      {canEdit ? (
+        <div className="mb-3">
+          <textarea
+            // remounted when the saved note changes, so Reset shows the generated sentence again
+            key={`${widget.id}:${spec.display?.note ?? ''}`}
+            defaultValue={explainSpec(spec, fields)}
+            rows={4}
+            maxLength={300}
+            aria-label="Chart description"
+            onBlur={(e) => {
+              const text = e.target.value.trim()
+              const generated = explainSpec({ ...spec, display: { ...spec.display, note: undefined } }, fields)
+              const note = !text || text === generated ? undefined : text
+              if (note !== spec.display?.note) setSpec({ display: { ...spec.display, note } })
+            }}
+            className="w-full resize-y rounded-md border border-gray-200 bg-gray-100/70 px-2.5 py-2 text-[11px] leading-relaxed text-gray-600 outline-none focus:border-blue-400 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-300"
+          />
+          {spec.display?.note && (
+            <button
+              type="button"
+              onClick={() => setSpec({ display: { ...spec.display, note: undefined } })}
+              className="mt-1 text-[11px] text-gray-400 underline-offset-2 hover:text-gray-600 hover:underline dark:hover:text-gray-300"
+            >
+              Reset to the automatic description
+            </button>
+          )}
+        </div>
+      ) : (
+        <p className="mb-3 rounded-md bg-gray-100/70 px-2.5 py-2 text-[11px] leading-relaxed text-gray-600 dark:bg-gray-800/60 dark:text-gray-300">
+          {explainSpec(spec, fields)}
+        </p>
+      )}
 
       <Row label="Name">
         <input

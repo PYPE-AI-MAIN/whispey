@@ -10,7 +10,12 @@ const id = z.string().min(1).max(64).regex(/^[\w-]+$/, 'must be an id')
 const text = (max: number) => z.string().max(max)
 const count = z.union([z.number(), z.string().max(8)])
 const flatMap = z.record(z.string().max(200), z.unknown())
-const disposition = z.object({ key: text(100).min(1), description: text(200_000) })
+// The same limits dispositions are saved under (lib/dispositions.ts), so a description that
+// could never be saved is rejected here, before a Confirm card, with a message the model can act on.
+const disposition = z.object({
+  key: z.string().regex(/^[a-z][a-z0-9_]{0,39}$/, 'must be lowercase letters, digits and underscores, starting with a letter (max 40 characters)'),
+  description: z.string().min(1, 'is empty').max(500, 'is over 500 characters: shorten the value names and conditions, or split it into separate dispositions'),
+})
 
 const SCHEMAS: Record<string, z.ZodTypeAny> = {
   get_call_volume_trend: z.object({ days: count.optional(), agent_id: id.optional() }),
