@@ -11,12 +11,13 @@ function fieldRef(row: { col: string; path?: string[] | null }) {
   return row.path?.length ? { col: row.col, path: row.path } : { col: row.col }
 }
 
-function summarizeTrend(rows: { bucket: unknown; value: unknown }[]) {
+function summarizeTrend(rows: { bucket: unknown; value: unknown }[], periodDays: number) {
   const points = rows
     .filter((r) => r.bucket != null && r.value != null)
     .map((r) => ({ day: String(r.bucket).slice(0, 10), count: Number(r.value) || 0 }))
   const total = points.reduce((s, p) => s + p.count, 0)
-  const avg = points.length ? Math.round(total / points.length) : 0
+  // over the whole period, not just days that have rows — a day with no calls still counts
+  const avg = Math.round(total / periodDays)
   const half = Math.floor(points.length / 2)
   const firstHalf = points.slice(0, half).reduce((s, p) => s + p.count, 0)
   const secondHalf = points.slice(half).reduce((s, p) => s + p.count, 0)
@@ -42,8 +43,7 @@ export async function runCallVolumeTrend(
     success: true,
     result: {
       period_days: days,
-      ...summarizeTrend(rows),
-      raw: rows,
+      ...summarizeTrend(rows, days),
     },
   }
 }

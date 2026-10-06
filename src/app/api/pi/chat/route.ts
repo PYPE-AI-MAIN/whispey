@@ -74,6 +74,8 @@ function contextWindowFor(model: string): number {
 // requested for debugging what Pi actually runs against the DB — appends, never blocks a reply on failure
 const PI_SQL_LOG_PATH = join(process.cwd(), 'pi-sql-queries.log')
 function logPiSql(projectId: string, agentId: string | undefined, sql: string, params: unknown[]) {
+  // filter values can be customer data; keep this a local-debugging aid only
+  if (process.env.NODE_ENV === 'production') return
   const line = `\n--- ${new Date().toISOString()} project=${projectId} agent=${agentId ?? 'ALL'} ---\n${sql}\n-- params: ${JSON.stringify(params)}\n`
   appendFile(PI_SQL_LOG_PATH, line).catch((err) => console.error('[pi/chat] failed to write SQL log', err))
 }
@@ -546,15 +548,23 @@ function toolSchemas(canWrite: boolean): OpenAI.Chat.ChatCompletionTool[] {
   return tools
 }
 
+/** The agents this member may see; null = all. Same rule the analytics context applies. */
+async function visibleAgentIdsFor(projectId: string): Promise<string[] | null> {
+  const access = await getProjectRoleForApi(projectId)
+  if (!access) return []
+  return access.visibility?.org?.visibleAgentIds ?? null
+}
+
 async function runListAgents(projectId: string) {
   const supabase = createServiceRoleClient()
+  const visible = await visibleAgentIdsFor(projectId)
   const { data, error } = await supabase
     .from('pype_voice_agents')
     .select('id, display_name, is_active, field_extractor, field_extractor_prompt')
     .eq('project_id', projectId)
     .order('display_name')
   if (error) return { success: false, result: { error: error.message } }
-  const agents = (data ?? []).map((row) => {
+  const agents = (data ?? []).filter((row) => visible === null || visible.includes(row.id)).map((row) => {
     const dispositions = parseExtractorList(row.field_extractor_prompt)
     const enabled = !!row.field_extractor && dispositions.length > 0
     return {
@@ -661,7 +671,9 @@ async function runCreateAgent(projectId: string, args: any) {
 async function agentBelongsToProject(agentId: string, projectId: string): Promise<boolean> {
   const supabase = createServiceRoleClient()
   const { data } = await supabase.from('pype_voice_agents').select('id').eq('id', agentId).eq('project_id', projectId).maybeSingle()
-  return !!data
+  if (!data) return false
+  const visible = await visibleAgentIdsFor(projectId)
+  return visible === null || visible.includes(agentId)
 }
 
 type LoadedAssistant = { backendAgentName: string; deploymentTarget: 'classic' | 'docker'; assistant: Record<string, any> }
@@ -1811,7 +1823,8 @@ async function recoverFromError(err: unknown, ctx: TurnContext, turn: TurnState)
     ? [...ctx.userTurn, { role: 'assistant', content: turn.assistantText, toolCalls: toolCallsOrUndefined(turn.assistantToolCalls) }]
     : ctx.userTurn
   if (!turn.savedReply) await ctx.saveSession(partial)
-  ctx.controller.enqueue(sseChunk(JSON.stringify({ error: String(err) })))
+  console.error('[pi/chat] turn failed', err)
+  ctx.controller.enqueue(sseChunk(JSON.stringify({ error: clientError(err) })))
 }
 
 function chatStream(base: Omit<TurnContext, 'controller'>, sessionId: string) {
@@ -1833,15 +1846,35 @@ function chatStream(base: Omit<TurnContext, 'controller'>, sessionId: string) {
   })
 }
 
+const MAX_MESSAGE_CHARS = 4000
+// raw provider/internal messages stay in the server log in production
+const clientError = (err: unknown) => (process.env.NODE_ENV === 'production' ? 'Something went wrong. Please try again.' : String((err as any)?.message ?? err))
+// ponytail: per-instance sliding window; a shared store if abuse ever crosses instances
+const RATE_WINDOW_MS = 60_000
+const RATE_MAX_MESSAGES = 20
+const recentByUser = new Map<string, number[]>()
+function tooManyRequests(userId: string): boolean {
+  if (process.env.NODE_ENV === 'test') return false
+  const now = Date.now()
+  const recent = (recentByUser.get(userId) ?? []).filter((t) => now - t < RATE_WINDOW_MS)
+  if (recent.length >= RATE_MAX_MESSAGES) { recentByUser.set(userId, recent); return true }
+  recent.push(now)
+  recentByUser.set(userId, recent)
+  return false
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { message, projectId, sessionId: incomingSessionId, resolveAction, model: requestedModel } = await request.json()
     if (!projectId) return NextResponse.json({ error: 'projectId is required' }, { status: 400 })
     if (!resolveAction && (!message || typeof message !== 'string')) return NextResponse.json({ error: 'message is required' }, { status: 400 })
+    if (!resolveAction && message.length > MAX_MESSAGE_CHARS) return NextResponse.json({ error: `Message is too long (max ${MAX_MESSAGE_CHARS} characters)` }, { status: 400 })
 
     const who = await authorize(projectId)
     if ('response' in who) return who.response
     const { userId, canWrite } = who
+
+    if (!resolveAction && tooManyRequests(userId)) return NextResponse.json({ error: 'Too many messages — please wait a moment and try again.' }, { status: 429 })
 
     const supabase = createServiceRoleClient()
     if (resolveAction) return await handleResolveAction(supabase, { projectId, userId, canWrite, sessionId: incomingSessionId, resolveAction })
@@ -1891,6 +1924,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (err: any) {
     console.error('[pi/chat]', err)
-    return NextResponse.json({ error: err?.message ?? 'Unknown error' }, { status: 500 })
+    return NextResponse.json({ error: clientError(err) }, { status: 500 })
   }
 }
