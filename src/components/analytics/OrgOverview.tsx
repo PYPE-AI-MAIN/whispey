@@ -58,7 +58,7 @@ function Kpi({
   )
 }
 
-function StatusBadge({ isActive }: Readonly<{ isActive: boolean }>) {
+function StatusBadge({ isActive, environment }: Readonly<{ isActive: boolean; environment: string | null }>) {
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
@@ -68,12 +68,12 @@ function StatusBadge({ isActive }: Readonly<{ isActive: boolean }>) {
       }`}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-gray-400'}`} />
-      {isActive ? 'Live' : 'Inactive'}
+      {isActive ? environment ?? 'Live' : 'Inactive'}
     </span>
   )
 }
 
-function AgentRow({ agent, projectId }: Readonly<{ agent: OrgAgentRow; projectId: string }>) {
+function AgentRow({ agent, projectId, loading }: Readonly<{ agent: OrgAgentRow; projectId: string; loading: boolean }>) {
   const router = useRouter()
   return (
     <tr
@@ -81,7 +81,7 @@ function AgentRow({ agent, projectId }: Readonly<{ agent: OrgAgentRow; projectId
       onClick={() => router.push(`/${projectId}/agents/${agent.id}`)}
     >
       <td className="py-4 pl-6 pr-4 font-medium text-gray-900 dark:text-gray-100">{agent.name}</td>
-      <td className="py-4 pr-4 tabular-nums text-gray-700 dark:text-gray-300">{agent.calls?.toLocaleString() ?? '—'}</td>
+      <td className="py-4 pr-4 tabular-nums text-gray-700 dark:text-gray-300">{(agent.calls ?? (loading ? null : 0))?.toLocaleString() ?? '—'}</td>
       <td className="py-4 pr-4 tabular-nums text-gray-700 dark:text-gray-300">
         {agent.pickupPct === null ? '—' : `${agent.pickupPct.toFixed(0)}%`}
       </td>
@@ -89,7 +89,7 @@ function AgentRow({ agent, projectId }: Readonly<{ agent: OrgAgentRow; projectId
         {agent.latency === null ? '—' : `${agent.latency.toFixed(1)}s`}
       </td>
       <td className="py-4 pr-6 text-gray-500 dark:text-gray-400">
-        <StatusBadge isActive={agent.is_active} />
+        <StatusBadge isActive={agent.is_active} environment={agent.environment} />
       </td>
     </tr>
   )
@@ -178,7 +178,7 @@ export function OrgOverview({
             {/* text-2xl/tracking-tight matches this app's real page-title convention
                 (e.g. api-keys/page.tsx's <h1>) — text-xl read undersized next to it */}
             <h1 className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">Overview</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Summed across every agent in this project.</p>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">All agents in this project, for the selected period.</p>
           </div>
           <div className="flex items-center gap-3">
             {isLoading && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
@@ -237,13 +237,16 @@ export function OrgOverview({
                     </tr>
                   )}
                   {data.agents.map((a) => (
-                    <AgentRow key={a.id} agent={a} projectId={projectId} />
+                    <AgentRow key={a.id} agent={a} projectId={projectId} loading={isLoading} />
                   ))}
                 </tbody>
                 </table>
               </div>
             </div>
           </div>
+          <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+            Pickup % is the share of unique phone numbers that completed a call. Latency is the average response time per call.
+          </p>
         </div>
       </div>
     </div>

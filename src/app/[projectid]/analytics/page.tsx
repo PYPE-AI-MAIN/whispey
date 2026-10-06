@@ -110,7 +110,7 @@ function OrgAnalyticsPageContent() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-full flex-col bg-gray-50 dark:bg-gray-900">
       {/* Just the breadcrumb — the app's own sidebar already carries the logo,
           Docs/Help links and the signed-in user, so repeating all of that in a
           second header bar (the shared Header component's usual job on pages
