@@ -17,6 +17,7 @@ export type OrgAgentRow = {
   id: string
   name: string
   is_active: boolean
+  environment: string | null
   calls: number | null
   pickupPct: number | null
   latency: number | null
@@ -139,11 +140,11 @@ export function useOrgOverview(
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
-  const agentsQuery = useSupabaseQuery<{ id: string; name: string; display_name: string | null; is_active: boolean }>(
+  const agentsQuery = useSupabaseQuery<{ id: string; name: string; display_name: string | null; is_active: boolean; environment: string | null }>(
     'pype_voice_agents',
     projectId
       ? {
-          select: 'id, name, display_name, is_active',
+          select: 'id, name, display_name, is_active, environment',
           filters: [{ column: 'project_id', operator: 'eq', value: projectId }],
           orderBy: { column: 'created_at', ascending: true },
         }
@@ -200,6 +201,7 @@ export function useOrgOverview(
       id: a.id,
       name: a.display_name || a.name,
       is_active: a.is_active,
+      environment: a.environment,
       calls,
       pickupPct: callees ? ((pickedUp ?? 0) / callees) * 100 : null,
       latency: latencyByAgent.get(a.id) ?? null,

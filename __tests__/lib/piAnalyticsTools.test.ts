@@ -16,8 +16,9 @@ describe('runCallVolumeTrend', () => {
   it('summarises totals, daily average and the direction of the trend', async () => {
     const rows = (counts: number[]) => counts.map((value, i) => ({ bucket: `2026-09-0${i + 1}T00:00:00Z`, value }))
     const run = async (counts: number[]) => (await runCallVolumeTrend('P', vi.fn().mockResolvedValue(ok(rows(counts))), { days: 7 })).result as any
+    // 80 calls over a 7-day period = 11/day: days with no rows still count
     const up = await run([10, 10, 30, 30])
-    expect(up).toMatchObject({ total_calls: 80, avg_per_day: 20, trend: 'up', period_days: 7 })
+    expect(up).toMatchObject({ total_calls: 80, avg_per_day: 11, trend: 'up', period_days: 7 })
     expect(up.daily[0]).toEqual({ day: '2026-09-01', count: 10 })
     expect((await run([30, 30, 10, 10])).trend).toBe('down')
     expect((await run([20, 20, 20, 20])).trend).toBe('flat')

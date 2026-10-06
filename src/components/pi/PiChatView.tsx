@@ -34,6 +34,8 @@ function PiLink({ children, href }: Readonly<{ children?: React.ReactNode; href?
 }
 
 const MARKDOWN_COMPONENTS = {
+  // a model-written image is a free GET to any URL — an exfiltration channel if text in the data steers it
+  img: () => null,
   h1: ({ children }: { children?: React.ReactNode }) => (
     <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100 mt-4 mb-2 first:mt-0">{children}</h1>
   ),
@@ -1020,6 +1022,9 @@ export default function PiChatView({
                 </button>
               </div>
             </div>
+            <p className="mt-2 text-center text-[11px] text-gray-400 dark:text-gray-500">
+              Pi is AI and can make mistakes — check key numbers against your call logs.
+            </p>
             {micError && (
               <p className="mt-2 text-center text-[11px] text-red-400">{micError}</p>
             )}
@@ -1058,7 +1063,7 @@ export default function PiChatView({
                 className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-0.5 text-[10px] font-medium leading-4 text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
                 title="Phone numbers are masked before reaching the model, both when a field is deliberately grouped by and as a general backstop over every tool result — never sent to the LLM in full."
               >
-                PII redacted
+                Phone numbers masked
               </span>
             </div>
             {showContextHint && (
