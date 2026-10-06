@@ -292,6 +292,7 @@ function TopIssues({
       <ul className="divide-y divide-gray-100 px-6 pb-2 dark:divide-gray-800">
         {top.map((issue) => {
           const callId = issue.example?.callId ?? issue.callIds[0]
+          const seekParam = issue.example?.seconds ? `&t=${issue.example.seconds}` : ''
           return (
             <li key={issue.key} className="flex items-center justify-between gap-4 py-3.5">
               <span className="text-sm text-gray-800 dark:text-gray-200">{issue.label}</span>
@@ -299,7 +300,7 @@ function TopIssues({
                 <span className="text-sm tabular-nums text-gray-500 dark:text-gray-400">{pct(issue.pct)} of calls</span>
                 {callId ? (
                   <a
-                    href={`/${projectId}/agents/${agentId}/observability?session_id=${callId}${issue.example?.seconds ? `&t=${issue.example.seconds}` : ''}`}
+                    href={`/${projectId}/agents/${agentId}/observability?session_id=${callId}${seekParam}`}
                     className="inline-flex w-16 items-center justify-end text-xs text-blue-600 hover:underline dark:text-blue-400"
                   >
                     Listen<ChevronRight className="h-3 w-3" />
@@ -495,7 +496,10 @@ export default function QaInsightsPanel({
   const lastCheckedLabel = useMemo(() => {
     if (!data?.lastRun) return null
     const { date, callsSeen, status } = data.lastRun
-    if (status === 'failed') return `The check on ${date} did not finish${data.lastRun.error ? ` (${data.lastRun.error})` : ''}`
+    if (status === 'failed') {
+      const why = data.lastRun.error ? ` (${data.lastRun.error})` : ''
+      return `The check on ${date} did not finish${why}`
+    }
     if (status === 'skipped') return `Nothing to check on ${date}`
     return `Last checked ${date} · ${callsSeen} calls reviewed`
   }, [data?.lastRun])
@@ -540,7 +544,7 @@ export default function QaInsightsPanel({
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ status: 'dismissed' }),
       })
-      if (!res.ok) throw new Error()
+      if (!res.ok) throw new Error(`Dismiss failed (${res.status})`)
       toast.success('Insight dismissed')
     } catch {
       toast.error('Could not dismiss this insight. Please try again.')

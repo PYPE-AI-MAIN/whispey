@@ -851,7 +851,10 @@ function EventIcon({ e }: Readonly<{ e: JourneyEvent }>) {
 const DETAIL_LABEL: Record<string, string> = {
   call_ended_reason: 'Reason', duration_seconds: 'Duration', final_disposition: 'Outcome', template: 'Template', relation: 'Relation', age: 'Age', disposition: 'Outcome', to_status: 'New status',
 }
-const detailText = (k: string, v: unknown) => `${DETAIL_LABEL[k] ?? k.replaceAll('_', ' ')}: ${k === 'duration_seconds' ? `${v}s` : String(v).replaceAll('_', ' ')}`
+const detailText = (k: string, v: unknown) => {
+  const value = k === 'duration_seconds' ? `${v}s` : String(v).replaceAll('_', ' ')
+  return `${DETAIL_LABEL[k] ?? k.replaceAll('_', ' ')}: ${value}`
+}
 const DETAIL_KEYS = ['call_ended_reason', 'duration_seconds', 'final_disposition', 'template', 'relation', 'age', 'disposition', 'to_status']
 
 type EventFilter = 'all' | 'messages' | 'calls' | 'other'
