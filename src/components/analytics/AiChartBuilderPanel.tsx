@@ -44,10 +44,12 @@ const FALLBACK_SUGGESTIONS = [
 ]
 
 interface ChartCardState {
+  id: string
   chart: AiChart
   added: boolean
 }
 interface Message {
+  id: string
   role: 'user' | 'assistant'
   content: string
   charts?: ChartCardState[]
@@ -111,6 +113,17 @@ async function streamAssistantReply(res: Response, abort: AbortController, onChu
     for (const line of lines) applySSELine(line, state, onChunk)
   }
   return { assistantContent: state.content, wasTruncated: state.truncated }
+}
+
+const newId = () => crypto.randomUUID()
+
+/** Marks one proposed chart (or every chart in the message, when no index is given) as added. */
+function markAdded(messages: Message[], messageIndex: number, chartIndex?: number): Message[] {
+  return messages.map((m, i) => {
+    if (i !== messageIndex || !m.charts) return m
+    const charts = m.charts.map((c, j) => (chartIndex === undefined || j === chartIndex ? { ...c, added: true } : c))
+    return { ...m, charts }
+  })
 }
 
 function lastChartOf(messages: Message[]): AiChart | null {
@@ -189,7 +202,7 @@ export function AiChartBuilderPanel({
         throw new Error(err.error || `Request failed (${res.status})`)
       }
 
-      setMessages((prev) => [...prev, { role: 'assistant', content: '' }])
+      setMessages((prev) => [...prev, { id: newId(), role: 'assistant', content: '' }])
       const { assistantContent, wasTruncated } = await streamAssistantReply(res, abort, (content) => patchLast({ content }))
 
       if (wasTruncated) {
@@ -206,7 +219,7 @@ export function AiChartBuilderPanel({
       const errors: string[] = []
       for (const candidate of candidates.slice(0, 4)) {
         const result = validateAiChart(candidate, fields)
-        if (result.ok) charts.push({ chart: result.chart, added: false })
+        if (result.ok) charts.push({ id: newId(), chart: result.chart, added: false })
         else errors.push(result.error)
       }
       patchLast({ charts, errors })
@@ -226,7 +239,7 @@ export function AiChartBuilderPanel({
       const text = (overrideText ?? input).trim()
       if (!text || isStreaming) return
 
-      let conversation: Message[] = [...messages, { role: 'user', content: text }]
+      let conversation: Message[] = [...messages, { id: newId(), role: 'user', content: text }]
       setMessages(conversation)
       setInput('')
       setIsStreaming(true)
@@ -240,12 +253,13 @@ export function AiChartBuilderPanel({
         if (first.retryable) {
           // The person never sees the failed attempt or the automatic nudge, only the corrected answer.
           const retryMsg: Message = {
+            id: newId(),
             role: 'user',
             hidden: true,
             content: `The chart you just returned failed validation: ${first.error}. Fix this and return the corrected COMPLETE chart.`,
           }
           patchLast({ hidden: true })
-          conversation = [...conversation, { role: 'assistant', content: '(previous attempt — see error below)', hidden: true }, retryMsg]
+          conversation = [...conversation, { id: newId(), role: 'assistant', content: '(previous attempt — see error below)', hidden: true }, retryMsg]
           setMessages((prev) => [...prev, retryMsg])
           await sendAndValidate(conversation, abort, { silentOnError: false })
         } else if (first.status === 'error' && first.error) {
@@ -268,11 +282,7 @@ export function AiChartBuilderPanel({
     if (!card || card.added) return
     onAdd(card.chart.title, card.chart.kind, card.chart.spec)
     toast.success(`Added "${card.chart.title}"`)
-    setMessages((prev) =>
-      prev.map((m, i) =>
-        i === messageIndex ? { ...m, charts: m.charts?.map((c, j) => (j === chartIndex ? { ...c, added: true } : c)) } : m
-      )
-    )
+    setMessages((prev) => markAdded(prev, messageIndex, chartIndex))
   }
 
   const addAll = (messageIndex: number) => {
@@ -280,7 +290,7 @@ export function AiChartBuilderPanel({
     const pending = cards.filter((c) => !c.added)
     for (const c of pending) onAdd(c.chart.title, c.chart.kind, c.chart.spec)
     if (pending.length) toast.success(`Added ${pending.length} charts`)
-    setMessages((prev) => prev.map((m, i) => (i === messageIndex ? { ...m, charts: m.charts?.map((c) => ({ ...c, added: true })) } : m)))
+    setMessages((prev) => markAdded(prev, messageIndex))
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -344,13 +354,13 @@ export function AiChartBuilderPanel({
           const isLast = i === messages.length - 1
           if (msg.role === 'user') {
             return (
-              <div key={`u-${i}`} className="flex justify-end">
+              <div key={msg.id} className="flex justify-end">
                 <div className="max-w-[90%] whitespace-pre-wrap rounded-xl bg-blue-600 px-3 py-2 text-sm leading-relaxed text-white">{msg.content}</div>
               </div>
             )
           }
           return (
-            <div key={`a-${i}`} className="space-y-2">
+            <div key={msg.id} className="space-y-2">
               <AssistantText content={msg.content} streaming={isStreaming && isLast} />
               {(msg.charts?.length ?? 0) > 1 && msg.charts!.some((c) => !c.added) && (
                 <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => addAll(i)}>
@@ -358,7 +368,7 @@ export function AiChartBuilderPanel({
                 </Button>
               )}
               {msg.charts?.map((c, j) => (
-                <ChartProposal key={`${i}-${j}`} state={c} fields={fields} onAdd={() => addChart(i, j)} />
+                <ChartProposal key={c.id} state={c} fields={fields} onAdd={() => addChart(i, j)} />
               ))}
               {!(isStreaming && isLast) && msg.errors?.map((err) => (
                 <div key={err} className="flex items-start gap-1.5 rounded-md bg-red-50 px-2 py-1.5 text-[11px] font-medium text-red-700 dark:bg-red-900/20 dark:text-red-400">
