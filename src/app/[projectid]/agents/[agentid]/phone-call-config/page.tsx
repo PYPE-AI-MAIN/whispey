@@ -97,7 +97,7 @@ function getAgentStatusInfo(
     return {
       containerClass: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
       dotClass: 'bg-green-500 rounded-full animate-pulse',
-      label: isPypeAgent ? 'Running' : 'Active',
+      label: isPypeAgent ? 'Live' : 'Active',
       labelClass: 'text-xs font-semibold text-green-700 dark:text-green-400',
     }
   }
@@ -105,7 +105,7 @@ function getAgentStatusInfo(
     return {
       containerClass: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
       dotClass: 'bg-red-500 rounded-full',
-      label: 'Stopped',
+      label: 'Not found',
       labelClass: 'text-xs font-semibold text-red-700 dark:text-red-400',
     }
   }
