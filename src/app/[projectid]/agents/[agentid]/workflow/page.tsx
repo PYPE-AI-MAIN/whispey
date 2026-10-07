@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ReactFlowProvider } from '@xyflow/react'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Braces, ClipboardPaste, Copy, Loader2, Play, PhoneIcon, Rocket, Settings2, ShieldCheck, Sparkles, Square } from 'lucide-react'
+import { ArrowLeft, Braces, ClipboardPaste, Copy, Loader2, PhoneIcon, Rocket, Settings2, ShieldCheck, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -36,61 +36,9 @@ function formatLintBadgeLabel(errorCount: number, warningCount: number): string 
   return `${warningCount} warning${warningCount > 1 ? 's' : ''}`
 }
 
-/** Standalone Deploy only makes sense against an already-running agent (a hot
- * config reload) — while stopped, "Deploy & Start" is the one and only way to
- * ship changes, so Deploy stays disabled instead of offering two redundant
- * paths to the same place. */
-function deployButtonTitle(isDirty: boolean, agentStatus: string): string | undefined {
-  if (agentStatus !== 'running') return 'Agent isn\'t running — use "Deploy & Start" instead'
-  if (!isDirty) return 'Already deployed — no changes to send'
-  return undefined
-}
-
-/** Start/Stop/Starting/Stopping button for the agent lifecycle — kept out of the
- * main render to avoid a nested-ternary pileup for a single button slot. */
-function AgentLifecycleButton({
-  status,
-  isLoading,
-  backendAgentName,
-  isDirty,
-  onStart,
-  onStop,
-}: Readonly<{
-  status: string
-  isLoading: boolean
-  backendAgentName: string
-  isDirty: boolean
-  onStart: () => void
-  onStop: () => void
-}>) {
-  if (status === 'running') {
-    return (
-      <Button variant="outline" size="sm" onClick={onStop} disabled={isLoading}>
-        {isLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Square className="h-3.5 w-3.5 mr-1.5" />}
-        Stop Agent
-      </Button>
-    )
-  }
-  if (status === 'starting' || status === 'stopping') {
-    return (
-      <Button variant="outline" size="sm" disabled>
-        <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-        {status === 'starting' ? 'Starting...' : 'Stopping...'}
-      </Button>
-    )
-  }
-  return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={onStart}
-      disabled={isLoading || !backendAgentName}
-      title={isDirty ? 'Deploys your changes first, then starts the agent' : undefined}
-    >
-      {isLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Play className="h-3.5 w-3.5 mr-1.5" />}
-      {isDirty ? 'Deploy & Start' : 'Start Agent'}
-    </Button>
-  )
+/** Deploy is always available; it just has nothing to send when the canvas is unchanged. */
+function deployButtonTitle(isDirty: boolean): string | undefined {
+  return isDirty ? undefined : 'Already deployed — no changes to send'
 }
 
 /**
@@ -269,12 +217,8 @@ function WorkflowPageInner() {
     }
   }
 
-  // Deploy only ever saves + hot-reloads (the backend re-reads config per call,
-  // live or not) — it never starts the agent. Start is the one button that
-  // goes live, so the two buttons each have exactly one job instead of
-  // overlapping: previously Deploy also auto-started whenever the agent
-  // wasn't running, which is precisely when the Start button is visible too —
-  // so both buttons did the identical "deploy + start" in that state.
+  // Deploy saves the workflow. Every agent runs on the shared worker pool, which re-reads the stored config
+  // on each call, so a deployed agent is live immediately — there is nothing to start.
   const handleDeploy = async (): Promise<boolean> => {
     if (!workflow || !backendAgentName) return false
     if (hasErrors(lintIssues)) {
@@ -295,6 +239,7 @@ function WorkflowPageInner() {
         toast.success('Workflow deployed')
         if (data?.warning) toast.error(data.warning, { duration: 8000 })
         markClean()
+        agentLifecycle.refresh()
         return true
       }
       toast.error(data?.message || `Deploy failed (${res.status})`)
@@ -305,18 +250,6 @@ function WorkflowPageInner() {
     } finally {
       setDeploying(false)
     }
-  }
-
-  // A workflow agent's backend runtime files are generated at deploy time, so a
-  // Start before the first deploy 404s. Auto-deploy the current canvas when
-  // there are undeployed changes, then start — one click instead of the
-  // Deploy-then-Start dance.
-  const handleStartAgent = async () => {
-    if (isDirty) {
-      const deployed = await handleDeploy()
-      if (!deployed) return
-    }
-    agentLifecycle.start()
   }
 
   if (!agentId || !projectId) {
@@ -383,14 +316,6 @@ function WorkflowPageInner() {
           </Badge>
         )}
 
-        <AgentLifecycleButton
-          status={agentLifecycle.status.status}
-          isLoading={agentLifecycle.isLoading || deploying}
-          backendAgentName={backendAgentName}
-          isDirty={isDirty}
-          onStart={handleStartAgent}
-          onStop={agentLifecycle.stop}
-        />
         <Button
           variant={chatOpen ? 'default' : 'outline'}
           size="sm"
@@ -419,7 +344,7 @@ function WorkflowPageInner() {
           size="sm"
           onClick={() => setTalkOpen(true)}
           disabled={agentLifecycle.status.status !== 'running'}
-          title={agentLifecycle.status.status === 'running' ? undefined : 'Start the agent first to talk to it'}
+          title={agentLifecycle.status.status === 'running' ? undefined : 'Deploy the workflow first to talk to it'}
         >
           <PhoneIcon className="h-3.5 w-3.5 mr-1.5" /> Talk to Assistant
         </Button>
@@ -430,8 +355,8 @@ function WorkflowPageInner() {
         <Button
           size="sm"
           onClick={() => handleDeploy()}
-          disabled={deploying || !isDirty || agentLifecycle.status.status !== 'running'}
-          title={deployButtonTitle(isDirty, agentLifecycle.status.status)}
+          disabled={deploying || !isDirty}
+          title={deployButtonTitle(isDirty)}
         >
           {deploying ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Rocket className="h-3.5 w-3.5 mr-1.5" />}
           Deploy

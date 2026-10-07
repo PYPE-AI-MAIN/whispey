@@ -19,8 +19,6 @@ import {
   TypeIcon, 
   SlidersHorizontal, 
   PhoneIcon,
-  Play,
-  Square,
   Loader2,
   MoreVertical,
   Save,
@@ -125,82 +123,6 @@ const agentStatusService = {
       return { status: 'error' as const, error: 'Connection error' }
     }
   },
-  
-  startAgent: async (agentName: string, deploymentTarget: 'classic' | 'docker' = 'classic'): Promise<AgentStatus> => {
-    try {
-      if (!agentName) {
-        return { status: 'error' as const, error: 'Agent name is required' }
-      }
-
-      console.log('🚀 Starting agent via API:', agentName)
-
-      const response = await fetch('/api/agents/start_agent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ agent_name: agentName, deploymentTarget })
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        console.log('✅ Start agent response:', data)
-        
-        return {
-          status: 'starting' as const,
-          message: data.message || 'Agent start initiated',
-          raw: data
-        }
-      } else {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        return { 
-          status: 'error' as const, 
-          error: errorData.error || `Failed to start agent: ${response.status}` 
-        }
-      }
-    } catch (error) {
-      console.error('❌ Start agent error:', error)
-      return { status: 'error' as const, error: 'Failed to start agent' }
-    }
-  },
-  
-  stopAgent: async (agentName: string, deploymentTarget: 'classic' | 'docker' = 'classic'): Promise<AgentStatus> => {
-    try {
-      if (!agentName) {
-        return { status: 'error' as const, error: 'Agent name is required' }
-      }
-
-      console.log('🛑 Stopping agent via API:', agentName)
-
-      const response = await fetch('/api/agents/stop_agent', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ agent_name: agentName, deploymentTarget })
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        console.log('✅ Stop agent response:', data)
-        
-        return {
-          status: 'stopping' as const,
-          message: data.message || 'Agent stop initiated',
-          raw: data
-        }
-      } else {
-        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
-        return { 
-          status: 'error' as const, 
-          error: errorData.error || `Failed to stop agent: ${response.status}` 
-        }
-      }
-    } catch (error) {
-      console.error('❌ Stop agent error:', error)
-      return { status: 'error' as const, error: 'Failed to stop agent' }
-    }
-  }
 }
 
 interface AzureConfig {
@@ -274,7 +196,6 @@ export default function AgentConfig() {
   
   // Agent status state
   const [agentStatus, setAgentStatus] = useState<AgentStatus>({ status: 'stopped' })
-  const [isAgentLoading, setIsAgentLoading] = useState(false)
 
   // Variable validation state
   const [promptValidation, setPromptValidation] = useState<ValidationResult>({
@@ -416,80 +337,6 @@ export default function AgentConfig() {
     
     checkAgentStatus()
   }, [activeAgentName, agentLoading, checkAgentStatus])
-
-  const startAgent = async () => {
-    if (!activeAgentName) return
-    
-    setIsAgentLoading(true)
-    setAgentStatus({ status: 'starting' } as AgentStatus)
-    
-    const target = deploymentTarget
-
-    try {
-      // Step 1: Initiate agent start
-      const startStatus = await agentStatusService.startAgent(activeAgentName, target)
-
-      if (startStatus.status === 'error') {
-        setAgentStatus(startStatus)
-        setIsAgentLoading(false)
-        return
-      }
-
-      // Step 2: Poll agent status until it's running or timeout
-      const maxAttempts = 30 // Poll for up to 30 seconds (30 attempts * 1 second)
-      let attempts = 0
-      let isRunning = false
-
-      while (attempts < maxAttempts && !isRunning) {
-        await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1 second between checks
-
-        const status = await agentStatusService.checkAgentStatus(activeAgentName, target)
-        setAgentStatus(status)
-
-        if (status.status === 'running') {
-          isRunning = true
-          break
-        } else if (status.status === 'error') {
-          // Agent failed to start
-          break
-        }
-
-        attempts++
-      }
-
-      // Final status check
-      if (!isRunning) {
-        const finalStatus = await agentStatusService.checkAgentStatus(activeAgentName, target)
-        setAgentStatus(finalStatus)
-      }
-    } catch (error) {
-      console.error('Error starting agent:', error)
-      setAgentStatus({ status: 'error' as const, error: 'Failed to start agent' })
-    } finally {
-      setIsAgentLoading(false)
-      invalidateSharedRunningAgents()
-    }
-  }
-
-  const stopAgent = async () => {
-    if (!activeAgentName) return
-
-    setIsAgentLoading(true)
-    setAgentStatus({ status: 'stopping' } as AgentStatus)
-
-    try {
-      const status = await agentStatusService.stopAgent(activeAgentName, deploymentTarget)
-
-      if (status.status !== 'error') {
-        setAgentStatus({ status: 'stopped' })
-      } else {
-        setAgentStatus(status)
-      }
-    } finally {
-      setIsAgentLoading(false)
-      invalidateSharedRunningAgents()
-    }
-  }
 
   const copyToClipboard = async () => {
     const text = formik.values.prompt
@@ -974,64 +821,20 @@ export default function AgentConfig() {
 
   const getAgentStatusText = () => {
     switch (agentStatus.status) {
-      case 'running': return 'Agent Running'
-      case 'starting': return 'Starting...'
-      case 'stopping': return 'Stopping...'
-      case 'stopped': return 'Agent Stopped'
-      case 'error': return 'Agent Error'
+      case 'running': return 'Live'
+      case 'error': return 'Status unavailable'
+      case 'stopped': return 'Agent not found'
       default: return 'Unknown'
     }
   }
 
   const getMobileAgentStatusText = () => {
     switch (agentStatus.status) {
-      case 'running': return 'Running'
-      case 'starting': return 'Starting...'
-      case 'stopping': return 'Stopping...'
-      case 'stopped': return 'Stopped'
-      case 'error': return 'Error'
+      case 'running': return 'Live'
+      case 'error': return 'Status unavailable'
+      case 'stopped': return 'Agent not found'
       default: return 'Unknown'
     }
-  }
-
-  // Start/Stop toggle button, shared by the mobile-compact and desktop header
-  // layouts — a chained ternary here reads as ambiguous nesting to lint tools
-  // and to a future reader, so this renders it as a plain if/else instead.
-  const renderAgentToggleButton = (compact: boolean) => {
-    const className = compact ? 'h-8' : 'h-8 text-xs'
-    const iconClassName = compact ? 'w-4 h-4' : 'w-3 h-3 mr-1'
-
-    if (agentStatus.status === 'stopped' || agentStatus.status === 'error') {
-      return (
-        <Button
-          variant="outline" size="sm" className={className}
-          onClick={startAgent} disabled={isAgentLoading || !activeAgentName || isPublishing}
-        >
-          {isAgentLoading ? <Loader2 className={`${iconClassName} animate-spin`} /> : <Play className={iconClassName} />}
-          {!compact && 'Start Agent'}
-        </Button>
-      )
-    }
-
-    if (agentStatus.status === 'running') {
-      return (
-        <Button
-          variant="outline" size="sm" className={className}
-          onClick={stopAgent} disabled={isAgentLoading || isPublishing}
-        >
-          {isAgentLoading ? <Loader2 className={`${iconClassName} animate-spin`} /> : <Square className={iconClassName} />}
-          {!compact && 'Stop Agent'}
-        </Button>
-      )
-    }
-
-    // 'starting' or 'stopping' — always disabled, spinner-only on mobile.
-    return (
-      <Button variant="outline" size="sm" className={className} disabled>
-        <Loader2 className={`${iconClassName} animate-spin`} />
-        {!compact && (agentStatus.status === 'starting' ? 'Starting...' : 'Stopping...')}
-      </Button>
-    )
   }
 
 // Predefined system variables (same as PromptSettingsSheet). These are always "mapped" by the
@@ -1217,8 +1020,6 @@ const inboundLookupVariables = useMemo(() => {
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
-            {renderAgentToggleButton(true)}
-
             {isFormDirty && (
               <Button
                 size="sm"
@@ -1328,14 +1129,11 @@ const inboundLookupVariables = useMemo(() => {
               </span>
               <span className="text-xs text-gray-500">
                 {getAgentStatusText()}
-                {agentStatus.pid && ` (PID: ${agentStatus.pid})`}
               </span>
             </div>
           </div>
           
           <div className="flex items-center gap-3">
-            {renderAgentToggleButton(false)}
-
             <Sheet
               open={isTalkToAssistantOpen}
               onOpenChange={(open) => {
