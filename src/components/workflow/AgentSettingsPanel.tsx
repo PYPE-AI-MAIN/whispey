@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Languages as LanguagesIcon, Edit2, Trash2, Phone, Loader2 } from 'lucide-react'
 import { useWorkflowStore } from '@/stores/workflowStore'
-import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
+import ModelSelector, { getModelBaseUrl } from '@/components/agents/AgentConfig/ModelSelector'
 import SelectSTT from '@/components/agents/AgentConfig/SelectSTTDialog'
 import SelectTTS from '@/components/agents/AgentConfig/SelectTTSDialog'
 import LanguageSwitchSettings, { LanguageSwitchConfig } from '@/components/agents/AgentConfig/LanguageSwitchSettings'
@@ -42,6 +42,7 @@ function normalizeLanguageEntry(entry: LanguageSwitchConfig): LanguageSwitchConf
 export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: boolean; onOpenChange: (v: boolean) => void }>) {
   const workflow = useWorkflowStore((s) => s.workflow)
   const updateAgentConfig = useWorkflowStore((s) => s.updateAgentConfig)
+  const updateLlm = useWorkflowStore((s) => s.updateAgentLlm)
   const patchWorkflow = useWorkflowStore((s) => s.patchWorkflow)
   const [isLSOpen, setIsLSOpen] = useState(false)
   const [editingLSIndex, setEditingLSIndex] = useState<number | null>(null)
@@ -104,9 +105,10 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
               selectedProvider={agent.llm.name}
               selectedModel={agent.llm.model ?? ''}
               temperature={agent.llm.temperature ?? undefined}
-              onProviderChange={(provider) => updateAgentConfig({ llm: { ...agent.llm, name: provider } })}
-              onModelChange={(model) => updateAgentConfig({ llm: { ...agent.llm, model } })}
-              onTemperatureChange={(temperature) => updateAgentConfig({ llm: { ...agent.llm, temperature } })}
+              onProviderChange={(provider) => updateLlm((cur) => ({ ...cur, name: provider }))}
+              // base_url only exists for self-hosted models; the backend needs it to reach that endpoint.
+              onModelChange={(model) => updateLlm((cur) => ({ ...cur, model, base_url: getModelBaseUrl(cur.name, model) }))}
+              onTemperatureChange={(temperature) => updateLlm((cur) => ({ ...cur, temperature }))}
             />
           </div>
 
@@ -117,8 +119,10 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
               selectedProvider={agent.stt.name}
               selectedModel={agent.stt.model ?? ''}
               selectedLanguage={agent.stt.language ?? 'en'}
+              initialConfig={agent.stt}
+              // Keep the provider's own settings (mode, keyterms, adaptive STT, ...), not just name/model/language.
               onSTTSelect={(provider, model, config) =>
-                updateAgentConfig({ stt: { name: provider, model, language: config?.language ?? agent.stt.language } })
+                updateAgentConfig({ stt: { ...config, name: provider, model, language: config?.language ?? agent.stt.language } })
               }
             />
           </div>
