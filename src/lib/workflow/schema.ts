@@ -10,17 +10,19 @@ import { z } from 'zod'
 export const SCHEMA_VERSION = '1.0'
 
 // ── provider blocks (mirror agent/<name>/config.yaml) ────────────────────────
+// passthrough(): the pickers write provider-specific settings (mode, keyterms, base_url, ...). Plain z.object() strips
+// every key it does not list, so they were lost on load and on every save.
 export const sttConfig = z.object({
   name: z.string().default('deepgram'),
   model: z.string().nullish(),
   language: z.string().nullish().default('en'),
-})
+}).passthrough()
 
 export const llmConfig = z.object({
   name: z.string().default('openai'),
   model: z.string().nullish(),
   temperature: z.number().nullish(),
-})
+}).passthrough()
 
 export const ttsConfig = z.object({
   name: z.string().default('elevenlabs'),
@@ -28,7 +30,7 @@ export const ttsConfig = z.object({
   language: z.string().nullish(),
   model: z.string().nullish(),
   voice_settings: z.record(z.any()).nullish(),
-})
+}).passthrough()
 
 export const vadConfig = z.object({
   name: z.string().default('silero'),
