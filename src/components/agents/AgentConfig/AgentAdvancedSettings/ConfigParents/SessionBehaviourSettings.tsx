@@ -16,6 +16,7 @@ interface SessionBehaviourSettingsProps {
   user_away_timeout_message?: string
   user_away_timeout_max_count?: number
   user_away_timeout_end_message?: string
+  eod_silence_seconds?: number
   onFieldChange: (field: string, value: any) => void
 }
 
@@ -30,6 +31,7 @@ export default function SessionBehaviourSettings({
   user_away_timeout_message,
   user_away_timeout_max_count,
   user_away_timeout_end_message,
+  eod_silence_seconds,
   onFieldChange
 }: SessionBehaviourSettingsProps) {
   // Local state for input values to handle intermediate states
@@ -40,6 +42,7 @@ export default function SessionBehaviourSettings({
   const [userAwayTimeoutMessageInput, setUserAwayTimeoutMessageInput] = useState(user_away_timeout_message || '')
   const [userAwayMaxCountInput, setUserAwayMaxCountInput] = useState(user_away_timeout_max_count !== undefined && user_away_timeout_max_count !== null ? String(user_away_timeout_max_count) : '')
   const [userAwayEndMessageInput, setUserAwayEndMessageInput] = useState(user_away_timeout_end_message || '')
+  const [eodSilenceInput, setEodSilenceInput] = useState(eod_silence_seconds !== undefined && eod_silence_seconds !== null ? String(eod_silence_seconds) : '')
 
   // Sync with props when they change externally
   React.useEffect(() => {
@@ -69,6 +72,10 @@ export default function SessionBehaviourSettings({
   React.useEffect(() => {
     setUserAwayEndMessageInput(user_away_timeout_end_message || '')
   }, [user_away_timeout_end_message])
+
+  React.useEffect(() => {
+    setEodSilenceInput(eod_silence_seconds !== undefined && eod_silence_seconds !== null ? String(eod_silence_seconds) : '')
+  }, [eod_silence_seconds])
 
   const handleNumberInput = (
     value: string,
@@ -536,6 +543,57 @@ export default function SessionBehaviourSettings({
             }}
             className="h-8 text-xs"
             placeholder="It seems you're not there. I'm ending the call. Goodbye!"
+          />
+        </div>
+
+        {/* Wait after the agent says its goodbye (<eod/>) before the call is ended */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
+              End-of-call wait (seconds)
+            </Label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs">
+                <p className="text-xs">
+                  When the agent ends the conversation (its reply contains &lt;eod/&gt;), it waits this long after finishing its goodbye for the caller to say something before hanging up. If the caller speaks, the call carries on. 0 hangs up right after the goodbye. Leave empty for the default (3 seconds). Maximum 30.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <Input
+            type="number"
+            step="0.5"
+            min="0"
+            max="30"
+            value={eodSilenceInput}
+            onChange={(e) => {
+              const value = e.target.value
+              setEodSilenceInput(value)
+              if (value === '') {
+                onFieldChange('advancedSettings.session.eod_silence_seconds', undefined)
+              } else {
+                const numValue = parseFloat(value)
+                if (!isNaN(numValue) && numValue >= 0 && numValue <= 30) {
+                  onFieldChange('advancedSettings.session.eod_silence_seconds', numValue)
+                }
+              }
+            }}
+            onBlur={(e) => {
+              const value = e.target.value
+              if (value === '' || isNaN(parseFloat(value))) {
+                setEodSilenceInput('')
+                onFieldChange('advancedSettings.session.eod_silence_seconds', undefined)
+              } else {
+                const numValue = Math.min(30, Math.max(0, parseFloat(value)))
+                setEodSilenceInput(String(numValue))
+                onFieldChange('advancedSettings.session.eod_silence_seconds', numValue)
+              }
+            }}
+            className="h-8 text-xs"
+            placeholder="3 (default)"
           />
         </div>
 
