@@ -133,11 +133,11 @@ export default function AuthPage({ redirectUrl }: AuthPageProps) {
                   identityPreviewText: "text-slate-600",
                   identityPreviewEditButton: "text-slate-900 hover:text-slate-700"
                 },
-                layout: {
+                options: {
                   socialButtonsPlacement: "top"
                 }
               }}
-              redirectUrl={redirectUrl ?? '/projects'}
+              fallbackRedirectUrl={redirectUrl ?? '/projects'}
             />
           </div>
 
