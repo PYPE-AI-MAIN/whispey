@@ -123,7 +123,7 @@ export const conversationNode = z.object({
   blockInterruptions: z.boolean().default(false),
   model: llmConfig.nullish(),
   voice: ttsConfig.nullish(),
-  functions: z.array(z.string()).default([]),
+  functions: z.array(z.string()).default([]),  maxTurns: z.number().int().min(1).nullish(),
 })
 
 export const extractionField = z.object({
@@ -135,7 +135,7 @@ export const extractVariableNode = z.object({
   ...nodeBase,
   type: z.literal('extract_variable'),
   prompt: z.string().nullish(),
-  extractions: z.array(extractionField).default([]),
+  extractions: z.array(extractionField).default([]),  maxTurns: z.number().int().min(1).nullish(),
 })
 
 export const logicSplitNode = z.object({ ...nodeBase, type: z.literal('logic_split') })
@@ -195,7 +195,7 @@ export const subagentNode = z.object({
   prompt: z.string().default(''),
   model: llmConfig.nullish(),
   voice: ttsConfig.nullish(),
-  functions: z.array(z.string()).default([]),
+  functions: z.array(z.string()).default([]),  maxTurns: z.number().int().min(1).nullish(),
 })
 
 export const mcpNode = z.object({
