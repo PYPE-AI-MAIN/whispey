@@ -441,7 +441,8 @@ function buildRouteSessionBehaviorPayload(formikValues: any): any {
     ...(session.user_away_timeout_max_count !== undefined && { user_away_timeout_max_count: session.user_away_timeout_max_count }),
     ...(session.user_away_timeout_end_message !== undefined && session.user_away_timeout_end_message !== null && session.user_away_timeout_end_message !== '' && {
       user_away_timeout_end_message: session.user_away_timeout_end_message
-    })
+    }),
+    ...(session.eod_silence_seconds !== undefined && session.eod_silence_seconds !== null && { eod_silence_seconds: session.eod_silence_seconds })
   }
 }
 
