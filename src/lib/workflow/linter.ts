@@ -103,22 +103,32 @@ const EXPR_KEYWORDS = new Set(['and', 'or', 'not', 'in', 'true', 'false', 'null'
 
 /** Variable names a logic expression reads (not keywords, quoted text, or the `.field` of `a.field`). */
 function expressionNames(expr: string): Set<string> {
-  const bare = (expr ?? '').replace(EXPR_STRING_RE, ' ')
+  const bare = (expr ?? '').replaceAll(EXPR_STRING_RE, ' ')
   const names = new Set<string>()
   for (const m of bare.matchAll(EXPR_WORD_RE)) if (!EXPR_KEYWORDS.has(m[1])) names.add(m[1])
   return names
 }
 
+/** Characters LiveKit allows in a tool name are [a-zA-Z0-9_-]; anything else becomes `_`, and edge underscores go.
+ * (A loop rather than /_+$/ so a long run of underscores can never make the regex slow.) */
+function safeToolSegment(raw: string): string {
+  const s = raw.replaceAll(/[^a-zA-Z0-9_-]+/g, '_')
+  let start = 0
+  let end = s.length
+  while (start < end && s[start] === '_') start++
+  while (end > start && s[end - 1] === '_') end--
+  return s.slice(start, end)
+}
+
 // Same tool-name rules as the runtime (workflow/tools.py: function_tool_name / language_tool_name).
-const functionToolName = (name: string | null | undefined, id: string) =>
-  (name || id).replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '') || 'call_api'
+const functionToolName = (name: string | null | undefined, id: string) => safeToolSegment(name || id) || 'call_api'
 const languageToolName = (toolName: string) => {
-  const safe = toolName.replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '') || 'switch_language'
+  const safe = safeToolSegment(toolName) || 'switch_language'
   return /^\d/.test(safe) ? `_${safe}` : safe
 }
 
 // Same tool-name rule as the runtime's sanitize_tool_name (workflow/tools.py).
-const toolName = (id: string) => `go_${id.replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '') || 'node'}`
+const toolName = (id: string) => `go_${safeToolSegment(id) || 'node'}`
 
 // Edge-kind mistakes the interpreter silently tolerates (ignores the edge or
 // takes the first match) — mirror of workflow/linter.py:_lint_routing.
@@ -147,7 +157,7 @@ function lintHandoffNameCollisions(n: Node, outs: Edge[]): LintIssue[] {
     .filter(([, targets]) => targets.size > 1)
     .map(([name, targets]) => ({
       severity: 'error' as const,
-      message: `'${n.id}' targets ${[...targets].sort().join(', ')} map to the same tool name '${name}' — rename one node id.`,
+      message: `'${n.id}' targets ${[...targets].sort((a, b) => a.localeCompare(b)).join(', ')} map to the same tool name '${name}' — rename one node id.`,
       nodeId: n.id,
     }))
 }
@@ -223,8 +233,7 @@ function lintNode(wf: Workflow, n: Node, telOn: boolean, nodeMap: Map<string, No
         nodeId: n.id,
       })
   }
-  issues.push(...lintRouting(n, outEdges(n.id)))
-  issues.push(...lintToolNames(wf, n, nodeMap, outEdges(n.id)))
+  issues.push(...lintRouting(n, outEdges(n.id)), ...lintToolNames(wf, n, nodeMap, outEdges(n.id)))
   if (TELEPHONY_NODE_TYPES.has(n.type) && !telOn)
     issues.push({ severity: 'error', message: `${n.type} node requires the telephony transport`, nodeId: n.id })
   if (n.type === 'code') {
