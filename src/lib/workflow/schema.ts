@@ -168,6 +168,7 @@ export const callTransferNode = z.object({
   transferTo: z.string().default(''),
   mode: z.enum(['cold', 'warm']).default('cold'),
   message: z.string().nullish(),
+  sipHeaders: z.record(z.any()).nullish(),
 })
 
 export const pressDigitNode = z.object({

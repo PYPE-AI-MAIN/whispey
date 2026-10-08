@@ -90,6 +90,35 @@ function lintStart(wf: Workflow, idSet: Set<string>, nodeMap: Map<string, Node>)
   return []
 }
 
+const FAILABLE_NODE_TYPES = new Set(['function', 'mcp', 'code', 'sms'])
+
+// Same tool-name rule as the runtime's sanitize_tool_name (workflow/tools.py).
+const toolName = (id: string) => `go_${id.replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '') || 'node'}`
+
+// Edge-kind mistakes the interpreter silently tolerates (ignores the edge or
+// takes the first match) — mirror of workflow/linter.py:_lint_routing.
+function lintRouting(n: Node, outs: Edge[]): LintIssue[] {
+  const issues: LintIssue[] = []
+  const add = (severity: Severity, message: string) => issues.push({ severity, message, nodeId: n.id })
+  if (FAILABLE_NODE_TYPES.has(n.type) && outs.length > 0 && !outs.some((e) => e.kind === 'fallback'))
+    add('warning', `'${n.id}' has no Fallback edge — if the ${n.type} call fails the workflow continues down the success path with an error saved in the variable.`)
+  if (n.type !== 'logic_split' && outs.some((e) => e.kind === 'logic'))
+    add('warning', `'${n.id}' has a logic edge but is a ${n.type} node — logic edges are only evaluated on logic_split.`)
+  if (n.type === 'conversation' && (n as { skipUserResponse?: boolean }).skipUserResponse && outs.some((e) => e.kind === 'condition'))
+    add('warning', `'${n.id}' skips the user response, so its condition edges are never evaluated — use an Always/Fallback edge.`)
+  for (const kind of ['always', 'fallback'] as const) {
+    if (outs.filter((e) => e.kind === kind).length > 1) add('warning', `'${n.id}' has more than one ${kind} edge — only the first is ever taken.`)
+  }
+  if (LLM_NODE_TYPES.has(n.type)) {
+    const byName = new Map<string, Set<string>>()
+    for (const e of outs) byName.set(toolName(e.target), (byName.get(toolName(e.target)) ?? new Set()).add(e.target))
+    for (const [name, targets] of byName) {
+      if (targets.size > 1) add('error', `'${n.id}' targets ${[...targets].sort().join(', ')} map to the same tool name '${name}' — rename one node id.`)
+    }
+  }
+  return issues
+}
+
 function lintNode(wf: Workflow, n: Node, telOn: boolean, outEdges: (id: string) => Edge[]): LintIssue[] {
   const issues: LintIssue[] = []
   const req = REQUIRED.find((r) => r.type === n.type)
@@ -118,6 +147,7 @@ function lintNode(wf: Workflow, n: Node, telOn: boolean, outEdges: (id: string) 
         nodeId: n.id,
       })
   }
+  issues.push(...lintRouting(n, outEdges(n.id)))
   if (TELEPHONY_NODE_TYPES.has(n.type) && !telOn)
     issues.push({ severity: 'error', message: `${n.type} node requires the telephony transport`, nodeId: n.id })
   if (n.type === 'code') {
