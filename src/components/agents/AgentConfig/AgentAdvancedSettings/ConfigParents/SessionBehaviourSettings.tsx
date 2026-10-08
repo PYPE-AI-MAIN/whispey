@@ -33,7 +33,7 @@ export default function SessionBehaviourSettings({
   user_away_timeout_end_message,
   eod_silence_seconds,
   onFieldChange
-}: SessionBehaviourSettingsProps) {
+}: Readonly<SessionBehaviourSettingsProps>) {
   // Local state for input values to handle intermediate states
   const [thresholdInput, setThresholdInput] = useState(String(unlikely_threshold))
   const [minDelayInput, setMinDelayInput] = useState(String(min_endpointing_delay))
@@ -575,19 +575,19 @@ export default function SessionBehaviourSettings({
               if (value === '') {
                 onFieldChange('advancedSettings.session.eod_silence_seconds', undefined)
               } else {
-                const numValue = parseFloat(value)
-                if (!isNaN(numValue) && numValue >= 0 && numValue <= 30) {
+                const numValue = Number.parseFloat(value)
+                if (!Number.isNaN(numValue) && numValue >= 0 && numValue <= 30) {
                   onFieldChange('advancedSettings.session.eod_silence_seconds', numValue)
                 }
               }
             }}
             onBlur={(e) => {
               const value = e.target.value
-              if (value === '' || isNaN(parseFloat(value))) {
+              if (value === '' || Number.isNaN(Number.parseFloat(value))) {
                 setEodSilenceInput('')
                 onFieldChange('advancedSettings.session.eod_silence_seconds', undefined)
               } else {
-                const numValue = Math.min(30, Math.max(0, parseFloat(value)))
+                const numValue = Math.min(30, Math.max(0, Number.parseFloat(value)))
                 setEodSilenceInput(String(numValue))
                 onFieldChange('advancedSettings.session.eod_silence_seconds', numValue)
               }
