@@ -84,7 +84,8 @@ export const AGENT_DEFAULT_CONFIG = {
       user_away_timeout: undefined, // None to disable, 0 to use config default, or seconds
       user_away_timeout_message: undefined, // Message to speak each time user goes away
       user_away_timeout_max_count: undefined, // Max times to send message before ending call (undefined = unlimited)
-      user_away_timeout_end_message: undefined // Message to speak before ending call after max count
+      user_away_timeout_end_message: undefined, // Message to speak before ending call after max count
+      eod_silence_seconds: undefined // Seconds to wait after the agent's <eod/> goodbye before ending the call (undefined = 3)
     },
   
     // Background Audio Configuration
@@ -250,7 +251,8 @@ export const AGENT_DEFAULT_CONFIG = {
         user_away_timeout: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout,
         user_away_timeout_message: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_message,
         user_away_timeout_max_count: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_max_count,
-        user_away_timeout_end_message: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_end_message
+        user_away_timeout_end_message: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_end_message,
+        eod_silence_seconds: AGENT_DEFAULT_CONFIG.session_behavior.eod_silence_seconds
       },
       tools: {
         tools: AGENT_DEFAULT_CONFIG.tools.map((tool, index) => ({
