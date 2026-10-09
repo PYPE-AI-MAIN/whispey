@@ -1,6 +1,8 @@
 'use client'
 
 import React, { useState, useRef, useEffect, useCallback } from 'react'
+import Link from 'next/link'
+import toast from 'react-hot-toast'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Flag, X, Pencil, Trash2, Plus, Copy, Check } from 'lucide-react'
@@ -136,8 +138,7 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
       body: JSON.stringify(body),
     })
     if (!res.ok) throw new Error(await res.text())
-    const data = await res.json() as { flags: FlagEntry[] }
-    return data.flags
+    return await res.json() as { flags: FlagEntry[]; qaPath?: string | null }
   }, [callId])
 
   const handleAdd = async () => {
@@ -155,9 +156,16 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
     setDraft('')
     setSaving(true)
     try {
-      const next = await call({ action: 'add', text })
+      const { flags: next, qaPath } = await call({ action: 'add', text })
       setFlags(next)
       onUpdated?.()
+      toast.success(
+        <span>
+          Flagged. Our QA team will review it.{' '}
+          {qaPath && <Link href={qaPath} className="font-medium underline underline-offset-2">Check the status here</Link>}
+        </span>,
+        { duration: 8000 },
+      )
     } catch (err) {
       console.error('Failed to add flag:', err)
       setFlags(prevFlags)
@@ -176,7 +184,7 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
     setDraft('')
     setSaving(true)
     try {
-      const next = await call({ action: 'update', flagId, text })
+      const { flags: next } = await call({ action: 'update', flagId, text })
       setFlags(next)
       onUpdated?.()
     } catch (err) {
@@ -192,7 +200,7 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
     setFlags(prevFlags.filter(f => f.id !== flagId))
     setSaving(true)
     try {
-      const next = await call({ action: 'delete', flagId })
+      const { flags: next } = await call({ action: 'delete', flagId })
       setFlags(next)
       onUpdated?.()
     } catch (err) {

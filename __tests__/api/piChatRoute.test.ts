@@ -401,7 +401,7 @@ describe('open_page tool', () => {
     expect((await open({ page: 'overview', agent_id: 'a1' })).result).toEqual({ href: `${base}?tab=overview`, label: 'Bot overview' })
     expect((await open({ page: 'campaign_logs', agent_id: 'a1' })).result).toEqual({ href: `${base}?tab=campaign-logs`, label: 'Bot campaign logs' })
     expect((await open({ page: 'phone_calls', agent_id: 'a1' })).result).toEqual({ href: `${base}/phone-call-config`, label: 'Bot phone calls' })
-    expect((await open({ page: 'qa', agent_id: 'a1' })).result).toEqual({ href: `${base}/qa`, label: 'Bot QA' })
+    expect((await open({ page: 'qa', agent_id: 'a1' })).result).toEqual({ href: `${base}/qa`, label: 'Bot QA Audit' })
     expect((await open({ page: 'knowledge', agent_id: 'a1' })).result).toEqual({ href: `${base}/knowledge`, label: 'Bot knowledge base' })
   })
 
@@ -420,7 +420,7 @@ describe('open_page tool', () => {
 
   it('names an agent without a display name "Agent"', async () => {
     agent({ display_name: null })
-    expect((await open({ page: 'qa', agent_id: 'a1' })).result.label).toBe('Agent QA')
+    expect((await open({ page: 'qa', agent_id: 'a1' })).result.label).toBe('Agent QA Audit')
   })
 })
 

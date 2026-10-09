@@ -32,6 +32,25 @@ function OutboundTrunkHint({ workflow }: Readonly<{ workflow: Workflow | null }>
   )
 }
 
+/** Caller turns a speaking node may take without finding a way forward before it moves to its catch-all edge. */
+function MaxTurnsField({ value, onChange }: Readonly<{ value?: number | null; onChange: (v: number | undefined) => void }>) {
+  return (
+    <Field label="Max caller turns before moving on (default 8)">
+      <Input
+        type="number"
+        min={1}
+        placeholder="8"
+        value={value ?? ''}
+        onChange={(e) => {
+          const n = Number.parseInt(e.target.value, 10)
+          onChange(Number.isFinite(n) && n >= 1 ? n : undefined)
+        }}
+        className="h-7 text-xs"
+      />
+    </Field>
+  )
+}
+
 /** Textarea backed by a JSON-serialized object; keeps raw text while invalid so typing isn't fought. */
 function JsonField({ label, value, onChange }: Readonly<{ label: string; value: unknown; onChange: (v: any) => void }>) {
   const [text, setText] = useState(() => JSON.stringify(value ?? {}, null, 2))
@@ -120,6 +139,7 @@ function NodeFields({
             <Label className="text-xs">Block interruptions</Label>
             <Switch checked={!!node.blockInterruptions} onCheckedChange={(v) => patch({ blockInterruptions: v } as any)} />
           </div>
+          <MaxTurnsField value={node.maxTurns} onChange={(v) => patch({ maxTurns: v } as any)} />
           <ToolsField workflow={workflow} functions={node.functions ?? []} onChange={(fns) => patch({ functions: fns } as any)} />
           <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
             <Label className="text-xs text-gray-500 dark:text-gray-400">Per-node overrides (optional)</Label>
@@ -199,6 +219,7 @@ function NodeFields({
               </div>
             ))}
           </div>
+          <MaxTurnsField value={node.maxTurns} onChange={(v) => patch({ maxTurns: v } as any)} />
         </>
       )
     }
@@ -311,6 +332,7 @@ function NodeFields({
           <Field label="Prompt">
             <Textarea value={node.prompt} onChange={(e) => patch({ prompt: e.target.value } as any)} className="min-h-[140px]" />
           </Field>
+          <MaxTurnsField value={node.maxTurns} onChange={(v) => patch({ maxTurns: v } as any)} />
           <ToolsField workflow={workflow} functions={node.functions ?? []} onChange={(fns) => patch({ functions: fns } as any)} />
           <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
             <Label className="text-xs text-gray-500 dark:text-gray-400">Per-node overrides (optional)</Label>
