@@ -17,7 +17,6 @@ import { ExternalLink, FileSpreadsheet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 
 type Ticket = {
@@ -63,11 +62,6 @@ const fmtWeek = (start: string, end: string) => `${fmtDate(`${start}T00:00:00`)}
 
 const fieldClass =
   'h-9 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'
-const tabClass =
-  'h-11 flex-none rounded-none border-0 border-b-2 border-transparent bg-transparent px-0.5 text-sm font-medium text-gray-500 shadow-none ' +
-  'data-[state=active]:border-gray-900 data-[state=active]:bg-transparent data-[state=active]:text-gray-900 data-[state=active]:shadow-none ' +
-  'dark:text-gray-400 dark:data-[state=active]:border-gray-100 dark:data-[state=active]:bg-transparent dark:data-[state=active]:text-gray-100'
-
 function StatusPill({ status }: Readonly<{ status: string }>) {
   const tone = STATUS_TONE[status]
   return (
@@ -140,22 +134,37 @@ function Labelled({ label, children }: Readonly<{ label: string; children: React
   )
 }
 
+const TABS = [
+  { id: 'flagged', label: 'Flagged calls' },
+  { id: 'weekly', label: 'Weekly review' },
+] as const
+
 export default function QaAuditPanel({ agentId, projectId }: Readonly<{ agentId: string; projectId: string }>) {
+  const [tab, setTab] = useState<(typeof TABS)[number]['id']>('flagged')
   return (
-    <Tabs defaultValue="flagged" className="flex h-full flex-col gap-0">
-      <div className="flex-none border-b border-gray-200 bg-white px-6 dark:border-gray-800 dark:bg-gray-900 md:px-8">
-        <TabsList className="h-11 w-full justify-start gap-7 rounded-none bg-transparent p-0">
-          <TabsTrigger value="flagged" className={tabClass}>Flagged calls</TabsTrigger>
-          <TabsTrigger value="weekly" className={tabClass}>Weekly review</TabsTrigger>
-        </TabsList>
+    <div className="flex h-full flex-col">
+      <div role="tablist" className="flex flex-none items-end gap-8 border-b border-gray-200 bg-white px-6 dark:border-gray-800 dark:bg-gray-900 md:px-8">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            onClick={() => setTab(t.id)}
+            className={`-mb-px border-b-2 py-3.5 text-sm font-medium transition-colors ${
+              tab === t.id
+                ? 'border-gray-900 text-gray-900 dark:border-gray-100 dark:text-gray-100'
+                : 'border-transparent text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
-      <TabsContent value="flagged" className="min-h-0 flex-1 overflow-y-auto px-6 pb-12 pt-8 md:px-8">
-        <FlaggedCalls agentId={agentId} projectId={projectId} />
-      </TabsContent>
-      <TabsContent value="weekly" className="min-h-0 flex-1 overflow-y-auto px-6 pb-12 pt-8 md:px-8">
-        <WeeklyReview agentId={agentId} />
-      </TabsContent>
-    </Tabs>
+      <div role="tabpanel" className="min-h-0 flex-1 overflow-y-auto px-6 pb-12 pt-8 md:px-8">
+        {tab === 'flagged' ? <FlaggedCalls agentId={agentId} projectId={projectId} /> : <WeeklyReview agentId={agentId} />}
+      </div>
+    </div>
   )
 }
 
