@@ -23,7 +23,7 @@ const slackEscape = (s: string) => s.replaceAll('&', '&amp;').replaceAll('<', '&
 
 export function qaSlackText(a: QaAlert, appUrl: string): string {
   const link = `${appUrl}/${a.projectId}/agents/${a.agentId}/qa`
-  const what = a.kind === 'flag' ? ':triangular_flag_on_post: Call flagged' : ':calendar: Weekly review requested'
+  const what = a.kind === 'flag' ? 'Call flagged' : 'Weekly review requested'
   const label = a.kind === 'flag' ? 'Reason' : 'Week'
   return [
     `*${what}* on *${slackEscape(a.agentName)}*`,

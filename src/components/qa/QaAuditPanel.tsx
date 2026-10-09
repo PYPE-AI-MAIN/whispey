@@ -13,7 +13,7 @@
  */
 import { useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { CalendarCheck, ExternalLink, FileSpreadsheet, Flag } from 'lucide-react'
+import { ExternalLink, FileSpreadsheet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -64,7 +64,9 @@ const fmtWeek = (start: string, end: string) => `${fmtDate(`${start}T00:00:00`)}
 const fieldClass =
   'h-9 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'
 const tabClass =
-  'h-11 flex-none gap-1.5 rounded-none border-0 border-b-2 border-transparent bg-transparent px-1 text-sm font-medium text-gray-500 shadow-none data-[state=active]:border-gray-900 data-[state=active]:bg-transparent data-[state=active]:text-gray-900 data-[state=active]:shadow-none dark:text-gray-400 dark:data-[state=active]:border-gray-100 dark:data-[state=active]:text-gray-100'
+  'h-11 flex-none rounded-none border-0 border-b-2 border-transparent bg-transparent px-0.5 text-sm font-medium text-gray-500 shadow-none ' +
+  'data-[state=active]:border-gray-900 data-[state=active]:bg-transparent data-[state=active]:text-gray-900 data-[state=active]:shadow-none ' +
+  'dark:text-gray-400 dark:data-[state=active]:border-gray-100 dark:data-[state=active]:bg-transparent dark:data-[state=active]:text-gray-100'
 
 function StatusPill({ status }: Readonly<{ status: string }>) {
   const tone = STATUS_TONE[status]
@@ -91,24 +93,23 @@ async function load<T>(url: string, what: string): Promise<T> {
 
 function Section({ title, hint, action, children }: Readonly<{ title: string; hint: string; action?: ReactNode; children: ReactNode }>) {
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{hint}</p>
+    <div className="w-full max-w-4xl">
+      <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
+        <div className="max-w-xl">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
+          <p className="mt-1 text-sm leading-relaxed text-gray-500 dark:text-gray-400">{hint}</p>
         </div>
         {action}
       </div>
-      {children}
+      <div className="mt-8">{children}</div>
     </div>
   )
 }
 
-function Empty({ icon, text }: Readonly<{ icon: ReactNode; text: string }>) {
+function Empty({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-gray-300 px-6 py-14 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-      <span className="text-gray-400">{icon}</span>
-      {text}
+    <div className="rounded-xl border border-dashed border-gray-300 px-6 py-10 text-sm leading-relaxed text-gray-600 dark:border-gray-700 dark:text-gray-400">
+      {children}
     </div>
   )
 }
@@ -147,15 +148,15 @@ export default function QaAuditPanel({ agentId, projectId }: Readonly<{ agentId:
   return (
     <Tabs defaultValue="flagged" className="flex h-full flex-col gap-0">
       <div className="flex-none border-b border-gray-200 bg-white px-6 dark:border-gray-800 dark:bg-gray-900 md:px-8">
-        <TabsList className="h-11 gap-6 bg-transparent p-0">
-          <TabsTrigger value="flagged" className={tabClass}><Flag className="h-4 w-4" /> Flagged calls</TabsTrigger>
-          <TabsTrigger value="weekly" className={tabClass}><CalendarCheck className="h-4 w-4" /> Weekly review</TabsTrigger>
+        <TabsList className="h-11 w-full justify-start gap-7 rounded-none bg-transparent p-0">
+          <TabsTrigger value="flagged" className={tabClass}>Flagged calls</TabsTrigger>
+          <TabsTrigger value="weekly" className={tabClass}>Weekly review</TabsTrigger>
         </TabsList>
       </div>
-      <TabsContent value="flagged" className="min-h-0 flex-1 overflow-y-auto px-6 py-8 md:px-8">
+      <TabsContent value="flagged" className="min-h-0 flex-1 overflow-y-auto px-6 pb-12 pt-8 md:px-8">
         <FlaggedCalls agentId={agentId} projectId={projectId} />
       </TabsContent>
-      <TabsContent value="weekly" className="min-h-0 flex-1 overflow-y-auto px-6 py-8 md:px-8">
+      <TabsContent value="weekly" className="min-h-0 flex-1 overflow-y-auto px-6 pb-12 pt-8 md:px-8">
         <WeeklyReview agentId={agentId} />
       </TabsContent>
     </Tabs>
@@ -177,7 +178,17 @@ function FlaggedCalls({ agentId, projectId }: Readonly<{ agentId: string; projec
   if (isLoading) body = <Skeleton className="h-40 w-full rounded-xl" />
   else if (error) body = <p className="text-sm text-red-600">{(error as Error).message}</p>
   else if (shown.length === 0) {
-    body = <Empty icon={<Flag className="h-6 w-6" />} text={tickets.length === 0 ? 'No flagged calls yet. Flag a call from the call logs and it will appear here.' : 'Nothing in this status.'} />
+    body = (
+      <Empty>
+        {tickets.length === 0 ? (
+          <>
+            Nothing has been flagged for this agent. Open{' '}
+            <a href={`/${projectId}/agents/${agentId}?tab=logs`} className="font-medium text-gray-900 underline underline-offset-2 dark:text-gray-100">Call Logs</a>{' '}
+            and flag a call, and it shows up here for the QA team.
+          </>
+        ) : 'No tickets with this status.'}
+      </Empty>
+    )
   } else {
     body = (
       <RowList>
@@ -188,19 +199,15 @@ function FlaggedCalls({ agentId, projectId }: Readonly<{ agentId: string; projec
 
   return (
     <Section title="Flagged calls" hint="Calls flagged from the call logs. The QA team reviews each one and records how it was resolved.">
-      <div className="inline-flex rounded-lg border border-gray-200 p-0.5 dark:border-gray-800">
+      <div className="mb-4 flex gap-5 text-sm">
         {(['all', 'pending', 'in_review', 'resolved'] as const).map((s) => (
           <button
             key={s}
             type="button"
             onClick={() => setFilter(s)}
-            className={`rounded-md px-3 py-1 text-sm transition-colors ${
-              filter === s
-                ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
-                : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
-            }`}
+            className={filter === s ? 'font-medium text-gray-900 dark:text-gray-100' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'}
           >
-            {s === 'all' ? 'All' : STATUS_LABEL[s]} <span className="opacity-60">{s === 'all' ? tickets.length : count(s)}</span>
+            {s === 'all' ? 'All' : STATUS_LABEL[s]} <span className="tabular-nums text-gray-400">{s === 'all' ? tickets.length : count(s)}</span>
           </button>
         ))}
       </div>
@@ -285,7 +292,7 @@ function WeeklyReview({ agentId }: Readonly<{ agentId: string }>) {
   let body: ReactNode
   if (isLoading) body = <Skeleton className="h-40 w-full rounded-xl" />
   else if (error) body = <p className="text-sm text-red-600">{(error as Error).message}</p>
-  else if (reviews.length === 0) body = <Empty icon={<CalendarCheck className="h-6 w-6" />} text="No weekly reviews yet. Request one for last week and the QA team will share a sheet here." />
+  else if (reviews.length === 0) body = <Empty>No weekly reviews yet. Request last week above, and the QA team will share the results here as a Google Sheet.</Empty>
   else body = <RowList>{reviews.map((r) => <ReviewRow key={r.id} review={r} canManage={!!data?.canManage} agentId={agentId} />)}</RowList>
 
   return (
