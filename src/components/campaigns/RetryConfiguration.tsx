@@ -144,7 +144,7 @@ function SipCodePicker({
   return (
     <div className="mb-3">
       <div className="flex items-center gap-1 mb-1.5">
-        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 block">
+        <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 block">
           SIP Error Codes
         </Label>
         <Popover>
@@ -166,7 +166,7 @@ function SipCodePicker({
                   </span>{' '}
                   <span className="font-medium text-gray-900 dark:text-gray-100">{c.label}</span>
                   {!c.enabled && (
-                    <span className="ml-1 text-[10px] italic text-gray-400">(coming soon)</span>
+                    <span className="ml-1 text-[11px] italic text-gray-400">(coming soon)</span>
                   )}
                   <p className="text-gray-500 dark:text-gray-400">{c.description}</p>
                 </div>
@@ -256,7 +256,7 @@ function SipCodeGroup({
               }
             >
               {c.code} — {c.label}
-              {!c.enabled && <span className="ml-1 text-[10px] italic">(coming soon)</span>}
+              {!c.enabled && <span className="ml-1 text-[11px] italic">(coming soon)</span>}
             </button>
           )
         })}
@@ -284,7 +284,7 @@ function OperatorAndExpectedValueFields({
   return (
     <>
       <div>
-        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+        <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
           Operator
         </Label>
         <Select value={operator || 'missing'} onValueChange={onOperatorChange}>
@@ -303,7 +303,7 @@ function OperatorAndExpectedValueFields({
 
       {operator && operator !== 'missing' && (
         <div>
-          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+          <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
             Expected Value
           </Label>
           <Input
@@ -325,7 +325,68 @@ interface RetryConfigurationProps {
     retryConfig: RetryConfig[]
     agentId?: string
     agentRuntime?: 'livekit' | 'pipecat' | 'acefone_bridge'
+    // Calling window, "HH:MM". Used only to warn when a backoff leg is longer
+    // than the window — see backoffWindowWarning.
+    callWindowStart?: string
+    callWindowEnd?: string
   }
+}
+
+/** Minutes from midnight for a "HH:MM" string, or null if unparseable. */
+function parseHHMM(value?: string): number | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(value?.trim() ?? '')
+  if (!m) return null
+  const [h, min] = [Number(m[1]), Number(m[2])]
+  if (h > 23 || min > 59) return null
+  return h * 60 + min
+}
+
+const fmtDuration = (m: number) => (m % 60 === 0 ? `${m / 60}h` : `${m}m`)
+const fmtClock = (minutesFromMidnight: number) =>
+  `${String(Math.floor(minutesFromMidnight / 60)).padStart(2, '0')}`
+  + `:${String(minutesFromMidnight % 60).padStart(2, '0')}`
+
+/**
+ * Warn when a backoff leg is too long to land inside the calling window.
+ *
+ * The scheduler only dials inside [startTime, endTime], so a retry due after
+ * endTime waits for tomorrow's window. Crucially it is NOT enough for a leg to
+ * be shorter than the window: a leg of L minutes only lands the same day when
+ * the call itself happened before endTime - L. Two live campaigns had a 480m
+ * leg in a 10:00-18:30 window — 480 < 510, so a naive "leg vs window length"
+ * check passes — yet only calls before 10:30 could retry that day and the rest
+ * sat on a future nextCallAt for hours, looking stuck.
+ *
+ * Fires when a leg exceeds half the window, i.e. when most of the day's calls
+ * cannot get a same-day retry. Returns null when the schedule is workable.
+ */
+export function backoffWindowWarning(
+  backoffMinutes: number[] | undefined,
+  callWindowStart?: string,
+  callWindowEnd?: string
+): string | null {
+  if (!Array.isArray(backoffMinutes) || backoffMinutes.length === 0) return null
+  const start = parseHHMM(callWindowStart)
+  const end = parseHHMM(callWindowEnd)
+  if (start === null || end === null || end <= start) return null
+
+  const windowMinutes = end - start
+  const legs = backoffMinutes.filter((m) => typeof m === 'number' && m > windowMinutes / 2)
+  if (legs.length === 0) return null
+
+  const worst = Math.max(...legs)
+  const which = legs.length === 1 ? 'A' : `${legs.length}`
+  const delay = legs.length === 1 ? 'delay' : 'delays'
+  const head = `${which} ${fmtDuration(worst)} retry ${delay} in this schedule `
+
+  // A leg at least as long as the window can never land the same day.
+  if (worst >= windowMinutes) {
+    return head + `exceeds your ${fmtDuration(windowMinutes)} calling window `
+      + `(${callWindowStart}–${callWindowEnd}), so those retries always slip to the next day.`
+  }
+  return head + `only lands the same day for calls placed before `
+    + `${fmtClock(end - worst)} — later calls slip to the next day, `
+    + `since the window closes at ${callWindowEnd}.`
 }
 
 export function RetryConfiguration({ onFieldChange, values }: RetryConfigurationProps) {
@@ -409,7 +470,8 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
               .filter((p: any) => p.key && typeof p.key === 'string')
               .map((p: any) => p.key)
             console.log('Extracted field extractor fields:', fields)
-            setAvailableFields(fields.sort())
+            const sortedFields = fields.toSorted((a: string, b: string) => a.localeCompare(b))
+            setAvailableFields(sortedFields)
           } else {
             console.log('promptConfig is not an array:', promptConfig)
             setAvailableFields([])
@@ -443,7 +505,8 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                 return metric && (metric.enabled !== false)
               })
             console.log('Extracted metric IDs:', metricIds)
-            setAvailableMetrics(metricIds.sort())
+            const sortedMetricIds = metricIds.toSorted((a, b) => a.localeCompare(b))
+            setAvailableMetrics(sortedMetricIds)
           } else {
             console.log('metricsConfig is not an object:', typeof metricsConfig)
             setAvailableMetrics([])
@@ -549,7 +612,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
       <div className="space-y-3">
         {values.retryConfig.map((config, index) => {
           // For backward compatibility: if type is not set, assume it's sipCode
-          const retryType = config.type || (config.errorCodes ? 'sipCode' : 'sipCode')
+          const retryType = config.type || 'sipCode'
 
           return (
             <div key={index} className="p-3 border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900">
@@ -562,7 +625,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                   variant="ghost"
                   size="sm"
                   onClick={() => removeRetryConfig(index)}
-                  className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  className="h-7 w-7 p-0 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                 >
                   <X className="w-4 h-4" />
                 </Button>
@@ -570,7 +633,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
 
               {/* Retry Type Selector - show for all items */}
               <div className="mb-3">
-                <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
                   Retry Type
                 </Label>
                 <Select
@@ -659,7 +722,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                 {config.type === 'metric' && (
                   <>
                     <div>
-                      <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                      <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
                         Metric Name
                       </Label>
                       {loadingFields ? (
@@ -695,7 +758,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                     {config.metricName && (
                       <>
                         <div>
-                          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                          <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
                             Operator
                           </Label>
                           <Select
@@ -719,7 +782,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                         </div>
 
                         <div>
-                          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                          <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
                             Threshold
                           </Label>
                           <Input
@@ -746,7 +809,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                 {config.type === 'fieldExtractor' && (
                   <>
                     <div>
-                      <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                      <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
                         Field Name
                       </Label>
                       {loadingFields ? (
@@ -800,7 +863,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                 {config.type === 'metadata' && (
                   <>
                     <div>
-                      <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                      <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
                         Metadata Field
                       </Label>
                       <Select
@@ -816,7 +879,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                           {CALL_METADATA_FIELDS.map((field) => (
                             <SelectItem key={field.key} value={field.key} disabled={!field.enabled}>
                               {field.label}
-                              {!field.enabled && <span className="ml-1 text-[10px] italic">(coming soon)</span>}
+                              {!field.enabled && <span className="ml-1 text-[11px] italic">(coming soon)</span>}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -846,7 +909,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                 const isBackoff = Array.isArray(config.backoffMinutes) && config.backoffMinutes.length > 0
                 return (
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">
+                    <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1 block">
                       Retry Timing
                     </Label>
                     <div className="flex items-center gap-4 text-xs text-gray-700 dark:text-gray-300">
@@ -888,7 +951,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                     {!isBackoff ? (
                       <div className="grid grid-cols-2 gap-3 pt-1">
                         <div>
-                          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                          <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
                             Delay (minutes)
                           </Label>
                           <Input
@@ -906,7 +969,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                         </div>
 
                         <div>
-                          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                          <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
                             Max Retries
                           </Label>
                           <Input
@@ -925,7 +988,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                       </div>
                     ) : (
                       <div className="pt-1">
-                        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+                        <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
                           Backoff schedule (minutes)
                         </Label>
                         <ChipInput
@@ -954,6 +1017,25 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                           Total retries = {(config.backoffMinutes || []).length} (max 10).
                           Minimum 5 minutes per entry. Repeated values are allowed.
                         </p>
+                        {(() => {
+                          const warning = backoffWindowWarning(
+                            config.backoffMinutes,
+                            values.callWindowStart,
+                            values.callWindowEnd
+                          )
+                          if (!warning) return null
+                          // <output> over role="status": it carries the same
+                          // live-region semantics natively and announces the
+                          // recalculated warning as the schedule is edited.
+                          // Inline by default, hence block.
+                          return (
+                            <output
+                              className="block text-xs mt-2 rounded-md px-2 py-1.5 bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-900"
+                            >
+                              {warning}
+                            </output>
+                          )
+                        })()}
                       </div>
                     )}
                   </div>

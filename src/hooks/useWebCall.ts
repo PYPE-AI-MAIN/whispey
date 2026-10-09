@@ -259,7 +259,7 @@ export const useWebCall = ({
       if (vapiRef.current) {
         console.log('🧹 Cleaning up Vapi instance due to error')
         try {
-          vapiRef.current.stop()
+          await vapiRef.current.stop()
         } catch (cleanupError) {
           console.error('❌ Error during cleanup:', cleanupError)
         }

@@ -205,12 +205,8 @@ function NodeDetails({
       <div className="space-y-4">
         {/* Node Header */}
         <div className="flex items-center gap-3 pb-4 border-b border-gray-200 dark:border-gray-700">
-          <div
-            className={cn(
-              "w-10 h-10 rounded-lg flex items-center justify-center border",
-              `bg-${selectedStage.color}-50 dark:bg-${selectedStage.color}-900/20 border-${selectedStage.color}-200 dark:border-${selectedStage.color}-800 text-${selectedStage.color}-600 dark:text-${selectedStage.color}-400`,
-            )}
-          >
+          {/* Neutral, not per-stage colored (see NodeSelector for the same change) */}
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center border bg-gray-100 dark:bg-gray-900/40 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400">
             {selectedStage.icon}
           </div>
           <div>
@@ -234,7 +230,7 @@ function NodeDetails({
               {/* Input Section */}
               <div className="space-y-3">
                 <h4 className="font-medium text-sm flex items-center gap-2 text-gray-900 dark:text-gray-100">
-                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                  <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500"></div>
                   Input
                   {selectedStage.id === "stt" && trace.stt_metrics?.audio_duration && (
                     <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto">
@@ -251,7 +247,7 @@ function NodeDetails({
                 </h4>
                 {selectedStage.id === "stt" && (
                   <div className="space-y-3">
-                    <div className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm text-gray-600 dark:text-gray-400 italic">
+                    <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900 shadow-sm p-3 text-sm text-gray-600 dark:text-gray-400 italic">
                       Audio stream processed ({trace.stt_metrics?.audio_duration?.toFixed(1) || 0}s duration)
                     </div>
                     
@@ -262,12 +258,12 @@ function NodeDetails({
                   </div>
                 )}
                 {selectedStage.id === "llm" && (
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 dark:border-blue-400 pl-3 py-2 text-sm text-gray-900 dark:text-gray-100">
+                  <div className="bg-gray-50 dark:bg-gray-900/40 border-l-4 border-gray-300 dark:border-gray-600 pl-3 py-2 text-sm text-gray-900 dark:text-gray-100">
                     "{formatTranscript(trace.user_transcript) || "No input"}"
                   </div>
                 )}
                 {selectedStage.id === "tts" && (
-                  <div className="bg-purple-50 dark:bg-purple-900/20 border-l-4 border-purple-500 dark:border-purple-400 pl-3 py-2 text-sm max-h-32 overflow-y-auto text-gray-900 dark:text-gray-100">
+                  <div className="bg-gray-50 dark:bg-gray-900/40 border-l-4 border-gray-300 dark:border-gray-600 pl-3 py-2 text-sm max-h-32 overflow-y-auto text-gray-900 dark:text-gray-100">
                     "{formatTranscript(trace.agent_response) || "No text"}"
                   </div>
                 )}
@@ -280,22 +276,22 @@ function NodeDetails({
               {/* Output Section */}
               <div className="space-y-3">
                 <h4 className="font-medium text-sm flex items-center gap-2 text-gray-900 dark:text-gray-100">
-                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                  <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500"></div>
                   Output
                 </h4>
                 {selectedStage.id === "stt" && (
-                  <div className="bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 dark:border-green-400 pl-3 py-2 text-sm text-gray-900 dark:text-gray-100">
+                  <div className="bg-gray-50 dark:bg-gray-900/40 border-l-4 border-gray-300 dark:border-gray-600 pl-3 py-2 text-sm text-gray-900 dark:text-gray-100">
                     "{formatTranscript(trace.user_transcript) || "No transcription"}"
                   </div>
                 )}
                 {selectedStage.id === "llm" && (
-                  <div className="bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 dark:border-green-400 pl-3 py-2 text-sm max-h-40 overflow-y-auto text-gray-900 dark:text-gray-100">
+                  <div className="bg-gray-50 dark:bg-gray-900/40 border-l-4 border-gray-300 dark:border-gray-600 pl-3 py-2 text-sm max-h-40 overflow-y-auto text-gray-900 dark:text-gray-100">
                     "{formatTranscript(trace.agent_response) || "No response"}"
                   </div>
                 )}
                 {selectedStage.id === "tts" && (
                   <div className="space-y-3">
-                    <div className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 text-sm text-gray-600 dark:text-gray-400 italic">
+                    <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900 shadow-sm p-3 text-sm text-gray-600 dark:text-gray-400 italic">
                       Audio generated ({trace.tts_metrics?.audio_duration?.toFixed(1) || 0}s duration)
                     </div>
                     
@@ -311,17 +307,17 @@ function NodeDetails({
           
           {/* Special handling for EOU - show detection timing instead of input/output */}
           {selectedStage.id === "eou" && (
-            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+            <div className="bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 rounded-lg p-4">
               <h4 className="font-medium text-sm mb-3 flex items-center gap-2 text-gray-900 dark:text-gray-100">
-                <Activity className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                <Activity className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                 End of Utterance Detection
               </h4>
               <div className="space-y-3">
-                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3">
                   <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">EOU Detection Delay</div>
-                  <div className="font-mono text-sm font-medium text-orange-600 dark:text-orange-400">
-                    {trace.eou_metrics?.end_of_utterance_delay ? 
-                      formatDuration(trace.eou_metrics.end_of_utterance_delay * 1000) : 
+                  <div className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {trace.eou_metrics?.end_of_utterance_delay ?
+                      formatDuration(trace.eou_metrics.end_of_utterance_delay * 1000) :
                       "No data"}
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
@@ -351,7 +347,7 @@ function NodeDetails({
             <div className="mb-4">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-2 h-2 rounded-full bg-amber-500"></div>
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">System Instructions</span>
+                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">System Instructions</span>
               </div>
               <div className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-400 dark:border-amber-600 rounded-r-lg p-3 max-h-64 overflow-y-auto">
                 <pre className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">
@@ -365,7 +361,7 @@ function NodeDetails({
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Available Tools</span>
+                  <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Available Tools</span>
                   <Badge variant="outline" className="text-xs">
                     {trace.enhanced_data.prompt_data.available_tools.length}
                   </Badge>
@@ -391,7 +387,7 @@ function NodeDetails({
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Conversation History</span>
+                    <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Conversation History</span>
                     <Badge variant="outline" className="text-xs">
                       {trace.enhanced_data.prompt_data.conversation_history.length} messages
                     </Badge>
@@ -407,7 +403,7 @@ function NodeDetails({
                   </Button>
                 </div>
 
-                <div className="space-y-2 max-h-80 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800">
+                <div className="space-y-2 max-h-80 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3">
                   {trace.enhanced_data.prompt_data.conversation_history.map((message: any, idx: number) => {
                     // Parse content if it's a string array
                     let displayContent = message.content
@@ -467,15 +463,15 @@ function NodeDetails({
             {/* Context Summary */}
             <div className="mt-4 pt-4 border-t border-purple-200 dark:border-purple-700">
               <div className="grid grid-cols-3 gap-4 text-center">
-                <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3">
                   <div className="text-xs text-gray-500 dark:text-gray-400">Context Length</div>
                   <div className="font-mono font-semibold text-gray-900 dark:text-gray-100">{trace.enhanced_data.prompt_data.context_length || 0}</div>
                 </div>
-                <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3">
                   <div className="text-xs text-gray-500 dark:text-gray-400">Tools Available</div>
                   <div className="font-mono font-semibold text-gray-900 dark:text-gray-100">{trace.enhanced_data.prompt_data.tools_count || 0}</div>
                 </div>
-                <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3">
                   <div className="text-xs text-gray-500 dark:text-gray-400">Captured</div>
                   <div className="font-mono font-semibold text-xs text-gray-900 dark:text-gray-100">
                     {trace.enhanced_data.prompt_data.timestamp
@@ -490,18 +486,18 @@ function NodeDetails({
 
         {/* Tool Calls for LLM - Show after prompts */}
         {selectedStage.id === "llm" && selectedStage.tools && selectedStage.tools.length > 0 && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 dark:border-blue-400 rounded-lg p-4">
+          <div className="bg-gray-50 dark:bg-gray-900/40 border-l-4 border-gray-300 dark:border-gray-600 rounded-lg p-4">
             <h4 className="font-medium text-sm mb-3 flex items-center gap-2 text-gray-900 dark:text-gray-100">
-              <Wrench className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <Wrench className="w-4 h-4 text-gray-500 dark:text-gray-400" />
               Tool Executions ({selectedStage.tools.length})
             </h4>
             <div className="space-y-3">
-              {selectedStage.tools.map((tool: any, index: number) => (
-                <div key={index} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-sm">
+              {selectedStage.tools.map((tool: any) => (
+                <div key={tool.id ?? `${tool.name}-${tool.execution_duration_ms ?? 'na'}-${JSON.stringify(tool.arguments)}`} className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded bg-blue-100 dark:bg-blue-800 flex items-center justify-center">
-                        <Wrench className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                      <div className="w-6 h-6 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                        <Wrench className="w-3 h-3 text-gray-500 dark:text-gray-400" />
                       </div>
                       <span className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">{tool.name}</span>
                       <Badge variant={tool.status === "success" ? "default" : "destructive"} className="text-xs">
@@ -524,7 +520,7 @@ function NodeDetails({
                     {tool.result && (
                       <div className="flex items-start gap-2">
                         <span className="text-xs text-gray-600 dark:text-gray-400 font-medium min-w-[4rem]">Result:</span>
-                        <code className="text-xs bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-gray-800 dark:text-gray-200 px-2 py-1 rounded flex-1 max-h-24 overflow-y-auto">
+                        <code className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2 py-1 rounded flex-1 max-h-24 overflow-y-auto">
                           {typeof tool.result === "string" ? tool.result : JSON.stringify(tool.result, null, 1)}
                         </code>
                       </div>
@@ -542,15 +538,17 @@ function NodeDetails({
         {["stt", "llm", "tts"].includes(selectedStage.id) && selectedStage.fallbackEvents && selectedStage.fallbackEvents.length > 0 && (
           <div className={cn(
             "border-l-4 rounded-lg p-4",
+            // Red panel only for a real failure — a clean recovery is neutral
+            // with just a green checkmark, not a whole colored block of its own.
             selectedStage.fallbackFailureCount > 0
               ? "bg-red-50 dark:bg-red-900/20 border-red-500 dark:border-red-400"
-              : "bg-green-50 dark:bg-green-900/20 border-green-500 dark:border-green-400"
+              : "bg-gray-50 dark:bg-gray-900/40 border-gray-300 dark:border-gray-600"
           )}>
             <h4 className="font-medium text-sm mb-3 flex items-center gap-2 text-gray-900 dark:text-gray-100">
               {selectedStage.fallbackFailureCount > 0 ? (
                 <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
               ) : (
-                <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+                <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               )}
               Fallback Events ({selectedStage.fallbackEvents.length})
             </h4>
@@ -560,11 +558,11 @@ function NodeDetails({
                 const isRecovery = fb.event_type === 'provider_recovered'
                 if (isRecovery) {
                   return (
-                    <div key={eventKey} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-sm">
+                    <div key={eventKey} className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded bg-green-100 dark:bg-green-800 flex items-center justify-center">
-                            <CheckCircle className="w-3 h-3 text-green-600 dark:text-green-400" />
+                          <div className="w-6 h-6 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                            <CheckCircle className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                           </div>
                           <span className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">
                             Recovered: {fb.provider_label || formatProviderLabel(fb.provider_name)}
@@ -579,7 +577,7 @@ function NodeDetails({
                 }
                 const isTotalFailure = !!fb.all_providers_failed
                 return (
-                  <div key={eventKey} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 shadow-sm">
+                  <div key={eventKey} className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
@@ -644,7 +642,7 @@ function NodeDetails({
         )}
 
         {selectedStage.metrics && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+          <div className="bg-gray-50 dark:bg-gray-900/40 rounded-lg p-4">
             <h4 className="font-medium text-sm mb-3 text-gray-900 dark:text-gray-100">Performance Metrics</h4>
             <div className="grid grid-cols-2 gap-4">
               {Object.entries(selectedStage.metrics).map(([key, value]) => (
@@ -667,7 +665,7 @@ function NodeDetails({
 
         {/* Configuration */}
         {selectedStage.config && (
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 shadow-sm p-4">
             <h4 className="font-medium text-sm mb-3 text-gray-900 dark:text-gray-100">Configuration</h4>
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded p-3">
               <div className="grid grid-cols-1 gap-2 text-sm">

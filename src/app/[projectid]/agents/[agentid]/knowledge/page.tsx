@@ -137,7 +137,7 @@ export default function KnowledgeBasePage() {
       <div className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-6">
         <div className="space-y-8">
           <section>
-            <h2 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+            <h2 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
               Add content
             </h2>
             <KnowledgeBaseUploadZone
@@ -148,7 +148,7 @@ export default function KnowledgeBasePage() {
           </section>
 
           <section>
-            <h2 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+            <h2 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
               Documents in this knowledge base
             </h2>
             <KnowledgeBaseDocumentList

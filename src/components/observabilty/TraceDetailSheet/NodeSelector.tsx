@@ -19,12 +19,11 @@ function NodeSelector({ pipelineStages, setSelectedNode, selectedNode }: any) {
             )}
           >
             <div className="flex items-center gap-3">
-              <div
-                className={cn(
-                  "w-8 h-8 rounded-lg flex items-center justify-center border",
-                  `bg-${stage.color}-50 dark:bg-${stage.color}-900/20 border-${stage.color}-200 dark:border-${stage.color}-800 text-${stage.color}-600 dark:text-${stage.color}-400`,
-                )}
-              >
+              {/* Neutral, not per-stage colored — the icon shape (and this stage's
+                  own name label) already says which stage this is; the old
+                  bg-${stage.color}-50-style classes were also dynamically built,
+                  which Tailwind can't reliably pick up for its production CSS. */}
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center border bg-gray-100 dark:bg-gray-900/40 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400">
                 {stage.icon}
               </div>
               <div className="flex-1">
@@ -32,14 +31,14 @@ function NodeSelector({ pipelineStages, setSelectedNode, selectedNode }: any) {
                   {stage.name}
                   {stage.tools && stage.tools.length > 0 && (
                     <div className="flex items-center gap-1">
-                      <Wrench className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                      <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">{stage.tools.length}</span>
+                      <Wrench className="w-3 h-3 text-gray-500 dark:text-gray-400" />
+                      <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{stage.tools.length}</span>
                     </div>
                   )}
                   {stage.llmRequests && stage.llmRequests.length > 0 && (
                     <div className="flex items-center gap-1">
-                      <MessageSquare className="w-3 h-3 text-purple-600 dark:text-purple-400" />
-                      <span className="text-xs text-purple-600 dark:text-purple-400 font-medium">{stage.llmRequests.length}</span>
+                      <MessageSquare className="w-3 h-3 text-gray-500 dark:text-gray-400" />
+                      <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{stage.llmRequests.length}</span>
                     </div>
                   )}
                   {stage.fallbackFailureCount > 0 && (

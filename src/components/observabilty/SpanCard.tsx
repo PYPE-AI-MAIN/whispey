@@ -64,8 +64,9 @@ import {
     const statusInfo = getStatusInfo(span.status);
   
     return (
-      <div 
-        className={`border rounded-lg p-4 bg-white hover:shadow-md cursor-pointer transition-all ${isGrouped ? 'ml-4 border-l-4' : ''}`}
+      <button
+        type="button"
+        className={`w-full appearance-none text-left border rounded-lg p-4 bg-white hover:shadow-md cursor-pointer transition-all ${isGrouped ? 'ml-4 border-l-4' : ''}`}
         style={isGrouped ? { borderLeftColor: typeInfo.color.replace('text-', '#').replace('600', '') } : {}}
         onClick={onClick}
       >
@@ -106,7 +107,7 @@ import {
             {span.attributes['error.message']}
           </div>
         )}
-      </div>
+      </button>
     );
   };
   

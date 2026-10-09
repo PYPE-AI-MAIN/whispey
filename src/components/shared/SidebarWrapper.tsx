@@ -46,6 +46,8 @@ interface SidebarContext {
   projectId?: string
   agentType?: string
   hasWorkflow?: boolean
+  /** Agent was created through the MCP — the only kind Agent Studio can show. */
+  createdViaMcp?: boolean
   canAccessPhoneCalls: boolean
   canAccessPhoneSettings: boolean
   canCreatePypeAgent: boolean
@@ -59,6 +61,28 @@ interface SidebarContext {
   isGlobalSuperAdmin: boolean
 }
 
+// Agent Studio (beta) — LiveKit agents only; its test panel uses the LiveKit
+// session flow. Members only get the entry for agents built through the MCP (an
+// agent that wasn't would just open an empty "build it through the MCP" page).
+// Owners and admins keep it on every LiveKit agent, so they can still reach
+// that page and its preview.
+function agentStudioNavItems(
+  projectId: string,
+  agentId: string,
+  agentType: string | undefined,
+  createdViaMcp: boolean | undefined,
+  isOwnerOrAdmin: boolean
+) {
+  if (agentType !== 'pype_agent' || !(createdViaMcp || isOwnerOrAdmin)) return []
+  return [{
+    id: 'agent-studio',
+    name: 'Agent Studio',
+    icon: 'Zap',
+    path: `/${projectId}/agents/${agentId}/studio`,
+    group: 'configuration',
+  }]
+}
+
 interface NavigationItem {
   id: string
   name: string
@@ -66,6 +90,8 @@ interface NavigationItem {
   path: string
   group?: string
   external?: boolean
+  disabled?: boolean
+  badge?: string
 }
 
 export interface SidebarConfig {
@@ -80,7 +106,9 @@ export interface SidebarConfig {
 const matchRoute = (pathname: string, pattern: string): RouteParams | null => {
   if (pattern.endsWith('*')) {
     const basePattern = pattern.slice(0, -1)
-    if (!pathname.startsWith(basePattern)) {
+    // Literal prefixes only (`/sign*`). `/:projectId/pi*` cannot startsWith the
+    // unsubstituted pattern, and would miss every real /{uuid}/pi URL.
+    if (!basePattern.includes(':') && !pathname.startsWith(basePattern)) {
       return null
     }
     
@@ -163,7 +191,9 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/settings/dnc' },
       { pattern: '/:projectId/campaigns/:campaignId' },
       { pattern: '/:projectId/campaigns/create' },
-      { pattern: '/:projectId/analytics' }, 
+      { pattern: '/:projectId/analytics' },
+      { pattern: '/:projectId/pi' },
+      { pattern: '/:projectId/pi/:sessionId' },
     ],
     getSidebarConfig: (params, context) => {
       const { projectId } = params
@@ -183,6 +213,14 @@ const sidebarRoutes: SidebarRoute[] = [
           icon: 'Activity',
           path: `/${projectId}/agents`,
           group: 'Agents'
+        },
+        {
+          id: 'ask-pi',
+          name: 'Ask Pi',
+          icon: 'Pi',
+          path: `/${projectId}/pi`,
+          group: 'Agents',
+          ...(isOwnerOrAdmin ? {} : { disabled: true, badge: 'Beta' })
         }
       ]
 
@@ -254,6 +292,7 @@ const sidebarRoutes: SidebarRoute[] = [
   {
     patterns: [
       { pattern: '/:projectId/agents/:agentId' },
+      { pattern: '/:projectId/agents/:agentId/studio' },
       { pattern: '/:projectId/agents/:agentId/config' },
       { pattern: '/:projectId/agents/:agentId/config/pipecat' },
       { pattern: '/:projectId/agents/:agentId/config/pipecat/knowledgebase' },
@@ -261,6 +300,7 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/agents/:agentId/observability' },
       { pattern: '/:projectId/agents/:agentId/phone-call-config' },
       { pattern: '/:projectId/agents/:agentId/phone-call-config/pipecat' },
+      { pattern: '/:projectId/agents/:agentId/qa' },
       { pattern: '/:projectId/agents/:agentId/knowledge' },
       { pattern: '/:projectId/agents/:agentId/workflow' },
       { pattern: '/:projectId/agents/:agentId/prompt-forge' },
@@ -268,9 +308,9 @@ const sidebarRoutes: SidebarRoute[] = [
     ],
     getSidebarConfig: (params, context) => {
       const { projectId, agentId } = params
-      const { isEnhancedProject, agentType, isOwnerOrAdmin, visibility, isSuperAdmin, hasWorkflow } = context
+      const { isEnhancedProject, agentType, isOwnerOrAdmin, visibility, isSuperAdmin, hasWorkflow, createdViaMcp } = context
 
-      const reservedPaths = ['api-keys', 'settings', 'config', 'observability', 'sip-management'];
+      const reservedPaths = ['api-keys', 'settings', 'config', 'observability', 'sip-management', 'qa'];
       if (reservedPaths.includes(agentId)) {
         return null;
       }
@@ -316,6 +356,8 @@ const sidebarRoutes: SidebarRoute[] = [
       const showWorkflow =
         agentType === 'pype_agent' && hasWorkflow &&
         (isOwnerOrAdmin || canShowAgentSection(visibility, 'agentConfig'))
+
+      configItems.push(...agentStudioNavItems(projectId, agentId, agentType, createdViaMcp, isOwnerOrAdmin))
 
       if (showWorkflow) {
         configItems.push({
@@ -372,6 +414,17 @@ const sidebarRoutes: SidebarRoute[] = [
           group: 'call configuration'
         })
       }
+
+      // Sits directly below Phone Calls. Not gated behind a visibility flag:
+      // it only lists flags and reviews for calls this person can already see,
+      // and the page itself re-checks access server-side.
+      callItems.push({
+        id: 'qa-audit',
+        name: 'QA Audit',
+        icon: 'ShieldCheck',
+        path: `/${projectId}/agents/${agentId}/qa`,
+        group: 'call configuration'
+      })
 
       const enhancedItems = []
       if (isEnhancedProject) {
@@ -569,6 +622,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     projectId,
     agentType: agent?.agent_type,
     hasWorkflow: !!agent?.hasWorkflow,
+    createdViaMcp: !!agent?.createdViaMcp,
     canAccessPhoneCalls,
     canAccessPhoneSettings,
     canCreatePypeAgent,
@@ -635,7 +689,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
             </Sheet>
           </div>
           
-          <main className="flex-1 pt-14 overflow-auto">
+          <main className={`flex-1 pt-14 min-h-0 ${pathname?.includes('/pi') ? 'overflow-hidden' : 'overflow-auto'}`}>
             {children}
           </main>
         </>
@@ -653,7 +707,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
             />
           </div>
           
-          <main className="flex-1 overflow-auto">
+          <main className={`flex-1 min-h-0 ${pathname?.includes('/pi') ? 'overflow-hidden' : 'overflow-auto'}`}>
             {children}
           </main>
         </>

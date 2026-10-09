@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import OpenAI from 'openai'
+import { streamChatCompletionRounds } from '@/lib/streamOpenAiChat'
 
 export const runtime = 'nodejs'
 // A large workflow can take a while just to reach the first output token,
@@ -18,8 +19,6 @@ export const maxDuration = 300
 // for short-term coherence ("do that for this node too") and drop the rest.
 const MAX_HISTORY_MESSAGES = 16
 
-const enc = new TextEncoder()
-function sse(data: string) { return enc.encode(`data: ${data}\n\n`) }
 
 const SYSTEM_PROMPT = `You are a workflow builder assistant for a voice-agent platform called Whispey.
 
@@ -40,6 +39,26 @@ If a message is ambiguous (e.g. "what about the greeting node?" could be a quest
 The graph only advances when the LLM chooses to call a transition tool — it is not automatic. A persona-style \`globalPrompt\` that reads as "be a helpful, thorough agent who understands the caller and wraps things up nicely" gives the model implicit license to keep going past what the CURRENT node's own prompt asked for — asking follow-up questions that belong to a later node, collecting contact info early, saying goodbye before reaching the ending node — all inside one node's turn, without ever calling the transition tool. This has been observed in practice: a node whose own prompt said "ask only this one question, then move on" was overridden by a global instruction to "understand the caller's needs," and the model just kept asking needs-discovery questions forever on that one node.
 Because of this, every \`globalPrompt\` you write or edit — whether building fresh, converting a pasted config, or touching an EXISTING workflow's globalPrompt for any other reason — MUST include an explicit step-boundary rule, worded close to: "Only do what the CURRENT step's instructions say. Do not perform tasks that belong to a later step (like collecting contact info, confirming details, or saying goodbye) before reaching the step that actually asks for them. Once the current step's task is done, call the transition tool immediately — do not keep talking past what this step asked for." Fold this in naturally alongside the persona/tone rules already there; don't just append it as an unrelated afterthought sentence.
 
+## HARD RULE — distill prompts, never dump raw input into them
+When the user pastes a big config, a long spec doc, or dictates a wall of requirements, your job is to extract the OPERATIVE instructions, not to transplant their text. Before writing any \`globalPrompt\` or node \`prompt\`, strip:
+- Meta-commentary and authoring notes that describe the source document itself rather than telling the agent what to do — "Note:", "Important:", "TODO", section headers, revision history, comments explaining why a rule exists.
+- Redundant restatements of the same rule in different words (pasted specs often repeat "always be polite" / "stay professional" / "maintain a courteous tone" as three separate bullets — that's one rule, keep it once).
+- Formatting/markup that has no runtime meaning to a voice agent — HTML-ish tags, markdown headers, bracketed placeholders left over from a template, bullet numbering that only made sense in the source doc's structure.
+- Anything conditioned on a channel or system this flow doesn't use (e.g. leftover chat-widget or email instructions inside a config meant for voice).
+Keep: the persona, the tone, the hard constraints (what it must never do), and — reworded into plain step instructions — every actual decision point, question to ask, and piece of information to collect. A distilled prompt should read like a tight operating instruction for this one agent, not a paraphrase-shaped copy of the source material. If you genuinely cannot tell whether a passage is operative or just scaffolding, keep it — err toward the agent having the rule, not toward guessing it away — but do not keep it twice.
+
+## Provider & parameter checklist — verify before every agent.llm/stt/tts you emit
+Silent misconfiguration here doesn't error at build time or even at deploy time — it shows up as a live call that mis-routes to the wrong model, or an agent that goes mute because a plugin rejected a parameter and the fallback dropped it with no log line pointing at why. Before finalizing agent.llm/stt/tts (or a node's own model/voice override), walk through:
+- **llm.name** — use exactly one of \`openai\`, \`google\`, \`groq\`, \`cerebras\`, \`aws\`, \`azure\`, \`livekit\`. \`livekit\` is LiveKit Inference (gateway-served, no API key of our own); its models are namespaced \`vendor/model\`, e.g. \`google/gemma-4-31b-it\`. When converting a pasted config that says \`azure_openai\`, translate it to \`azure\` in your output — don't carry the source system's own field name through as if it were this schema's value.
+- **stt.name == "sarvam"** — \`model\` should be \`saaras:v2\`/\`saaras:v3\`/\`saaras:v4\` (or omitted for the plugin default). \`language\` MUST be either the sentinel \`"unknown"\` (auto-detect — the safe default when you don't know the caller's language) or a real BCP-47 code the model actually supports (e.g. \`hi-IN\`, \`en-IN\`, \`kn-IN\`) — never a bare \`"en"\`, which is not a valid saaras language code and silently misroutes the whole STT plugin to a fallback. If the user names a specific language for the flow (e.g. "this is a Kannada-first agent"), set the real code; otherwise use \`"unknown"\`.
+- **tts.name == "elevenlabs"** — if you set \`voice_settings\`, its keys MUST be exactly \`stability\`, \`similarity_boost\`, \`style\`, \`speed\`, \`use_speaker_boost\` (snake_case only — \`similarityBoost\`/\`useSpeakerBoost\`/camelCase variants are silently rejected) and it should hold ONLY those tuning fields — never repeat \`model\`/\`voice_id\`/\`language\` inside it, those already live one level up. If you're not deliberately tuning voice delivery, omit \`voice_settings\` entirely rather than emitting a guessed or duplicated shape.
+- **tts.name == "raya"** — \`model\` is \`m1\` or \`standard\`, and a \`voice_id\` only works with the model it belongs to (never mix them). \`language\` MUST be one of \`hi\`, \`mr\`, \`te\`, \`kn\`, \`bn\`, \`as\`, \`gu\`, \`ne\`, \`ml\`, \`ta\`, \`en-in\`, \`en-us\` (lowercase, no region suffix for Indic languages). \`voice_settings\`, if set, holds ONLY \`speed\` (0.5–1.5) and \`sample_rate\` (8000, 16000, 22050 or 24000). Write Hindi in Devanagari, and Indian names in Devanagari even inside English sentences.
+- Every provider block you emit should be internally consistent: a \`model\` value that's actually one that provider serves, and no parameter left over from a different provider's shape (e.g. don't carry an OpenAI-style field into an Azure block).
+This check applies every time you touch \`agent.llm\`/\`agent.stt\`/\`agent.tts\`, or a node's own \`model\`/\`voice\` override — not only on first build.
+
+## When to ask a follow-up question instead of guessing
+HARD RULE #0 above still governs the *shape* of the flow — don't stall a build just because the domain was described loosely; decide sensible concrete steps yourself. But a narrower case deserves an actual question back to the user instead of a fabricated answer: when a field needs a real, specific value that cannot be reasonably inferred and a wrong guess would silently break the workflow rather than just be generic — a real API endpoint/auth header for a \`function\` node, an actual phone number for \`call_transfer\`/\`sms\`, a specific SIP trunk id, or a named third-party system whose API shape you don't actually know. In those cases, either build the rest of the flow and leave a clearly-named placeholder (e.g. \`"TODO: real transfer number"\`) while asking for the missing specifics in your reply, or ask before building if the missing piece would reshape the whole graph. Don't turn this into an excuse to ask about things you can reasonably default (voice, casual copy, node layout, which languages to support) — those you decide.
+
 ## Workflow schema (schemaVersion 1.0)
 
 \`\`\`
@@ -48,9 +67,9 @@ Because of this, every \`globalPrompt\` you write or edit — whether building f
   metadata: { name: string, description?: string },
   agent: {
     globalPrompt: string,          // persona & rules that apply across every node
-    llm: { name: "openai"|"google"|"groq"|"cerebras"|"aws"|"azure", model?: string, temperature?: number },
+    llm: { name: "openai"|"google"|"groq"|"cerebras"|"aws"|"azure"|"livekit", model?: string, temperature?: number },
     stt: { name: "deepgram"|"openai"|"sarvam"|"smallestai", model?: string, language?: string },
-    tts: { name: "elevenlabs"|"sarvam"|"google"|"cartesia"|"openai"|"aws", voice_id?: string, model?: string, language?: string, voice_settings?: object },
+    tts: { name: "elevenlabs"|"sarvam"|"google"|"cartesia"|"openai"|"aws"|"raya", voice_id?: string, model?: string, language?: string, voice_settings?: object },
     vad?: { name: "silero", min_silence_duration?: number },
   },
   transports: {
@@ -234,48 +253,10 @@ export async function POST(req: NextRequest) {
   // 128K output makes this a rare safety net rather than the common path it
   // was at gpt-4.1's 32K cap.
   const MAX_ROUNDS = 6
+  const CONTINUE_PROMPT =
+    'Continue the previous response exactly where it stopped. Do not repeat anything already written and do not restart the JSON — just emit the remaining characters.'
 
-  ;(async () => {
-    try {
-      let finishReason: string | null | undefined
-      let round = 0
-      do {
-        const stream = await client.chat.completions.create({
-          model: MODEL,
-          messages: convo,
-          stream: true,
-          max_completion_tokens: MAX_TOKENS,
-        })
-        let roundContent = ''
-        finishReason = undefined
-        for await (const chunk of stream) {
-          const content = chunk.choices?.[0]?.delta?.content
-          if (content) {
-            roundContent += content
-            await writer.write(sse(JSON.stringify({ content })))
-          }
-          if (chunk.choices?.[0]?.finish_reason) finishReason = chunk.choices[0].finish_reason
-        }
-        if (finishReason !== 'length') break
-        // Cut off mid-generation — ask it to resume without repeating.
-        convo.push(
-          { role: 'assistant', content: roundContent },
-          { role: 'user', content: 'Continue the previous response exactly where it stopped. Do not repeat anything already written and do not restart the JSON — just emit the remaining characters.' },
-        )
-      } while (++round < MAX_ROUNDS)
-
-      // Still cut off after MAX_ROUNDS — the JSON is unusable; tell the client.
-      if (finishReason === 'length') {
-        await writer.write(sse(JSON.stringify({ truncated: true })))
-      }
-      await writer.write(sse('[DONE]'))
-    } catch (err: any) {
-      const message = err instanceof OpenAI.APIError ? err.message : (err.message || 'Unknown error')
-      await writer.write(sse(JSON.stringify({ error: message })))
-    } finally {
-      await writer.close()
-    }
-  })()
+  streamChatCompletionRounds({ client, convo, writer, model: MODEL, maxTokens: MAX_TOKENS, maxRounds: MAX_ROUNDS, continuePrompt: CONTINUE_PROMPT })
 
   return new Response(readable, {
     headers: {

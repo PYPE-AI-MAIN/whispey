@@ -58,6 +58,7 @@ interface RunningAgent {
   agent_name: string
   pid: number
   status: string
+  generic_worker?: boolean
 }
 
 interface AgentListProps {
@@ -111,8 +112,6 @@ const AgentList: React.FC<AgentListProps> = ({
   showRunningCounter = true
 }) => {
   const { isMobile } = useMobile(768)
-  const [isStartingAgent, setIsStartingAgent] = useState<string | null>(null) // Will hold agent.id
-  const [isStoppingAgent, setIsStoppingAgent] = useState<string | null>(null) // Will hold actual_agent_name
   const [monitoringStates, setMonitoringStates] = useState<Record<string, boolean>>({})
   const [monitoringLoading, setMonitoringLoading] = useState<Record<string, boolean>>({})
   const [monitoringRegistrationStates, setMonitoringRegistrationStates] = useState<
@@ -155,73 +154,9 @@ const AgentList: React.FC<AgentListProps> = ({
     refetchOnWindowFocus: true,
     refetchOnMount: true,
     gcTime: 0, // Changed from cacheTime
+    // Status can be transiently stale during a restart; poll so it self-corrects.
+    refetchInterval: 10000,
   })
-
-  // Smart start agent handler
-  const handleStartAgent = async (agent: Agent) => {
-    setIsStartingAgent(agent.id)
-    
-    const sanitizedAgentId = agent.id.replace(/-/g, '_')
-    const newFormatName = `${agent.name}_${sanitizedAgentId}`
-    const legacyName = agent.name
-
-    const attemptStart = async (nameToTry: string) => {
-      return await fetch('/api/agents/start_agent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agent_name: nameToTry })
-      })
-    }
-
-    try {
-      let response = await attemptStart(newFormatName)
-
-      if (response.status === 404) {
-        console.warn(`Start failed for ${newFormatName}, trying legacy name: ${legacyName}`)
-        response = await attemptStart(legacyName)
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        console.error(`Failed to start agent ${agent.name}:`, errorData.detail || 'Unknown error')
-      }
-
-    } catch (error) {
-      console.error('Error starting agent:', error)
-    } finally {
-      // Refetch and then disable loading state
-      setTimeout(async () => {
-        await refetchRunningAgents()
-        setIsStartingAgent(null)
-      }, 2000) // Wait for agent to fully start
-    }
-  }
-
-  // Stop agent handler
-  const handleStopAgent = async (agentName: string) => {
-    setIsStoppingAgent(agentName)
-    try {
-      const response = await fetch('/api/agents/stop_agent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agent_name: agentName })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        console.error(`Failed to stop agent ${agentName}:`, errorData.detail || 'Unknown error')
-      }
-
-    } catch (error) {
-      console.error('Error stopping agent:', error)
-    } finally {
-      // Refetch and then disable loading state
-      setTimeout(async () => {
-        await refetchRunningAgents()
-        setIsStoppingAgent(null)
-      }, 1000) // Wait for agent to fully stop
-    }
-  }
 
   const monitoringServiceBaseUrl = process.env.NEXT_PUBLIC_MONITORING_SERVICE_BASE_URL
   const monitoringAgentBaseUrl =
@@ -418,10 +353,6 @@ const AgentList: React.FC<AgentListProps> = ({
         isLoadingRunningAgents={isLoadingRunningAgents}
         onCopyId={(e) => onCopyAgentId(agent.id, e)}
         onDelete={() => onDeleteAgent(agent)}
-        onStartAgent={handleStartAgent}
-        onStopAgent={handleStopAgent}
-        isStartingAgent={isStartingAgent === agent.id}
-        isStoppingAgent={isStoppingAgent === runningStatus?.actualAgentName}
         isMobile={currentViewMode === 'mobile'}
         monitoringEnabled={monitoringStates[agent.id] ?? false}
         monitoringToggleLoading={Boolean(monitoringLoading[agent.id])}

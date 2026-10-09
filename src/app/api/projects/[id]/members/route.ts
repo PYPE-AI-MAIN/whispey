@@ -71,6 +71,7 @@ export async function POST(
       .from('pype_voice_email_project_mapping')
       .select('role, clerk_id, email, granted_via')
       .eq('project_id', projectId)
+      .or(projectMembershipMatch(userId, userEmail, isPlatformAdmin(userEmail)))
       .or('is_active.is.null,is_active.eq.true')
 
     const userMapping = allMappings?.find((m: any) => {
@@ -109,6 +110,7 @@ export async function POST(
       .eq('email', normalizedEmail)
       .eq('project_id', projectId)
       .eq('granted_via', 'new_domain')
+      .limit(1)
       .maybeSingle()
 
     if (existingMappingError) {
@@ -184,6 +186,7 @@ export async function POST(
       .select('clerk_id')
       .eq('email', normalizedEmail)
       .not('approval_status', 'is', null)
+      .limit(1)
       .maybeSingle()
 
     if (existingUserError) {
@@ -321,15 +324,15 @@ export async function GET(
     const userEmail = user?.emailAddresses?.[0]?.emailAddress
 
     // ✅ FIXED: Check if user has ANY access to the project (not just admin)
+    // .limit(1) before .maybeSingle(): an admin's match is deliberately broad
+    // (clerk_id OR email), so a legitimate multi-row match (dual accounts
+    // sharing this email) must not turn "yes, a member" into a 500.
     const { data: userAccessMapping, error: accessError } = await supabase
       .from('pype_voice_email_project_mapping')
       .select('role, clerk_id, email, is_active')
       .eq('project_id', projectId)
       .or(projectMembershipMatch(userId, userEmail, isPlatformAdmin(userEmail)))
       .or('is_active.is.null,is_active.eq.true')
-      // .limit(1): an admin's broad email match can legitimately return
-      // more than one row (multiple clerk_ids over time) — cap to 1
-      // before .maybeSingle() so that's "yes, a member," not a 500.
       .limit(1)
       .maybeSingle()
 

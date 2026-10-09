@@ -55,7 +55,7 @@ function FlowNodeComponent({ data, id, selected }: NodeProps<any>) {
         <div className="flex-1 min-w-0">
           <div className="text-[13px] font-semibold leading-tight text-gray-900 dark:text-gray-50 truncate">{label}</div>
           {!isTerminal && (
-            <div className="text-[10px] font-medium tracking-wide uppercase text-gray-400 dark:text-gray-500 mt-0.5">
+            <div className="text-[11px] font-medium tracking-wide uppercase text-gray-400 dark:text-gray-500 mt-0.5">
               {meta?.label}
             </div>
           )}

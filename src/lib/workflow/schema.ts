@@ -10,17 +10,19 @@ import { z } from 'zod'
 export const SCHEMA_VERSION = '1.0'
 
 // ── provider blocks (mirror agent/<name>/config.yaml) ────────────────────────
+// passthrough(): the pickers write provider-specific settings (mode, keyterms, base_url, ...). Plain z.object() strips
+// every key it does not list, so they were lost on load and on every save.
 export const sttConfig = z.object({
   name: z.string().default('deepgram'),
   model: z.string().nullish(),
   language: z.string().nullish().default('en'),
-})
+}).passthrough()
 
 export const llmConfig = z.object({
   name: z.string().default('openai'),
   model: z.string().nullish(),
   temperature: z.number().nullish(),
-})
+}).passthrough()
 
 export const ttsConfig = z.object({
   name: z.string().default('elevenlabs'),
@@ -28,7 +30,7 @@ export const ttsConfig = z.object({
   language: z.string().nullish(),
   model: z.string().nullish(),
   voice_settings: z.record(z.any()).nullish(),
-})
+}).passthrough()
 
 export const vadConfig = z.object({
   name: z.string().default('silero'),
@@ -121,7 +123,7 @@ export const conversationNode = z.object({
   blockInterruptions: z.boolean().default(false),
   model: llmConfig.nullish(),
   voice: ttsConfig.nullish(),
-  functions: z.array(z.string()).default([]),
+  functions: z.array(z.string()).default([]),  maxTurns: z.number().int().min(1).nullish(),
 })
 
 export const extractionField = z.object({
@@ -133,7 +135,7 @@ export const extractVariableNode = z.object({
   ...nodeBase,
   type: z.literal('extract_variable'),
   prompt: z.string().nullish(),
-  extractions: z.array(extractionField).default([]),
+  extractions: z.array(extractionField).default([]),  maxTurns: z.number().int().min(1).nullish(),
 })
 
 export const logicSplitNode = z.object({ ...nodeBase, type: z.literal('logic_split') })
@@ -166,6 +168,7 @@ export const callTransferNode = z.object({
   transferTo: z.string().default(''),
   mode: z.enum(['cold', 'warm']).default('cold'),
   message: z.string().nullish(),
+  sipHeaders: z.record(z.any()).nullish(),
 })
 
 export const pressDigitNode = z.object({
@@ -192,7 +195,7 @@ export const subagentNode = z.object({
   prompt: z.string().default(''),
   model: llmConfig.nullish(),
   voice: ttsConfig.nullish(),
-  functions: z.array(z.string()).default([]),
+  functions: z.array(z.string()).default([]),  maxTurns: z.number().int().min(1).nullish(),
 })
 
 export const mcpNode = z.object({

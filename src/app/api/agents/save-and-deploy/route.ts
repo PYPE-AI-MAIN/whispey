@@ -4,6 +4,7 @@ import { decryptWithWhispeyKey } from '@/lib/whispey-crypto'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { deployAgentConfig } from '@/lib/deployAgentConfig'
 import { resolveDeploymentTargetForUser } from '@/lib/resolveDeploymentTarget'
+import { RAYA_PROVIDER, rayaConfigFromTts, rayaTtsPayload } from '@/lib/tts/raya'
 
 // Deploying to a running agent hot-reloads its worker on the backend (20-30s);
 // don't let Vercel kill this route at the default 10-15s.
@@ -106,6 +107,7 @@ function serializeLanguageSwitchTTSRoute(tts: any): any {
   if (tts.name === 'sarvam') return serializeSarvamLanguageSwitchTTSRoute(tts)
   if (tts.name === 'elevenlabs') return serializeElevenlabsLanguageSwitchTTSRoute(tts)
   if (tts.name === 'google') return serializeGoogleLanguageSwitchTTSRoute(tts)
+  if (tts.name === RAYA_PROVIDER) return rayaTtsPayload(tts.voice_id || '', tts.model, rayaConfigFromTts(tts))
   return { name: tts.name }
 }
 
@@ -439,7 +441,8 @@ function buildRouteSessionBehaviorPayload(formikValues: any): any {
     ...(session.user_away_timeout_max_count !== undefined && { user_away_timeout_max_count: session.user_away_timeout_max_count }),
     ...(session.user_away_timeout_end_message !== undefined && session.user_away_timeout_end_message !== null && session.user_away_timeout_end_message !== '' && {
       user_away_timeout_end_message: session.user_away_timeout_end_message
-    })
+    }),
+    ...(session.eod_silence_seconds !== undefined && session.eod_silence_seconds !== null && { eod_silence_seconds: session.eod_silence_seconds })
   }
 }
 
@@ -548,7 +551,16 @@ function transformFormDataToAgentConfig(formData: any) {
           first_message_mode: firstMessageModeConfig
         }
       ],
-      agent_id: metadata.agentId
+      agent_id: metadata.agentId,
+      // Read on every inbound call by utils/inbound_variables.py. Nothing is
+      // called unless enabled is true and a url is set.
+      inbound_variables: {
+        enabled: formikValues.advancedSettings.inboundVariables?.enabled ?? false,
+        url: formikValues.advancedSettings.inboundVariables?.url ?? '',
+        auth_header: formikValues.advancedSettings.inboundVariables?.authHeader ?? '',
+        timeout_ms: formikValues.advancedSettings.inboundVariables?.timeoutMs ?? 1000,
+        cache_ttl_s: formikValues.advancedSettings.inboundVariables?.cacheTtlS ?? 90
+      }
     }
   }
 }

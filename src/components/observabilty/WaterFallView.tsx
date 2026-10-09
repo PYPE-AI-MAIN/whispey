@@ -264,8 +264,9 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
           {traceGroups.map((traceGroup) => (
             <div key={traceGroup.trace_id}>
               {/* Trace Header */}
-              <div 
-                className="px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group"
+              <button
+                type="button"
+                className="w-full appearance-none bg-transparent text-left px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer flex items-center justify-between group"
                 onClick={() => toggleTrace(traceGroup.trace_id)}
               >
                 <div className="flex items-center gap-3">
@@ -298,7 +299,7 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
                     </span>
                   )}
                 </div>
-              </div>
+              </button>
 
               {/* Expanded Spans */}
               {expandedTraces.has(traceGroup.trace_id) && (
@@ -313,9 +314,10 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
                         const widthPercent = Math.max((span.duration_ms / traceGroup.duration_ms) * 100, 0.5);
 
                         return (
-                          <div 
+                          <button
+                            type="button"
                             key={`${traceGroup.trace_id}-span-${index}`}
-                            className="flex items-center h-8 hover:bg-white dark:hover:bg-gray-700 cursor-pointer rounded group"
+                            className="w-full appearance-none bg-transparent text-left flex items-center h-8 hover:bg-white dark:hover:bg-gray-700 cursor-pointer rounded group"
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedSpan(span);
@@ -346,11 +348,11 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
                             {/* Duration and metadata */}
                             <div className="w-32 text-right text-xs text-gray-500 dark:text-gray-400 pl-4">
                               <div className="font-mono">{formatDuration(span.duration_ms)}</div>
-                              <div className="text-[10px] uppercase font-medium px-1 py-0.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded mt-0.5 inline-block">
+                              <div className="text-[11px] uppercase font-medium px-1 py-0.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded mt-0.5 inline-block">
                                 {span.operation_type}
                               </div>
                             </div>
-                          </div>
+                          </button>
                         );
                       })}
                     </div>
@@ -363,7 +365,7 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
 
         {/* Summary */}
         <div className="mt-8 px-6 py-4 bg-gray-50/50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
-          <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Session Summary</div>
+          <div className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">Session Summary</div>
           <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
             <div>• {traceGroups.length} distinct traces executed</div>
             <div>• {totalSpans} total operations performed</div>

@@ -223,7 +223,7 @@ export function WorkflowCanvas() {
           <Panel position="top-center">
             <div className="flex items-center gap-2 h-8 px-3 rounded-full bg-violet-600 text-white shadow-lg shadow-violet-600/30">
               <Sparkles className="h-3.5 w-3.5 shrink-0 animate-pulse" />
-              <LoaderFive text="AI Builder is working…" className="text-xs" />
+              <LoaderFive text="Pi is working…" className="text-xs" />
             </div>
           </Panel>
         )}

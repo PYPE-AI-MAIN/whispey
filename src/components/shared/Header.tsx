@@ -60,7 +60,7 @@ function Header({ breadcrumb, isLoading }: HeaderProps) {
   };
 
   return (
-    <header className="bg-white/95 backdrop-blur-sm border-b border-gray-200/60 sticky top-0 z-50 shadow-sm">
+    <header className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-200/60 dark:border-gray-800/60 sticky top-0 z-50 shadow-sm">
       <div className="px-6 py-3">
         <div className="flex items-center justify-between max-w-[1600px] mx-auto">
           {/* Logo & Brand Section */}
@@ -71,11 +71,11 @@ function Header({ breadcrumb, isLoading }: HeaderProps) {
               </a>
               <Link href="/">
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', height: '32px', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '17px', fontWeight: 600, lineHeight: 1, fontFamily: '-apple-system, "Segoe UI", sans-serif', alignSelf: 'flex-start', color: '#111827' }}>
+                  <span className="text-gray-900 dark:text-gray-100" style={{ fontSize: '17px', fontWeight: 600, lineHeight: 1, fontFamily: '-apple-system, "Segoe UI", sans-serif', alignSelf: 'flex-start' }}>
                     Whispey
                   </span>
                   <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '5px' }}>
-                    <span style={{ fontSize: '10px', fontWeight: 600, fontFamily: '-apple-system, "Segoe UI", sans-serif', color: '#6D28D9' }}>by</span>
+                    <span className="text-gray-400 dark:text-gray-500" style={{ fontSize: '10px', fontWeight: 600, fontFamily: '-apple-system, "Segoe UI", sans-serif' }}>by</span>
                     <img src="/pype-wordmark.png" alt="Pype" style={{ height: '9px', width: 'auto', objectFit: 'contain' }} />
                   </div>
                 </div>
@@ -86,33 +86,33 @@ function Header({ breadcrumb, isLoading }: HeaderProps) {
             {breadcrumbState && (
               <div className="flex items-center">
                 <nav className="flex items-center gap-2 text-sm">
-                  <Link 
-                    href="/" 
-                    className="text-gray-500 hover:text-gray-900 transition-colors"
+                  <Link
+                    href="/"
+                    className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
                   >
                     Home
                   </Link>
-                  
+
                   {breadcrumbState.project && (
                     <>
-                      <ChevronRight className="w-4 h-4 text-gray-300" />
+                      <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600" />
                       {isLoading ? (
                         <Skeleton className="h-4 w-24" />
                       ) : (
-                        <span className="text-gray-900">
+                        <span className="text-gray-900 dark:text-gray-100">
                           {breadcrumbState.project}
                         </span>
                       )}
                     </>
                   )}
-                  
+
                   {breadcrumbState.item && (
                     <>
-                      <ChevronRight className="w-4 h-4 text-gray-300" />
+                      <ChevronRight className="w-4 h-4 text-gray-300 dark:text-gray-600" />
                       {isLoading ? (
                         <Skeleton className="h-4 w-32" />
                       ) : (
-                        <span className="text-gray-900">
+                        <span className="text-gray-900 dark:text-gray-100">
                           {breadcrumbState.item}
                         </span>
                       )}
@@ -130,7 +130,7 @@ function Header({ breadcrumb, isLoading }: HeaderProps) {
               href="/docs"
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-blue-600 transition-all duration-200 rounded-lg hover:bg-blue-50/50 border border-transparent hover:border-blue-100"
+              className="group flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 rounded-lg hover:bg-blue-50/50 dark:hover:bg-blue-950/30 border border-transparent hover:border-blue-100 dark:hover:border-blue-900"
             >
               <BookOpen className="w-4 h-4 transition-transform group-hover:scale-110" />
               <span className="hidden sm:inline">Docs</span>
@@ -150,7 +150,7 @@ function Header({ breadcrumb, isLoading }: HeaderProps) {
             </Link>
 
             {/* Vertical Separator */}
-            <div className="w-px h-5 bg-gray-200"></div>
+            <div className="w-px h-5 bg-gray-200 dark:bg-gray-700"></div>
 
             {/* Help Dropdown */}
             <DropdownMenu>
@@ -158,35 +158,35 @@ function Header({ breadcrumb, isLoading }: HeaderProps) {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-gray-500 hover:text-gray-700 hover:bg-gray-50 w-9 h-9 p-0 rounded-lg border border-transparent hover:border-gray-200 transition-all duration-200"
+                  className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 w-9 h-9 p-0 rounded-lg border border-transparent hover:border-gray-200 dark:hover:border-gray-700 transition-all duration-200"
                 >
                   <HelpCircle className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64 shadow-lg border border-gray-200/80 rounded-xl backdrop-blur-sm bg-white/95">
-                <div className="px-3 py-2 border-b border-gray-100">
-                  <p className="text-sm font-semibold text-gray-900">Help & Resources</p>
-                  <p className="text-xs text-gray-500 mt-0.5">Get support and documentation</p>
+              <DropdownMenuContent align="end" className="w-64 shadow-lg border border-gray-200/80 dark:border-gray-800 rounded-xl backdrop-blur-sm bg-white/95 dark:bg-gray-900/95">
+                <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Help & Resources</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Get support and documentation</p>
                 </div>
                 <div className="py-1">
                   <DropdownMenuItem asChild>
-                    <Link href="/api-reference" className="flex items-center w-full px-3 py-2 hover:bg-gray-50 rounded-lg mx-1">
-                      <Zap className="w-4 h-4 mr-3 text-yellow-600" />
+                    <Link href="/api-reference" className="flex items-center w-full px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg mx-1">
+                      <Zap className="w-4 h-4 mr-3 text-yellow-600 dark:text-yellow-500" />
                       <div>
-                        <p className="font-medium text-gray-900">API Reference</p>
-                        <p className="text-xs text-gray-500">Complete API documentation</p>
+                        <p className="font-medium text-gray-900 dark:text-gray-100">API Reference</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Complete API documentation</p>
                       </div>
                     </Link>
                   </DropdownMenuItem>
                 </div>
-                <DropdownMenuSeparator className="bg-gray-100" />
+                <DropdownMenuSeparator className="bg-gray-100 dark:bg-gray-800" />
                 <div className="py-1">
                   <DropdownMenuItem asChild>
-                    <Link href="mailto:deepesh@pypeai.com" className="flex items-center w-full px-3 py-2 hover:bg-gray-50 rounded-lg mx-1">
-                      <HelpCircle className="w-4 h-4 mr-3 text-purple-600" />
+                    <Link href="mailto:deepesh@pypeai.com" className="flex items-center w-full px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg mx-1">
+                      <HelpCircle className="w-4 h-4 mr-3 text-blue-600 dark:text-blue-400" />
                       <div>
-                        <p className="font-medium text-gray-900">Contact Support</p>
-                        <p className="text-xs text-gray-500">Get help from our team</p>
+                        <p className="font-medium text-gray-900 dark:text-gray-100">Contact Support</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Get help from our team</p>
                       </div>
                     </Link>
                   </DropdownMenuItem>
@@ -195,7 +195,7 @@ function Header({ breadcrumb, isLoading }: HeaderProps) {
             </DropdownMenu>
 
             {/* User Profile Section with Loading State */}
-            <div className="flex items-center gap-3 pl-4 ml-2 border-l border-gray-200">
+            <div className="flex items-center gap-3 pl-4 ml-2 border-l border-gray-200 dark:border-gray-700">
               {!isHydrated || !isLoaded ? (
                 // Always show skeleton during SSR and initial load
                 <>
@@ -211,17 +211,17 @@ function Header({ breadcrumb, isLoading }: HeaderProps) {
                 // Only show actual content after hydration AND Clerk is loaded
                 <SignedIn>
                   <div className="hidden sm:flex flex-col items-end">
-                    <p className="text-sm font-semibold text-gray-900 leading-none">{getUserDisplayName()}</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-none">{getUserDisplayName()}</p>
                   </div>
                   
                   <div className="relative">
                     <UserButton 
                       appearance={{
                         elements: {
-                          avatarBox: "w-9 h-9 ring-2 ring-gray-100 hover:ring-blue-200 transition-all duration-200 shadow-sm hover:shadow-md",
-                          userButtonPopoverCard: "shadow-2xl border border-gray-100 rounded-2xl backdrop-blur-sm bg-white/95",
-                          userButtonPopoverActionButton: "hover:bg-gray-50 rounded-xl transition-all duration-200 mx-1",
-                          userButtonPopoverActionButtonText: "text-gray-700 font-medium",
+                          avatarBox: "w-9 h-9 ring-2 ring-gray-100 dark:ring-gray-800 hover:ring-blue-200 dark:hover:ring-blue-900 transition-all duration-200 shadow-sm hover:shadow-md",
+                          userButtonPopoverCard: "shadow-2xl border border-gray-100 dark:border-gray-800 rounded-2xl backdrop-blur-sm bg-white/95 dark:bg-gray-900/95",
+                          userButtonPopoverActionButton: "hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl transition-all duration-200 mx-1",
+                          userButtonPopoverActionButtonText: "text-gray-700 dark:text-gray-300 font-medium",
                           userButtonPopoverFooter: "hidden",
                           userButtonPopoverActions: "p-2"
                         }
@@ -229,17 +229,17 @@ function Header({ breadcrumb, isLoading }: HeaderProps) {
                       userProfileProps={{
                         appearance: {
                           elements: {
-                            card: "shadow-2xl border border-gray-100 rounded-2xl",
-                            navbar: "bg-gray-50/80 rounded-t-2xl border-b border-gray-100",
-                            navbarButton: "text-gray-600 hover:text-gray-900 font-semibold transition-colors",
-                            headerTitle: "text-gray-900 font-bold text-lg",
-                            headerSubtitle: "text-gray-600 font-medium"
+                            card: "shadow-2xl border border-gray-100 dark:border-gray-800 rounded-2xl dark:bg-gray-900",
+                            navbar: "bg-gray-50/80 dark:bg-gray-800/60 rounded-t-2xl border-b border-gray-100 dark:border-gray-800",
+                            navbarButton: "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 font-semibold transition-colors",
+                            headerTitle: "text-gray-900 dark:text-gray-100 font-bold text-lg",
+                            headerSubtitle: "text-gray-600 dark:text-gray-400 font-medium"
                           }
                         }
                       }}
                     />
                     {/* Online Status Indicator */}
-                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-900 shadow-sm"></div>
                   </div>
                 </SignedIn>
               )}
@@ -248,7 +248,7 @@ function Header({ breadcrumb, isLoading }: HeaderProps) {
         </div>
         
         {/* Subtle bottom gradient */}
-        <div className="h-px bg-gradient-to-r from-transparent via-gray-200/50 to-transparent"></div>
+        <div className="h-px bg-gradient-to-r from-transparent via-gray-200/50 dark:via-gray-700/50 to-transparent"></div>
       </div>
     </header>
   );

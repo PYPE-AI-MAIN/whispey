@@ -1,127 +1,172 @@
 'use client'
 
-import { useParams } from 'next/navigation'
-import { useState } from 'react'
-import { useTheme } from 'next-themes'
-import { getPublicDashboardUrl } from '@/config/metabaseDashboards'
-import { BarChart3, ExternalLink, Calendar, RefreshCw } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+/**
+ * The org-view screen — Confluence "Analytics Phase 3 and 4 — Build Spec"
+ * §3.5. Replaces the public, login-free Metabase iframe that used to live at
+ * this route entirely — not extended, not embedded alongside it.
+ *
+ * Three tabs, one query engine (§3.5): Overview's fixed tiles and Explore's
+ * chart canvas both read `buildQuery.ts` through `Ctx.agentIds`, never two
+ * pipelines for the same number. Tab switching follows this codebase's own
+ * page-navigation convention (`Dashboard.tsx`) — a `?tab=` query param and
+ * plain button pills with every panel kept mounted and toggled via
+ * `hidden`/`block`, not the shadcn `Tabs` primitive, which this codebase
+ * reserves for small in-place toggles.
+ */
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
+import { Suspense, useMemo, useState } from 'react'
+import { BarChart3, ChevronRight } from 'lucide-react'
+import { useSupabaseQuery } from '@/hooks/useSupabase'
+import { OrgOverview, RangePicker } from '@/components/analytics/OrgOverview'
+import AnalyticsCanvas from '@/components/analytics/AnalyticsCanvas'
+import { JourneysTab } from '@/components/analytics/JourneysTab'
+import { AgentMultiSelect } from '@/components/analytics/AgentMultiSelect'
+import type { OverviewRange } from '@/hooks/useOrgOverview'
 
-function getDefaultDates() {
-  const now = new Date()
-  const from = new Date(now.getFullYear(), now.getMonth(), 1)
-  const to = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-  const fmt = (d: Date) => d.toISOString().split('T')[0]
-  return { from: fmt(from), to: fmt(to) }
+type Tab = 'overview' | 'explore' | 'journeys'
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'explore', label: 'Explore' },
+  { id: 'journeys', label: 'Workflows' },
+]
+
+/**
+ * Explore — Confluence "Analytics Phase 3 and 4 — Build Spec" §3.5.2. The
+ * identical canvas the per-agent page uses, just with no single `agent` — the
+ * canvas itself already generalizes to an org-wide `Ctx.agentIds` from that.
+ *
+ * `AnalyticsCanvas` takes an already-resolved `{ from, to }` as a prop rather
+ * than owning its own Period control (Dashboard.tsx's own convention: the
+ * canvas reads it, the page around it owns it) — so this reuses the exact
+ * same RangePicker the Overview tab already has, instead of a second one.
+ */
+function ExploreTab({
+  projectId,
+  isActive,
+  selectedAgentIds,
+}: Readonly<{ projectId: string; isActive: boolean; selectedAgentIds: string[] | null }>) {
+  const [range, setRange] = useState<OverviewRange>({ days: 30 })
+  const dateRange = useMemo(() => {
+    if ('from' in range) return range
+    const to = new Date()
+    const from = new Date(to)
+    from.setDate(to.getDate() - range.days)
+    const fmt = (d: Date) => d.toISOString().slice(0, 10)
+    return { from: fmt(from), to: fmt(to) }
+  }, [range])
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-end border-b border-gray-200 bg-white px-4 py-2 dark:border-gray-800 dark:bg-gray-900">
+        <RangePicker range={range} onChange={setRange} />
+      </div>
+      <div className="min-h-0 flex-1">
+        <AnalyticsCanvas
+          project={{ id: projectId }}
+          agent={null}
+          dateRange={dateRange}
+          isActive={isActive}
+          selectedAgentIds={selectedAgentIds}
+        />
+      </div>
+    </div>
+  )
 }
 
-export default function AnalyticsPage() {
+export default function OrgAnalyticsPage() {
+  return (
+    <Suspense fallback={null}>
+      <OrgAnalyticsPageContent />
+    </Suspense>
+  )
+}
+
+function OrgAnalyticsPageContent() {
   const params = useParams()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const projectId = params.projectid as string
-  const { resolvedTheme } = useTheme()
+  const requestedTab = searchParams.get('tab')
+  const activeTab = TABS.find((t) => t.id === requestedTab)?.id ?? 'overview'
 
+  const { data: projects, isLoading: projectLoading } = useSupabaseQuery('pype_voice_projects', {
+    select: 'id, name',
+    filters: [{ column: 'id', operator: 'eq', value: projectId }],
+  })
+  const project = projects?.[0]
 
-  const defaults = getDefaultDates()
-  const [dateFrom, setDateFrom] = useState(defaults.from)
-  const [dateTo, setDateTo] = useState(defaults.to)
-  const [iframeKey, setIframeKey] = useState(0)
+  // shared across all three tabs (§3.5's "Agents: All ▾") — null means every
+  // agent, which is also what keeps a newly added agent included by default
+  const { data: agents } = useSupabaseQuery<{ id: string; name: string; display_name: string | null }>('pype_voice_agents', {
+    select: 'id, name, display_name',
+    filters: [{ column: 'project_id', operator: 'eq', value: projectId }],
+    orderBy: { column: 'created_at', ascending: true },
+  })
+  const [selectedAgentIds, setSelectedAgentIds] = useState<string[] | null>(null)
 
-  const baseUrl = getPublicDashboardUrl(projectId)
-
-  const iframeSrc = baseUrl
-    ? `${baseUrl}?date_from=${dateFrom}&date_to=${dateTo}&project_id=${projectId}#hide_parameters=date_from,date_to,project_id`
-    : null
-
-  const handleRefresh = () => setIframeKey(k => k + 1)
-
-  if (!baseUrl) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center space-y-4 max-w-sm">
-          <div className="w-14 h-14 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 flex items-center justify-center mx-auto">
-            <BarChart3 className="w-7 h-7 text-gray-400" />
-          </div>
-          <div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-              No Analytics Dashboard
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">
-              Analytics haven't been configured for this organisation yet.
-            </p>
-          </div>
-        </div>
-      </div>
-    )
+  const handleTabChange = (tab: Tab) => {
+    router.push(`/${projectId}/analytics?tab=${tab}`)
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Toolbar */}
-      <div className="flex-none border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 px-6 py-3 flex items-center gap-4">
-        <div className="flex items-center gap-2 flex-1">
-          <BarChart3 className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Org Overview
-          </span>
-        </div>
+    <div className="flex h-full flex-col bg-gray-50 dark:bg-gray-900">
+      {/* Just the breadcrumb — the app's own sidebar already carries the logo,
+          Docs/Help links and the signed-in user, so repeating all of that in a
+          second header bar (the shared Header component's usual job on pages
+          with no sidebar of their own) was pure duplication here. */}
+      <div className="flex-none border-b border-gray-200 bg-white px-6 py-3 dark:border-gray-800 dark:bg-gray-900 md:px-8">
+        <nav className="flex items-center gap-2 text-sm">
+          <Link href="/" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">
+            Home
+          </Link>
+          <ChevronRight className="h-4 w-4 text-gray-300 dark:text-gray-600" />
+          <span className="text-gray-900 dark:text-gray-100">{projectLoading ? 'Loading…' : project?.name ?? 'Project'}</span>
+          <ChevronRight className="h-4 w-4 text-gray-300 dark:text-gray-600" />
+          <span className="text-gray-900 dark:text-gray-100">Analytics</span>
+        </nav>
+      </div>
 
-        {/* Date range pickers */}
-        <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-gray-400" />
-          <div className="flex items-center gap-2 text-sm">
-            <div className="flex items-center gap-1.5">
-              <label className="text-xs text-gray-500 dark:text-gray-400">From</label>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={e => setDateFrom(e.target.value)}
-                className="text-xs border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-            <span className="text-gray-400">→</span>
-            <div className="flex items-center gap-1.5">
-              <label className="text-xs text-gray-500 dark:text-gray-400">To</label>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={e => setDateTo(e.target.value)}
-                className="text-xs border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
+      <div className="flex-none border-b border-gray-200 bg-white px-6 dark:border-gray-800 dark:bg-gray-900 md:px-8">
+        <div className="flex items-center justify-between py-3">
+          <div className="flex items-center gap-1">
+            <BarChart3 className="mr-2 h-4 w-4 text-gray-400" />
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => handleTabChange(tab.id)}
+                className={`rounded-md px-3 py-1.5 text-sm ${
+                  activeTab === tab.id
+                    ? 'bg-gray-100 font-medium text-gray-900 dark:bg-gray-800 dark:text-gray-50'
+                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRefresh}
-            className="h-7 w-7 p-0 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            title="Refresh"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-          </Button>
-          <a
-            href={iframeSrc ?? '#'}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            Open in Metabase
-          </a>
+          {/* shared across all three tabs, per §3.5's wireframe — not per-tab state */}
+          <AgentMultiSelect
+            agents={(agents ?? []).map((a) => ({ id: a.id, name: a.display_name || a.name }))}
+            selected={selectedAgentIds}
+            onChange={setSelectedAgentIds}
+          />
         </div>
       </div>
 
-      {/* Iframe */}
-      <div className={`flex-1 overflow-hidden ${resolvedTheme === 'dark' ? 'bg-gray-900' : 'bg-white'}`}>
-        <iframe
-            key={`${iframeKey}-${resolvedTheme}`}
-            src={iframeSrc ?? ''}
-            className={`w-full h-full border-0 ${resolvedTheme === 'dark' ? 'invert hue-rotate-180 brightness-95' : ''}`}
-            title="Org Analytics Dashboard"
-        />
+      <div className="min-h-0 flex-1">
+        {/* every panel stays mounted; hidden ones just don't fetch, matching
+            AnalyticsCanvas's own isActive convention on the agent page */}
+        <div className={activeTab === 'overview' ? 'block h-full' : 'hidden'}>
+          <OrgOverview projectId={projectId} isActive={activeTab === 'overview'} selectedAgentIds={selectedAgentIds} />
         </div>
+        <div className={activeTab === 'explore' ? 'block h-full' : 'hidden'}>
+          <ExploreTab projectId={projectId} isActive={activeTab === 'explore'} selectedAgentIds={selectedAgentIds} />
+        </div>
+        <div className={activeTab === 'journeys' ? 'block h-full' : 'hidden'}>
+          <JourneysTab projectId={projectId} isActive={activeTab === 'journeys'} />
+        </div>
+      </div>
     </div>
   )
 }

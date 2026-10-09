@@ -123,7 +123,7 @@ export const WebCallWidget: React.FC<WebCallWidgetProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={clearError}
-                className="h-6 px-2 text-xs"
+                className="h-7 px-2 text-xs"
               >
                 ✕
               </Button>
@@ -188,7 +188,7 @@ export const WebCallWidget: React.FC<WebCallWidgetProps> = ({
 
         {/* Live Messages */}
         <div className="space-y-3">
-          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+          <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
             Live Transcript
           </h4>

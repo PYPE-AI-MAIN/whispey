@@ -1,7 +1,6 @@
 'use client'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
-import { useUser } from '@clerk/nextjs'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
@@ -28,12 +27,10 @@ import {
   Download,
   Menu,
   X,
-  Phone,
 } from 'lucide-react'
-import Overview from './Overview'
+import AnalyticsCanvas from './analytics/AnalyticsCanvas'
 import CallLogs from './calls/CallLogs'
 import CampaignLogs from './campaigns/CampaignLogs'
-import PhoneNumbersPanel from './agents/PhoneNumbersPanel'
 import Header from '@/components/shared/Header'
 import { useSupabaseQuery } from '../hooks/useSupabase'
 import FieldExtractorDialog from './FieldExtractorLogs'
@@ -164,8 +161,6 @@ function NoCallsMessage() {
   )
 }
 
-const PHONE_NUMBERS_EMAIL = 'deepesh@pypeai.com'
-
 const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -173,11 +168,6 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   const routeParams = useParams()
   const routeProjectId = Array.isArray(routeParams?.projectid) ? routeParams.projectid[0] : (routeParams?.projectid as string | undefined)
   const { isMobile } = useMobile(768)
-
-  // Gate phone-numbers tab to a specific email only
-  const { user: clerkUser } = useUser()
-  const currentEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? ''
-  const canSeePhoneNumbers = currentEmail === PHONE_NUMBERS_EMAIL || currentEmail === 'suryadipta@pypeai.com'
 
   const [vapiStatus, setVapiStatus] = useState<VapiStatus | null>(null)
   const [vapiStatusLoading, setVapiStatusLoading] = useState(false)
@@ -479,7 +469,6 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
   // Desktop header pills — only extra tabs like Campaign Logs (Overview/Logs nav is in the sub-tab bar)
   const tabs = [
     ...(isEnhancedProject ? [{ id: 'campaign-logs', label: 'Campaign Logs', icon: Database }] : []),
-    ...(canSeePhoneNumbers ? [{ id: 'phone-numbers', label: 'Phone Numbers', icon: Phone }] : []),
   ]
 
   // Full tab list used in the desktop sub-tab bar and the mobile menu
@@ -487,7 +476,6 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'logs',     label: 'All Logs', icon: List },
     ...(isEnhancedProject ? [{ id: 'campaign-logs', label: 'Campaign Logs', icon: Database }] : []),
-    ...(canSeePhoneNumbers ? [{ id: 'phone-numbers', label: 'Phone Numbers', icon: Phone }] : []),
   ]
 
   // Handle errors without blocking entire dashboard
@@ -532,12 +520,10 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
       <>
         {/* Keep all tabs mounted, just hide inactive ones */}
         <div className={activeTab === 'overview' ? 'block h-full' : 'hidden'}>
-          <Overview
+          <AnalyticsCanvas
             project={project}
             agent={agent}
             dateRange={apiDateRange}
-            quickFilter={quickFilter}
-            isCustomRange={isCustomRange}
             isLoading={agentLoading || projectLoading}
             isActive={activeTab === 'overview'}
           />
@@ -568,16 +554,6 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
           </div>
         )}
 
-        {canSeePhoneNumbers && (
-          <div className={activeTab === 'phone-numbers' ? 'block h-full' : 'hidden'}>
-            <PhoneNumbersPanel
-              agentId={agentId}
-              pipecatAgentId={agent?.configuration?.pipecat_agent_id}
-              agentName={agentDisplayName(agent)}
-              projectId={project?.id}
-            />
-          </div>
-        )}
       </>
     )
   }
@@ -587,7 +563,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
       {/* Header - Mobile optimized */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
         <div className={`${isMobile ? 'px-4 py-3' : 'px-8 py-3'}`}>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-y-2">
             {/* Left: Navigation & Identity */}
             <div className="flex items-center gap-4">
               <button 
@@ -723,7 +699,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
 
             {/* Right: Controls or Mobile Menu Button */}
             {!showQuickStart && !showNoCallsMessage && (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center flex-wrap justify-end gap-4">
                 {isMobile ? (
                   /* Mobile Menu Button */
                   <button

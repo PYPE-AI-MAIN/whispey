@@ -53,6 +53,10 @@ async function fetchClerkUserEmail(clerkId: string): Promise<string | null> {
 const isApprovalGateExemptRoute = createRouteMatcher([
   '/pending-approval(.*)',
   '/api/me/status(.*)',
+  // LayoutContent's self-heal (check row -> create row) must stay reachable,
+  // otherwise a signup the webhook missed can never get its pending row.
+  '/api/user/users',
+  '/api/user/create',
 ]);
 
 // Define which routes are public (don't require authentication)
@@ -75,10 +79,15 @@ const isPublicRoute = createRouteMatcher([
   '/api/logs/call-logs(.*)',
   '/api/logs/failure-report(.*)',
   '/api/send-logs(.*)',
+  '/api/journeys/events(.*)',
   // Public playground needs these without a Clerk session
   '/api/agents/status(.*)',
   '/api/agent-config(.*)',
   '/api/agents/:id/update-voice',
+  // Studio secret is checked in the handler. Clerk must not see these calls:
+  // protect() rewrites a non-session Authorization to /clerk_* (HTTP 404).
+  '/api/mcp(.*)',
+  '/api/askpi(.*)',
 ]);
 
 // GET-only reads the public playground needs (PATCH/DELETE on the same path must stay protected)

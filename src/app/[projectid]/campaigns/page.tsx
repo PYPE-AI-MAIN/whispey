@@ -366,6 +366,9 @@ function Campaigns() {
           <div
             key={campaign.campaignId}
             onClick={() => router.push(`/${projectId}/campaigns/${campaign.campaignId}`)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push(`/${projectId}/campaigns/${campaign.campaignId}`) } }}
             className={`relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700
               rounded-lg p-4 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm
               transition-all cursor-pointer group
@@ -575,9 +578,9 @@ function Campaigns() {
           </div>
 
           {selectedCampaign && (
-            <div className="p-6 space-y-6">
+            <div className="p-4 sm:p-6 space-y-6">
               {/* Header */}
-              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 sm:p-6">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
                   {selectedCampaign.campaignName}
                 </h3>
@@ -591,23 +594,23 @@ function Campaigns() {
               </div>
 
               {/* Info */}
-              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-                <h4 className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider mb-4">Campaign Information</h4>
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 sm:p-6">
+                <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-4">Campaign Information</h4>
                 <InfoRow label="Campaign ID"  value={<span className="font-mono">{selectedCampaign.campaignId}</span>} />
                 <InfoRow label="Project ID"   value={<span className="font-mono">{selectedCampaign.projectId}</span>} />
                 <InfoRow label="Provider"     value={selectedCampaign.callConfig.provider} />
               </div>
 
               {/* Agent */}
-              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-                <h4 className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider mb-4">Agent Details</h4>
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 sm:p-6">
+                <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-4">Agent Details</h4>
                 <InfoRow label="Agent Name"  value={resolveStoredAgentName(agents, selectedCampaign.callConfig.agentName)} />
                 <InfoRow label="SIP Trunk"   value={<span className="font-mono">{selectedCampaign.callConfig.sipTrunkId}</span>} />
               </div>
 
               {/* Metrics */}
-              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-                <h4 className="text-xs font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wider mb-5">Performance Metrics</h4>
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 sm:p-6">
+                <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-5">Performance Metrics</h4>
                 <div className="space-y-4">
                   <MetricRow label="Total Contacts" value={selectedCampaign.callStats?.total   ?? selectedCampaign.totalContacts} />
                   <MetricRow label="Successful"      value={selectedCampaign.callStats?.completed ?? selectedCampaign.successCalls} color="text-green-600 dark:text-green-400" />

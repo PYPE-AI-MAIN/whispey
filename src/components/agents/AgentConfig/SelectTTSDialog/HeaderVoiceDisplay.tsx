@@ -2,12 +2,14 @@ import React from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Settings } from 'lucide-react'
+import type { RayaVoice } from '@/lib/tts/raya'
+import { getTtsProvider, normalizeTtsProvider } from './providers'
 
 interface SarvamVoice {
   id: string;
   name: string;
   language: string;
-  gender: 'Male' | 'Female';
+  gender?: 'Male' | 'Female';
   style: string;
   accent: string;
   description: string;
@@ -34,24 +36,16 @@ interface HeaderVoiceDisplayProps {
   allSarvamVoices: (SarvamVoice & { compatibleModels: string[] })[];
   elevenLabsVoices: ElevenLabsVoice[];
   googleTTSVoices?: GoogleTTSVoice[];
+  rayaVoices?: RayaVoice[];
   showSettings: boolean;
   onToggleSettings: () => void;
 }
 
-const VoiceAvatar = ({ name, variant = 'default' }: { name: string, variant?: 'sarvam' | 'elevenlabs' | 'google' | 'default' }) => {
-  const getGradient = () => {
-    if (variant === 'sarvam') return 'bg-gradient-to-br from-orange-400 to-red-500'
-    if (variant === 'elevenlabs') return 'bg-gradient-to-br from-purple-400 to-purple-600'
-    if (variant === 'google') return 'bg-gradient-to-br from-blue-400 to-blue-600'
-    return 'bg-gradient-to-br from-blue-400 to-blue-600'
-  }
-
-  return (
-    <div className={`w-4 h-4 rounded-full flex items-center justify-center text-white font-semibold text-xs ${getGradient()}`}>
-      {name.charAt(0).toUpperCase()}
-    </div>
-  )
-}
+const VoiceAvatar = ({ name, dot }: { name: string, dot: string }) => (
+  <div className={`w-4 h-4 rounded-full flex items-center justify-center text-white font-semibold text-xs bg-gradient-to-br ${dot}`}>
+    {name.charAt(0).toUpperCase()}
+  </div>
+)
 
 const HeaderVoiceDisplay: React.FC<HeaderVoiceDisplayProps> = ({
   selectedVoiceId,
@@ -59,13 +53,16 @@ const HeaderVoiceDisplay: React.FC<HeaderVoiceDisplayProps> = ({
   allSarvamVoices,
   elevenLabsVoices,
   googleTTSVoices = [],
+  rayaVoices = [],
   showSettings,
   onToggleSettings
 }) => {
   if (!selectedVoiceId || !selectedProvider) return null
 
   // Normalize provider name for consistent comparison
-  const normalizedProvider = selectedProvider === 'sarvam_tts' ? 'sarvam' : selectedProvider
+  const normalizedProvider = normalizeTtsProvider(selectedProvider)
+  // An unrecognised provider keeps the ElevenLabs look it has always had.
+  const meta = getTtsProvider(normalizedProvider) ?? getTtsProvider('elevenlabs')!
 
   // Find voice name from the correct provider
   let selectedVoiceName = 'Voice'
@@ -75,28 +72,21 @@ const HeaderVoiceDisplay: React.FC<HeaderVoiceDisplayProps> = ({
     selectedVoiceName = elevenLabsVoices.find(v => v.voice_id === selectedVoiceId)?.name || 'Voice'
   } else if (normalizedProvider === 'google') {
     selectedVoiceName = googleTTSVoices.find(v => v.name === selectedVoiceId)?.displayName || 'Voice'
+  } else if (normalizedProvider === 'raya') {
+    selectedVoiceName = rayaVoices.find(v => v.id === selectedVoiceId)?.name || 'Voice'
   }
 
   return (
     <div className="flex items-start gap-3">
-      <div className={`px-3 py-2 rounded-lg border ${
-        normalizedProvider === 'sarvam' 
-          ? 'bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800' 
-          : normalizedProvider === 'google'
-          ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'
-          : 'bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800'
-      }`}>
+      <div className={`px-3 py-2 rounded-lg border ${meta.chip}`}>
         <div className="flex items-center gap-2">
-          <VoiceAvatar 
-            name={selectedVoiceName} 
-            variant={normalizedProvider === 'sarvam' ? 'sarvam' : normalizedProvider === 'google' ? 'google' : 'elevenlabs'} 
-          />
+          <VoiceAvatar name={selectedVoiceName} dot={meta.dot} />
           <div className="text-xs">
             <span className="font-medium text-gray-900 dark:text-gray-100">
               {selectedVoiceName}
             </span>
             <Badge variant="secondary" className="ml-2 text-xs">
-              {normalizedProvider === 'sarvam' ? 'Sarvam' : normalizedProvider === 'google' ? 'Google TTS' : 'ElevenLabs'}
+              {meta.label}
             </Badge>
           </div>
         </div>

@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react"
 import { AGENT_DEFAULT_CONFIG, getFallback, getFormDefaults } from "@/config/agentDefaults"
 import { languageOptions } from "@/utils/constants"
+import { RAYA_PROVIDER, rayaConfigFromTts } from "@/lib/tts/raya"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 
 // Interface definitions remain the same...
@@ -182,6 +183,7 @@ export interface AgentConfigResponse {
         user_away_timeout_message?: string
         user_away_timeout_max_count?: number
         user_away_timeout_end_message?: string
+        eod_silence_seconds?: number
       }
       dynamic_tts?: Array<{
         tool_name: string
@@ -305,35 +307,81 @@ const saveAgentDraft = async (data: any) => {
   return response.json()
 }
 
-// Poll interval and max wait for the background update to finish. The
-// backend runs the actual stop/start cycle in a thread and returns progress
-// immediately on each poll, so this loop just waits for a terminal state —
-// it never risks a request timeout the way the old single blocking call did.
+// Backend runs the update in a background thread, so this just polls until
+// a terminal state — no request-timeout risk from one long blocking call.
 const UPDATE_POLL_INTERVAL_MS = 2000
-const UPDATE_POLL_MAX_MS = 3 * 60 * 1000
+const UPDATE_POLL_HARD_MS = 15 * 60 * 1000
+const UNTRACKED_POLLS_LIMIT = 5 // ~10s of "no_update_found" in a row
 
 const TERMINAL_UPDATE_STATUSES = new Set(["completed", "failed", "rolled_back"])
 
-async function pollUpdateStatus(agentName: string): Promise<any> {
-  const deadline = Date.now() + UPDATE_POLL_MAX_MS
+/** Thrown when we stop polling without a terminal answer — distinct from a real failure. */
+export class UpdateStillInProgressError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "UpdateStillInProgressError"
+  }
+}
 
-  while (Date.now() < deadline) {
+const updateStatusUrl = (agentName: string) => `/api/agents/update-status/${encodeURIComponent(agentName)}`
+
+async function fetchWorkerPid(agentName: string): Promise<number | null> {
+  try {
+    const res = await fetch(`/api/agents/status/${encodeURIComponent(agentName)}`)
+    if (!res.ok) return null
+    const data = await res.json()
+    return data?.is_active && data?.worker_pid ? data.worker_pid : null
+  } catch {
+    return null
+  }
+}
+
+// The backend's update tracker gets wiped by any backend restart, so instead
+// of trusting it we poll ground truth: has the agent's PID actually changed?
+// update_status is only used for the progress label, not for pass/fail.
+async function pollUpdateStatus(agentName: string): Promise<any> {
+  const hardDeadline = Date.now() + UPDATE_POLL_HARD_MS
+  const baselinePid = await fetchWorkerPid(agentName)
+  let untrackedPolls = 0
+
+  while (Date.now() < hardDeadline) {
     await new Promise((r) => setTimeout(r, UPDATE_POLL_INTERVAL_MS))
 
-    const res = await fetch(`/api/agents/update-status/${encodeURIComponent(agentName)}`)
-    if (!res.ok) continue // transient — keep polling until the deadline
+    const currentPid = await fetchWorkerPid(agentName)
+    if (currentPid && currentPid !== baselinePid) {
+      return { status: "completed", success: true, pid: currentPid }
+    }
+
+    const res = await fetch(updateStatusUrl(agentName)).catch(() => null)
+    if (!res?.ok) continue // transient — ground truth check above keeps running regardless
 
     const status = await res.json()
-    if (status.status === "no_update_found" || status.status === "unreachable") continue
+    // Updates apply in place now, so the PID may never change. If the backend has
+    // no record of the update for a while, it isn't running it — stop waiting.
+    if (status.status === "no_update_found") {
+      if (++untrackedPolls < UNTRACKED_POLLS_LIMIT) continue
+      if (currentPid) return { status: "completed", success: true, pid: currentPid }
+      break
+    }
+    untrackedPolls = 0
+    if (status.status === "unreachable") continue
     if (TERMINAL_UPDATE_STATUSES.has(status.status)) {
-      if (status.status !== "completed" || status.success === false) {
-        throw new Error(status.error || `Agent update ended with status: ${status.status}`)
-      }
-      return status
+      if (status.status === "completed" && status.success !== false) return status
+      // A live-tracked failure (not a restart artifact — those come back as
+      // "no_update_found" now) — a real validation/update error, surface it.
+      throw new Error(status.error || `Agent update ended with status: ${status.status}`)
     }
   }
 
-  throw new Error("Timed out waiting for agent update to complete")
+  // Last chance: the agent may have come back up in the final poll interval.
+  const finalPid = await fetchWorkerPid(agentName)
+  if (finalPid && finalPid !== baselinePid) {
+    return { status: "completed", success: true, pid: finalPid }
+  }
+
+  throw new UpdateStillInProgressError(
+    "Couldn't confirm the update finished. Refresh to check, or test and publish again."
+  )
 }
 
 function extractAgentName(data: any): string | undefined {
@@ -361,7 +409,7 @@ export function useResumeInProgressUpdate(
     if (!agentName) return
     let cancelled = false
 
-    fetch(`/api/agents/update-status/${encodeURIComponent(agentName)}`)
+    fetch(updateStatusUrl(agentName))
       .then((res) => (res.ok ? res.json() : null))
       .then((status) => {
         if (cancelled || !status) return
@@ -380,7 +428,90 @@ export function useResumeInProgressUpdate(
   return isResuming
 }
 
-const saveAndDeployAgent = async (data: any) => {
+const UPDATE_STAGE_LABELS: Record<string, string> = {
+  pending: "Queued…",
+  validating: "Validating config…",
+  stopping: "Stopping current worker…",
+  updating: "Applying new config…",
+  starting: "Starting worker with new config…",
+  verifying: "Verifying it came back up…",
+}
+
+// Short, friendly text shown in the Update Config button while publishing.
+const UPDATE_STAGE_DETAILS: Record<string, string> = {
+  [UPDATE_STAGE_LABELS.pending]: "Getting ready…",
+  [UPDATE_STAGE_LABELS.validating]: "Checking your changes…",
+  [UPDATE_STAGE_LABELS.stopping]: "Wrapping up…",
+  [UPDATE_STAGE_LABELS.updating]: "Applying your changes…",
+  [UPDATE_STAGE_LABELS.starting]: "Warming up…",
+  [UPDATE_STAGE_LABELS.verifying]: "Finishing up…",
+}
+
+/** Friendly button text for a stage label. */
+export function updateStageDetail(label: string | null | undefined): string {
+  return (label && UPDATE_STAGE_DETAILS[label]) || "Publishing…"
+}
+
+/** Live label for the backend's current publish stage, or null to show the default. */
+export function useUpdateProgressLabel(agentName: string | null | undefined, active: boolean) {
+  const [label, setLabel] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!active || !agentName) {
+      setLabel(null)
+      return
+    }
+
+    let cancelled = false
+
+    const poll = () => {
+      fetch(updateStatusUrl(agentName))
+        .then((res) => (res.ok ? res.json() : null))
+        .then((status) => {
+          if (!cancelled && status) setLabel(UPDATE_STAGE_LABELS[status.status] ?? null)
+        })
+        .catch(() => {
+          // transient — keep whatever label was last shown
+        })
+    }
+
+    poll()
+    const interval = setInterval(poll, UPDATE_POLL_INTERVAL_MS)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
+  }, [agentName, active])
+
+  return label
+}
+
+/**
+ * One-shot check for whether a deploy is currently in progress for this
+ * agent — no background polling. Call this right before letting someone
+ * start a call, so a deploy triggered externally (e.g. through the MCP)
+ * still gets caught, without ever running a poll loop the rest of the time.
+ */
+export async function checkUpdateInProgress(
+  agentName: string
+): Promise<{ inProgress: boolean; label: string | null }> {
+  try {
+    const res = await fetch(updateStatusUrl(agentName))
+    if (!res.ok) return { inProgress: false, label: null }
+    const status = await res.json()
+    const inProgress = !!status && NON_TERMINAL_UPDATE_STATUSES.has(status.status)
+    return { inProgress, label: inProgress ? (UPDATE_STAGE_LABELS[status.status] ?? null) : null }
+  } catch {
+    // transient — don't block a call over a failed status check
+    return { inProgress: false, label: null }
+  }
+}
+
+// Exported for callers outside the big config form (e.g. Agent Studio's voice
+// picker) that need the same "wait for the redeploy to actually finish, not
+// just for the request to be accepted" behavior without pulling in the whole
+// useAgentMutations/form-state machinery.
+export const saveAndDeployAgent = async (data: any) => {
   const response = await fetch("/api/agents/save-and-deploy", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -640,7 +771,7 @@ function deriveBackgroundAudioMode(backgroundAudio: any): 'disabled' | 'single' 
   return 'disabled'
 }
 
-function deriveTtsVoiceConfig(tts: any): any {
+export function deriveTtsVoiceConfig(tts: any): any {
   if (!tts?.name) return {}
 
   if (tts.name === "sarvam" || tts.name === "sarvam_tts") {
@@ -672,6 +803,8 @@ function deriveTtsVoiceConfig(tts: any): any {
     }
   }
 
+  if (tts.name === RAYA_PROVIDER) return rayaConfigFromTts(tts)
+
   return {}
 }
 
@@ -687,7 +820,7 @@ function deriveSttConfig(stt: any): any {
   }
 }
 
-function deriveFallbackTtsVoiceConfig(fb: any): any {
+export function deriveFallbackTtsVoiceConfig(fb: any): any {
   if (!fb) return {}
   const name = fb.name
   if (name === 'sarvam' || name === 'sarvam_tts') {
@@ -705,6 +838,7 @@ function deriveFallbackTtsVoiceConfig(fb: any): any {
       gender: fb.gender,
     }
   }
+  if (name === RAYA_PROVIDER) return rayaConfigFromTts(fb)
   // ElevenLabs or any other provider
   return {
     voiceId: fb.voice_id || '',
@@ -765,7 +899,7 @@ function deriveKnowledgeBaseConfig(assistant: any): any {
   }
 }
 
-export const buildFormValuesFromAgent = (assistant: any) => {
+export const buildFormValuesFromAgent = (assistant: any, agent?: any) => {
   const llmConfig = assistant.llm || {}
   const modelValue = llmConfig.model || getFallback(null, 'llm.model')
   const providerValue = llmConfig.provider || llmConfig.name || getFallback(null, 'llm.name')
@@ -870,6 +1004,7 @@ export const buildFormValuesFromAgent = (assistant: any) => {
         user_away_timeout_message: sessionBehavior.user_away_timeout_message !== undefined && sessionBehavior.user_away_timeout_message !== null && sessionBehavior.user_away_timeout_message !== '' ? sessionBehavior.user_away_timeout_message : undefined,
         user_away_timeout_max_count: sessionBehavior.user_away_timeout_max_count !== undefined && sessionBehavior.user_away_timeout_max_count !== null ? sessionBehavior.user_away_timeout_max_count : undefined,
         user_away_timeout_end_message: sessionBehavior.user_away_timeout_end_message !== undefined && sessionBehavior.user_away_timeout_end_message !== null && sessionBehavior.user_away_timeout_end_message !== '' ? sessionBehavior.user_away_timeout_end_message : undefined,
+        eod_silence_seconds: sessionBehavior.eod_silence_seconds ?? undefined
       },
       tools: {
         languageSwitchTools: (assistant.tools || [])
@@ -889,6 +1024,15 @@ export const buildFormValuesFromAgent = (assistant: any) => {
       },
       contextMemory: {
         enabled: assistant.context_memory?.enabled ?? false,
+      },
+      // Agent-level, not per-assistant — so it comes from `agent`, not `assistant`.
+      // Without this the settings save correctly but come back empty on reload.
+      inboundVariables: {
+        enabled: agent?.inbound_variables?.enabled ?? false,
+        url: agent?.inbound_variables?.url ?? '',
+        authHeader: agent?.inbound_variables?.auth_header ?? '',
+        timeoutMs: agent?.inbound_variables?.timeout_ms ?? 1000,
+        cacheTtlS: agent?.inbound_variables?.cache_ttl_s ?? 90,
       },
       backgroundAudio: {
         mode: backgroundAudioMode,

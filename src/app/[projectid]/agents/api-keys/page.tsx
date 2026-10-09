@@ -285,7 +285,7 @@ const ApiKeys = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => setShowFullKey(!showFullKey)}
-                              className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                              className="h-7 w-7 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                             >
                               {showFullKey ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                             </Button>
@@ -293,7 +293,7 @@ const ApiKeys = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleCopyKey(apiKey.full_key || '')}
-                              className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                              className="h-7 w-7 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                             >
                               <Copy className="w-3 h-3" />
                             </Button>
@@ -431,7 +431,7 @@ const ApiKeys = () => {
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowFullKey(!showFullKey)}
-                    className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                    className="h-7 w-7 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                   >
                     {showFullKey ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                   </Button>
@@ -439,7 +439,7 @@ const ApiKeys = () => {
                     variant="ghost"
                     size="sm"
                     onClick={() => handleCopyKey(showViewKeyDialog.full_key || '')}
-                    className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                    className="h-7 w-7 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                   >
                     <Copy className="w-3 h-3" />
                   </Button>
@@ -499,7 +499,7 @@ const ApiKeys = () => {
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowFullKey(!showFullKey)}
-                    className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                    className="h-7 w-7 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                   >
                     {showFullKey ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                   </Button>
@@ -507,7 +507,7 @@ const ApiKeys = () => {
                     variant="ghost"
                     size="sm"
                     onClick={() => handleCopyKey(newKeyData.full_key || '')}
-                    className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                    className="h-7 w-7 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                   >
                     <Copy className="w-3 h-3" />
                   </Button>

@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Plus, Trash2, Edit2, Languages, AlertTriangle, Info } from 'lucide-react'
 import SelectTTS from '../SelectTTSDialog'
 import SelectSTT from '../SelectSTTDialog'
+import { RAYA_PROVIDER, rayaConfigFromTts, rayaTtsPayload } from '@/lib/tts/raya'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -243,6 +244,8 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
         voice_name: voiceId,
         ...(config?.gender && { gender: config.gender }),
       }
+    } else if (normalizedProvider === RAYA_PROVIDER) {
+      tts = rayaTtsPayload(voiceId, model, config)
     }
 
     setDraft(prev => ({ ...prev, tts }))
@@ -270,6 +273,8 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
       }
     } else if (t.name === 'google') {
       return { voice_name: t.voice_name || '', gender: t.gender }
+    } else if (t.name === RAYA_PROVIDER) {
+      return rayaConfigFromTts(t)
     }
     return undefined
   }
@@ -383,6 +388,7 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
                   {draft.tts.name === 'sarvam' && `Sarvam · ${draft.tts.model || ''} · ${draft.tts.speaker || ''}`}
                   {draft.tts.name === 'elevenlabs' && `ElevenLabs · ${draft.tts.model || ''}`}
                   {draft.tts.name === 'google' && `Google · ${draft.tts.voice_name || ''}`}
+                  {draft.tts.name === RAYA_PROVIDER && `Raya · ${draft.tts.model || ''} · ${draft.tts.language || ''}`}
                 </p>
               )}
               <div className="flex items-center justify-between pt-1">
@@ -477,7 +483,7 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
             <Button
               onClick={handleSave}
-              className="bg-purple-600 hover:bg-purple-700 text-white"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               {editingIndex === null ? 'Add' : 'Update'} Language Switch
             </Button>
@@ -509,7 +515,7 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <Languages className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" />
+                  <Languages className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
                   <span className="text-sm font-medium text-gray-900 dark:text-gray-100 font-mono">
                     {entry.tool_name}
                   </span>
@@ -547,7 +553,7 @@ function Section({ title, children }: Readonly<{ title: string; children: React.
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{title}</h4>
+        <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">{title}</h4>
         <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
       </div>
       {children}

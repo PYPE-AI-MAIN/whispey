@@ -73,7 +73,7 @@ export default function DownloadSettingsDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3 flex items-start justify-between gap-3">
+          <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-3 flex items-start justify-between gap-3">
             <div>
               <p className="text-xs font-medium text-gray-800 dark:text-gray-200">
                 Allow non-superadmins to download call logs
@@ -85,7 +85,7 @@ export default function DownloadSettingsDialog({
             <Switch checked={enabled} onCheckedChange={setEnabled} className="flex-shrink-0 mt-0.5" />
           </div>
 
-          <div className={`rounded-lg border border-gray-200 dark:border-gray-800 p-3 transition-opacity ${enabled ? '' : 'opacity-50'}`}>
+          <div className={`rounded-xl border border-gray-200 dark:border-gray-800 p-3 transition-opacity ${enabled ? '' : 'opacity-50'}`}>
             <div className="flex items-start gap-2 mb-2">
               <ShieldAlert className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
               <p className="text-[11px] text-gray-600 dark:text-gray-400">
@@ -97,11 +97,11 @@ export default function DownloadSettingsDialog({
 
             <div
               aria-disabled={!enabled}
-              className={`rounded-lg border border-gray-200 dark:border-gray-800 max-h-56 overflow-y-auto p-2 space-y-2 ${enabled ? '' : 'pointer-events-none'}`}
+              className={`rounded-xl border border-gray-200 dark:border-gray-800 max-h-56 overflow-y-auto p-2 space-y-2 ${enabled ? '' : 'pointer-events-none'}`}
             >
               {basicCols.length > 0 && (
                 <div className="space-y-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 px-1">Basic columns</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 px-1">Basic columns</p>
                   {basicCols.map(col => (
                     <CheckboxRow key={col.key} checked={restricted.has(col.key)} onToggle={() => toggle(col.key)} label={col.label} />
                   ))}
@@ -111,7 +111,7 @@ export default function DownloadSettingsDialog({
               {extraCols.length > 0 && (
                 <div className="space-y-1">
                   {basicCols.length > 0 && <div className="border-t border-gray-100 dark:border-gray-800 pt-1.5" />}
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 px-1">Sensitive columns</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 px-1">Sensitive columns</p>
                   {extraCols.map(col => (
                     <CheckboxRow key={col.key} checked={restricted.has(col.key)} onToggle={() => toggle(col.key)} label={col.label} />
                   ))}

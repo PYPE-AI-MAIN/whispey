@@ -917,6 +917,8 @@ export default function PipecatAgentConfig({
                   initialModel={ttsModel}
                   initialConfig={ttsConfig}
                   onVoiceSelect={handleVoiceSelect}
+                  // Pipecat's runtime has no Raya plugin; offering it would save an agent that can't speak.
+                  excludeProviders={['raya']}
                 />
               </div>
             </div>
@@ -1139,6 +1141,18 @@ export default function PipecatAgentConfig({
               <div
                 className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                 onClick={() => {
+                  const unmapped = detectedVarNames.filter(n => !(n in variables))
+                  setVariables(v => {
+                    const next = { ...v }
+                    unmapped.forEach(n => { if (!(n in next)) next[n] = '' })
+                    return next
+                  })
+                }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter' && e.key !== ' ') return
+                  e.preventDefault()
                   const unmapped = detectedVarNames.filter(n => !(n in variables))
                   setVariables(v => {
                     const next = { ...v }

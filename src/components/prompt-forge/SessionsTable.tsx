@@ -31,7 +31,7 @@ export function SessionsTable({
     <div>
       {/* Section header */}
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+        <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
           Sessions
         </span>
         <span className="text-[11px] text-gray-400 dark:text-gray-500">
@@ -69,7 +69,7 @@ function SessionsSkeleton() {
         {[...Array(4)].map((_, i) => (
           <div
             key={i}
-            className="flex items-center gap-4 px-5 py-4 bg-gray-900 border border-gray-800 rounded-xl"
+            className="flex items-center gap-4 px-5 py-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm"
           >
             <Skeleton className="w-9 h-9 rounded-lg flex-shrink-0" />
             <div className="flex-1 min-w-0">

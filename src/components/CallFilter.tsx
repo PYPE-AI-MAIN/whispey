@@ -115,8 +115,9 @@ const OPERATIONS = {
     { value: 'equals',   label: 'Exact match'  },
   ],
   flag:   [
-    { value: 'contains', label: 'Contains text' },
-    { value: 'exists',   label: 'Has any flag'  },
+    { value: 'contains',    label: 'Contains text'      },
+    { value: 'flagged_by',  label: 'Flagged by (email)' },
+    { value: 'exists',      label: 'Has any flag'       },
   ],
   jsonb:  [
     { value: 'json_equals',       label: 'Equals'       },

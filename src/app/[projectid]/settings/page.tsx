@@ -5,7 +5,6 @@ import { useParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
 import OrganizationSettings from "@/components/projects/OrganizationSettings"
-import CallbackSettings from "@/components/projects/CallbackSettings"
 import { Loader2 } from 'lucide-react'
 
 export default function SettingsPage() {
@@ -65,18 +64,21 @@ export default function SettingsPage() {
     )
   }
 
+  // Plain block flow, no h-full/flex-1 chain: the shared SidebarWrapper shell
+  // already gives every page one scroll container (<main class="overflow-auto">),
+  // and a multi-level flex-1/min-h-0 chain trying to make only the member
+  // table scroll turned out to fail silently on at least one real mobile
+  // browser — the table resolved to zero height and was invisible, with no
+  // error, because a child's min-height can't force a zero-height flex
+  // ancestor to expand once overflow-hidden clips it. A plain page that just
+  // grows, with the table given its own fixed vh-based height (immune to any
+  // ancestor's height math) is far less clever but cannot fail this way.
   return (
-    <div className="space-y-6 p-6 max-w-3xl mx-auto">
+    <div className="max-w-5xl mx-auto space-y-6 p-4 sm:p-6">
       <OrganizationSettings
         organizationName={organization.name}
         organizationId={organization.id}
       />
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Callback Scheduling</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Callback scheduling is now configured per-agent. Open an agent &rarr; Advanced Settings &rarr; Callback Scheduling.
-        </p>
-      </div>
     </div>
   )
 }

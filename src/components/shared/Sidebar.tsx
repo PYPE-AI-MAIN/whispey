@@ -8,6 +8,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { 
   ArrowLeft,
@@ -31,6 +32,7 @@ import {
   Link as LinkIcon,
   User,
   Shield,
+  ShieldCheck,
   UserPlus,
   TrendingUp,
   BarChart,
@@ -42,7 +44,8 @@ import {
   PanelRightClose,
   BookOpen,
   FlaskConical,
-  GitBranch
+  GitBranch,
+  Pi
 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -53,14 +56,14 @@ import ProjectCreationDialog from '../projects/ProjectCreationDialog'
 
 // Extended icon mapping to support new page types
 const ICONS = {
-  Activity, 
-  BarChart3, 
-  Settings, 
-  Key, 
-  Users, 
-  List, 
-  FileText, 
-  Home, 
+  Activity,
+  BarChart3,
+  Settings,
+  Key,
+  Users,
+  List,
+  FileText,
+  Home,
   Webhook,
   Phone,
   Download,
@@ -68,6 +71,7 @@ const ICONS = {
   Link: LinkIcon,
   User,
   Shield,
+  ShieldCheck,
   UserPlus,
   TrendingUp,
   BarChart,
@@ -77,7 +81,8 @@ const ICONS = {
   X,
   BookOpen,
   FlaskConical,
-  GitBranch
+  GitBranch,
+  Pi
 } as const
 
 interface NavigationItem {
@@ -87,6 +92,8 @@ interface NavigationItem {
   path: string
   external?: boolean
   group?: string
+  disabled?: boolean
+  badge?: string
 }
 
 interface NavigationGroup {
@@ -324,6 +331,17 @@ function renderContextHeader(config: SidebarConfig, isCollapsed: boolean, isMobi
   return null
 }
 
+function navItemTone(disabled: boolean | undefined, isActive: boolean): string {
+  if (disabled) return 'cursor-not-allowed text-gray-400 dark:text-gray-600'
+  if (isActive) return 'cursor-pointer bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+  return 'cursor-pointer text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
+}
+
+function navIconTone(disabled: boolean | undefined, isActive: boolean): string {
+  if (disabled) return 'text-gray-300 dark:text-gray-700'
+  return isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'
+}
+
 function renderNavigationItem(
   item: NavigationItem,
   opts: {
@@ -351,19 +369,36 @@ function renderNavigationItem(
 
   const content = (
     <div className={`
-      flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer
-      ${isActive
-        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
-        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-      }
+      flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200
+      ${navItemTone(item.disabled, isActive)}
       ${isCollapsed && !isMobile ? 'justify-center px-2' : ''}
     `}>
-      <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`} />
+      <Icon className={`w-4 h-4 flex-shrink-0 ${navIconTone(item.disabled, isActive)}`} />
       {(!isCollapsed || isMobile) && (
-        <span className="truncate">{item.name}</span>
+        <>
+          <span className="truncate">{item.name}</span>
+          {item.badge && (
+            <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0 h-4 font-medium rounded-full">{item.badge}</Badge>
+          )}
+        </>
       )}
     </div>
   )
+
+  if (item.disabled) {
+    const disabledItem = <div key={item.id} aria-disabled="true">{content}</div>
+    if (isCollapsed && !isMobile) {
+      return (
+        <TooltipProvider key={item.id}>
+          <Tooltip>
+            <TooltipTrigger asChild>{disabledItem}</TooltipTrigger>
+            <TooltipContent side="right"><p>{item.name} ({item.badge ?? 'Beta'})</p></TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )
+    }
+    return disabledItem
+  }
 
   const navItem = item.external ? (
     <a key={item.id} href={item.path} target="_blank" rel="noopener noreferrer" onClick={handleClick}>
@@ -575,14 +610,14 @@ export default function Sidebar({
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', height: '32px', justifyContent: 'space-between' }}>
                     <span
-                      className="text-[#111827] dark:text-[#F3F4F6]"
+                      className="text-gray-900 dark:text-gray-100"
                       style={{ fontSize: '17px', fontWeight: 600, lineHeight: 1, fontFamily: '-apple-system, "Segoe UI", sans-serif', alignSelf: 'flex-start' }}
                     >
                       Whispey
                     </span>
                     <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '5px' }}>
                       <span
-                        className="text-[#6D28D9] dark:text-[#8B7BC9]"
+                        className="text-gray-400 dark:text-gray-500"
                         style={{ fontSize: '10px', fontWeight: 600, fontFamily: '-apple-system, "Segoe UI", sans-serif' }}
                       >
                         by
@@ -593,6 +628,7 @@ export default function Sidebar({
                 </Link>
               </div>
             )}
+
 
             {!isMobile && onToggleCollapse && (
               <Button
@@ -624,7 +660,7 @@ export default function Sidebar({
 
         {/* Navigation with Groups */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          <OrganizationSwitcher 
+          <OrganizationSwitcher
             isCollapsed={isCollapsed}
             isMobile={isMobile}
             externalOpen={orgSwitcherOpen}
@@ -685,7 +721,7 @@ export default function Sidebar({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button 
+                <button
                   onClick={() => setIsSupportOpen(true)}
                   className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 w-full ${
                     isCollapsed && !isMobile ? 'justify-center' : ''
@@ -738,16 +774,16 @@ function PricingBox({
   }
 
   return (
-    <div className="mx-3 mb-4 p-3 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+    <div className="mx-3 mb-4 p-3 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
       <div className="flex items-center gap-2 mb-2">
-        <Crown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-        <span className="text-xs font-semibold text-purple-900 dark:text-purple-100">{pricingConfig.plan}</span>
+        <Crown className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+        <span className="text-xs font-semibold text-blue-900 dark:text-blue-100">{pricingConfig.plan}</span>
       </div>
       {pricingConfig.features && pricingConfig.features.length > 0 && (
         <ul className="space-y-1 mb-3">
           {pricingConfig.features.map((feature: string) => (
-            <li key={feature} className="text-xs text-purple-700 dark:text-purple-300 flex items-center gap-1">
-              <div className="w-1 h-1 bg-purple-400 rounded-full flex-shrink-0" />
+            <li key={feature} className="text-xs text-blue-700 dark:text-blue-300 flex items-center gap-1">
+              <div className="w-1 h-1 bg-blue-400 rounded-full flex-shrink-0" />
               {feature}
             </li>
           ))}
@@ -759,7 +795,7 @@ function PricingBox({
             onMobileClose()
           }
         }}>
-          <Button size="sm" className="w-full text-xs h-7 bg-purple-600 hover:bg-purple-700 text-white">
+          <Button size="sm" className="w-full text-xs h-7 bg-blue-600 hover:bg-blue-700 text-white">
             {pricingConfig.upgradeText}
           </Button>
         </Link>
@@ -806,7 +842,7 @@ function SidebarUserMenu({
               <button className={`w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
                 isCollapsed && !isMobile ? 'justify-center' : ''
               }`}>
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
                   {getUserDisplayName(user).charAt(0).toUpperCase()}
                 </div>
                 <UserMenuNameEmail user={user} isCollapsed={isCollapsed} isMobile={isMobile} />

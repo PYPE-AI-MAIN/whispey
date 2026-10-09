@@ -22,7 +22,7 @@ export function TranscriptMessage({ speaker, text, timestamp, agentName }: Trans
         }`}
       >
         <div className="flex items-center gap-2 mb-1.5">
-          <span className={`text-xs font-semibold uppercase ${
+          <span className={`text-xs font-medium uppercase tracking-wide ${
             isUser ? 'text-blue-400' : 'text-gray-400'
           }`}>
             {isUser ? 'You' : agentName}

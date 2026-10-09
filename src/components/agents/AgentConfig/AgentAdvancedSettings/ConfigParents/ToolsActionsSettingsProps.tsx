@@ -605,7 +605,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
             {languageSwitchTools.map((ls, idx) => (
               <div key={`ls-${ls.tool_name}`} className="flex items-center justify-between gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <Languages className="w-3 h-3 text-purple-500" />
+                  <Languages className="w-3 h-3 text-blue-500" />
                   <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate font-mono">
                     {ls.tool_name}
                   </span>

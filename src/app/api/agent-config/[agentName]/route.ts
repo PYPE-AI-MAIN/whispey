@@ -4,7 +4,7 @@ import { getProjectIdFromAgentBackendName, getDeploymentTargetFromAgentBackendNa
 import {
   getPypeApiBaseUrlForServer,
   isPypeUpstreamUnreachable,
-  pypeApiAbortSignal,
+  fetchPypeApiWithRetry,
 } from '@/lib/pypeApiFetch'
 
 const DEGRADED_AGENT_CONFIG = {
@@ -43,13 +43,12 @@ export async function GET(req: NextRequest) {
     const apiUrl = `${baseUrl}/agent_config/${encodeURIComponent(agentName)}`
     let response: Response
     try {
-      response = await fetch(apiUrl, {
+      response = await fetchPypeApiWithRetry(apiUrl, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
           "x-api-key": "pype-api-v1", "Authorization": "Bearer " + mintServiceToken(),
         },
-        signal: pypeApiAbortSignal(),
       })
     } catch (fetchErr: unknown) {
       if (isPypeUpstreamUnreachable(fetchErr)) {

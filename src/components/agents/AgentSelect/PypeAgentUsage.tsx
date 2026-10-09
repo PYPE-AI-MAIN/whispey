@@ -134,7 +134,7 @@ const PypeAgentUsage: React.FC<PypeAgentUsageProps> = ({ projectId }) => {
           <div className="px-4 py-3 space-y-2">
             {agentsList.length > 0 ? (
               <>
-                <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
                   Active Agents:
                 </p>
                 <div className="space-y-1.5">

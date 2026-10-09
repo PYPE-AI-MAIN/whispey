@@ -234,15 +234,15 @@ export default function WebCallPage() {
           <CardContent className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                   Agent Name
-                </label>
+                </p>
                 <p className="text-gray-900 dark:text-white">{agentData.name}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                   Vapi Assistant ID
-                </label>
+                </p>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className="font-mono text-xs">
                     {vapiAssistantId}
@@ -251,9 +251,9 @@ export default function WebCallPage() {
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                   API Key Type
-                </label>
+                </p>
                 <div className="flex items-center gap-2">
                   <Badge className="bg-green-100 text-green-700 text-xs">
                     Public Key

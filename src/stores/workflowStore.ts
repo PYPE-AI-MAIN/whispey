@@ -38,6 +38,9 @@ interface WorkflowState {
   setSelectedNode: (id: string | null) => void
   setSelectedEdge: (id: string | null) => void
   updateAgentConfig: (patch: Partial<AgentConfig>) => void
+  /** Change the LLM from its CURRENT value. Pickers fire several handlers (provider, model, temperature) in one event;
+   *  building each change from a render-time snapshot made the last one overwrite the rest. */
+  updateAgentLlm: (build: (current: AgentConfig['llm']) => AgentConfig['llm']) => void
   patchWorkflow: (patch: Partial<Workflow>) => void
   setStart: (nodeId: string) => void
   undo: () => void
@@ -184,6 +187,14 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       if (!s.workflow) return s
       const undo = pushUndo(s)
       const workflow = withAutoVars({ ...s.workflow, agent: { ...s.workflow.agent, ...patch } })
+      return { ...undo, workflow, isDirty: true, lintIssues: relint(workflow) }
+    }),
+
+  updateAgentLlm: (build) =>
+    set((s) => {
+      if (!s.workflow) return s
+      const undo = pushUndo(s)
+      const workflow = withAutoVars({ ...s.workflow, agent: { ...s.workflow.agent, llm: build(s.workflow.agent.llm) } })
       return { ...undo, workflow, isDirty: true, lintIssues: relint(workflow) }
     }),
 
