@@ -18,6 +18,9 @@ export interface FlagEditorProps {
   /** Admin/owner: can delete anyone's flag. Viewers can only delete their own. */
   canDeleteAnyFlag?: boolean
   onUpdated?: () => void
+  /** 'quiet' is the redesigned Call Logs look: a soft pill naming the flag, and
+   *  the "Flag" button only shows on row hover. */
+  variant?: 'default' | 'quiet'
 }
 
 type FlagApiAction =
@@ -114,7 +117,9 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
   currentUserEmail,
   canDeleteAnyFlag = true,
   onUpdated,
+  variant = 'default',
 }) => {
+  const quiet = variant === 'quiet'
   const [flags, setFlags] = useState<FlagEntry[]>(() => normalizeFlags(initialFlag))
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState('')
@@ -289,14 +294,19 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
                   disabled={saving}
                   onClick={stop}
                   className={cn(
-                    'relative inline-flex shrink-0 items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap select-none transition-all cursor-pointer',
-                    'bg-rose-600 text-white border border-rose-700',
-                    'hover:bg-rose-700 active:scale-95',
+                    quiet
+                      ? 'relative inline-flex max-w-[200px] shrink-0 items-center gap-1 rounded-full border border-[var(--cl-red-line)] bg-[var(--cl-red-soft)] px-2 py-px text-[11.5px] text-[var(--cl-red-text)] whitespace-nowrap select-none transition cursor-pointer hover:brightness-110'
+                      : cn(
+                          'relative inline-flex shrink-0 items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap select-none transition-all cursor-pointer',
+                          'bg-rose-600 text-white border border-rose-700',
+                          'hover:bg-rose-700 active:scale-95'
+                        ),
                     saving && 'opacity-40 pointer-events-none'
                   )}
                 >
                   <Flag className="w-2.5 h-2.5 shrink-0" style={{ fill: 'currentColor' }} />
-                  <span>Flagged</span>
+                  {/* The quiet pill names what was flagged; the full list is in the tooltip. */}
+                  <span className={cn(quiet && 'truncate')}>{quiet ? (flags[0]?.text || 'Flagged') : 'Flagged'}</span>
                   {flags.length > 1 && (
                     <span className="absolute -top-1.5 -right-1.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-white px-1 text-[9px] font-bold text-rose-600 shadow-sm ring-1 ring-rose-700/20">
                       {flags.length}
@@ -310,10 +320,18 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
                   disabled={saving}
                   onClick={stop}
                   className={cn(
-                    'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] font-medium select-none transition-all cursor-pointer',
-                    'border border-dashed border-gray-300 dark:border-gray-600',
-                    'text-gray-400 dark:text-gray-500',
-                    'hover:border-rose-400 hover:text-rose-500 dark:hover:border-rose-500 dark:hover:text-rose-400 active:scale-95',
+                    quiet
+                      ? cn(
+                          'inline-flex items-center gap-1 rounded-full border border-dashed border-[var(--cl-border2)] px-2 py-px text-[12px] text-[var(--cl-text3)] select-none transition cursor-pointer',
+                          'hover:border-[var(--cl-red-line)] hover:text-[var(--cl-red-text)]',
+                          !open && 'opacity-0 group-hover:opacity-100'
+                        )
+                      : cn(
+                          'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] font-medium select-none transition-all cursor-pointer',
+                          'border border-dashed border-gray-300 dark:border-gray-600',
+                          'text-gray-400 dark:text-gray-500',
+                          'hover:border-rose-400 hover:text-rose-500 dark:hover:border-rose-500 dark:hover:text-rose-400 active:scale-95'
+                        ),
                     saving && 'opacity-40 pointer-events-none'
                   )}
                 >
@@ -344,6 +362,7 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
               'border border-dashed border-gray-300 dark:border-gray-600',
               'text-gray-400 dark:text-gray-500',
               'hover:border-rose-400 hover:text-rose-500 dark:hover:border-rose-500 dark:hover:text-rose-400 active:scale-95',
+              quiet && 'opacity-0 group-hover:opacity-100',
               saving && 'opacity-40 pointer-events-none'
             )}
           >

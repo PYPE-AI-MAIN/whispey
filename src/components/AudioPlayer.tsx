@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useRef, useEffect, useMemo, useCallback } from "react"
+import { useState, useRef, useEffect, useMemo, useCallback, useImperativeHandle } from "react"
 import { Play, Pause, Loader2, AlertCircle, Download, Gauge } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -23,11 +23,26 @@ interface AudioPlayerProps {
   url: string | null
   segmentStartTime?: number
   segmentDuration?: number
+  /** Called with the playhead (seconds) whenever it moves. */
+  onTimeUpdate?: (seconds: number) => void
+  /** Lets a parent move the playhead, e.g. from a transcript timestamp. */
+  controlRef?: React.Ref<AudioPlayerControls>
+  /** Resolve the recording link and start buffering on mount, so play starts at once. */
+  preload?: boolean
+}
+
+export interface AudioPlayerControls {
+  /** Jumps to `seconds` and plays, loading the recording first if needed. */
+  seek: (seconds: number) => void
+  /** Play / pause. */
+  toggle: () => void
+  /** Moves the playhead by `delta` seconds (negative = back). */
+  skip: (delta: number) => void
 }
 
 const PLAYBACK_SPEEDS = [1, 1.5, 2, 2.5, 3, 4]
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className, segmentStartTime, segmentDuration }) => {
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className, segmentStartTime, segmentDuration, onTimeUpdate, controlRef, preload = false }) => {
 
   const [isPlaying, setIsPlaying] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -47,6 +62,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
   const audioRef = useRef<HTMLAudioElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationRef = useRef<number>(0)
+  const onTimeUpdateRef = useRef(onTimeUpdate)
+  onTimeUpdateRef.current = onTimeUpdate
 
   // Generate waveform data
   const waveformData = useMemo(() => {
@@ -197,6 +214,58 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
       }
     }
   }, [isPlaying, getAudioUrl, segmentStartTime, segmentStarted, playbackSpeed])
+
+  const seek = useCallback(async (seconds: number) => {
+    const audio = audioRef.current
+    if (!audio) return
+    const src = await getAudioUrl()
+    if (!src || !audioRef.current) return
+    if (audio.src !== new URL(src, globalThis.location.href).href) {
+      audio.src = src
+      audio.playbackRate = playbackSpeed
+    }
+    const jump = () => {
+      audio.currentTime = Math.min(seconds, audio.duration || seconds)
+      setCurrentTime(audio.currentTime)
+    }
+    if (audio.readyState >= 1) jump()
+    else audio.addEventListener("loadedmetadata", jump, { once: true })
+    // A seek counts as the segment start, so play() doesn't jump back to it.
+    setSegmentStarted(true)
+    try {
+      await audio.play()
+      setIsPlaying(true)
+    } catch {
+      setError("Playback failed")
+      setIsPlaying(false)
+    }
+  }, [getAudioUrl, playbackSpeed])
+
+  // Only once per mount: the player is keyed by call, so a new call remounts it.
+  const preloaded = useRef(false)
+  useEffect(() => {
+    if (!preload || preloaded.current) return
+    preloaded.current = true
+    void getAudioUrl().then((src) => {
+      const audio = audioRef.current
+      if (!src || !audio || audio.src) return
+      audio.src = src
+      audio.playbackRate = playbackSpeed
+    })
+  }, [preload, getAudioUrl, playbackSpeed])
+
+  useImperativeHandle(controlRef, () => ({
+    seek: (seconds: number) => void seek(seconds),
+    toggle: () => void togglePlay(),
+    skip: (delta: number) => {
+      const audio = audioRef.current
+      if (!audio) return
+      // Not loaded yet: skipping forward starts from there, skipping back from the start.
+      if (!audio.src || audio.readyState < 1) return void seek(Math.max(0, delta))
+      audio.currentTime = Math.max(0, Math.min(audio.duration || Infinity, audio.currentTime + delta))
+      setCurrentTime(audio.currentTime)
+    },
+  }), [seek, togglePlay])
 
   // Generate default filename
   const getDefaultFileName = useCallback(() => {
@@ -411,6 +480,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
 
     const handleTimeUpdate = () => {
       setCurrentTime(audio.currentTime)
+      onTimeUpdateRef.current?.(audio.currentTime)
       
       // Check if we've reached the end of the segment
       if (segmentStartTime !== undefined && segmentDuration !== undefined) {

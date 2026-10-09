@@ -28,6 +28,27 @@ export interface DateFilter {
   dateTo?: string       // ISO string, only set when isCustomRange is true
 }
 
+// Which Call Logs page to render. The redesigned view is opt-in while it reaches
+// parity; the legacy view is decommissioned once the new one is the default.
+export type CallLogsViewMode = 'legacy' | 'new'
+
+export type CallLogsDensity = 'comfortable' | 'compact'
+
+// A field pinned to the filter panel's Quick add row. Only the column (and JSON
+// field) is pinned — the value is always typed fresh.
+export interface PinnedFilterField {
+  column: string
+  jsonField?: string
+  operation?: string
+}
+
+const DEFAULT_PINNED_FILTER_FIELDS: PinnedFilterField[] = [
+  { column: 'call_ended_reason' },
+  { column: 'flag', operation: 'exists' },
+  { column: 'tags' },
+  { column: 'duration_seconds', operation: 'greater_than' },
+]
+
 const DEFAULT_DATE_FILTER: DateFilter = {
   quickFilter: '7d',
   isCustomRange: false,
@@ -60,6 +81,30 @@ interface CallLogsState {
 
   // Clears all filter state (column prefs preserved)
   resetState: () => void
+
+  // ── New view (v2) preferences — user-level, shared across agents ──
+  viewMode: CallLogsViewMode
+  setViewMode: (mode: CallLogsViewMode) => void
+
+  // Left-to-right order of table column ids (`call_id`, `metadata-x`,
+  // `transcription-x`, `metrics-x`). Visibility still lives in visibleColumns so
+  // both views agree on which columns are shown; this only adds the order.
+  columnOrder: string[]
+  setColumnOrder: (order: string[]) => void
+
+  density: CallLogsDensity
+  setDensity: (density: CallLogsDensity) => void
+
+  pinnedFilterFields: PinnedFilterField[]
+  setPinnedFilterFields: (fields: PinnedFilterField[]) => void
+
+  // Split view (a call opened beside the list): whether the right "call data"
+  // pane is folded, and which of its groups the user has opened. Everything
+  // starts collapsed; what someone opens stays open as they move between calls.
+  rightPanelCollapsed: boolean
+  setRightPanelCollapsed: (collapsed: boolean) => void
+  openInspectorGroups: string[]
+  setOpenInspectorGroups: (groups: string[]) => void
 }
 
 const defaultVisibleColumns: VisibleColumns = {
@@ -136,18 +181,42 @@ export const useCallLogsStore = create<CallLogsState>()(
         })),
 
       resetState: () =>
-        set({ filtersByAgent: {}, distinctConfigByAgent: {}, pageByAgent: {}, dateFilterByAgent: {}, selectedCampaignByAgent: {} })
+        set({ filtersByAgent: {}, distinctConfigByAgent: {}, pageByAgent: {}, dateFilterByAgent: {}, selectedCampaignByAgent: {} }),
+
+      viewMode: 'legacy',
+      setViewMode: (viewMode) => set({ viewMode }),
+
+      columnOrder: [],
+      setColumnOrder: (columnOrder) => set({ columnOrder }),
+
+      density: 'comfortable',
+      setDensity: (density) => set({ density }),
+
+      pinnedFilterFields: DEFAULT_PINNED_FILTER_FIELDS,
+      setPinnedFilterFields: (pinnedFilterFields) => set({ pinnedFilterFields }),
+
+      rightPanelCollapsed: false,
+      setRightPanelCollapsed: (rightPanelCollapsed) => set({ rightPanelCollapsed }),
+      openInspectorGroups: [],
+      setOpenInspectorGroups: (openInspectorGroups) => set({ openInspectorGroups }),
     }),
     {
       name: 'call-logs-storage',
-      version: 4, // bumped: added selectedCampaignByAgent
-      migrate: (old: any) => ({
+      version: 5, // bumped: added viewMode, columnOrder, density, pinnedFilterFields
+      migrate: (old: any, version: number) => ({
         filtersByAgent: old?.filtersByAgent ?? {},
         distinctConfigByAgent: old?.distinctConfigByAgent ?? {},
         pageByAgent: old?.pageByAgent ?? {},
         dateFilterByAgent: old?.dateFilterByAgent ?? {},
         visibleColumns: old?.visibleColumns ?? defaultVisibleColumns,
-        selectedCampaignByAgent: {},
+        // v4 already persisted campaigns; only drop them when coming from older shapes
+        selectedCampaignByAgent: version >= 4 ? (old?.selectedCampaignByAgent ?? {}) : {},
+        viewMode: old?.viewMode ?? 'legacy',
+        columnOrder: old?.columnOrder ?? [],
+        density: old?.density ?? 'comfortable',
+        pinnedFilterFields: old?.pinnedFilterFields ?? DEFAULT_PINNED_FILTER_FIELDS,
+        rightPanelCollapsed: old?.rightPanelCollapsed ?? false,
+        openInspectorGroups: old?.openInspectorGroups ?? [],
       }),
       onRehydrateStorage: () => (state) => {
         if (!state?.filtersByAgent) return

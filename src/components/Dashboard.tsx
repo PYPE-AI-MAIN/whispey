@@ -30,6 +30,7 @@ import {
 } from 'lucide-react'
 import AnalyticsCanvas from './analytics/AnalyticsCanvas'
 import CallLogs from './calls/CallLogs'
+import CallLogsV2 from './calls/v2/CallLogsV2'
 import CampaignLogs from './campaigns/CampaignLogs'
 import Header from '@/components/shared/Header'
 import { useSupabaseQuery } from '../hooks/useSupabase'
@@ -106,7 +107,7 @@ const periodMobilePillClass = (active: boolean, locked: boolean) => {
   return 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
 }
 
-const PERIOD_LOCKED_MESSAGE = 'Clear the manual filter to use Period'
+const PERIOD_LOCKED_MESSAGE = 'Clear the date filter to use Period'
 
 interface PeriodOptionButtonProps {
   readonly onClick: () => void
@@ -159,6 +160,13 @@ function NoCallsMessage() {
       </div>
     </div>
   )
+}
+
+// Renders the legacy or the redesigned Call Logs page, per the user's saved choice.
+// Both take the same props, so switching never changes what data is loaded.
+function CallLogsForMode(props: React.ComponentProps<typeof CallLogs>) {
+  const viewMode = useCallLogsStore((s) => s.viewMode)
+  return viewMode === 'new' ? <CallLogsV2 {...props} /> : <CallLogs {...props} />
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
@@ -214,7 +222,8 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   // act independently (see useCallLogsData). While a manual filter is active on the
   // Logs tab, lock Period so it can't be changed there — Overview is unaffected since
   // this only engages for activeTab === 'logs'.
-  const isPeriodLocked = activeTab === 'logs' && (filtersByAgent[agentId]?.length ?? 0) > 0
+  // Period still applies alongside filters; only a filter on the date itself takes its place.
+  const isPeriodLocked = activeTab === 'logs' && (filtersByAgent[agentId] ?? []).some((f) => f.type === 'filter' && f.column === 'call_started_at')
   
   const quickFilters = [
     { id: '1d', label: '1D', days: 1 },
@@ -531,7 +540,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
 
         <div className={activeTab === 'logs' ? 'flex flex-col h-full' : 'hidden'}>
           {agent && (
-            <CallLogs
+            <CallLogsForMode
               project={project}
               agent={agent}
               onBack={handleBack}

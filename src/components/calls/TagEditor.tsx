@@ -90,13 +90,19 @@ interface TagBadgeProps {
   onCommentPopoverOpened?: () => void
   onRemove: (tag: string) => void
   onCommentSave: (tag: string, comment: string) => void
+  quiet?: boolean
 }
+
+// The redesigned Call Logs shows every tag in one neutral pill instead of a
+// per-tag colour, so a row of tags doesn't compete with the data around it.
+const QUIET_TAG_COLOR = { bg: 'var(--cl-raised)', text: 'var(--cl-text2)', border: 'var(--cl-border2)' }
 
 const TagBadge: React.FC<TagBadgeProps> = ({
   tag, comment, canComment, autoOpen = false,
-  onCommentPopoverOpened, onRemove, onCommentSave,
+  onCommentPopoverOpened, onRemove, onCommentSave, quiet = false,
 }) => {
-  const color = useTagColor(tag)
+  const hashedColor = useTagColor(tag)
+  const color = quiet ? QUIET_TAG_COLOR : hashedColor
   const [commentOpen, setCommentOpen] = useState(false)
   const [draft, setDraft] = useState(comment || '')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -281,6 +287,9 @@ export interface TagEditorProps {
   /** When true, clicking a tag badge opens a comment editor */
   canComment?: boolean
   onUpdated?: () => void
+  /** 'quiet' is the redesigned Call Logs look: neutral pills, and the add
+   *  button only shows on row hover once a call already has tags. */
+  variant?: 'default' | 'quiet'
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -291,7 +300,9 @@ export const TagEditor: React.FC<TagEditorProps> = ({
   availableTags,
   canComment = false,
   onUpdated,
+  variant = 'default',
 }) => {
+  const quiet = variant === 'quiet'
   const [tags, setTags] = useState<string[]>(initialTags)
   const [tagComments, setTagComments] = useState<Record<string, string>>(initialTagComments)
   const [open, setOpen] = useState(false)
@@ -397,6 +408,7 @@ export const TagEditor: React.FC<TagEditorProps> = ({
           onCommentPopoverOpened={() => setJustAddedTag(null)}
           onRemove={removeTag}
           onCommentSave={handleCommentSave}
+          quiet={quiet}
         />
       ))}
 
@@ -405,10 +417,18 @@ export const TagEditor: React.FC<TagEditorProps> = ({
         <PopoverTrigger asChild>
           <button
             className={cn(
-              'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] font-medium',
-              'border border-dashed border-gray-300 dark:border-gray-600',
-              'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300',
-              'hover:border-gray-400 dark:hover:border-gray-400 transition-colors select-none',
+              quiet
+                ? cn(
+                    'inline-flex items-center gap-0.5 rounded-full border border-dashed border-[var(--cl-border2)] px-2 py-px text-[11.5px] text-[var(--cl-text3)] transition select-none',
+                    'hover:border-[var(--cl-accent-line)] hover:text-[var(--cl-accent-text)]',
+                    tags.length > 0 && !open && 'opacity-0 group-hover:opacity-100'
+                  )
+                : cn(
+                    'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] font-medium',
+                    'border border-dashed border-gray-300 dark:border-gray-600',
+                    'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300',
+                    'hover:border-gray-400 dark:hover:border-gray-400 transition-colors select-none'
+                  ),
               saving && 'opacity-40 pointer-events-none'
             )}
             aria-label="Add tag"

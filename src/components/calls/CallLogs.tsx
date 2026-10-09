@@ -35,6 +35,7 @@ import CampaignCallLogs from './CampaignCallLogs'
 import CallAgainDialog from './CallAgainDialog'
 import type { CallLog } from '@/types/logs'
 import type { PhoneNumber } from '@/lib/callDispatch'
+import { TryNewViewButton } from './v2/ViewModeSwitch'
 
 interface CallLogsProps {
   project: any
@@ -50,9 +51,9 @@ interface CallLogsProps {
 // totalKnown  = pages already loaded in cache
 // totalPages  = exact total derived from count API (may be null if still loading)
 // hasMore     = server still has pages beyond what's loaded
-type PageItem = number | 'start-ellipsis' | 'end-ellipsis' | 'load-more'
+export type PageItem = number | 'start-ellipsis' | 'end-ellipsis' | 'load-more'
 
-function buildPageItems(
+export function buildPageItems(
   currentPage: number,
   totalKnown: number,
   hasMore: boolean,
@@ -99,7 +100,7 @@ function buildPageItems(
 // ── Extracted formatting helpers (kept out of the component body to hold its
 // cognitive complexity down — each replaces a nested/chained ternary) ───────
 
-function formatRowRangeLabel(
+export function formatRowRangeLabel(
   currentPageCallsLength: number,
   totalCount: number | null,
   pageStart: number,
@@ -110,7 +111,7 @@ function formatRowRangeLabel(
   return `${pageStart}–${pageEnd}`
 }
 
-function formatTotalCountLabel(
+export function formatTotalCountLabel(
   totalCount: number | null,
   totalPages: number | null,
   hasNextPage: boolean,
@@ -131,7 +132,7 @@ function getHeaderCellClassName(columnId: string): string {
 }
 
 // Extracted so the mixed &&/|| chain doesn't add to CallLogs's own cognitive complexity.
-function shouldShowLoadingSkeleton(
+export function shouldShowLoadingSkeleton(
   parentLoading: boolean | undefined,
   roleLoading: boolean,
   agent: any,
@@ -144,7 +145,7 @@ function shouldShowLoadingSkeleton(
 }
 
 // Extracted so this doesn't add another logical-operator branch to CallLogs itself.
-function canShowDownloadButton(canDownload: boolean | undefined, isSuperAdmin: boolean): boolean {
+export function canShowDownloadButton(canDownload: boolean | undefined, isSuperAdmin: boolean): boolean {
   return !!canDownload || isSuperAdmin
 }
 
@@ -227,7 +228,7 @@ function getCellClassName(rowIndex: number, isSelected: boolean): string {
 // here rather than in tableColumns.tsx (which only ever renders CallLog
 // fields). `onClick` stops propagation so toggling a checkbox doesn't also
 // fire the row's own "open this call" navigation.
-function buildSelectionColumn(
+export function buildSelectionColumn(
   currentPageCalls: CallLog[],
   selectedIds: Set<string>,
   setSelectedIds: React.Dispatch<React.SetStateAction<Set<string>>>
@@ -271,7 +272,7 @@ function buildSelectionColumn(
 // somewhere to dial out from and this specific row has a number to call.
 // Per-row eligibility (not just the column's existence) still gets checked
 // again by CallAgainDialog itself before anything is dispatched.
-function buildCallAgainColumn(
+export function buildCallAgainColumn(
   canOfferCallAgain: boolean,
   projectId: string,
   agent: { id: string; name: string; agent_type: string; is_active: boolean },
@@ -292,7 +293,7 @@ function buildCallAgainColumn(
   }
 }
 
-function renderPageItem(
+export function renderPageItem(
   item: PageItem,
   idx: number,
   currentPage: number,
@@ -426,7 +427,7 @@ function renderTableRows(rows: any[], options: RenderTableRowsOptions) {
 // ── Extracted hooks (kept out of the component body to hold its cognitive
 // complexity down) ──────────────────────────────────────────────────────────
 
-function useAgentDownloadSettingsQuery(agentId: string | undefined) {
+export function useAgentDownloadSettingsQuery(agentId: string | undefined) {
   return useQuery({
     queryKey: ['download-settings', agentId],
     queryFn: async () => {
@@ -449,7 +450,7 @@ function useAgentDownloadSettingsQuery(agentId: string | undefined) {
 // Whether "Call Again" can even be offered at all — a project with no active
 // outbound-capable number has nothing to dispatch through, regardless of the
 // call being retried. Fetched once for the whole page, not per row.
-function useOutboundPhoneNumbersQuery(projectId: string | undefined) {
+export function useOutboundPhoneNumbersQuery(projectId: string | undefined) {
   return useQuery({
     queryKey: ['outbound-phone-numbers', projectId],
     queryFn: async () => {
@@ -465,7 +466,7 @@ function useOutboundPhoneNumbersQuery(projectId: string | undefined) {
   })
 }
 
-function useColumnVisibilityHandlers(
+export function useColumnVisibilityHandlers(
   setVisibleColumns: React.Dispatch<React.SetStateAction<any>>,
   dynamicColumns: Record<string, string[]>
 ) {
@@ -497,7 +498,7 @@ function useColumnVisibilityHandlers(
 // Restore last-selected call when returning from log detail, and keep the
 // selected row centred in view across a Back navigation. Extracted as its own
 // hook so its internal branching doesn't count against CallLogs's complexity.
-function useRowNavigation(
+export function useRowNavigation(
   agentId: string | undefined,
   projectId: string | undefined,
   router: ReturnType<typeof useRouter>,
@@ -891,6 +892,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
           </div>
 
           <div className="flex items-center flex-wrap justify-end gap-2">
+            <TryNewViewButton />
             {canReanalyze && <ReanalyzeDialogWrapper projectId={project?.id} agentId={agent?.id} />}
             {canManageFlagRules && agent?.id && (
               <FlagRulesDialog

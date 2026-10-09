@@ -36,6 +36,7 @@ import { catalogIsStale, rescan as rescanAnalyticsFields } from '@/server/analyt
 import { Spec, ALL_COLS } from '@/server/analytics/spec'
 import { planDashboardQueries, isPhoneField } from '@/server/analytics/buildQuery'
 import { runQuery, isTimeout } from '@/server/analytics/db'
+import { CALL_LOGS_TOOL_NAMES, SUMMARIZE_RESULT_CHARS, callLogsPromptBlock, callLogsToolSchemas, parsePageContext, runCallBreakdown, runProposeCallFilters, runSummarizeCallTranscripts, type CallLogsPageContext } from '@/server/pi/callLogsTools'
 
 interface StoredToolCall {
   id: string
@@ -94,6 +95,7 @@ function truncateForContext(value: unknown, max = MAX_TOOL_RESULT_CHARS): string
 // which is exactly how a "copy dispositions from X" request ended up acting
 // on a result 29 dispositions short of what the agent actually has.
 function toolResultLimit(toolName: string): number {
+  if (toolName === 'summarize_call_transcripts' || toolName === 'call_breakdown') return SUMMARIZE_RESULT_CHARS
   return toolName === 'get_agent_details' || toolName === 'search_field_definitions' ? 20000 : MAX_TOOL_RESULT_CHARS
 }
 
@@ -1548,6 +1550,10 @@ type TurnContext = {
   projectId: string
   userId: string
   canWrite: boolean
+  /** Set when the message comes from the Call Logs page — unlocks its two tools. */
+  pageContext: CallLogsPageContext | null
+  /** The small model that summarises each transcript for summarize_call_transcripts. */
+  transcriptModel: string
   conversation: any[]
   userTurn: StoredMessage[]
   isFirstTurn: boolean
@@ -1671,11 +1677,12 @@ const FIELD_NOT_FOUND_NUDGE = 'Your previous reply concluded a field/disposition
 // hoping static instructions get followed. Soft hint, not a forced tool
 // call: tool_choice stays 'auto', this just raises the odds in the exact
 // situation that kept failing.
-function buildConversation(projectId: string, canWrite: boolean, history: StoredMessage[], message: string): any[] {
+function buildConversation(projectId: string, canWrite: boolean, history: StoredMessage[], message: string, pageContext: CallLogsPageContext | null = null): any[] {
   const lastAssistant = [...history].reverse().find((m) => m.role === 'assistant')
   const saidFieldNotFound = !!lastAssistant && /does not have a (disposition|field)|do not see any disposition/i.test(lastAssistant.content ?? '')
   const conversation: any[] = [
     { role: 'system', content: systemPrompt(projectId, canWrite, history) },
+    ...(pageContext ? [{ role: 'system', content: callLogsPromptBlock(pageContext) }] : []),
     ...toWireMessages(history),
     { role: 'user', content: message },
   ]
@@ -1743,13 +1750,27 @@ async function runToolCall(tc: PendingToolCall, ctx: TurnContext) {
   // on the model to correctly sequence "ask, wait, then call the tool
   // next turn" — a sequence prompting alone didn't reliably hold to.
   const needsConfirmation = CONFIRMED_TOOLS.has(tc.name) && ctx.canWrite
-  const { result, success }: { result: any; success: boolean } = needsConfirmation
-    ? { result: { __pending: true, action: tc.name, args: parsedArgs, preview: await pendingPreview(ctx.projectId, tc.name, parsedArgs) }, success: true }
-    : await executeTool(ctx.projectId, ctx.userId, ctx.canWrite, tc.name, parsedArgs)
+  let outcome: { result: any; success: boolean }
+  if (CALL_LOGS_TOOL_NAMES.has(tc.name)) outcome = await runCallLogsTool(tc.name, parsedArgs, ctx)
+  else if (needsConfirmation) outcome = { result: { __pending: true, action: tc.name, args: parsedArgs, preview: await pendingPreview(ctx.projectId, tc.name, parsedArgs) }, success: true }
+  else outcome = await executeTool(ctx.projectId, ctx.userId, ctx.canWrite, tc.name, parsedArgs)
+  const { result, success } = outcome
   const duration_ms = Date.now() - start
 
   ctx.controller.enqueue(sseChunk(JSON.stringify({ toolResult: { id: tc.id, result, success, duration_ms } })))
   return { parsedArgs, result, success }
+}
+
+/** The Call Logs page's tools: only with that page's context, and never for viewers. */
+async function runCallLogsTool(name: string, args: any, ctx: TurnContext): Promise<{ result: any; success: boolean }> {
+  if (!ctx.pageContext || !ctx.canWrite) return { success: false, result: { error: 'Only available from the Call Logs page' } }
+  try {
+    if (name === 'propose_call_filters') return runProposeCallFilters(args)
+    if (name === 'call_breakdown') return await runCallBreakdown(ctx.projectId, ctx.pageContext, args)
+    return await runSummarizeCallTranscripts(ctx.projectId, ctx.pageContext, args, { client: ctx.client, model: ctx.transcriptModel })
+  } catch (err: any) {
+    return { success: false, result: { error: err?.message ?? 'Tool execution failed' } }
+  }
 }
 
 async function runToolCalls(pendingCalls: Record<number, PendingToolCall>, textContent: string, ctx: TurnContext, turn: TurnState) {
@@ -1865,7 +1886,7 @@ function tooManyRequests(userId: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, projectId, sessionId: incomingSessionId, resolveAction, model: requestedModel } = await request.json()
+    const { message, projectId, sessionId: incomingSessionId, resolveAction, model: requestedModel, pageContext: rawPageContext } = await request.json()
     if (!projectId) return NextResponse.json({ error: 'projectId is required' }, { status: 400 })
     if (!resolveAction && (!message || typeof message !== 'string')) return NextResponse.json({ error: 'message is required' }, { status: 400 })
     if (!resolveAction && message.length > MAX_MESSAGE_CHARS) return NextResponse.json({ error: `Message is too long (max ${MAX_MESSAGE_CHARS} characters)` }, { status: 400 })
@@ -1873,6 +1894,14 @@ export async function POST(request: NextRequest) {
     const who = await authorize(projectId)
     if ('response' in who) return who.response
     const { userId, canWrite } = who
+
+    // Ask Pi on Call Logs: members who can write only (viewers don't get it), and only for an agent they can see.
+    const pageContext = parsePageContext(rawPageContext)
+    if (rawPageContext && !pageContext) return NextResponse.json({ error: 'Invalid page context' }, { status: 400 })
+    if (pageContext) {
+      if (!canWrite) return NextResponse.json({ error: 'Ask Pi is not available for viewers' }, { status: 403 })
+      if (!(await agentBelongsToProject(pageContext.agentId, projectId))) return NextResponse.json({ error: 'No access to this agent' }, { status: 403 })
+    }
 
     if (!resolveAction && tooManyRequests(userId)) return NextResponse.json({ error: 'Too many messages — please wait a moment and try again.' }, { status: 429 })
 
@@ -1901,11 +1930,14 @@ export async function POST(request: NextRequest) {
       model: models.primary,
       fallbackModel: models.fallback,
       titleModel: models.fallback ?? models.primary,
-      tools: toolSchemas(canWrite),
+      tools: pageContext ? [...toolSchemas(canWrite), ...callLogsToolSchemas()] : toolSchemas(canWrite),
       projectId,
       userId,
       canWrite,
-      conversation: buildConversation(projectId, canWrite, history, message),
+      pageContext,
+      // summaries are many small calls — the mini model, on its own deployment name per provider
+      transcriptModel: process.env.PI_TRANSCRIPT_MODEL?.trim() || (process.env.AZURE_OPENAI_API_KEY && process.env.AZURE_OPENAI_ENDPOINT ? 'gpt-4.1-mini-2' : 'gpt-4.1-mini'),
+      conversation: buildConversation(projectId, canWrite, history, message, pageContext),
       // What actually gets persisted back to the session at the end — the UI
       // shape, not the OpenAI wire shape, so a resumed session needs no
       // reverse-translation on load.
