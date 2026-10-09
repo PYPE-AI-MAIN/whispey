@@ -1,7 +1,8 @@
 'use client';
 
 /**
- * The /sign-in page. Same wording as before; the design is calmer and plainer:
+ * The /sign-in page: calm and plain. Wording follows what Pype AI does (voice agents for
+ * hospitals and clinics) and says nothing it cannot back up. Design:
  * a flat dark brand panel (no gradient or pattern), the form as the one focal
  * point, one accent (the app's blue), light and dark on the form side, and a
  * single column on a phone. Features are hairline rows, not icon tiles.
@@ -15,9 +16,9 @@ interface AuthPageProps {
 }
 
 const FEATURES = [
-  { title: 'Smart Transcription', body: 'Real-time voice-to-text with context awareness' },
-  { title: 'Instant Insights', body: 'AI-powered analysis and action items' },
-  { title: 'Completely Private', body: 'Open Source' },
+  { title: 'Call logs', body: 'Listen back and read the transcript of every call.' },
+  { title: 'Analytics', body: 'See how your agents perform across calls and campaigns.' },
+  { title: 'QA Audit', body: 'Flag a call that went wrong and follow it until the QA team resolves it.' },
 ];
 
 // Clerk's own CSS outranks Tailwind utilities, so colours go through its variables.
@@ -75,10 +76,10 @@ export default function AuthPage({ redirectUrl }: AuthPageProps) {
 
         <div className="max-w-lg py-16">
           <h1 className="text-5xl font-semibold leading-[1.1] tracking-tight text-white">
-            Monitor your LiveKit Voice AI agents.
+            See how your voice agents handle every patient call.
           </h1>
           <p className="mt-6 text-lg leading-relaxed text-slate-300">
-            Join hundreds of engineers and get complete observability into your Voice AI Applications.
+            Whispey is the observability platform from Pype AI, for teams running voice agents in hospitals and clinics.
           </p>
 
           <dl className="mt-12 divide-y divide-slate-800 border-y border-slate-800">
@@ -131,13 +132,9 @@ export default function AuthPage({ redirectUrl }: AuthPageProps) {
             </ClerkLoaded>
           </div>
 
-          <div className="mt-10 border-t border-slate-200 pt-6 dark:border-slate-800">
-            <p className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-slate-600 dark:text-slate-400">
-              <span>Secure</span>
-              <span>Open Source</span>
-            </p>
-            <p className="mt-3 text-xs text-slate-500 dark:text-slate-500">Protected by industry-leading security standards</p>
-          </div>
+          <p className="mt-10 border-t border-slate-200 pt-6 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">
+            Need access? Ask your team admin to invite you.
+          </p>
         </div>
       </div>
     </div>
