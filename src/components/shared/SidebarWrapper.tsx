@@ -416,11 +416,11 @@ const sidebarRoutes: SidebarRoute[] = [
       }
 
       // Sits directly below Phone Calls. Not gated behind a visibility flag:
-      // QA is read-only reporting about calls this person can already see, and
-      // the page itself re-checks access server-side.
+      // it only lists flags and reviews for calls this person can already see,
+      // and the page itself re-checks access server-side.
       callItems.push({
-        id: 'qa-insights',
-        name: 'QA & Insights',
+        id: 'qa-audit',
+        name: 'QA Audit',
         icon: 'ShieldCheck',
         path: `/${projectId}/agents/${agentId}/qa`,
         group: 'call configuration'

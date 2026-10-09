@@ -1,0 +1,64 @@
+import { describe, expect, it } from 'vitest'
+import { lastFullWeek, sheetUrlError, ticketPatch, weekEndOf, weekError, weeklyPatch } from '@/lib/qaAudit'
+
+// Thu 8 Oct 2026, 10:00 IST
+const NOW = new Date('2026-10-08T04:30:00Z')
+
+describe('weeks', () => {
+  it('suggests the last finished Monday–Sunday', () => {
+    expect(lastFullWeek(NOW)).toEqual({ weekStart: '2026-09-28', weekEnd: '2026-10-04' })
+  })
+  it('uses the calendar day in IST, not UTC', () => {
+    // Mon 5 Oct 00:30 IST is still Sun 4 Oct in UTC
+    expect(lastFullWeek(new Date('2026-10-04T19:00:00Z')).weekStart).toBe('2026-09-28')
+    expect(lastFullWeek(new Date('2026-10-05T19:00:00Z')).weekStart).toBe('2026-09-28')
+    expect(lastFullWeek(new Date('2026-10-11T19:00:00Z')).weekStart).toBe('2026-10-05')
+  })
+  it('only accepts finished Mondays', () => {
+    expect(weekError('2026-09-28', NOW)).toBeNull()
+    expect(weekError('2026-09-29', NOW)).toMatch(/Monday/)
+    expect(weekError('2026-10-05', NOW)).toMatch(/not finished/)
+    expect(weekError('nope', NOW)).toMatch(/date/)
+    expect(weekError(undefined, NOW)).toMatch(/date/)
+  })
+  it('week end is the Sunday', () => {
+    expect(weekEndOf('2026-09-28')).toBe('2026-10-04')
+  })
+})
+
+describe('sheet link', () => {
+  it('accepts Google Sheets and Drive over https only', () => {
+    expect(sheetUrlError('https://docs.google.com/spreadsheets/d/abc/edit')).toBeNull()
+    expect(sheetUrlError('https://drive.google.com/file/d/abc')).toBeNull()
+    expect(sheetUrlError('http://docs.google.com/spreadsheets/d/abc')).not.toBeNull()
+    expect(sheetUrlError('https://evil.example.com/x')).not.toBeNull()
+    expect(sheetUrlError('https://docs.google.com.evil.com/x')).not.toBeNull()
+    expect(sheetUrlError('javascript:alert(1)')).not.toBeNull()
+    expect(sheetUrlError('')).not.toBeNull()
+  })
+})
+
+describe('ticket patch', () => {
+  it('needs a note to resolve', () => {
+    expect(ticketPatch({ status: 'resolved' })).toEqual({ error: 'Add a resolution note before resolving' })
+    expect(ticketPatch({ status: 'resolved', resolution_note: ' fixed ' })).toEqual({ patch: { status: 'resolved', resolution_note: 'fixed' } })
+  })
+  it('rejects unknown status', () => {
+    expect(ticketPatch({ status: 'done' })).toEqual({ error: 'Invalid status' })
+  })
+  it('moves to in review without a note', () => {
+    expect(ticketPatch({ status: 'in_review' })).toEqual({ patch: { status: 'in_review', resolution_note: null } })
+  })
+})
+
+describe('weekly patch', () => {
+  it('ready needs a Google Sheet link', () => {
+    expect(weeklyPatch({ status: 'ready' })).toEqual({ error: 'Sheet link is required' })
+    expect(weeklyPatch({ status: 'ready', sheet_url: 'https://docs.google.com/spreadsheets/d/x' })).toEqual({
+      patch: { status: 'ready', sheet_url: 'https://docs.google.com/spreadsheets/d/x', note: null },
+    })
+  })
+  it('in progress keeps whatever sheet was attached', () => {
+    expect(weeklyPatch({ status: 'in_progress', sheet_url: 'ignored' })).toEqual({ patch: { status: 'in_progress', note: null } })
+  })
+})

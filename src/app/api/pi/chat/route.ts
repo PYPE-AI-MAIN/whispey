@@ -1253,7 +1253,7 @@ function agentPageLink(page: string, c: AgentPageContext): { href: string; label
     case 'overview': return { href: `${c.base}?tab=overview`, label: `${c.name} overview` }
     case 'campaign_logs': return { href: `${c.base}?tab=campaign-logs`, label: `${c.name} campaign logs` }
     case 'phone_calls': return { href: `${c.base}/phone-call-config`, label: `${c.name} phone calls` }
-    case 'qa': return { href: `${c.base}/qa`, label: `${c.name} QA` }
+    case 'qa': return { href: `${c.base}/qa`, label: `${c.name} QA Audit` }
     case 'knowledge': return { href: c.pipecat ? `${c.base}/config/pipecat/knowledgebase` : `${c.base}/knowledge`, label: `${c.name} knowledge base` }
     default: return { href: agentConfigHref(c), label: `${c.name} config` }
   }

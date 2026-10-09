@@ -64,6 +64,42 @@ function applyFlagAction(
   return { error: 'Invalid action', status: 400 }
 }
 
+/**
+ * Mirror a customer flag into the QA Audit queue. Best effort: the flag itself
+ * is already saved, and a ticket hiccup must not make the customer's flag fail.
+ */
+async function syncQaTicket(
+  body: FlagAction,
+  nextFlags: FlagEntry[],
+  ids: { callLogId: string; agentId: string; projectId: string },
+) {
+  try {
+    if (body.action === 'add') {
+      const flag = nextFlags.at(-1)
+      if (!flag) return
+      await supabase.from('qa_flag_tickets').upsert({
+        call_log_id: ids.callLogId,
+        agent_id: ids.agentId,
+        project_id: ids.projectId,
+        flag_id: flag.id,
+        reason: flag.text,
+        flagged_by_user_id: flag.flagged_by?.userId ?? null,
+        flagged_by_email: flag.flagged_by?.email ?? null,
+        flagged_at: flag.flagged_at,
+      }, { onConflict: 'call_log_id,flag_id', ignoreDuplicates: true })
+    } else if (body.action === 'update') {
+      await supabase.from('qa_flag_tickets').update({ reason: body.text.trim() })
+        .eq('call_log_id', ids.callLogId).eq('flag_id', body.flagId).eq('status', 'pending')
+    } else {
+      // Only a ticket nobody has started on goes away with the flag.
+      await supabase.from('qa_flag_tickets').delete()
+        .eq('call_log_id', ids.callLogId).eq('flag_id', body.flagId).eq('status', 'pending')
+    }
+  } catch (e) {
+    console.error('QA ticket sync failed:', e instanceof Error ? e.message : e)
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -125,6 +161,10 @@ export async function PATCH(
       .eq('id', id)
 
     if (error) throw error
+
+    if (current?.agent_id && agent?.project_id) {
+      await syncQaTicket(body, nextFlags, { callLogId: id, agentId: current.agent_id, projectId: agent.project_id })
+    }
 
     return NextResponse.json({ success: true, flags: nextFlags })
   } catch (error: unknown) {
