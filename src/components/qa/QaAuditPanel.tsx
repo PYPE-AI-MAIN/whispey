@@ -58,7 +58,8 @@ const STATUS_TONE: Record<string, { text: string; dot: string }> = {
 }
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
-const fmtWeek = (start: string, end: string) => `${fmtDate(`${start}T00:00:00`)} – ${fmtDate(`${end}T00:00:00`)}`
+const localDay = (d: string) => fmtDate(`${d}T00:00:00`)
+const fmtWeek = (start: string, end: string) => `${localDay(start)} – ${localDay(end)}`
 
 const fieldClass =
   'h-9 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'

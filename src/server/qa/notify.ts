@@ -32,12 +32,13 @@ export function qaSlackText(a: QaAlert, appUrl: string, mention = ''): string {
   const agentUrl = `${appUrl}/${a.projectId}/agents/${a.agentId}`
   const what = a.kind === 'flag' ? 'Call flagged' : 'Weekly review requested'
   const label = a.kind === 'flag' ? 'Reason' : 'Week'
+  const tag = MENTION_RE.test(mention) ? `${mention} ` : ''
   const links = [
     a.callLogId ? `<${agentUrl}/observability?session_id=${a.callLogId}|Open call>` : '',
     `<${agentUrl}/qa|Open QA Audit>`,
   ].filter(Boolean).join('  |  ')
   return [
-    `${MENTION_RE.test(mention) ? `${mention} ` : ''}*${what}* on <${agentUrl}|${slackEscape(a.agentName)}>`,
+    `${tag}*${what}* on <${agentUrl}|${slackEscape(a.agentName)}>`,
     `By: ${slackEscape(a.byEmail || 'unknown')}`,
     `${label}: ${slackEscape(a.detail)}`,
     links,
