@@ -29,7 +29,7 @@ function Brand({ tone, size }: Readonly<{ tone: 'on-dark' | 'adaptive'; size: 'l
     <div className="flex items-center gap-3">
       <a href="https://pypeai.com/" target="_blank" rel="noopener noreferrer" aria-label="Pype AI" className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500">
         {tone === 'on-dark' ? (
-          <Image src="/logo-dark.png" alt="" width={logo} height={logo} priority unoptimized style={{ objectFit: 'contain' }} />
+          <Image src="/logo-dark.png" alt="" width={logo} height={logo} style={{ objectFit: 'contain' }} />
         ) : (
           <>
             <Image src="/logo-light.png" alt="" width={logo} height={logo} className="dark:hidden" style={{ objectFit: 'contain' }} />
@@ -66,14 +66,12 @@ export default function AuthPage({ redirectUrl }: AuthPageProps) {
 
   return (
     <div className="flex min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      {/* Brand panel: desktop only. Headline, one line, and the real product, bleeding off the corner. */}
-      <aside className="relative hidden overflow-hidden text-slate-100 lg:flex lg:w-[48%] lg:flex-col lg:pl-14 xl:pl-20" style={{ background: '#060b16' }}>
-        <div className="pr-14 pt-12 xl:pr-20">
-          <Brand tone="on-dark" size="lg" />
-        </div>
+      {/* Brand panel: desktop only. Logo, one headline, one line. Always dark so the logo reads the same in both themes. */}
+      <aside className="hidden bg-slate-900 text-slate-100 lg:flex lg:w-[44%] lg:flex-col lg:justify-between lg:px-14 lg:py-12 xl:px-20">
+        <Brand tone="on-dark" size="lg" />
 
-        <div className="fade-up max-w-lg pr-14 pt-14 xl:pr-20">
-          <h1 className="font-semibold text-white" style={{ fontSize: 'clamp(2rem, 2.9vw, 2.75rem)', lineHeight: 1.12, letterSpacing: '-0.025em' }}>
+        <div className="max-w-md">
+          <h1 className="text-4xl font-semibold leading-tight tracking-tight text-white">
             Create voice agents and see how patients engage.
           </h1>
           <p className="mt-5 text-lg leading-relaxed text-slate-300">
@@ -81,27 +79,7 @@ export default function AuthPage({ redirectUrl }: AuthPageProps) {
           </p>
         </div>
 
-        {/* A real screenshot of the call logs (numbers and emails blurred), cropped by the panel edge. */}
-        <figure className="fade-up mt-auto pt-12" style={{ animationDelay: '150ms' }}>
-          <div className="overflow-hidden rounded-tl-xl border-l border-t" style={{ borderColor: 'rgba(148,163,184,0.18)' }}>
-            <Image
-              src="/sign-in-preview.webp"
-              alt="Whispey call logs: completed calls with their duration, and one call flagged with a note"
-              width={1230}
-              height={504}
-              priority
-              unoptimized
-              className="block h-auto max-w-none"
-              style={{ width: '106%' }}
-            />
-          </div>
-        </figure>
-
-        <style>{`
-          @keyframes fade-up { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
-          .fade-up { animation: fade-up 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-          @media (prefers-reduced-motion: reduce) { .fade-up { animation: none; } }
-        `}</style>
+        <span aria-hidden="true" />
       </aside>
 
       {/* Sign in: the focal point */}
