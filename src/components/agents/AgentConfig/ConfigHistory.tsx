@@ -649,9 +649,9 @@ function HistoryEntryRow({
   }
 
   return (
-    <div
+    <div // NOSONAR typescript:S6819 — nested interactive controls, cannot be a native button
       onClick={handleRowClick}
-      role="button" // NOSONAR typescript:S6819 — nested interactive controls, cannot be a native button
+      role="button"
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleRowClick() } }}
       className={`rounded-lg border transition-all ${

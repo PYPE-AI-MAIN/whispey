@@ -1138,7 +1138,7 @@ export default function PipecatAgentConfig({
           <div className="space-y-6 mt-6">
             {/* Unmapped variable warning */}
             {detectedVarNames.filter(n => !(n in variables)).length > 0 && (
-              <div
+              <div // NOSONAR typescript:S6819 — nested interactive controls, cannot be a native button
                 className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                 onClick={() => {
                   const unmapped = detectedVarNames.filter(n => !(n in variables))
@@ -1148,7 +1148,7 @@ export default function PipecatAgentConfig({
                     return next
                   })
                 }}
-                role="button" // NOSONAR typescript:S6819 — nested interactive controls, cannot be a native button
+                role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key !== 'Enter' && e.key !== ' ') return

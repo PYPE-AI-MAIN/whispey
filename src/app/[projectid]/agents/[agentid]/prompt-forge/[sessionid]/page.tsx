@@ -1120,10 +1120,10 @@ function ForgeUI({
                 }
               </div>
               <div className="shrink-0 px-4 pb-4 pt-3 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-                <div
+                <div // NOSONAR typescript:S6819 — nested interactive controls, cannot be a native button
                   className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2.5 focus-within:border-gray-300 dark:focus-within:border-gray-600 focus-within:ring-1 focus-within:ring-gray-200 dark:focus-within:ring-gray-700 transition-all cursor-text"
                   onClick={() => inputRef.current?.focus()}
-                  role="button" // NOSONAR typescript:S6819 — nested interactive controls, cannot be a native button
+                  role="button"
                   tabIndex={0}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputRef.current?.focus() } }}
                 >

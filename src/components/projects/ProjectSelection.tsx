@@ -610,13 +610,13 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
               {/* Table Body */}
               <div>
                 {filteredProjects.map((project, index) => (
-                  <div
+                  <div // NOSONAR typescript:S6819 — nested interactive controls, cannot be a native button
                     key={project.id}
                     className={`group px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer ${
                       index !== filteredProjects.length - 1 ? 'border-b border-gray-200 dark:border-gray-700' : ''
                     } ${selectedProject === project.id ? 'opacity-50' : ''}`}
                     onClick={() => handleProjectClick(project)}
-                    role="button" // NOSONAR typescript:S6819 — nested interactive controls, cannot be a native button
+                    role="button"
                     tabIndex={0}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleProjectClick(project) } }}
                   >
