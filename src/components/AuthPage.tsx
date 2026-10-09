@@ -1,163 +1,142 @@
 'use client';
 
-import { SignIn } from '@clerk/nextjs';
+/**
+ * The /sign-in page. Same wording as before; the design is calmer and plainer:
+ * a flat dark brand panel (no gradient or pattern), the form as the one focal
+ * point, one accent (the app's blue), light and dark on the form side, and a
+ * single column on a phone. Features are hairline rows, not icon tiles.
+ */
+import { ClerkLoaded, ClerkLoading, SignIn } from '@clerk/nextjs';
 import Image from 'next/image';
-import { Mic, Sparkles, Shield, Zap } from 'lucide-react';
+import { useTheme } from 'next-themes';
 
 interface AuthPageProps {
   redirectUrl?: string
 }
 
-export default function AuthPage({ redirectUrl }: AuthPageProps) {
+const FEATURES = [
+  { title: 'Smart Transcription', body: 'Real-time voice-to-text with context awareness' },
+  { title: 'Instant Insights', body: 'AI-powered analysis and action items' },
+  { title: 'Completely Private', body: 'Open Source' },
+];
+
+// Clerk's own CSS outranks Tailwind utilities, so colours go through its variables.
+const CLERK_VARIABLES = {
+  light: { colorBackground: '#ffffff', colorText: '#0f172a', colorTextSecondary: '#475569', colorInputBackground: '#ffffff', colorInputText: '#0f172a', colorPrimary: '#0f172a', colorTextOnPrimaryBackground: '#ffffff', colorNeutral: '#0f172a', borderRadius: '0.5rem' },
+  dark: { colorBackground: '#020617', colorText: '#f1f5f9', colorTextSecondary: '#94a3b8', colorInputBackground: '#0f172a', colorInputText: '#f1f5f9', colorPrimary: '#f1f5f9', colorTextOnPrimaryBackground: '#0f172a', colorNeutral: '#f1f5f9', borderRadius: '0.5rem' },
+} as const;
+
+function Brand({ tone, size }: Readonly<{ tone: 'on-dark' | 'adaptive'; size: 'lg' | 'md' }>) {
+  const logo = size === 'lg' ? 40 : 32;
+  const name = tone === 'on-dark' ? 'text-slate-100' : 'text-slate-900 dark:text-slate-100';
+  const by = tone === 'on-dark' ? 'text-slate-400' : 'text-slate-500 dark:text-slate-400';
   return (
-    <div className="h-screen bg-white flex overflow-hidden">
-      {/* Left Side - Branding & Value Proposition */}
-      <div className="hidden lg:flex lg:w-1/2 bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-20" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23ffffff' fillOpacity='0.03'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-        }}></div>
-        
-        <div className="relative z-10 flex flex-col justify-center px-16 py-35">
-          <div className="max-w-lg">
-            {/* Logo */}
-            <div className="flex items-center space-x-3 mb-12">
-              <a href="https://pypeai.com/" target="_blank" rel="noopener noreferrer" className="w-14 h-14 flex items-center justify-center">
-                <Image src="/logo-dark.png" alt="Pype Logo" width={38} height={38} style={{ objectFit: 'contain' }} />
-              </a>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', height: '38px', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '20px', fontWeight: 600, lineHeight: 1, fontFamily: '-apple-system, "Segoe UI", sans-serif', alignSelf: 'flex-start', color: '#F3F4F6' }}>
-                  Whispey
-                </span>
-                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600, fontFamily: '-apple-system, "Segoe UI", sans-serif', color: '#8B7BC9' }}>by</span>
-                  <img src="/pype-wordmark.png" alt="Pype" style={{ height: '11px', width: 'auto', objectFit: 'contain' }} />
-                </div>
-              </div>
-            </div>
-
-            {/* Value Proposition */}
-            <h1 className="text-5xl font-bold text-white mb-6 leading-tight">
-              Monitor your LiveKit Voice AI agents.
-            </h1>
-
-            <p className="text-slate-300 text-xl mb-12 leading-relaxed">
-              Join hundreds of engineers and get complete observability into your Voice AI Applications.
-            </p>
-
-            {/* Features */}
-            <div className="space-y-6">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center">
-                  <Sparkles className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold text-lg">Smart Transcription</h3>
-                  <p className="text-slate-400 text-base">Real-time voice-to-text with context awareness</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center">
-                  <Zap className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold text-lg">Instant Insights</h3>
-                  <p className="text-slate-400 text-base">AI-powered analysis and action items</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center">
-                  <Shield className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold text-lg">Completely Private</h3>
-                  <p className="text-slate-400 text-base">Open Source</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div className="flex items-center gap-3">
+      <a href="https://pypeai.com/" target="_blank" rel="noopener noreferrer" aria-label="Pype AI" className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500">
+        {tone === 'on-dark' ? (
+          <Image src="/logo-dark.png" alt="" width={logo} height={logo} style={{ objectFit: 'contain' }} />
+        ) : (
+          <>
+            <Image src="/logo-light.png" alt="" width={logo} height={logo} className="dark:hidden" style={{ objectFit: 'contain' }} />
+            <Image src="/logo-dark.png" alt="" width={logo} height={logo} className="hidden dark:block" style={{ objectFit: 'contain' }} />
+          </>
+        )}
+      </a>
+      <div className="flex flex-col gap-1.5">
+        <span className={`font-semibold leading-none ${name} ${size === 'lg' ? 'text-xl' : 'text-lg'}`}>Whispey</span>
+        <span className="flex items-center gap-1.5 self-end">
+          <span className={`text-[11px] font-semibold ${by}`}>by</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/pype-wordmark.png" alt="Pype" style={{ height: size === 'lg' ? '10px' : '9px', width: 'auto' }} />
+        </span>
       </div>
+    </div>
+  );
+}
 
-      {/* Right Side - Authentication */}
-      <div className="flex-1 flex flex-col justify-center px-6 py-16 lg:px-16">
-        <div className="w-full max-w-lg mx-auto space-y-8">
-          {/* Mobile Logo */}
-          <div className="lg:hidden text-center">
-            <div className="inline-flex items-center space-x-3">
-              <a href="https://pypeai.com/" target="_blank" rel="noopener noreferrer" className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center border">
-                <Image src="/logo-light.png" alt="Pype Logo" width={30} height={30} style={{ objectFit: 'contain' }} />
-              </a>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', height: '32px', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '17px', fontWeight: 600, lineHeight: 1, fontFamily: '-apple-system, "Segoe UI", sans-serif', alignSelf: 'flex-start', color: '#111827' }}>
-                  Whispey
-                </span>
-                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '5px' }}>
-                  <span style={{ fontSize: '10px', fontWeight: 600, fontFamily: '-apple-system, "Segoe UI", sans-serif', color: '#6D28D9' }}>by</span>
-                  <img src="/pype-wordmark.png" alt="Pype" style={{ height: '9px', width: 'auto', objectFit: 'contain' }} />
-                </div>
+function FormSkeleton() {
+  return (
+    <div className="space-y-4" role="status" aria-label="Loading the sign-in form">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="h-12 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+      ))}
+    </div>
+  );
+}
+
+export default function AuthPage({ redirectUrl }: AuthPageProps) {
+  const { resolvedTheme } = useTheme();
+  const variables = CLERK_VARIABLES[resolvedTheme === 'dark' ? 'dark' : 'light'];
+  return (
+    <div className="flex min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+      {/* Brand panel: desktop only, always dark so the logo reads the same in both themes */}
+      <aside className="hidden border-r border-slate-800 bg-slate-950 text-slate-100 lg:flex lg:w-[45%] lg:flex-col lg:justify-between lg:px-14 lg:py-12 xl:px-20">
+        <Brand tone="on-dark" size="lg" />
+
+        <div className="max-w-lg py-16">
+          <h1 className="text-5xl font-semibold leading-[1.1] tracking-tight text-white">
+            Monitor your LiveKit Voice AI agents.
+          </h1>
+          <p className="mt-6 text-lg leading-relaxed text-slate-300">
+            Join hundreds of engineers and get complete observability into your Voice AI Applications.
+          </p>
+
+          <dl className="mt-12 divide-y divide-slate-800 border-y border-slate-800">
+            {FEATURES.map((f) => (
+              <div key={f.title} className="grid gap-1 py-5 sm:grid-cols-[11rem_1fr] sm:gap-6">
+                <dt className="font-semibold text-slate-100">{f.title}</dt>
+                <dd className="text-slate-400">{f.body}</dd>
               </div>
-            </div>
+            ))}
+          </dl>
+        </div>
+
+        <span aria-hidden="true" />
+      </aside>
+
+      {/* Form side: the focal point */}
+      <div className="flex flex-1 flex-col justify-center px-6 py-12 sm:px-10 lg:px-16">
+        <div className="mx-auto w-full max-w-md">
+          <div className="mb-10 lg:hidden">
+            <Brand tone="adaptive" size="md" />
           </div>
 
-          {/* Header */}
-          <div className="text-center lg:text-left">
-            <h2 className="text-4xl font-bold text-slate-900 mb-3">
-              Welcome back
-            </h2>
-            <p className="text-slate-600 text-lg">
-              Sign in to your account to continue
-            </p>
-          </div>
+          <h2 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">Welcome back</h2>
+          <p className="mt-2 text-base text-slate-600 dark:text-slate-300">Sign in to your account to continue</p>
 
-          {/* Clerk Sign In Component */}
           <div className="mt-8">
-            <SignIn
-              routing="hash"
-              appearance={{
-                elements: {
-                  card: "shadow-none bg-transparent p-0",
-                  formButtonPrimary: "bg-slate-900 hover:bg-slate-800 text-white font-medium py-3.5 px-4 text-base rounded-lg transition-all duration-200 ease-in-out shadow-sm hover:shadow-md",
-                  headerTitle: "hidden",
-                  headerSubtitle: "hidden",
-                  socialButtonsBlockButton: "border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 font-medium py-3.5 px-4 text-base rounded-lg transition-all duration-200 ease-in-out",
-                  socialButtonsBlockButtonText: "font-medium",
-                  formFieldInput: "border-2 border-slate-200 focus:ring-2 focus:ring-slate-900 focus:border-slate-900 rounded-lg py-3.5 px-4 text-base transition-all duration-200 ease-in-out",
-                  formFieldLabel: "text-slate-700 font-medium mb-2 text-base",
-                  footerActionLink: "text-slate-900 hover:text-slate-700 font-medium",
-                  dividerLine: "bg-slate-200",
-                  dividerText: "text-slate-500 font-medium",
-                  formFieldInputShowPasswordButton: "text-slate-500 hover:text-slate-700",
-                  identityPreviewText: "text-slate-600",
-                  identityPreviewEditButton: "text-slate-900 hover:text-slate-700"
-                },
-                layout: {
-                  socialButtonsPlacement: "top"
-                }
-              }}
-              redirectUrl={redirectUrl ?? '/projects'}
-            />
+            <ClerkLoading>
+              <FormSkeleton />
+            </ClerkLoading>
+            <ClerkLoaded>
+              <SignIn
+                routing="hash"
+                appearance={{
+                  variables,
+                  elements: {
+                    rootBox: { width: '100%' },
+                    cardBox: { width: '100%', border: 'none', boxShadow: 'none', background: 'transparent' },
+                    card: { width: '100%', padding: 0, border: 'none', boxShadow: 'none', background: 'transparent' },
+                    footer: { background: 'transparent' },
+                    headerTitle: { display: 'none' },
+                    headerSubtitle: { display: 'none' },
+                    socialButtonsBlockButton: { minHeight: '3rem', boxShadow: 'none' },
+                    formFieldInput: { minHeight: '3rem', fontSize: '1rem', boxShadow: 'none' },
+                    formButtonPrimary: { minHeight: '3rem', fontSize: '1rem', fontWeight: 500, boxShadow: 'none' },
+                  },
+                  layout: { socialButtonsPlacement: 'top' },
+                }}
+                redirectUrl={redirectUrl ?? '/projects'}
+              />
+            </ClerkLoaded>
           </div>
 
-          {/* Trust Indicators */}
-          <div className="pt-8 border-t border-slate-200">
-            <div className="flex items-center justify-center space-x-6 text-sm text-slate-500">
-              <div className="flex items-center space-x-2">
-                <Shield className="w-4 h-4" />
-                <span>Secure</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                  <div className="w-2 h-2 bg-white rounded-full"></div>
-                </div>
-                <span>Open Source</span>
-              </div>
-            </div>
-            <p className="text-center text-xs text-slate-400 mt-4">
-              Protected by industry-leading security standards
+          <div className="mt-10 border-t border-slate-200 pt-6 dark:border-slate-800">
+            <p className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-slate-600 dark:text-slate-400">
+              <span>Secure</span>
+              <span>Open Source</span>
             </p>
+            <p className="mt-3 text-xs text-slate-500 dark:text-slate-500">Protected by industry-leading security standards</p>
           </div>
         </div>
       </div>
