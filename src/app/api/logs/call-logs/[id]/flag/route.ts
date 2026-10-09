@@ -4,6 +4,7 @@ import { auth, currentUser } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
 import { normalizeFlags, type FlagEntry } from '@/utils/callLogsUtils'
+import { notifyQaTeam } from '@/server/qa/notify'
 
 const supabase = createServiceRoleClient()
 
@@ -71,7 +72,7 @@ function applyFlagAction(
 async function syncQaTicket(
   body: FlagAction,
   nextFlags: FlagEntry[],
-  ids: { callLogId: string; agentId: string; projectId: string },
+  ids: { callLogId: string; agentId: string; projectId: string; agentName: string },
 ) {
   try {
     if (body.action === 'add') {
@@ -87,6 +88,14 @@ async function syncQaTicket(
         flagged_by_email: flag.flagged_by?.email ?? null,
         flagged_at: flag.flagged_at,
       }, { onConflict: 'call_log_id,flag_id', ignoreDuplicates: true })
+      await notifyQaTeam({
+        kind: 'flag',
+        agentName: ids.agentName,
+        agentId: ids.agentId,
+        projectId: ids.projectId,
+        byEmail: flag.flagged_by?.email ?? '',
+        detail: flag.text,
+      })
     } else if (body.action === 'update') {
       await supabase.from('qa_flag_tickets').update({ reason: body.text.trim() })
         .eq('call_log_id', ids.callLogId).eq('flag_id', body.flagId).eq('status', 'pending')
@@ -125,7 +134,7 @@ export async function PATCH(
 
     const { data: agent } = await supabase
       .from('pype_voice_agents')
-      .select('project_id')
+      .select('project_id, name, display_name')
       .eq('id', current?.agent_id)
       .maybeSingle()
 
@@ -163,7 +172,7 @@ export async function PATCH(
     if (error) throw error
 
     if (current?.agent_id && agent?.project_id) {
-      await syncQaTicket(body, nextFlags, { callLogId: id, agentId: current.agent_id, projectId: agent.project_id })
+      await syncQaTicket(body, nextFlags, { callLogId: id, agentId: current.agent_id, projectId: agent.project_id, agentName: agent.display_name || agent.name })
     }
 
     return NextResponse.json({ success: true, flags: nextFlags })

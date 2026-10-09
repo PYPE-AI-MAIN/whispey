@@ -62,3 +62,18 @@ describe('weekly patch', () => {
     expect(weeklyPatch({ status: 'in_progress', sheet_url: 'ignored' })).toEqual({ patch: { status: 'in_progress', note: null } })
   })
 })
+
+describe('slack alert', () => {
+  const base = { kind: 'flag' as const, agentName: 'Bot', agentId: 'a1', projectId: 'p1', byEmail: 'x@y.com', detail: 'rude <b>&</b>' }
+  it('links to the agent QA page and escapes Slack control characters', async () => {
+    const { qaSlackText } = await import('@/server/qa/notify')
+    const text = qaSlackText(base, 'https://app.example.com')
+    expect(text).toContain('<https://app.example.com/p1/agents/a1/qa|Open QA Audit>')
+    expect(text).toContain('rude &lt;b&gt;&amp;&lt;/b&gt;')
+    expect(text).toContain('Call flagged')
+  })
+  it('labels a weekly request', async () => {
+    const { qaSlackText } = await import('@/server/qa/notify')
+    expect(qaSlackText({ ...base, kind: 'weekly', detail: '2026-09-28 to 2026-10-04' }, '')).toContain('Week: 2026-09-28 to 2026-10-04')
+  })
+})

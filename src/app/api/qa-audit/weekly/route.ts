@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isQaDenied, qaDb, resolveAgentAccess } from '@/server/qa/access'
 import { lastFullWeek, weekEndOf, weekError } from '@/lib/qaAudit'
+import { notifyQaTeam } from '@/server/qa/notify'
 
 /** Weekly review requests for one agent, newest week first. */
 export async function GET(request: NextRequest) {
@@ -45,6 +46,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'A review for that week was already requested' }, { status: 409 })
   }
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  await notifyQaTeam({
+    kind: 'weekly',
+    agentName: access.agent.display_name || access.agent.name,
+    agentId: access.agent.id,
+    projectId: access.projectId,
+    byEmail: access.email,
+    detail: `${weekStart} to ${weekEndOf(weekStart)}`,
+  })
 
   return NextResponse.json({ review: data }, { status: 201 })
 }
