@@ -142,20 +142,25 @@ const TagBadge: React.FC<TagBadgeProps> = ({
         cursor: canComment ? 'pointer' : 'default',
       }}
       className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] font-medium select-none"
-      onClick={e => { if (canComment) { e.stopPropagation(); setCommentOpen(true) } }}
-      role={canComment ? 'button' : undefined}
-      tabIndex={canComment ? 0 : undefined}
-      onKeyDown={e => { if (canComment && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.stopPropagation(); setCommentOpen(true) } }}
     >
-      {tag}
-      {/* Comment indicator dot */}
-      {comment && (
-        <MessageSquare
-          style={{ color: color.text }}
-          className="w-2.5 h-2.5 ml-0.5 opacity-70 shrink-0"
-        />
-      )}
       <button
+        type="button"
+        disabled={!canComment}
+        className="inline-flex items-center gap-0.5 disabled:cursor-default"
+        style={{ cursor: canComment ? 'pointer' : 'default' }}
+        onClick={e => { e.stopPropagation(); setCommentOpen(true) }}
+      >
+        {tag}
+        {/* Comment indicator dot */}
+        {comment && (
+          <MessageSquare
+            style={{ color: color.text }}
+            className="w-2.5 h-2.5 ml-0.5 opacity-70 shrink-0"
+          />
+        )}
+      </button>
+      <button
+        type="button"
         onClick={e => { e.stopPropagation(); onRemove(tag) }}
         style={{ color: color.text }}
         className="ml-0.5 opacity-60 hover:opacity-100 transition-opacity rounded-full"

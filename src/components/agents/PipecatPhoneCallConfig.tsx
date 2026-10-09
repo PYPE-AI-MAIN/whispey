@@ -626,7 +626,7 @@ export default function PipecatPhoneCallConfig({
                   <div
                     key={call.id}
                     onClick={() => loadCallFromHistory(call)}
-                    role="button"
+                    role="button" // NOSONAR typescript:S6819 — nested interactive controls, cannot be a native button
                     tabIndex={0}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); loadCallFromHistory(call) } }}
                     className={`group relative p-5 rounded-xl border transition-all cursor-pointer ${

@@ -128,7 +128,7 @@ const SarvamVoiceCard = ({
 }) => (
   <div
     onClick={onClick}
-    role="button"
+    role="button" // NOSONAR typescript:S6819 — nested interactive controls, cannot be a native button
     tabIndex={0}
     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
     className={`group cursor-pointer p-2 rounded-md border transition-all hover:shadow-sm ${
@@ -200,7 +200,7 @@ const ElevenLabsVoiceCard = ({
 }) => (
   <div
     onClick={onClick}
-    role="button"
+    role="button" // NOSONAR typescript:S6819 — nested interactive controls, cannot be a native button
     tabIndex={0}
     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
     className={`group cursor-pointer p-2 rounded-md border transition-all hover:shadow-sm ${
@@ -271,7 +271,7 @@ const GoogleTTSVoiceCard = ({
 }) => (
   <div
     onClick={onClick}
-    role="button"
+    role="button" // NOSONAR typescript:S6819 — nested interactive controls, cannot be a native button
     tabIndex={0}
     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
     className={`group cursor-pointer p-2 rounded-md border transition-all hover:shadow-sm ${

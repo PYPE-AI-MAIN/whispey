@@ -182,7 +182,7 @@ function FlaggedCalls({ agentId, projectId }: Readonly<{ agentId: string; projec
 
   let body: ReactNode
   if (isLoading) body = <Skeleton className="h-40 w-full rounded-xl" />
-  else if (error) body = <p className="text-sm text-red-600">{(error as Error).message}</p>
+  else if (error) body = <p className="text-sm text-red-600">{error.message}</p>
   else if (shown.length === 0) {
     body = (
       <Empty>
@@ -263,7 +263,7 @@ function TicketRow({ ticket, canManage, agentId, projectId }: Readonly<{ ticket:
         </p>
       )}
       {canManage && editing && (
-        <Editor onSave={() => save.mutate()} saving={save.isPending} error={save.isError ? (save.error as Error).message : undefined}>
+        <Editor onSave={() => save.mutate()} saving={save.isPending} error={save.isError ? save.error.message : undefined}>
           <Labelled label="Status">
             <select className={fieldClass} value={status} onChange={(e) => setStatus(e.target.value as Ticket['status'])}>
               <option value="pending">Pending</option>
@@ -297,7 +297,7 @@ function WeeklyReview({ agentId }: Readonly<{ agentId: string }>) {
 
   let body: ReactNode
   if (isLoading) body = <Skeleton className="h-40 w-full rounded-xl" />
-  else if (error) body = <p className="text-sm text-red-600">{(error as Error).message}</p>
+  else if (error) body = <p className="text-sm text-red-600">{error.message}</p>
   else if (reviews.length === 0) body = <Empty>No weekly reviews yet. Request last week above, and the QA team will share the results here as a Google Sheet.</Empty>
   else body = <RowList>{reviews.map((r) => <ReviewRow key={r.id} review={r} canManage={!!data?.canManage} agentId={agentId} />)}</RowList>
 
@@ -310,7 +310,7 @@ function WeeklyReview({ agentId }: Readonly<{ agentId: string }>) {
           <Button onClick={() => request.mutate()} disabled={request.isPending || alreadyAsked || !week}>
             {alreadyAsked ? 'Requested for last week' : 'Request last week’s review'}
           </Button>
-          {request.isError && <span className="text-xs text-red-600">{(request.error as Error).message}</span>}
+          {request.isError && <span className="text-xs text-red-600">{request.error.message}</span>}
         </div>
       }
     >
@@ -359,7 +359,7 @@ function ReviewRow({ review, canManage, agentId }: Readonly<{ review: Review; ca
       </div>
       {review.note && <p className="mt-3 border-l-2 border-gray-300 pl-3 text-sm text-gray-700 dark:border-gray-600 dark:text-gray-300">{review.note}</p>}
       {canManage && editing && (
-        <Editor onSave={() => save.mutate()} saving={save.isPending} error={save.isError ? (save.error as Error).message : undefined}>
+        <Editor onSave={() => save.mutate()} saving={save.isPending} error={save.isError ? save.error.message : undefined}>
           <Labelled label="Status">
             <select className={fieldClass} value={status} onChange={(e) => setStatus(e.target.value as Review['status'])}>
               <option value="requested">Requested</option>

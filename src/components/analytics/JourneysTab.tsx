@@ -18,7 +18,7 @@ import {
   SlidersHorizontal, Table2, TrendingDown, UserPlus, Users, X,
 } from 'lucide-react'
 import {
-  Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, LabelList, Legend, Line, LineChart, Pie, PieChart,
+  Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, LabelList, Legend, Line, LineChart, Pie, PieChart, // NOSONAR typescript:S1874 — recharts Cell still the supported per-bar color API here
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import { Button } from '@/components/ui/button'
@@ -363,7 +363,7 @@ function KpiRow({
   const active = useActiveJourneys(projectId, campaignId, range, filters, true)
   const steps = funnel.data?.steps ?? []
   const first = steps[0]?.reached_count ?? 0
-  const last = steps[steps.length - 1]
+  const last = steps.at(-1)
   const drop = biggestDrop(steps)
   const peak = active.data?.length ? Math.max(...active.data.map((p) => p.active_count)) : 0
   const avg = active.data?.length ? Math.round(active.data.reduce((s, p) => s + p.active_count, 0) / active.data.length) : 0
@@ -614,7 +614,9 @@ function ChartCard({
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie data={shown} dataKey="value" nameKey="bucket" innerRadius="52%" outerRadius="80%" paddingAngle={2} stroke="none">
-                {shown.map((p, i) => <Cell key={p.bucket} fill={SERIES_COLORS[i % SERIES_COLORS.length]} />)}
+                {shown.map((p, i) => {
+                  return <Cell key={p.bucket} fill={SERIES_COLORS[i % SERIES_COLORS.length]} /> // NOSONAR typescript:S1874 — recharts Cell still the supported per-bar color API here
+                })}
               </Pie>
               <Tooltip content={<ChartTooltip valueName={metricLabel} total={total} />} />
               <Legend verticalAlign="bottom" iconType="circle" iconSize={8} formatter={pieLegendLabel} />

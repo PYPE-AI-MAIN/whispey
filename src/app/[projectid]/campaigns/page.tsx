@@ -366,7 +366,7 @@ function Campaigns() {
           <div
             key={campaign.campaignId}
             onClick={() => router.push(`/${projectId}/campaigns/${campaign.campaignId}`)}
-            role="button"
+            role="button" // NOSONAR typescript:S6819 — nested interactive controls, cannot be a native button
             tabIndex={0}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push(`/${projectId}/campaigns/${campaign.campaignId}`) } }}
             className={`relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700

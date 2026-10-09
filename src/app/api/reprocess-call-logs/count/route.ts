@@ -21,16 +21,14 @@ export async function GET(request: NextRequest) {
     const project_id = searchParams.get('project_id')
     
     // Parse optional field arrays
-    let transcription_fields: string[] = []
-    let metrics_fields: string[] = []
     try {
       const transcriptionFieldsParam = searchParams.get('transcription_fields')
       if (transcriptionFieldsParam) {
-        transcription_fields = JSON.parse(transcriptionFieldsParam)
+        JSON.parse(transcriptionFieldsParam)
       }
       const metricsFieldsParam = searchParams.get('metrics_fields')
       if (metricsFieldsParam) {
-        metrics_fields = JSON.parse(metricsFieldsParam)
+        JSON.parse(metricsFieldsParam)
       }
     } catch (e) {
       console.error('Error parsing field arrays:', e)

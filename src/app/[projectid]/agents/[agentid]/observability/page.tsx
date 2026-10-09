@@ -53,7 +53,7 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
     : [{ column: "agent_id", operator: "eq", value: resolvedParams.agentid }]
 
 
-  const { data: callData, isLoading: callLoading, error: callError, refetch: refetchCall } = useSupabaseQuery("pype_voice_call_logs", {
+  const { data: callData, isLoading: callLoading, refetch: refetchCall } = useSupabaseQuery("pype_voice_call_logs", {
     select: "id, call_id, agent_id, recording_url, customer_number, call_started_at, call_ended_reason, duration_seconds, metadata, transcription_metrics",
     filters: queryFilters,
     orderBy: { column: "created_at", ascending: false },

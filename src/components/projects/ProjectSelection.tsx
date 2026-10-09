@@ -616,7 +616,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                       index !== filteredProjects.length - 1 ? 'border-b border-gray-200 dark:border-gray-700' : ''
                     } ${selectedProject === project.id ? 'opacity-50' : ''}`}
                     onClick={() => handleProjectClick(project)}
-                    role="button"
+                    role="button" // NOSONAR typescript:S6819 — nested interactive controls, cannot be a native button
                     tabIndex={0}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleProjectClick(project) } }}
                   >

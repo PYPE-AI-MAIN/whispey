@@ -1148,7 +1148,7 @@ export default function PipecatAgentConfig({
                     return next
                   })
                 }}
-                role="button"
+                role="button" // NOSONAR typescript:S6819 — nested interactive controls, cannot be a native button
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key !== 'Enter' && e.key !== ' ') return

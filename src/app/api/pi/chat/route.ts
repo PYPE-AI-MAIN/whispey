@@ -856,7 +856,7 @@ function resolveNextPrompt(args: any, assistant: any): { prompt: string | undefi
 }
 
 function resolveMcpVoice(args: any): { voice?: ReturnType<typeof findMcpVoice> } | { error: string } {
-  if (!args.voice_provider !== !args.voice_id) return { error: 'voice_provider and voice_id must be sent together' }
+  if (Boolean(args.voice_provider) !== Boolean(args.voice_id)) return { error: 'voice_provider and voice_id must be sent together' }
   if (!(args.voice_provider && args.voice_id)) return {}
   const voice = findMcpVoice(args.voice_provider, args.voice_id)
   return voice ? { voice } : { error: `Voice ${args.voice_provider}/${args.voice_id} is not in the Agent Studio voice list` }
@@ -1425,7 +1425,7 @@ async function runAttachInboundNumber(projectId: string, args: any) {
   }
 
   const alias = inboundAlias(project.name, number)
-  const prevApp = owned.application.match(/(?:Zentrunk\/Trunk|Application)\/(\d+)/)?.[1] ?? null
+  const prevApp = /(?:Zentrunk\/Trunk|Application)\/(\d+)/.exec(owned.application)?.[1] ?? null
   const hadTrunk = rows.some((r: any) => r.trunk_id)
 
   await attachNumberToTrunk(number, trunkId, alias)
