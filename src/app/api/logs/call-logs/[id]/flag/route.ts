@@ -94,6 +94,7 @@ async function syncQaTicket(
         agentId: ids.agentId,
         projectId: ids.projectId,
         byEmail: flag.flagged_by?.email ?? '',
+        callLogId: ids.callLogId,
         detail: flag.text,
       })
     } else if (body.action === 'update') {

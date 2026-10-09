@@ -64,16 +64,26 @@ describe('weekly patch', () => {
 })
 
 describe('slack alert', () => {
-  const base = { kind: 'flag' as const, agentName: 'Bot', agentId: 'a1', projectId: 'p1', byEmail: 'x@y.com', detail: 'rude <b>&</b>' }
-  it('links to the agent QA page and escapes Slack control characters', async () => {
+  const base = { kind: 'flag' as const, agentName: 'Bot', agentId: 'a1', projectId: 'p1', byEmail: 'x@y.com', detail: 'rude <b>&</b>', callLogId: 'c9' }
+  it('links the agent, the call and the QA page, and escapes Slack control characters', async () => {
     const { qaSlackText } = await import('@/server/qa/notify')
     const text = qaSlackText(base, 'https://app.example.com')
+    expect(text).toContain('<https://app.example.com/p1/agents/a1|Bot>')
+    expect(text).toContain('<https://app.example.com/p1/agents/a1/observability?session_id=c9|Open call>')
     expect(text).toContain('<https://app.example.com/p1/agents/a1/qa|Open QA Audit>')
     expect(text).toContain('rude &lt;b&gt;&amp;&lt;/b&gt;')
     expect(text).toContain('Call flagged')
   })
-  it('labels a weekly request', async () => {
+  it('tags someone only when the mention is a real Slack mention', async () => {
     const { qaSlackText } = await import('@/server/qa/notify')
-    expect(qaSlackText({ ...base, kind: 'weekly', detail: '2026-09-28 to 2026-10-04' }, '')).toContain('Week: 2026-09-28 to 2026-10-04')
+    expect(qaSlackText(base, 'https://a.com', '<@U0123ABCD>').startsWith('<@U0123ABCD> *Call flagged*')).toBe(true)
+    expect(qaSlackText(base, 'https://a.com', 'hello <!channel>').startsWith('*Call flagged*')).toBe(true)
+    expect(qaSlackText(base, 'https://a.com', '').startsWith('*Call flagged*')).toBe(true)
+  })
+  it('labels a weekly request and has no call link', async () => {
+    const { qaSlackText } = await import('@/server/qa/notify')
+    const text = qaSlackText({ ...base, kind: 'weekly', callLogId: undefined, detail: '2026-09-28 to 2026-10-04' }, '')
+    expect(text).toContain('Week: 2026-09-28 to 2026-10-04')
+    expect(text).not.toContain('Open call')
   })
 })
