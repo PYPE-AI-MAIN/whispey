@@ -94,13 +94,9 @@ async function load<T>(url: string, what: string): Promise<T> {
 function Section({ title, hint, action, children }: Readonly<{ title: string; hint: string; action?: ReactNode; children: ReactNode }>) {
   return (
     <div className="w-full max-w-4xl">
-      <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
-        <div className="max-w-xl">
-          <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
-          <p className="mt-1 text-sm leading-relaxed text-gray-500 dark:text-gray-400">{hint}</p>
-        </div>
-        {action}
-      </div>
+      <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
+      <p className="mt-1 max-w-xl text-sm leading-relaxed text-gray-500 dark:text-gray-400">{hint}</p>
+      {action && <div className="mt-5">{action}</div>}
       <div className="mt-8">{children}</div>
     </div>
   )
@@ -300,7 +296,7 @@ function WeeklyReview({ agentId }: Readonly<{ agentId: string }>) {
       title="Weekly review"
       hint={week ? `Ask the QA team to review every call from ${fmtWeek(week.weekStart, week.weekEnd)}. They share the results as a Google Sheet.` : 'Ask the QA team to review a whole week of calls.'}
       action={
-        <div className="flex flex-col items-end gap-1">
+        <div className="flex flex-wrap items-center gap-3">
           <Button onClick={() => request.mutate()} disabled={request.isPending || alreadyAsked || !week}>
             {alreadyAsked ? 'Requested for last week' : 'Request last week’s review'}
           </Button>
