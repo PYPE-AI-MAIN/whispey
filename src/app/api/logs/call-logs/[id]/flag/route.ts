@@ -176,7 +176,8 @@ export async function PATCH(
       await syncQaTicket(body, nextFlags, { callLogId: id, agentId: current.agent_id, projectId: agent.project_id, agentName: agent.display_name || agent.name })
     }
 
-    return NextResponse.json({ success: true, flags: nextFlags })
+    const qaPath = current?.agent_id && agent?.project_id ? `/${agent.project_id}/agents/${current.agent_id}/qa` : null
+    return NextResponse.json({ success: true, flags: nextFlags, qaPath })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     console.error('Error updating call log flag:', message)
