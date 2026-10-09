@@ -41,7 +41,7 @@ export function TemplatePicker({
           </div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">What should this agent do?</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Describe the call in plain language — AI Builder writes the flow, you can edit anything after.
+            Describe the call in plain language — Pi writes the flow, you can edit anything after.
           </p>
         </div>
 
