@@ -1,9 +1,8 @@
 'use client';
 
 /**
- * The /sign-in page: a brand panel with one headline, and the form. Nothing else.
- * One focal point (the form), one accent (the app's blue), light and dark on the
- * form side, one column on a phone. Wording follows what Pype AI does (voice
+ * The /sign-in page: one centered column. Logo, a heading, one line, the form.
+ * Nothing else. Light and dark, and the same on a phone. Wording follows what Pype AI does (voice
  * agents for hospitals and clinics) and claims nothing it cannot back up.
  */
 import { ClerkLoaded, ClerkLoading, SignIn } from '@clerk/nextjs';
@@ -29,11 +28,11 @@ function Brand({ tone, size }: Readonly<{ tone: 'on-dark' | 'adaptive'; size: 'l
     <div className="flex items-center gap-3">
       <a href="https://pypeai.com/" target="_blank" rel="noopener noreferrer" aria-label="Pype AI" className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500">
         {tone === 'on-dark' ? (
-          <Image src="/logo-dark.png" alt="" width={logo} height={logo} style={{ objectFit: 'contain' }} />
+          <Image src="/logo-dark.png" alt="" width={logo} height={logo} priority unoptimized style={{ objectFit: 'contain' }} />
         ) : (
           <>
-            <Image src="/logo-light.png" alt="" width={logo} height={logo} className="dark:hidden" style={{ objectFit: 'contain' }} />
-            <Image src="/logo-dark.png" alt="" width={logo} height={logo} className="hidden dark:block" style={{ objectFit: 'contain' }} />
+            <Image src="/logo-light.png" alt="" width={logo} height={logo} priority unoptimized className="dark:hidden" style={{ objectFit: 'contain' }} />
+            <Image src="/logo-dark.png" alt="" width={logo} height={logo} priority unoptimized className="hidden dark:block" style={{ objectFit: 'contain' }} />
           </>
         )}
       </a>
@@ -65,33 +64,18 @@ export default function AuthPage({ redirectUrl }: AuthPageProps) {
   const border = BORDER[mode];
 
   return (
-    <div className="flex min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      {/* Brand panel: desktop only. Logo, one headline, one line. Always dark so the logo reads the same in both themes. */}
-      <aside className="hidden bg-slate-900 text-slate-100 lg:flex lg:w-[44%] lg:flex-col lg:justify-between lg:px-14 lg:py-12 xl:px-20">
-        <Brand tone="on-dark" size="lg" />
-
-        <div className="max-w-md">
-          <h1 className="text-4xl font-semibold leading-tight tracking-tight text-white">
-            Create voice agents and see how patients engage.
-          </h1>
-          <p className="mt-5 text-lg leading-relaxed text-slate-300">
-            Build agents with Pype, then follow every call: what was said, how the patient responded, and what to fix.
-          </p>
+    <div className="flex min-h-screen items-center justify-center bg-white px-6 py-12 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+      <div className="w-full max-w-sm">
+        <div className="mb-10 flex justify-center">
+          <Brand tone="adaptive" size="lg" />
         </div>
 
-        <span aria-hidden="true" />
-      </aside>
+        <h1 className="text-center text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">Sign in to Whispey</h1>
+        <p className="mt-2 text-center text-base text-slate-600 dark:text-slate-400">
+          Create voice agents and see how patients engage.
+        </p>
 
-      {/* Sign in: the focal point */}
-      <div className="flex flex-1 flex-col justify-center px-6 py-12 sm:px-10 lg:px-16">
-        <div className="mx-auto w-full max-w-sm">
-          <div className="mb-10 lg:hidden">
-            <Brand tone="adaptive" size="md" />
-          </div>
-
-          <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">Sign in to Whispey</h2>
-
-          <div className="mt-8">
+        <div className="mt-8">
             <ClerkLoading>
               <FormSkeleton />
             </ClerkLoading>
@@ -116,12 +100,11 @@ export default function AuthPage({ redirectUrl }: AuthPageProps) {
                 redirectUrl={redirectUrl ?? '/projects'}
               />
             </ClerkLoaded>
-          </div>
-
-          <p className="mt-8 text-sm text-slate-600 dark:text-slate-400">
-            Need access? Ask your team admin to invite you.
-          </p>
         </div>
+
+        <p className="mt-8 text-center text-sm text-slate-600 dark:text-slate-400">
+          Need access? Ask your team admin to invite you.
+        </p>
       </div>
     </div>
   );
