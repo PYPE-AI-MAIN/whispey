@@ -1,11 +1,10 @@
 'use client';
 
 /**
- * The /sign-in page: calm and plain. Wording follows what Pype AI does (voice agents for
- * hospitals and clinics) and says nothing it cannot back up. Design:
- * a flat dark brand panel (no gradient or pattern), the form as the one focal
- * point, one accent (the app's blue), light and dark on the form side, and a
- * single column on a phone. Features are hairline rows, not icon tiles.
+ * The /sign-in page: a brand panel with one headline, and the form. Nothing else.
+ * One focal point (the form), one accent (the app's blue), light and dark on the
+ * form side, one column on a phone. Wording follows what Pype AI does (voice
+ * agents for hospitals and clinics) and claims nothing it cannot back up.
  */
 import { ClerkLoaded, ClerkLoading, SignIn } from '@clerk/nextjs';
 import Image from 'next/image';
@@ -15,21 +14,16 @@ interface AuthPageProps {
   redirectUrl?: string
 }
 
-const FEATURES = [
-  { title: 'Call logs', body: 'Listen back and read the transcript of every call.' },
-  { title: 'Analytics', body: 'See how your agents perform across calls and campaigns.' },
-  { title: 'QA Audit', body: 'Flag a call that went wrong and follow it until the QA team resolves it.' },
-];
-
-// Clerk's own CSS outranks Tailwind utilities, so colours go through its variables.
+// Clerk's own CSS outranks Tailwind utilities, so its colours go through its variables.
 const CLERK_VARIABLES = {
   light: { colorBackground: '#ffffff', colorText: '#0f172a', colorTextSecondary: '#475569', colorInputBackground: '#ffffff', colorInputText: '#0f172a', colorPrimary: '#0f172a', colorTextOnPrimaryBackground: '#ffffff', colorNeutral: '#0f172a', borderRadius: '0.5rem' },
   dark: { colorBackground: '#020617', colorText: '#f1f5f9', colorTextSecondary: '#94a3b8', colorInputBackground: '#0f172a', colorInputText: '#f1f5f9', colorPrimary: '#f1f5f9', colorTextOnPrimaryBackground: '#0f172a', colorNeutral: '#f1f5f9', borderRadius: '0.5rem' },
 } as const;
+const BORDER = { light: '#cbd5e1', dark: '#334155' } as const;
 
 function Brand({ tone, size }: Readonly<{ tone: 'on-dark' | 'adaptive'; size: 'lg' | 'md' }>) {
   const logo = size === 'lg' ? 40 : 32;
-  const name = tone === 'on-dark' ? 'text-slate-100' : 'text-slate-900 dark:text-slate-100';
+  const name = tone === 'on-dark' ? 'text-white' : 'text-slate-900 dark:text-slate-100';
   const by = tone === 'on-dark' ? 'text-slate-400' : 'text-slate-500 dark:text-slate-400';
   return (
     <div className="flex items-center gap-3">
@@ -67,43 +61,35 @@ function FormSkeleton() {
 
 export default function AuthPage({ redirectUrl }: AuthPageProps) {
   const { resolvedTheme } = useTheme();
-  const variables = CLERK_VARIABLES[resolvedTheme === 'dark' ? 'dark' : 'light'];
+  const mode = resolvedTheme === 'dark' ? 'dark' : 'light';
+  const border = BORDER[mode];
+
   return (
     <div className="flex min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       {/* Brand panel: desktop only, always dark so the logo reads the same in both themes */}
-      <aside className="hidden border-r border-slate-800 bg-slate-950 text-slate-100 lg:flex lg:w-[45%] lg:flex-col lg:justify-between lg:px-14 lg:py-12 xl:px-20">
+      <aside className="hidden bg-slate-900 text-slate-100 lg:flex lg:w-[44%] lg:flex-col lg:justify-between lg:px-14 lg:py-12 xl:px-20">
         <Brand tone="on-dark" size="lg" />
 
-        <div className="max-w-lg py-16">
-          <h1 className="text-5xl font-semibold leading-[1.1] tracking-tight text-white">
-            See how your voice agents handle every patient call.
+        <div className="max-w-md">
+          <h1 className="text-4xl font-semibold leading-tight tracking-tight text-white">
+            Hear how your voice agents talk to patients.
           </h1>
-          <p className="mt-6 text-lg leading-relaxed text-slate-300">
-            Whispey is the observability platform from Pype AI, for teams running voice agents in hospitals and clinics.
+          <p className="mt-5 text-lg leading-relaxed text-slate-300">
+            Review call transcripts, flag what went wrong, and see how each agent performs.
           </p>
-
-          <dl className="mt-12 divide-y divide-slate-800 border-y border-slate-800">
-            {FEATURES.map((f) => (
-              <div key={f.title} className="grid gap-1 py-5 sm:grid-cols-[11rem_1fr] sm:gap-6">
-                <dt className="font-semibold text-slate-100">{f.title}</dt>
-                <dd className="text-slate-400">{f.body}</dd>
-              </div>
-            ))}
-          </dl>
         </div>
 
         <span aria-hidden="true" />
       </aside>
 
-      {/* Form side: the focal point */}
+      {/* Sign in: the focal point */}
       <div className="flex flex-1 flex-col justify-center px-6 py-12 sm:px-10 lg:px-16">
-        <div className="mx-auto w-full max-w-md">
+        <div className="mx-auto w-full max-w-sm">
           <div className="mb-10 lg:hidden">
             <Brand tone="adaptive" size="md" />
           </div>
 
-          <h2 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">Welcome back</h2>
-          <p className="mt-2 text-base text-slate-600 dark:text-slate-300">Sign in to your account to continue</p>
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">Sign in to Whispey</h2>
 
           <div className="mt-8">
             <ClerkLoading>
@@ -113,7 +99,7 @@ export default function AuthPage({ redirectUrl }: AuthPageProps) {
               <SignIn
                 routing="hash"
                 appearance={{
-                  variables,
+                  variables: CLERK_VARIABLES[mode],
                   elements: {
                     rootBox: { width: '100%' },
                     cardBox: { width: '100%', border: 'none', boxShadow: 'none', background: 'transparent' },
@@ -121,8 +107,8 @@ export default function AuthPage({ redirectUrl }: AuthPageProps) {
                     footer: { background: 'transparent' },
                     headerTitle: { display: 'none' },
                     headerSubtitle: { display: 'none' },
-                    socialButtonsBlockButton: { minHeight: '3rem', boxShadow: 'none' },
-                    formFieldInput: { minHeight: '3rem', fontSize: '1rem', boxShadow: 'none' },
+                    socialButtonsBlockButton: { minHeight: '3rem', boxShadow: 'none', border: `1px solid ${border}` },
+                    formFieldInput: { minHeight: '3rem', fontSize: '1rem', boxShadow: 'none', border: `1px solid ${border}` },
                     formButtonPrimary: { minHeight: '3rem', fontSize: '1rem', fontWeight: 500, boxShadow: 'none' },
                   },
                   layout: { socialButtonsPlacement: 'top' },
@@ -132,7 +118,7 @@ export default function AuthPage({ redirectUrl }: AuthPageProps) {
             </ClerkLoaded>
           </div>
 
-          <p className="mt-10 border-t border-slate-200 pt-6 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-400">
+          <p className="mt-8 text-sm text-slate-600 dark:text-slate-400">
             Need access? Ask your team admin to invite you.
           </p>
         </div>
