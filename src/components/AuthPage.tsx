@@ -72,10 +72,10 @@ export default function AuthPage({ redirectUrl }: AuthPageProps) {
 
         <div className="max-w-md">
           <h1 className="text-4xl font-semibold leading-tight tracking-tight text-white">
-            Hear how your voice agents talk to patients.
+            Create voice agents and see how patients engage.
           </h1>
           <p className="mt-5 text-lg leading-relaxed text-slate-300">
-            Review call transcripts, flag what went wrong, and see how each agent performs.
+            Build agents with Pype, then follow every call: what was said, how the patient responded, and what to fix.
           </p>
         </div>
 
