@@ -79,27 +79,30 @@ function Brand() {
 }
 
 /** A short voice waveform: decoration for the headline, it carries no data. */
+const WAVE_BARS = Array.from({ length: 34 }, (_, n) => {
+  const shape = Math.sin((n / 33) * Math.PI) * (0.55 + 0.45 * Math.abs(Math.sin(n * 1.7)));
+  return { id: `bar-${n}`, h: Math.max(6, Math.round(shape * 40)), delay: (n * 0.07) % 1.4 };
+});
+
 function Waveform() {
-  const bars = Array.from({ length: 34 }, (_, i) => {
-    const shape = Math.sin((i / 33) * Math.PI) * (0.55 + 0.45 * Math.abs(Math.sin(i * 1.7)));
-    return { h: Math.max(6, Math.round(shape * 40)), delay: (i * 0.07) % 1.4 };
-  });
   return (
     <span aria-hidden="true" className="inline-flex items-center gap-[3px] align-middle" style={{ height: '1em', marginLeft: '0.3em' }}>
-      {bars.map((b, i) => (
-        <span key={i} className="sw-bar" style={{ height: b.h, animationDelay: `${b.delay}s` }} />
+      {WAVE_BARS.map((bar) => (
+        <span key={bar.id} className="sw-bar" style={{ height: bar.h, animationDelay: `${bar.delay}s` }} />
       ))}
     </span>
   );
 }
 
+const SKELETON_ROWS = ['google', 'email', 'continue'];
+
 function FormSkeleton() {
   return (
-    <div className="space-y-4" role="status" aria-label="Loading the sign-in form">
-      {[0, 1, 2].map((i) => (
-        <div key={i} className="h-[3.25rem] animate-pulse rounded-full bg-white/70 dark:bg-white/10" />
+    <output className="block space-y-4" aria-label="Loading the sign-in form">
+      {SKELETON_ROWS.map((row) => (
+        <div key={row} className="h-[3.25rem] animate-pulse rounded-full bg-white/70 dark:bg-white/10" />
       ))}
-    </div>
+    </output>
   );
 }
 
