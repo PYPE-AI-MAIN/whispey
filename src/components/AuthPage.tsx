@@ -9,6 +9,7 @@
 import { ClerkLoaded, ClerkLoading, SignIn } from '@clerk/nextjs';
 import Image from 'next/image';
 import { useTheme } from 'next-themes';
+import CallWaves from '@/components/CallWaves';
 
 interface AuthPageProps {
   redirectUrl?: string
@@ -19,6 +20,7 @@ const CLERK_VARIABLES = {
   light: { colorBackground: '#ffffff', colorText: '#0f172a', colorTextSecondary: '#475569', colorInputBackground: '#ffffff', colorInputText: '#0f172a', colorPrimary: '#0f172a', colorTextOnPrimaryBackground: '#ffffff', colorNeutral: '#0f172a', borderRadius: '0.5rem' },
   dark: { colorBackground: '#020617', colorText: '#f1f5f9', colorTextSecondary: '#94a3b8', colorInputBackground: '#0f172a', colorInputText: '#f1f5f9', colorPrimary: '#f1f5f9', colorTextOnPrimaryBackground: '#0f172a', colorNeutral: '#f1f5f9', borderRadius: '0.5rem' },
 } as const;
+const HEADLINE = 'Create voice agents and see how patients engage.';
 const BORDER = { light: '#cbd5e1', dark: '#334155' } as const;
 
 function Brand({ tone, size }: Readonly<{ tone: 'on-dark' | 'adaptive'; size: 'lg' | 'md' }>) {
@@ -66,20 +68,45 @@ export default function AuthPage({ redirectUrl }: AuthPageProps) {
 
   return (
     <div className="flex min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      {/* Brand panel: desktop only, always dark so the logo reads the same in both themes */}
-      <aside className="hidden bg-slate-900 text-slate-100 lg:flex lg:w-[44%] lg:flex-col lg:justify-between lg:px-14 lg:py-12 xl:px-20">
-        <Brand tone="on-dark" size="lg" />
+      {/* Brand panel: desktop only. A call drawn as wires, with the headline revealed word by word. */}
+      <aside className="relative hidden overflow-hidden text-slate-100 lg:flex lg:w-[48%] lg:flex-col lg:justify-between lg:px-14 lg:py-12 xl:px-20" style={{ background: '#050a14' }}>
+        {/* The wires fade out toward the left and right edges instead of being cut off. */}
+        <div
+          className="absolute inset-0"
+          style={{ WebkitMaskImage: 'linear-gradient(to right, transparent, #000 16%, #000 84%, transparent)', maskImage: 'linear-gradient(to right, transparent, #000 16%, #000 84%, transparent)' }}
+        >
+          <CallWaves />
+        </div>
+        {/* Keeps the headline readable where it meets the wires. */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 z-[5]" style={{ height: '58%', background: 'linear-gradient(to top, #050a14 45%, rgba(5,10,20,0))' }} />
 
-        <div className="max-w-md">
-          <h1 className="text-4xl font-semibold leading-tight tracking-tight text-white">
-            Create voice agents and see how patients engage.
+        <div className="relative z-10">
+          <Brand tone="on-dark" size="lg" />
+        </div>
+
+        <div className="relative z-10 max-w-xl">
+          <h1 aria-label={HEADLINE} className="font-bold text-white" style={{ fontSize: 'clamp(2.25rem, 3.4vw, 3.5rem)', lineHeight: 1.08, letterSpacing: '-0.025em' }}>
+            {HEADLINE.split(' ').map((word, i, all) => (
+              <span
+                key={word + i}
+                aria-hidden="true"
+                className="wire-rise inline-block"
+                style={{ animationDelay: `${250 + i * 90}ms`, marginRight: '0.26em', color: i >= all.length - 2 ? '#60a5fa' : undefined }}
+              >
+                {word}
+              </span>
+            ))}
           </h1>
-          <p className="mt-5 text-lg leading-relaxed text-slate-300">
+          <p className="wire-rise mt-6 text-lg leading-relaxed text-slate-300" style={{ animationDelay: `${250 + 8 * 90 + 150}ms` }}>
             Build agents with Pype, then follow every call: what was said, how the patient responded, and what to fix.
           </p>
         </div>
 
-        <span aria-hidden="true" />
+        <style>{`
+          @keyframes wire-rise { from { opacity: 0; transform: translateY(26px); filter: blur(8px); } to { opacity: 1; transform: none; filter: none; } }
+          .wire-rise { animation: wire-rise 800ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+          @media (prefers-reduced-motion: reduce) { .wire-rise { animation: none; } }
+        `}</style>
       </aside>
 
       {/* Sign in: the focal point */}
