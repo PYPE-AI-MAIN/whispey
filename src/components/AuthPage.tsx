@@ -114,9 +114,6 @@ export default function AuthPage({ redirectUrl }: AuthPageProps) {
 
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4 sm:px-10">
         <Brand />
-        <a href="https://pypeai.com/" target="_blank" rel="noopener noreferrer" className="sw-link text-sm font-medium">
-          from <span className="font-semibold">Pype</span> ↗
-        </a>
       </header>
 
       <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 py-3 text-center">
@@ -125,7 +122,7 @@ export default function AuthPage({ redirectUrl }: AuthPageProps) {
           <Waveform />
         </h1>
         <p className="sw-muted mt-5 max-w-xl text-base leading-relaxed sm:text-lg">
-          Build agents with Pype, then follow every call: what was said, how the patient responded, and what to fix.
+          Build agents, then follow every call: what was said, how the patient responded, and what to fix.
         </p>
 
         <div className="mt-7 w-full max-w-md text-left">
@@ -162,10 +159,9 @@ export default function AuthPage({ redirectUrl }: AuthPageProps) {
       </section>
 
       <footer className="mx-auto w-full max-w-6xl px-6 pb-4 sm:px-10">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-4 text-sm sw-muted" style={{ borderColor: 'rgba(37,99,235,0.14)' }}>
-          <span>© {new Date().getFullYear()} <span className="font-semibold">Pype</span></span>
-          <span>Whispey is built by <span className="font-semibold">Pype</span></span>
-        </div>
+        <p className="border-t pt-4 text-center text-sm sw-muted" style={{ borderColor: 'rgba(37,99,235,0.14)' }}>
+          © {new Date().getFullYear()} Pype
+        </p>
       </footer>
     </div>
   );
