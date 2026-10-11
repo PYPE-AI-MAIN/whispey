@@ -20,6 +20,9 @@ export interface FlagEditorProps {
   /** Admin/owner: can delete anyone's flag. Viewers can only delete their own. */
   canDeleteAnyFlag?: boolean
   onUpdated?: () => void
+  /** 'quiet' is the redesigned Call Logs look: a soft pill naming the flag, and
+   *  the "Flag" button only shows on row hover. */
+  variant?: 'default' | 'quiet' | 'icon'
 }
 
 type FlagApiAction =
@@ -96,6 +99,202 @@ const FlagListItem: React.FC<FlagListItemProps> = ({
   )
 }
 
+interface FlagTooltipListProps {
+  flags: FlagEntry[]
+  copiedId: string | null
+  onCopyEmail: (flagEntry: FlagEntry, email: string) => void
+}
+
+// The trigger's hover tooltip when the call is flagged: every flag with its author.
+const FlagTooltipList: React.FC<FlagTooltipListProps> = ({ flags, copiedId, onCopyEmail }) => (
+  <div className="flex flex-col gap-2 max-w-[260px] max-h-32 overflow-y-auto py-0.5 pr-0.5">
+    {flags.map(f => (
+      <div key={f.id} className="flex items-start gap-2">
+        <Flag className="w-3 h-3 mt-0.5 shrink-0 text-rose-400" style={{ fill: 'currentColor' }} />
+        <div className="flex flex-col gap-0.5 min-w-0">
+          <span className="whitespace-pre-wrap text-xs leading-snug">{f.text}</span>
+          {f.flagged_by?.email && (
+            <div className="flex items-center gap-1 min-w-0">
+              <span className="text-[10px] text-muted-foreground truncate">{f.flagged_by.email}</span>
+              <button
+                aria-label="Copy email"
+                onClick={(e) => { e.stopPropagation(); onCopyEmail(f, f.flagged_by!.email) }}
+                className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {copiedId === f.id ? (
+                  <Check className="w-2.5 h-2.5 text-emerald-500" />
+                ) : (
+                  <Copy className="w-2.5 h-2.5" />
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    ))}
+    <span className="text-[10px] font-medium text-rose-400 pt-0.5 border-t border-rose-400/20">
+      Click to view or add another flag
+    </span>
+  </div>
+)
+
+interface FlagTriggerState {
+  iconOnly: boolean
+  quiet: boolean
+  isFlagged: boolean
+  open: boolean
+  saving: boolean
+  flags: FlagEntry[]
+}
+
+interface FlagTriggerLook {
+  label: string
+  className: string
+  content: React.ReactNode
+}
+
+// The popover trigger's label, classes and content for each look: the bare icon
+// (call list), the flagged pill, or the dashed "Flag" pill.
+function flagTriggerLook(state: FlagTriggerState): FlagTriggerLook {
+  if (state.iconOnly) return iconTriggerLook(state)
+  return state.isFlagged ? flaggedTriggerLook(state) : unflaggedTriggerLook(state)
+}
+
+function iconTriggerLook({ isFlagged, open, saving, flags }: FlagTriggerState): FlagTriggerLook {
+  return {
+    label: isFlagged ? `View ${pluralizeFlags(flags.length)}` : 'Add flag',
+    className: cn(
+      'grid h-5 w-5 shrink-0 place-items-center rounded-full transition cursor-pointer',
+      isFlagged
+        ? 'text-[var(--cl-red)] hover:bg-[var(--cl-red-soft)]'
+        : cn('text-[var(--cl-text3)] hover:bg-[var(--cl-red-soft)] hover:text-[var(--cl-red-text)]', !open && 'opacity-0 group-hover:opacity-100'),
+      saving && 'opacity-40 pointer-events-none'
+    ),
+    content: <Flag className="h-3.5 w-3.5" style={isFlagged ? { fill: 'currentColor' } : undefined} />,
+  }
+}
+
+function flaggedTriggerLook({ quiet, saving, flags }: FlagTriggerState): FlagTriggerLook {
+  // Flagged — solid red pill; a count beyond 1 rides as a small badge
+  // in the corner instead of inline text, so the pill never wraps.
+  return {
+    label: `View ${pluralizeFlags(flags.length)}`,
+    className: cn(
+      quiet
+        ? 'relative inline-flex max-w-[140px] shrink-0 items-center gap-1 rounded-full border border-[var(--cl-red-line)] bg-[var(--cl-red-soft)] px-2 py-px text-[11.5px] text-[var(--cl-red-text)] whitespace-nowrap select-none transition cursor-pointer hover:brightness-110'
+        : cn(
+            'relative inline-flex shrink-0 items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap select-none transition-all cursor-pointer',
+            'bg-rose-600 text-white border border-rose-700',
+            'hover:bg-rose-700 active:scale-95'
+          ),
+      saving && 'opacity-40 pointer-events-none'
+    ),
+    content: (
+      <>
+        <Flag className="w-2.5 h-2.5 shrink-0" style={{ fill: 'currentColor' }} />
+        {/* The quiet pill names what was flagged; the full list is in the tooltip. */}
+        <span className={cn(quiet && 'truncate')}>{quiet ? (flags[0]?.text || 'Flagged') : 'Flagged'}</span>
+        {flags.length > 1 && (
+          <span className="absolute -top-1.5 -right-1.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-white px-1 text-[9px] font-bold text-rose-600 shadow-sm ring-1 ring-rose-700/20">
+            {flags.length}
+          </span>
+        )}
+      </>
+    ),
+  }
+}
+
+// Unflagged — dashed pill, turns rose-red on hover
+function unflaggedTriggerLook({ quiet, open, saving }: FlagTriggerState): FlagTriggerLook {
+  return {
+    label: 'Add flag',
+    className: cn(
+      quiet
+        ? cn(
+            'inline-flex items-center gap-1 rounded-full border border-dashed border-[var(--cl-border2)] px-2 py-px text-[12px] text-[var(--cl-text3)] select-none transition cursor-pointer',
+            'hover:border-[var(--cl-red-line)] hover:text-[var(--cl-red-text)]',
+            !open && 'opacity-0 group-hover:opacity-100'
+          )
+        : cn(
+            'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] font-medium select-none transition-all cursor-pointer',
+            'border border-dashed border-gray-300 dark:border-gray-600',
+            'text-gray-400 dark:text-gray-500',
+            'hover:border-rose-400 hover:text-rose-500 dark:hover:border-rose-500 dark:hover:text-rose-400 active:scale-95'
+          ),
+      saving && 'opacity-40 pointer-events-none'
+    ),
+    content: (
+      <>
+        <Flag className="w-2.5 h-2.5 shrink-0" />
+        <span>Flag</span>
+      </>
+    ),
+  }
+}
+
+interface FlagComposerProps {
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>
+  draft: string
+  editingId: string | null
+  isFlagged: boolean
+  saving: boolean
+  onDraftChange: (draft: string) => void
+  onCancelEdit: () => void
+  onSubmit: () => void
+  onClose: () => void
+}
+
+// The popover's textarea for adding a new flag or editing one of your own.
+const FlagComposer: React.FC<FlagComposerProps> = ({
+  textareaRef, draft, editingId, isFlagged, saving, onDraftChange, onCancelEdit, onSubmit, onClose,
+}) => (
+  <div className={cn('px-3 pb-3 pt-2', isFlagged && !editingId && 'border-t border-border/60')}>
+    {(editingId || isFlagged) && (
+      <div className="mb-1 flex items-center justify-between text-[10px] font-medium">
+        <span className={editingId ? 'text-rose-500' : 'text-muted-foreground'}>
+          {editingId ? 'Editing your flag' : 'Add another flag'}
+        </span>
+        {editingId && (
+          <button
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            onClick={onCancelEdit}
+          >
+            Cancel
+          </button>
+        )}
+      </div>
+    )}
+    <textarea
+      ref={textareaRef}
+      value={draft}
+      onChange={e => onDraftChange(e.target.value)}
+      placeholder={`e.g. "Response at 2:30 was incorrect"`}
+      rows={3}
+      className={cn(
+        'w-full resize-none rounded-md border border-input bg-background px-2.5 py-2',
+        'text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring',
+      )}
+      onKeyDown={e => {
+        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) onSubmit()
+        if (e.key === 'Escape') onClose()
+      }}
+    />
+    <div className="mt-1.5 flex items-center justify-between">
+      <p className="text-[10px] text-muted-foreground">⌘ Enter to submit</p>
+      <button
+        disabled={!draft.trim() || saving}
+        className={cn(
+          'inline-flex items-center gap-1 text-[11px] font-medium bg-rose-600 text-white px-2 py-1 rounded hover:bg-rose-700 transition-colors',
+          (!draft.trim() || saving) && 'opacity-40 cursor-not-allowed'
+        )}
+        onClick={onSubmit}
+      >
+        {editingId ? 'Save' : <><Plus className="w-3 h-3" /> Add flag</>}
+      </button>
+    </div>
+  </div>
+)
+
 // Short, human timestamp — "Just now" / "5m ago" / "3h ago" / falls back to a date once it's old.
 function formatRelativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime()
@@ -116,7 +315,12 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
   currentUserEmail,
   canDeleteAnyFlag = true,
   onUpdated,
+  variant = 'default',
 }) => {
+  // 'icon' is the call list beside an open call: just a flag icon (filled when
+  // flagged, on hover otherwise); the popover is the same.
+  const iconOnly = variant === 'icon'
+  const quiet = variant === 'quiet' || iconOnly
   const [flags, setFlags] = useState<FlagEntry[]>(() => normalizeFlags(initialFlag))
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState('')
@@ -232,38 +436,10 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
 
   // ── Tooltip message ────────────────────────────────────────────────────────
   const tooltipContent = isFlagged
-    ? (
-      <div className="flex flex-col gap-2 max-w-[260px] max-h-32 overflow-y-auto py-0.5 pr-0.5">
-        {flags.map(f => (
-          <div key={f.id} className="flex items-start gap-2">
-            <Flag className="w-3 h-3 mt-0.5 shrink-0 text-rose-400" style={{ fill: 'currentColor' }} />
-            <div className="flex flex-col gap-0.5 min-w-0">
-              <span className="whitespace-pre-wrap text-xs leading-snug">{f.text}</span>
-              {f.flagged_by?.email && (
-                <div className="flex items-center gap-1 min-w-0">
-                  <span className="text-[10px] text-muted-foreground truncate">{f.flagged_by.email}</span>
-                  <button
-                    aria-label="Copy email"
-                    onClick={(e) => { e.stopPropagation(); handleCopyEmail(f, f.flagged_by!.email) }}
-                    className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {copiedId === f.id ? (
-                      <Check className="w-2.5 h-2.5 text-emerald-500" />
-                    ) : (
-                      <Copy className="w-2.5 h-2.5" />
-                    )}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-        <span className="text-[10px] font-medium text-rose-400 pt-0.5 border-t border-rose-400/20">
-          Click to view or add another flag
-        </span>
-      </div>
-    )
+    ? <FlagTooltipList flags={flags} copiedId={copiedId} onCopyEmail={handleCopyEmail} />
     : <span className="text-xs">Report an issue in this call</span>
+
+  const trigger = flagTriggerLook({ iconOnly, quiet, isFlagged, open, saving, flags })
 
   // Stop these clicks from bubbling to an ancestor row's own onClick — applied on each
   // real interactive button below rather than a wrapping div, so there's no non-native
@@ -289,46 +465,14 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
         <Tooltip open={open ? false : undefined}>
           <TooltipTrigger asChild>
             <PopoverTrigger asChild>
-              {isFlagged ? (
-                // Flagged — solid red pill; a count beyond 1 rides as a small badge
-                // in the corner instead of inline text, so the pill never wraps.
-                <button
-                  aria-label={`View ${pluralizeFlags(flags.length)}`}
-                  disabled={saving}
-                  onClick={stop}
-                  className={cn(
-                    'relative inline-flex shrink-0 items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap select-none transition-all cursor-pointer',
-                    'bg-rose-600 text-white border border-rose-700',
-                    'hover:bg-rose-700 active:scale-95',
-                    saving && 'opacity-40 pointer-events-none'
-                  )}
-                >
-                  <Flag className="w-2.5 h-2.5 shrink-0" style={{ fill: 'currentColor' }} />
-                  <span>Flagged</span>
-                  {flags.length > 1 && (
-                    <span className="absolute -top-1.5 -right-1.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-white px-1 text-[9px] font-bold text-rose-600 shadow-sm ring-1 ring-rose-700/20">
-                      {flags.length}
-                    </span>
-                  )}
-                </button>
-              ) : (
-                // Unflagged — dashed pill, turns rose-red on hover
-                <button
-                  aria-label="Add flag"
-                  disabled={saving}
-                  onClick={stop}
-                  className={cn(
-                    'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] font-medium select-none transition-all cursor-pointer',
-                    'border border-dashed border-gray-300 dark:border-gray-600',
-                    'text-gray-400 dark:text-gray-500',
-                    'hover:border-rose-400 hover:text-rose-500 dark:hover:border-rose-500 dark:hover:text-rose-400 active:scale-95',
-                    saving && 'opacity-40 pointer-events-none'
-                  )}
-                >
-                  <Flag className="w-2.5 h-2.5 shrink-0" />
-                  <span>Flag</span>
-                </button>
-              )}
+              <button
+                aria-label={trigger.label}
+                disabled={saving}
+                onClick={stop}
+                className={trigger.className}
+              >
+                {trigger.content}
+              </button>
             </PopoverTrigger>
           </TooltipTrigger>
           <TooltipContent
@@ -342,7 +486,7 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
         {/* Standalone "+" — visible next to the badge at all times, so it's obvious
             more flags can always be added without first opening the list. Mirrors
             TagEditor's separate "Add tag" pill next to existing tag chips. */}
-        {isFlagged && (
+        {isFlagged && !iconOnly && (
           <button
             aria-label="Add another flag"
             disabled={saving}
@@ -352,6 +496,7 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
               'border border-dashed border-gray-300 dark:border-gray-600',
               'text-gray-400 dark:text-gray-500',
               'hover:border-rose-400 hover:text-rose-500 dark:hover:border-rose-500 dark:hover:text-rose-400 active:scale-95',
+              quiet && 'opacity-0 group-hover:opacity-100',
               saving && 'opacity-40 pointer-events-none'
             )}
           >
@@ -406,54 +551,17 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
           )}
 
           {/* Composer */}
-          <div className={cn('px-3 pb-3 pt-2', isFlagged && !editingId && 'border-t border-border/60')}>
-            {(editingId || isFlagged) && (
-              <div className="mb-1 flex items-center justify-between text-[10px] font-medium">
-                <span className={editingId ? 'text-rose-500' : 'text-muted-foreground'}>
-                  {editingId ? 'Editing your flag' : 'Add another flag'}
-                </span>
-                {editingId && (
-                  <button
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                    onClick={startAdding}
-                  >
-                    Cancel
-                  </button>
-                )}
-              </div>
-            )}
-            <textarea
-              ref={textareaRef}
-              value={draft}
-              onChange={e => setDraft(e.target.value)}
-              placeholder={`e.g. "Response at 2:30 was incorrect"`}
-              rows={3}
-              className={cn(
-                'w-full resize-none rounded-md border border-input bg-background px-2.5 py-2',
-                'text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring',
-              )}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                  if (editingId) handleUpdate(editingId)
-                  else handleAdd()
-                }
-                if (e.key === 'Escape') setOpen(false)
-              }}
-            />
-            <div className="mt-1.5 flex items-center justify-between">
-              <p className="text-[10px] text-muted-foreground">⌘ Enter to submit</p>
-              <button
-                disabled={!draft.trim() || saving}
-                className={cn(
-                  'inline-flex items-center gap-1 text-[11px] font-medium bg-rose-600 text-white px-2 py-1 rounded hover:bg-rose-700 transition-colors',
-                  (!draft.trim() || saving) && 'opacity-40 cursor-not-allowed'
-                )}
-                onClick={() => (editingId ? handleUpdate(editingId) : handleAdd())}
-              >
-                {editingId ? 'Save' : <><Plus className="w-3 h-3" /> Add flag</>}
-              </button>
-            </div>
-          </div>
+          <FlagComposer
+            textareaRef={textareaRef}
+            draft={draft}
+            editingId={editingId}
+            isFlagged={isFlagged}
+            saving={saving}
+            onDraftChange={setDraft}
+            onCancelEdit={startAdding}
+            onSubmit={() => (editingId ? handleUpdate(editingId) : handleAdd())}
+            onClose={() => setOpen(false)}
+          />
         </PopoverContent>
       </Popover>
     </div>
