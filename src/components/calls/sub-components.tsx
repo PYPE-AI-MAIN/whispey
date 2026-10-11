@@ -114,7 +114,8 @@ TruncatedText.displayName = "TruncatedText"
 function firstText(value: unknown, depth = 0): string {
   if (value == null) return ''
   if (typeof value === 'string') return value.trim()
-  if (typeof value !== 'object') return String(value)
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return String(value)
+  if (typeof value !== 'object') return ''
   if (depth > 3) return ''
   const items = Array.isArray(value) ? value : Object.values(value)
   for (const item of items) {

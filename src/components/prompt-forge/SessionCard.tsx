@@ -1,12 +1,5 @@
-'use client'
-
-import { Calendar, Clock, Cpu, MoreHorizontal, MessageSquare, Pencil, Trash2 } from 'lucide-react'
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { InlineNameEditor } from './InlineNameEditor'
-import { cn } from '@/lib/utils'
+// A Prompt Forge session as the sessions list sees it, and how its row is described.
+import { modelProviders } from '@/config/llmCatalog'
 
 export interface Session {
   id: string
@@ -17,19 +10,38 @@ export interface Session {
   provider: string | null
   created_at: string
   updated_at: string
+  /** Who created it (null for sessions from before owners were recorded). */
+  owner_email?: string | null
+  /** The caller can rename/delete/save it — their own, or unowned. */
+  can_edit?: boolean
+  is_mine?: boolean
+  version_count?: number
 }
 
-interface Props {
-  session: Session
-  renamingId: string | null
-  onNavigate: (id: string) => void
-  onRename: (session: Session, name: string) => void
-  onRenameStart: (id: string) => void
-  onRenameEnd: () => void
-  onDeleteStart: (session: Session) => void
+const UNTITLED = /^untitled session$/i
+
+/** A readable title: the session's name, or the prompt's own first heading/line when it was never named. */
+export function sessionTitle(s: Session): { title: string; fromPrompt: boolean } {
+  if (s.name && !UNTITLED.test(s.name.trim())) return { title: s.name, fromPrompt: false }
+  const line = (s.system_prompt ?? '').split('\n').map(l => l.replace(/^#+\s*/, '').trim()).find(Boolean)
+  return line ? { title: line.length > 70 ? `${line.slice(0, 70)}…` : line, fromPrompt: true } : { title: 'Untitled session', fromPrompt: false }
 }
 
-function formatRelative(dateStr: string): string {
+export function modelName(provider: string | null, model: string | null): string {
+  if (!model) return 'Agent’s model'
+  const entry = provider ? modelProviders[provider === 'azure' ? 'azure_openai' : provider] : undefined
+  const models = entry?.type === 'grouped' ? entry.groups?.flatMap(g => g.models) ?? [] : entry?.models ?? []
+  return models.find(m => m.value === model)?.label ?? model
+}
+
+/** The last thing said in the session's chat, for a one-line preview. */
+export function lastMessage(s: Session): { who: string; text: string } | null {
+  const m = [...(s.messages ?? [])].reverse().find((x: any) => typeof x?.content === 'string' && x.content.trim())
+  return m ? { who: m.role === 'user' ? 'You' : 'Agent', text: m.content.trim().replaceAll(/\s+/g, ' ') } : null
+}
+
+
+export function formatRelative(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
   const m = Math.floor(diff / 60000)
   if (m < 1) return 'just now'
@@ -42,106 +54,8 @@ function formatRelative(dateStr: string): string {
   return `${Math.floor(d / 7)}w ago`
 }
 
-function formatAbsolute(dateStr: string): string {
+export function formatAbsolute(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
   })
-}
-
-export function SessionCard({
-  session, renamingId, onNavigate, onRename, onRenameStart, onRenameEnd, onDeleteStart,
-}: Props) {
-  const turnCount = session.messages?.length ?? 0
-
-  return (
-    // Not a <button> itself: it contains other interactive controls (rename
-    // editor, options menu), and a <button> can't legally contain a <button>.
-    // A full-size invisible button behind the content is the real click
-    // target instead — real interactive descendants opt back into pointer
-    // events so they still work.
-    <div
-      className={cn(
-        'group relative flex items-center gap-4 px-5 py-4',
-        'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm',
-        'hover:border-gray-300 dark:hover:bg-gray-800/70 dark:hover:border-gray-700',
-        'rounded-xl transition-all duration-150',
-      )}
-    >
-      <button
-        type="button"
-        aria-label={`Open session ${session.name || 'Untitled session'}`}
-        onClick={() => onNavigate(session.id)}
-        className="absolute inset-0 z-0 cursor-pointer appearance-none bg-transparent border-0 p-0"
-      />
-
-      {/* Icon */}
-      <div className="relative z-10 pointer-events-none w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
-        <MessageSquare className="w-4 h-4 text-blue-400" />
-      </div>
-
-      {/* Body */}
-      <div className="relative z-10 pointer-events-none flex-1 min-w-0">
-        <div className="mb-1.5 pointer-events-auto w-fit">
-          <InlineNameEditor
-            name={session.name || 'Untitled session'}
-            onSave={name => onRename(session, name)}
-            forceEdit={renamingId === session.id}
-            onForceEditDone={onRenameEnd}
-          />
-        </div>
-        <div className="flex items-center gap-2.5">
-          <MetaPill icon={<Clock className="w-3 h-3" />} label={formatRelative(session.updated_at)} />
-          <MetaDivider />
-          <MetaPill icon={<Calendar className="w-3 h-3" />} label={formatAbsolute(session.created_at)} />
-          <MetaDivider />
-          <MetaPill icon={<Cpu className="w-3 h-3" />} label={session.model ?? 'default'} />
-        </div>
-      </div>
-
-      {/* Right */}
-      <div className="relative z-10 pointer-events-none flex items-center gap-2 flex-shrink-0">
-        <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 tabular-nums">
-          {turnCount} {turnCount === 1 ? 'turn' : 'turns'}
-        </span>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild className="pointer-events-auto">
-            <button
-              aria-label="Session options"
-              className="w-7 h-7 flex items-center justify-center rounded-md text-gray-600 hover:text-gray-300 hover:bg-gray-700 transition-all"
-            >
-              <MoreHorizontal className="w-4 h-4" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-36 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
-            <DropdownMenuItem
-              onClick={() => onRenameStart(session.id)}
-              className="text-xs text-gray-700 dark:text-gray-300 focus:bg-gray-100 dark:focus:bg-gray-800 focus:text-gray-900 dark:focus:text-gray-100 gap-2 cursor-pointer"
-            >
-              <Pencil className="w-3.5 h-3.5" />Rename
-            </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-800" />
-            <DropdownMenuItem
-              onClick={() => onDeleteStart(session)}
-              className="text-xs text-red-400 focus:bg-red-900/20 focus:text-red-300 gap-2 cursor-pointer"
-            >
-              <Trash2 className="w-3.5 h-3.5" />Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </div>
-  )
-}
-
-function MetaPill({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <span className="flex items-center gap-1 text-[12px] text-gray-500">
-      {icon}{label}
-    </span>
-  )
-}
-
-function MetaDivider() {
-  return <span className="w-px h-3 bg-gray-700 flex-shrink-0" />
 }

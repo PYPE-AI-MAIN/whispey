@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useUser } from "@clerk/nextjs"
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
-import { useReactTable, getCoreRowModel, flexRender, type ColumnDef } from "@tanstack/react-table"
+import { useReactTable, getCoreRowModel, flexRender, type CellContext, type ColumnDef } from "@tanstack/react-table"
 import {
   AlertCircle, ChevronLeft, ChevronRight, Download, Ellipsis, Keyboard, RefreshCw, Rows3, Rows4, Settings, X, History,
 } from "lucide-react"
@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils"
 import type { FilterOperation } from "@/components/CallFilter"
 import FlagRulesDialog from "@/components/FlagRulesDialog"
-import { useCallLogsData } from "@/hooks/useCallLogsData"
+import { useCallLogsData, PAGE_SIZE } from "@/hooks/useCallLogsData"
 import { useCallLogsColumns, BASIC_COLUMNS, EXTRA_RESTRICTABLE_COLUMNS } from "@/hooks/useCallLogsColumns"
 import { useMemberVisibility } from "@/hooks/useMemberVisibility"
 import { useGlobalRole } from "@/hooks/useGlobalRole"
@@ -29,11 +29,10 @@ import CampaignCallLogs from "../CampaignCallLogs"
 import DownloadDialog from "../DownloadDialog"
 import DownloadSettingsDialog from "../DownloadSettingsDialog"
 import {
-  buildPageItems, buildSelectionColumn, buildCallAgainColumn, canShowDownloadButton, formatRowRangeLabel,
+  buildPageItems, buildSelectionColumn, buildCallAgainColumn, canShowDownloadButton, formatRowRangeLabel, type PageItem,
   shouldShowLoadingSkeleton, useAgentDownloadSettingsQuery, useColumnVisibilityHandlers,
   useOutboundPhoneNumbersQuery, useRowNavigation,
 } from "../CallLogs"
-import { PAGE_SIZE } from "@/hooks/useCallLogsData"
 import { FilterChips, FilterPanel } from "./FilterPanel"
 import { ColumnsPicker, type ColumnGroup, type PickerColumn } from "./ColumnsPicker"
 import { CallLogsTable } from "./CallLogsTable"
@@ -47,7 +46,6 @@ import { keyboardIsBusy, pageKey } from "./keyboard"
 interface CallLogsV2Props {
   project: any
   agent: any
-  onBack: () => void
   isLoading?: boolean
   dateRange?: { from: string; to: string }
   onAgentUpdated?: () => void
@@ -64,6 +62,171 @@ const columnIdFor = (group: ColumnGroup, key: string) => {
 const COLUMN_BANDS: Record<string, { min: number; max: number }> = {
   tags: { min: 140, max: 200 },
   flag: { min: 110, max: 180 },
+}
+
+type CallCell = (ctx: CellContext<CallLog, unknown>) => React.ReactNode
+
+// The redesign's own renderers for the plain-value basic columns. Defined here,
+// outside the component, so each render doesn't create new cell components.
+const customerNumberCell: CallCell = ({ row }) => <CustomerNumberCell call={row.original} />
+const callIdCell: CallCell = ({ row }) => <CallIdCell call={row.original} />
+const statusCell: CallCell = ({ row }) => <StatusCell call={row.original} />
+const durationCell: CallCell = ({ row }) => <DurationCell seconds={callDurationSeconds(row.original)} />
+const billingDurationCell: CallCell = ({ row }) => <DurationCell seconds={row.original.billing_duration_seconds} />
+const startTimeCell: CallCell = ({ row }) => <StartTimeCell call={row.original} />
+const callEventCell: CallCell = ({ row }) => <CallEventCell call={row.original} />
+
+interface V2CellOptions {
+  availableTags: string[]
+  role: string | null
+  currentUserId: string | null
+  currentUserEmail: string | null
+  onUpdated: () => void
+}
+
+function v2CellRenderers({ availableTags, role, currentUserId, currentUserEmail, onUpdated }: V2CellOptions): Record<string, CallCell> {
+  return {
+    customer_number: customerNumberCell,
+    call_id: callIdCell,
+    call_ended_reason: statusCell,
+    duration_seconds: durationCell,
+    billing_duration_seconds: billingDurationCell,
+    call_started_at: startTimeCell,
+    wcall_event: callEventCell,
+    tags: ({ row }) => <TagsCell call={row.original} availableTags={availableTags} role={role} onUpdated={onUpdated} />,
+    flag: ({ row }) => (
+      <FlagCell call={row.original} role={role} currentUserId={currentUserId} currentUserEmail={currentUserEmail} onUpdated={onUpdated} />
+    ),
+  }
+}
+
+function toV2Column(c: ColumnDef<CallLog>, v2Cell: Record<string, CallCell>): ColumnDef<CallLog> {
+  const cell = v2Cell[c.id as string]
+  // Size columns to their content like the mockup, instead of the legacy fixed minimums.
+  if (!cell) return { ...c, minSize: 120 }
+  // Tags and Flag hold editable pills: a fixed band, the overflow shown as "+N".
+  const band = COLUMN_BANDS[c.id as string]
+  return { ...c, cell, minSize: band?.min ?? (c.id === "customer_number" ? 180 : 90), size: undefined, ...(band ? { meta: { maxWidth: band.max } } : {}) }
+}
+
+// Same dialog and eligibility rules; only its trigger is shrunk to the
+// mockup's small button so it doesn't set the height of every row.
+function compactCallAgainColumn(legacyCallAgain: ColumnDef<CallLog>): ColumnDef<CallLog> {
+  return {
+    ...legacyCallAgain,
+    cell: (ctx) => (
+      <div className="[&>button]:h-6 [&>button]:rounded-md [&>button]:border-[var(--cl-border)] [&>button]:bg-[var(--cl-panel2)] [&>button]:px-2 [&>button]:text-[12.5px] [&>button]:text-[var(--cl-text2)] [&>button:hover]:bg-[var(--cl-hover)] [&>button:hover]:text-[var(--cl-text)]">
+        {flexRender(legacyCallAgain.cell, ctx)}
+      </div>
+    ),
+  }
+}
+
+// Calling a customer back from the logs is for owners/admins only.
+function canCallAgain(role: string | null, agent: any, outboundPhoneNumbers: unknown[]): boolean {
+  return (role === "owner" || role === "admin") && agent?.agent_type === "pype_agent" && outboundPhoneNumbers.length > 0
+}
+
+function findCall(calls: CallLog[], id: string | null): CallLog | null {
+  return calls.find((c) => c.id === id) ?? null
+}
+
+// What Ask Pi's header says it's looking at.
+function askPiContextLabel(openCallId: string | null, filterCount: number, totalCount: number | null | undefined, pageCount: number): string {
+  if (openCallId) return `This call · …${openCallId.slice(-8)}`
+  const calls = totalCount ?? pageCount
+  if (filterCount) return `${calls} calls · ${filterCount} filter${filterCount > 1 ? "s" : ""}`
+  return `${calls} calls · date range`
+}
+
+type MainView = "error" | "campaign" | "split" | "table"
+
+function mainViewFor(error: unknown, selectedCampaign: Campaign | null, splitOpen: boolean): MainView {
+  if (error) return "error"
+  if (selectedCampaign) return "campaign"
+  if (splitOpen) return "split"
+  return "table"
+}
+
+// ── Keyboard ─────────────────────────────────────────────────────────────────
+interface CallLogsKeyContext {
+  root: HTMLDivElement | null
+  selectedCampaign: Campaign | null
+  pageLoading: boolean
+  splitOpen: boolean
+  calls: CallLog[]
+  cursor: number
+  openCallId: string | null
+  goToNextPage: () => void
+  goToPrevPage: () => void
+  toggleRightPanel: () => void
+  closeSplit: () => void
+  setOpenCallId: (id: string | null) => void
+  setCursor: React.Dispatch<React.SetStateAction<number>>
+  openCall: (call: CallLog) => void
+}
+
+const isDownKey = (e: KeyboardEvent) => e.key === "ArrowDown" || e.key === "j"
+const isUpKey = (e: KeyboardEvent) => e.key === "ArrowUp" || e.key === "k"
+
+// With a call open: Esc/Backspace closes it, ↓/j and ↑/k move between calls.
+function handleSplitKey(e: KeyboardEvent, k: CallLogsKeyContext) {
+  const last = k.calls.length - 1
+  // Read the open call from the URL itself, so a fast second keypress
+  // can't act on the call from before the last re-render.
+  const currentId = new URLSearchParams(globalThis.location.search).get("call") ?? k.openCallId
+  const idx = k.calls.findIndex((c) => c.id === currentId)
+  if (e.key === "Escape" || e.key === "Backspace") {
+    e.preventDefault()
+    k.closeSplit()
+  } else if (isDownKey(e)) {
+    e.preventDefault()
+    k.setOpenCallId(k.calls[Math.min(last, Math.max(0, idx + 1))].id)
+  } else if (isUpKey(e)) {
+    e.preventDefault()
+    k.setOpenCallId(k.calls[Math.max(0, idx - 1)].id)
+  }
+}
+
+// On the table: ↓/j and ↑/k move the cursor, Enter opens the call under it.
+function handleTableKey(e: KeyboardEvent, k: CallLogsKeyContext) {
+  const last = k.calls.length - 1
+  if (isDownKey(e)) {
+    e.preventDefault()
+    k.setCursor((c) => (c < 0 ? 0 : Math.min(last, c + 1)))
+  } else if (isUpKey(e)) {
+    e.preventDefault()
+    k.setCursor((c) => (c < 0 ? 0 : Math.max(0, c - 1)))
+  } else if (e.key === "Enter" && k.cursor >= 0 && k.calls[k.cursor]) {
+    e.preventDefault()
+    k.openCall(k.calls[k.cursor])
+  }
+}
+
+function handleCallLogsKey(e: KeyboardEvent, k: CallLogsKeyContext) {
+  // The Logs tab stays mounted while hidden; only react when it's on screen.
+  if (!k.root?.offsetParent || k.selectedCampaign || keyboardIsBusy(e)) return
+  if (k.pageLoading) {
+    // Swallow navigation keys rather than letting them act on the outgoing page.
+    if (pageKey(e) || ["ArrowUp", "ArrowDown", "Enter", "j", "k"].includes(e.key)) e.preventDefault()
+    return
+  }
+  const page = pageKey(e)
+  if (page) {
+    e.preventDefault()
+    if (page === "next") k.goToNextPage()
+    else k.goToPrevPage()
+    return
+  }
+  if (k.splitOpen && (e.metaKey || e.ctrlKey) && (e.key === "]" || e.code === "BracketRight")) {
+    // Also stops the browser's own ⌘] (history forward) while a call is open.
+    e.preventDefault()
+    k.toggleRightPanel()
+    return
+  }
+  if (e.metaKey || e.ctrlKey || e.altKey || k.calls.length === 0) return
+  if (k.splitOpen) handleSplitKey(e, k)
+  else handleTableKey(e, k)
 }
 
 const CallLogsV2: React.FC<CallLogsV2Props> = ({
@@ -126,48 +289,19 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
     const cols = createTableColumns(visibleColumns, {
       availableTags, onTagsUpdated: refetchCurrentPage, role, currentUserId, currentUserEmail,
     })
-    const v2Cell: Record<string, ColumnDef<CallLog>["cell"]> = {
-      customer_number: ({ row }) => <CustomerNumberCell call={row.original} />,
-      call_id: ({ row }) => <CallIdCell call={row.original} />,
-      call_ended_reason: ({ row }) => <StatusCell call={row.original} />,
-      duration_seconds: ({ row }) => <DurationCell seconds={callDurationSeconds(row.original)} />,
-      billing_duration_seconds: ({ row }) => <DurationCell seconds={row.original.billing_duration_seconds} />,
-      call_started_at: ({ row }) => <StartTimeCell call={row.original} />,
-      wcall_event: ({ row }) => <CallEventCell call={row.original} />,
-      tags: ({ row }) => <TagsCell call={row.original} availableTags={availableTags} role={role} onUpdated={refetchCurrentPage} />,
-      flag: ({ row }) => (
-        <FlagCell call={row.original} role={role} currentUserId={currentUserId} currentUserEmail={currentUserEmail} onUpdated={refetchCurrentPage} />
-      ),
-    }
-    return cols.map((c): ColumnDef<CallLog> => {
-      const cell = v2Cell[c.id as string]
-      // Size columns to their content like the mockup, instead of the legacy fixed minimums.
-      if (!cell) return { ...c, minSize: 120 }
-      // Tags and Flag hold editable pills: a fixed band, the overflow shown as "+N".
-      const band = COLUMN_BANDS[c.id as string]
-      return { ...c, cell, minSize: band?.min ?? (c.id === "customer_number" ? 180 : 90), size: undefined, ...(band ? { meta: { maxWidth: band.max } } : {}) }
-    })
+    const v2Cell = v2CellRenderers({ availableTags, role, currentUserId, currentUserEmail, onUpdated: refetchCurrentPage })
+    return cols.map((c) => toV2Column(c, v2Cell))
   }, [visibleColumns, availableTags, refetchCurrentPage, role, user?.id, userEmail])
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   useEffect(() => { setSelectedIds(new Set()) }, [currentPage, activeFilters])
 
   const { data: outboundPhoneNumbers = [] } = useOutboundPhoneNumbersQuery(project?.id)
-  // Calling a customer back from the logs is for owners/admins only.
-  const canOfferCallAgain = (role === "owner" || role === "admin") && agent?.agent_type === "pype_agent" && outboundPhoneNumbers.length > 0
+  const canOfferCallAgain = canCallAgain(role, agent, outboundPhoneNumbers)
 
   const columns = useMemo(() => {
     const legacyCallAgain = agent?.id ? buildCallAgainColumn(canOfferCallAgain, project?.id, agent, outboundPhoneNumbers) : null
-    // Same dialog and eligibility rules; only its trigger is shrunk to the
-    // mockup's small button so it doesn't set the height of every row.
-    const callAgain: ColumnDef<CallLog> | null = legacyCallAgain && {
-      ...legacyCallAgain,
-      cell: (ctx) => (
-        <div className="[&>button]:h-6 [&>button]:rounded-md [&>button]:border-[var(--cl-border)] [&>button]:bg-[var(--cl-panel2)] [&>button]:px-2 [&>button]:text-[12.5px] [&>button]:text-[var(--cl-text2)] [&>button:hover]:bg-[var(--cl-hover)] [&>button:hover]:text-[var(--cl-text)]">
-          {flexRender(legacyCallAgain.cell, ctx)}
-        </div>
-      ),
-    }
+    const callAgain = legacyCallAgain && compactCallAgainColumn(legacyCallAgain)
     return [buildSelectionColumn(currentPageCalls, selectedIds, setSelectedIds), ...baseColumns, ...(callAgain ? [callAgain] : [])]
   }, [baseColumns, currentPageCalls, selectedIds, canOfferCallAgain, project?.id, agent, outboundPhoneNumbers])
 
@@ -269,8 +403,8 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
     if (mode === "push") globalThis.history.pushState(null, "", url)
     else globalThis.history.replaceState(null, "", url)
   }, [pathname, searchParams])
-  const openedCall = openCallId && !selectedCampaign ? currentPageCalls.find((c) => c.id === openCallId) ?? null : null
   const splitOpen = !!openCallId && !selectedCampaign
+  const openedCall = splitOpen ? findCall(currentPageCalls, openCallId) : null
 
   // From the table it's a new history entry; from the split list it's a switch.
   const openCall = useCallback((call: CallLog) => setOpenCallId(call.id, openCallId ? "replace" : "push"), [setOpenCallId, openCallId])
@@ -312,59 +446,10 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
   }, [])
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      // The Logs tab stays mounted while hidden; only react when it's on screen.
-      if (!rootRef.current?.offsetParent || selectedCampaign || keyboardIsBusy(e)) return
-      if (pageLoading) {
-        // Swallow navigation keys rather than letting them act on the outgoing page.
-        if (pageKey(e) || ["ArrowUp", "ArrowDown", "Enter", "j", "k"].includes(e.key)) e.preventDefault()
-        return
-      }
-      const page = pageKey(e)
-      if (page) {
-        e.preventDefault()
-        if (page === "next") goToNextPage()
-        else goToPrevPage()
-        return
-      }
-      if (splitOpen && (e.metaKey || e.ctrlKey) && (e.key === "]" || e.code === "BracketRight")) {
-        // Also stops the browser's own ⌘] (history forward) while a call is open.
-        e.preventDefault()
-        toggleRightPanel()
-        return
-      }
-      if (e.metaKey || e.ctrlKey || e.altKey || currentPageCalls.length === 0) return
-      const last = currentPageCalls.length - 1
-
-      if (splitOpen) {
-        // Read the open call from the URL itself, so a fast second keypress
-        // can't act on the call from before the last re-render.
-        const currentId = new URLSearchParams(globalThis.location.search).get("call") ?? openCallId
-        const idx = currentPageCalls.findIndex((c) => c.id === currentId)
-        if (e.key === "Escape" || e.key === "Backspace") {
-          e.preventDefault()
-          closeSplit()
-        } else if (e.key === "ArrowDown" || e.key === "j") {
-          e.preventDefault()
-          setOpenCallId(currentPageCalls[Math.min(last, Math.max(0, idx + 1))].id)
-        } else if (e.key === "ArrowUp" || e.key === "k") {
-          e.preventDefault()
-          setOpenCallId(currentPageCalls[Math.max(0, idx - 1)].id)
-        }
-        return
-      }
-
-      if (e.key === "ArrowDown" || e.key === "j") {
-        e.preventDefault()
-        setCursor((c) => (c < 0 ? 0 : Math.min(last, c + 1)))
-      } else if (e.key === "ArrowUp" || e.key === "k") {
-        e.preventDefault()
-        setCursor((c) => (c < 0 ? 0 : Math.max(0, c - 1)))
-      } else if (e.key === "Enter" && cursor >= 0 && currentPageCalls[cursor]) {
-        e.preventDefault()
-        openCall(currentPageCalls[cursor])
-      }
-    }
+    const onKey = (e: KeyboardEvent) => handleCallLogsKey(e, {
+      root: rootRef.current, selectedCampaign, pageLoading, splitOpen, calls: currentPageCalls, cursor, openCallId,
+      goToNextPage, goToPrevPage, toggleRightPanel, closeSplit, setOpenCallId, setCursor, openCall,
+    })
     globalThis.addEventListener("keydown", onKey)
     return () => globalThis.removeEventListener("keydown", onKey)
   }, [currentPageCalls, cursor, openCall, goToNextPage, goToPrevPage, selectedCampaign, splitOpen, openCallId, closeSplit, setOpenCallId, toggleRightPanel, pageLoading])
@@ -411,6 +496,7 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
   const pageItems = buildPageItems(currentPage, currentPage, hasNextPage, totalPages)
   const pageStart = (currentPage - 1) * PAGE_SIZE + 1
   const pageEnd = (currentPage - 1) * PAGE_SIZE + currentPageCalls.length
+  const rangeLabel = formatRowRangeLabel(currentPageCalls.length, totalCount, pageStart, pageEnd)
 
   // ── Loading / error ────────────────────────────────────────────────────────
   if (shouldShowLoadingSkeleton(parentLoading, roleLoading, agent, project, isLoading, currentPageCalls.length)) {
@@ -420,6 +506,77 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
         <TableSkeleton />
       </div>
     )
+  }
+
+  const pager: PagerProps = {
+    isFirstPage, isLastPage, isLoading, pageLoading, goToPrevPage, goToNextPage,
+  }
+
+  // ── Main area: one of these, picked by mainViewFor below ──
+  // A failed load keeps the toolbar, filter chips and Ask Pi on screen, so a
+  // filter that made the query fail can be removed right here.
+  const mainViews: Record<MainView, React.ReactNode> = {
+    error: <LoadErrorState error={error} hasFilters={activeFilters.length > 0} onClearFilters={clearFilters} />,
+    // Campaign view replaces the table, exactly as on the legacy page
+    campaign: selectedCampaign && (
+      <CampaignCallLogs
+        agent={agent}
+        project={project}
+        campaign={selectedCampaign}
+        visibleColumns={visibleColumns}
+        availableTags={availableTags}
+        role={role}
+        filters={activeFilters}
+        downloadDialogOpen={campaignDownloadOpen}
+        onDownloadDialogOpenChange={setCampaignDownloadOpen}
+      />
+    ),
+    split: openedCall ? (
+      <SplitView
+        call={openedCall}
+        calls={currentPageCalls}
+        agent={agent}
+        projectId={project?.id}
+        role={role}
+        currentUserId={user?.id ?? null}
+        currentUserEmail={userEmail ?? null}
+        availableTags={availableTags}
+        onUpdated={refetchCurrentPage}
+        canOfferCallAgain={canOfferCallAgain}
+        outboundPhoneNumbers={outboundPhoneNumbers}
+        onOpen={openCall}
+        onClose={closeSplit}
+        listLoading={pageLoading}
+        listFooter={<SplitListFooter {...pager} rangeLabel={rangeLabel} currentPage={currentPage} />}
+      />
+    ) : (
+      <div className="flex flex-1 items-center justify-center text-sm text-[var(--cl-text3)]">
+        <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Opening call…
+      </div>
+    ),
+    table: (
+      <>
+        <CallLogsTable
+          table={table}
+          density={density}
+          role={role}
+          isLoading={isLoading}
+          isBusy={pageLoading || isRefetching}
+          pageLoading={pageLoading}
+          hasFilters={activeFilters.length > 0}
+          onClearFilters={clearFilters}
+          cursorIndex={cursor}
+          selectedCallId={null}
+          navigatingCallId={navigatingCallId}
+          onOpen={openCall}
+          onHover={prefetchSoon}
+          scrollContainerRef={scrollContainerRef}
+        />
+        {/* Start loading the call under the pointer or keyboard cursor, so it opens ready. */}
+        {prefetchId && <PrefetchTranscript key={prefetchId} callId={prefetchId} agentId={agent.id} />}
+        <TablePager {...pager} rangeLabel={rangeLabel} currentPage={currentPage} pageItems={pageItems} goToPage={goToPage} />
+      </>
+    ),
   }
 
   return (
@@ -441,26 +598,23 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
         )}
 
         {selectedIds.size > 0 && (
-          <div className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-[var(--cl-accent-line)] bg-[var(--cl-accent-soft)] pl-3 pr-1 text-[13px]">
-            <span className="whitespace-nowrap font-medium text-[var(--cl-accent-text)]">{selectedIds.size} selected</span>
-            <span className="mx-1 h-4 w-px bg-[var(--cl-accent-line)]" />
-            <button type="button" className="h-6 rounded-md px-2 text-[var(--cl-text2)] hover:bg-[var(--cl-hover)] hover:text-[var(--cl-text)]" onClick={copySelected}>
-              {copyFeedback ? "Copied!" : "Copy JSON"}
-            </button>
-            <button type="button" className="h-6 rounded-md px-2 text-[var(--cl-text2)] hover:bg-[var(--cl-hover)] hover:text-[var(--cl-text)]" onClick={() => triggerCSVFileDownload(buildSelectedRecords())}>
-              Export CSV
-            </button>
-            <button type="button" className="grid h-6 w-6 place-items-center rounded-md text-[var(--cl-text3)] hover:bg-[var(--cl-hover)]" aria-label="Clear selection" onClick={() => setSelectedIds(new Set())}>
-              <X className="h-3 w-3" />
-            </button>
-          </div>
+          <SelectionBar
+            count={selectedIds.size}
+            copyFeedback={copyFeedback}
+            onCopy={copySelected}
+            onExportCsv={() => triggerCSVFileDownload(buildSelectedRecords())}
+            onClear={() => setSelectedIds(new Set())}
+          />
         )}
 
         <div className="flex-1" />
 
         <button
           type="button" className={V2_ICON_BTN} aria-label="Refresh call logs" title="Refresh"
-          onClick={() => { if (!isRefetching) void refetch() }}
+          onClick={() => {
+            // a failed refresh shows up as the page's error state
+            if (!isRefetching) refetch().catch(() => {})
+          }}
           disabled={isLoading || isRefetching || isFetchingNextPage}
         >
           <RefreshCw className={cn("h-4 w-4", (isLoading || isRefetching) && "animate-spin")} />
@@ -478,27 +632,7 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
           />
         )}
 
-        {!selectedCampaign && !splitOpen && (
-          <div role="radiogroup" aria-label="Row density" className="flex h-8 items-center rounded-lg border border-[var(--cl-border)] bg-[var(--cl-panel2)] p-0.5">
-            {([["comfortable", Rows3, "Comfortable rows"], ["compact", Rows4, "Compact rows"]] as const).map(([value, Icon, label]) => (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={density === value}
-                aria-label={label}
-                title={label}
-                onClick={() => setDensity(value)}
-                className={cn(
-                  "grid h-full w-7 place-items-center rounded-md text-[var(--cl-text3)] hover:text-[var(--cl-text)]",
-                  density === value && "bg-[var(--cl-raised)] text-[var(--cl-text)] shadow-[0_0_0_1px_var(--cl-border2)]"
-                )}
-              >
-                <Icon className="h-4 w-4" />
-              </button>
-            ))}
-          </div>
-        )}
+        {!selectedCampaign && !splitOpen && <DensityToggle density={density} onChange={setDensity} />}
 
         {canDownload && (
           <button
@@ -512,185 +646,42 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
         )}
 
         <MoreMenu>
-          {canReanalyze && <ReanalyzeDialogWrapper projectId={project?.id} agentId={agent?.id} />}
-          {canManageFlagRules && agent?.id && (
-            <FlagRulesDialog
-              agentId={agent.id}
-              fieldExtractorPrompt={agent?.field_extractor_prompt}
-              initialFlagRules={agent?.flag_rules}
-              metadataKeys={dynamicColumns.metadata}
-              metricKeys={dynamicColumns.metrics}
-              onSaved={onAgentUpdated}
-            />
-          )}
-          {isSuperAdmin && agent?.id && (
-            <Button variant="outline" size="sm" className="justify-start" onClick={() => setDownloadSettingsOpen(true)}>
-              <Settings className="mr-2 h-4 w-4" />
-              Download settings
-            </Button>
-          )}
-          <Button variant="ghost" size="sm" className="justify-start text-[var(--cl-text2)]" onClick={() => setViewMode("legacy")}>
-            <History className="mr-2 h-4 w-4" />
-            Switch to classic view
-          </Button>
+          <MoreMenuItems
+            projectId={project?.id}
+            agent={agent}
+            canReanalyze={canReanalyze}
+            canManageFlagRules={canManageFlagRules}
+            isSuperAdmin={isSuperAdmin}
+            metadataKeys={dynamicColumns.metadata}
+            metricKeys={dynamicColumns.metrics}
+            onAgentUpdated={onAgentUpdated}
+            onOpenDownloadSettings={() => setDownloadSettingsOpen(true)}
+            onSwitchToClassic={() => setViewMode("legacy")}
+          />
         </MoreMenu>
       </div>
 
       {/* Applied filters get their own slim row, so adding filters never pushes the toolbar onto more lines. */}
       <FilterChips activeFilters={activeFilters} onChange={applyFilters} onEdit={() => setFilterPanelOpen(true)} />
 
-      {/* ── Campaign view replaces the table, exactly as on the legacy page ── */}
-      {/* A failed load keeps the toolbar, filter chips and Ask Pi on screen, so a
-          filter that made the query fail can be removed right here. */}
-      {error ? (
-        <div className="flex flex-1 items-center justify-center">
-          <div className="max-w-md space-y-3 text-center">
-            <AlertCircle className="mx-auto h-10 w-10 text-[var(--cl-red)]" />
-            <h3 className="text-[16px] font-semibold">Couldn&apos;t load calls</h3>
-            <p className="text-[13.5px] text-[var(--cl-text3)]">{error}</p>
-            {activeFilters.length > 0 && /timeout|timed out|took too long|57014/i.test(error) && (
-              <p className="text-[13.5px] text-[var(--cl-text3)]">These filters took too long to run. Try a shorter Period, or remove a filter.</p>
-            )}
-            {activeFilters.length > 0 && (
-              <Button variant="outline" size="sm" onClick={clearFilters}>Clear filters and retry</Button>
-            )}
-          </div>
-        </div>
-      ) : selectedCampaign ? (
-        <CampaignCallLogs
-          agent={agent}
-          project={project}
-          campaign={selectedCampaign}
-          visibleColumns={visibleColumns}
-          availableTags={availableTags}
-          role={role}
-          filters={activeFilters}
-          downloadDialogOpen={campaignDownloadOpen}
-          onDownloadDialogOpenChange={setCampaignDownloadOpen}
-        />
-      ) : splitOpen ? (
-        openedCall ? (
-          <SplitView
-            call={openedCall}
-            calls={currentPageCalls}
-            agent={agent}
-            projectId={project?.id}
-            role={role}
-            currentUserId={user?.id ?? null}
-            currentUserEmail={userEmail ?? null}
-            availableTags={availableTags}
-            onUpdated={refetchCurrentPage}
-            canOfferCallAgain={canOfferCallAgain}
-            outboundPhoneNumbers={outboundPhoneNumbers}
-            onOpen={openCall}
-            onClose={closeSplit}
-            listLoading={pageLoading}
-            listFooter={
-              <div className="flex h-[52px] flex-none items-center justify-between border-t border-[var(--cl-border)] px-3 text-[13px] text-[var(--cl-text3)]">
-                <span>{formatRowRangeLabel(currentPageCalls.length, totalCount, pageStart, pageEnd)}</span>
-                <div className="flex items-center gap-[3px]">
-                  <button type="button" className={PAGE_BTN} disabled={isFirstPage || isLoading || pageLoading} onClick={goToPrevPage} aria-label="Previous page" title="Previous page (⌘<)">
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <span className="px-1 tabular-nums text-[var(--cl-text2)]">{currentPage}</span>
-                  <button type="button" className={PAGE_BTN} disabled={isLastPage || pageLoading} onClick={goToNextPage} aria-label="Next page" title="Next page (⌘>)">
-                    {pageLoading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-            }
-          />
-        ) : (
-          <div className="flex flex-1 items-center justify-center text-sm text-[var(--cl-text3)]">
-            <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Opening call…
-          </div>
-        )
-      ) : (
-        <>
-          <CallLogsTable
-            table={table}
-            density={density}
-            role={role}
-            isLoading={isLoading}
-            isBusy={pageLoading || isRefetching}
-            pageLoading={pageLoading}
-            hasFilters={activeFilters.length > 0}
-            onClearFilters={clearFilters}
-            cursorIndex={cursor}
-            selectedCallId={null}
-            navigatingCallId={navigatingCallId}
-            onOpen={openCall}
-            onHover={prefetchSoon}
-            scrollContainerRef={scrollContainerRef}
-          />
-          {/* Start loading the call under the pointer or keyboard cursor, so it opens ready. */}
-          {prefetchId && <PrefetchTranscript key={prefetchId} callId={prefetchId} agentId={agent.id} />}
+      {mainViews[mainViewFor(error, selectedCampaign, splitOpen)]}
 
-          <div className="flex h-[52px] flex-none items-center justify-between border-t border-[var(--cl-border)] bg-[var(--cl-panel)] px-3 text-[13px] text-[var(--cl-text3)]">
-            <span className="min-w-[120px]">
-              {formatRowRangeLabel(currentPageCalls.length, totalCount, pageStart, pageEnd)}
-            </span>
-            <div className="flex items-center gap-[3px]">
-              <button type="button" className={PAGE_BTN} disabled={isFirstPage || isLoading || pageLoading} onClick={goToPrevPage} aria-label="Previous page" title="Previous page (⌘<)">
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              {pageItems.map((item, idx) => {
-                if (typeof item === "number") {
-                  const on = item === currentPage
-                  return (
-                    <button
-                      key={item} type="button" aria-label={`Page ${item}`} aria-current={on ? "page" : undefined}
-                      disabled={isLoading || pageLoading} onClick={() => goToPage(item)}
-                      className={cn(PAGE_BTN, on && "pointer-events-none bg-[var(--cl-raised)] text-[var(--cl-text)] shadow-[0_0_0_1px_var(--cl-border2)]")}
-                    >
-                      {item}
-                    </button>
-                  )
-                }
-                if (item === "load-more") {
-                  return (
-                    <button key="load-more" type="button" className={PAGE_BTN} disabled={pageLoading} onClick={goToNextPage} aria-label="Load more pages">…</button>
-                  )
-                }
-                return <span key={`gap-${idx}`} className="px-1 select-none">…</span>
-              })}
-              <button type="button" className={PAGE_BTN} disabled={isLastPage || pageLoading} onClick={goToNextPage} aria-label="Next page" title="Next page (⌘>)">
-                {pageLoading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
-              </button>
-            </div>
-            <div className="flex min-w-[120px] justify-end">
-              <ShortcutsHint />
-            </div>
-          </div>
-        </>
-      )}
-
-      {agent?.id && (
-        <DownloadDialog
-          open={downloadDialogOpen}
-          onOpenChange={setDownloadDialogOpen}
-          agentId={agent.id}
-          projectId={project?.id}
-          activeFilters={activeFilters}
-          basicColumns={filteredBasicColumns}
-          metadataColumns={dynamicColumns.metadata}
-          transcriptionColumns={dynamicColumns.transcription_metrics}
-          hiddenColumns={downloadSettingsData?.hiddenDownloadColumns ?? downloadSettingsData?.hiddenColumns ?? []}
-          initialDateRange={dateRange}
-        />
-      )}
-
-      {agent?.id && isSuperAdmin && (
-        <DownloadSettingsDialog
-          open={downloadSettingsOpen}
-          onOpenChange={setDownloadSettingsOpen}
-          agentId={agent.id}
-          allColumns={[...BASIC_COLUMNS, ...EXTRA_RESTRICTABLE_COLUMNS].map((c) => ({ key: c.key, label: c.label }))}
-          initialEnabled={downloadSettingsData?.settings?.enabled ?? true}
-          initialSuperadminOnlyColumns={downloadSettingsData?.settings?.superadmin_only_columns ?? []}
-          onSaved={() => refetchDownloadSettings()}
-        />
-      )}
+      <DownloadDialogs
+        agentId={agent?.id}
+        projectId={project?.id}
+        isSuperAdmin={isSuperAdmin}
+        downloadDialogOpen={downloadDialogOpen}
+        onDownloadDialogOpenChange={setDownloadDialogOpen}
+        downloadSettingsOpen={downloadSettingsOpen}
+        onDownloadSettingsOpenChange={setDownloadSettingsOpen}
+        activeFilters={activeFilters}
+        basicColumns={filteredBasicColumns}
+        metadataColumns={dynamicColumns.metadata}
+        transcriptionColumns={dynamicColumns.transcription_metrics}
+        downloadSettingsData={downloadSettingsData}
+        dateRange={dateRange}
+        onSettingsSaved={() => refetchDownloadSettings()}
+      />
 
       {/* Viewers don't get Ask Pi (the server refuses them too). */}
       {project?.id && agent?.id && role && !isViewerRole(role) && (
@@ -700,11 +691,252 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
           openCallId={openCallId}
           filters={activeFilters}
           dateRange={dateRange}
-          contextLabel={openCallId ? `This call · …${openCallId.slice(-8)}` : activeFilters.length ? `${totalCount ?? currentPageCalls.length} calls · ${activeFilters.length} filter${activeFilters.length > 1 ? "s" : ""}` : `${totalCount ?? currentPageCalls.length} calls · date range`}
+          contextLabel={askPiContextLabel(openCallId, activeFilters.length, totalCount, currentPageCalls.length)}
           onApplyFilters={applyPiFilters}
           onOpenCall={openCallFromPi}
         />
       )}
+    </div>
+  )
+}
+
+function LoadErrorState({ error, hasFilters, onClearFilters }: Readonly<{ error: string | null | undefined; hasFilters: boolean; onClearFilters: () => void }>) {
+  return (
+    <div className="flex flex-1 items-center justify-center">
+      <div className="max-w-md space-y-3 text-center">
+        <AlertCircle className="mx-auto h-10 w-10 text-[var(--cl-red)]" />
+        <h3 className="text-[16px] font-semibold">Couldn&apos;t load calls</h3>
+        <p className="text-[13.5px] text-[var(--cl-text3)]">{error}</p>
+        {hasFilters && /timeout|timed out|took too long|57014/i.test(error ?? "") && (
+          <p className="text-[13.5px] text-[var(--cl-text3)]">These filters took too long to run. Try a shorter Period, or remove a filter.</p>
+        )}
+        {hasFilters && (
+          <Button variant="outline" size="sm" onClick={onClearFilters}>Clear filters and retry</Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function SelectionBar({ count, copyFeedback, onCopy, onExportCsv, onClear }: Readonly<{
+  count: number
+  copyFeedback: boolean
+  onCopy: () => void
+  onExportCsv: () => void
+  onClear: () => void
+}>) {
+  return (
+    <div className="flex h-8 shrink-0 items-center gap-1 rounded-lg border border-[var(--cl-accent-line)] bg-[var(--cl-accent-soft)] pl-3 pr-1 text-[13px]">
+      <span className="whitespace-nowrap font-medium text-[var(--cl-accent-text)]">{count} selected</span>
+      <span className="mx-1 h-4 w-px bg-[var(--cl-accent-line)]" />
+      <button type="button" className="h-6 rounded-md px-2 text-[var(--cl-text2)] hover:bg-[var(--cl-hover)] hover:text-[var(--cl-text)]" onClick={onCopy}>
+        {copyFeedback ? "Copied!" : "Copy JSON"}
+      </button>
+      <button type="button" className="h-6 rounded-md px-2 text-[var(--cl-text2)] hover:bg-[var(--cl-hover)] hover:text-[var(--cl-text)]" onClick={onExportCsv}>
+        Export CSV
+      </button>
+      <button type="button" className="grid h-6 w-6 place-items-center rounded-md text-[var(--cl-text3)] hover:bg-[var(--cl-hover)]" aria-label="Clear selection" onClick={onClear}>
+        <X className="h-3 w-3" />
+      </button>
+    </div>
+  )
+}
+
+type Density = "comfortable" | "compact"
+
+function DensityToggle({ density, onChange }: Readonly<{ density: Density; onChange: (density: Density) => void }>) {
+  return (
+    <div role="radiogroup" aria-label="Row density" className="flex h-8 items-center rounded-lg border border-[var(--cl-border)] bg-[var(--cl-panel2)] p-0.5">
+      {([["comfortable", Rows3, "Comfortable rows"], ["compact", Rows4, "Compact rows"]] as const).map(([value, Icon, label]) => (
+        <button
+          key={value}
+          type="button"
+          role="radio"
+          aria-checked={density === value}
+          aria-label={label}
+          title={label}
+          onClick={() => onChange(value)}
+          className={cn(
+            "grid h-full w-7 place-items-center rounded-md text-[var(--cl-text3)] hover:text-[var(--cl-text)]",
+            density === value && "bg-[var(--cl-raised)] text-[var(--cl-text)] shadow-[0_0_0_1px_var(--cl-border2)]"
+          )}
+        >
+          <Icon className="h-4 w-4" />
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function MoreMenuItems({
+  projectId, agent, canReanalyze, canManageFlagRules, isSuperAdmin, metadataKeys, metricKeys, onAgentUpdated, onOpenDownloadSettings, onSwitchToClassic,
+}: Readonly<{
+  projectId: string | undefined
+  agent: any
+  canReanalyze: boolean
+  canManageFlagRules: boolean
+  isSuperAdmin: boolean
+  metadataKeys: string[]
+  metricKeys: string[]
+  onAgentUpdated?: () => void
+  onOpenDownloadSettings: () => void
+  onSwitchToClassic: () => void
+}>) {
+  return (
+    <>
+      {canReanalyze && <ReanalyzeDialogWrapper projectId={projectId} agentId={agent?.id} />}
+      {canManageFlagRules && agent?.id && (
+        <FlagRulesDialog
+          agentId={agent.id}
+          fieldExtractorPrompt={agent?.field_extractor_prompt}
+          initialFlagRules={agent?.flag_rules}
+          metadataKeys={metadataKeys}
+          metricKeys={metricKeys}
+          onSaved={onAgentUpdated}
+        />
+      )}
+      {isSuperAdmin && agent?.id && (
+        <Button variant="outline" size="sm" className="justify-start" onClick={onOpenDownloadSettings}>
+          <Settings className="mr-2 h-4 w-4" />
+          Download settings
+        </Button>
+      )}
+      <Button variant="ghost" size="sm" className="justify-start text-[var(--cl-text2)]" onClick={onSwitchToClassic}>
+        <History className="mr-2 h-4 w-4" />
+        Switch to classic view
+      </Button>
+    </>
+  )
+}
+
+function DownloadDialogs({
+  agentId, projectId, isSuperAdmin, downloadDialogOpen, onDownloadDialogOpenChange, downloadSettingsOpen, onDownloadSettingsOpenChange,
+  activeFilters, basicColumns, metadataColumns, transcriptionColumns, downloadSettingsData, dateRange, onSettingsSaved,
+}: Readonly<{
+  agentId: string | undefined
+  projectId: string | undefined
+  isSuperAdmin: boolean
+  downloadDialogOpen: boolean
+  onDownloadDialogOpenChange: (open: boolean) => void
+  downloadSettingsOpen: boolean
+  onDownloadSettingsOpenChange: (open: boolean) => void
+  activeFilters: FilterOperation[]
+  basicColumns: React.ComponentProps<typeof DownloadDialog>["basicColumns"]
+  metadataColumns: string[]
+  transcriptionColumns: string[]
+  downloadSettingsData: ReturnType<typeof useAgentDownloadSettingsQuery>["data"]
+  dateRange?: { from: string; to: string }
+  onSettingsSaved: () => void
+}>) {
+  if (!agentId) return null
+  return (
+    <>
+      <DownloadDialog
+        open={downloadDialogOpen}
+        onOpenChange={onDownloadDialogOpenChange}
+        agentId={agentId}
+        projectId={projectId}
+        activeFilters={activeFilters}
+        basicColumns={basicColumns}
+        metadataColumns={metadataColumns}
+        transcriptionColumns={transcriptionColumns}
+        hiddenColumns={downloadSettingsData?.hiddenDownloadColumns ?? downloadSettingsData?.hiddenColumns ?? []}
+        initialDateRange={dateRange}
+      />
+      {isSuperAdmin && (
+        <DownloadSettingsDialog
+          open={downloadSettingsOpen}
+          onOpenChange={onDownloadSettingsOpenChange}
+          agentId={agentId}
+          allColumns={[...BASIC_COLUMNS, ...EXTRA_RESTRICTABLE_COLUMNS].map((c) => ({ key: c.key, label: c.label }))}
+          initialEnabled={downloadSettingsData?.settings?.enabled ?? true}
+          initialSuperadminOnlyColumns={downloadSettingsData?.settings?.superadmin_only_columns ?? []}
+          onSaved={onSettingsSaved}
+        />
+      )}
+    </>
+  )
+}
+
+interface PagerProps {
+  isFirstPage: boolean
+  isLastPage: boolean
+  isLoading: boolean
+  pageLoading: boolean
+  goToPrevPage: () => void
+  goToNextPage: () => void
+}
+
+function PrevPageButton({ isFirstPage, isLoading, pageLoading, goToPrevPage }: Readonly<PagerProps>) {
+  return (
+    <button type="button" className={PAGE_BTN} disabled={isFirstPage || isLoading || pageLoading} onClick={goToPrevPage} aria-label="Previous page" title="Previous page (⌘<)">
+      <ChevronLeft className="h-4 w-4" />
+    </button>
+  )
+}
+
+function NextPageButton({ isLastPage, pageLoading, goToNextPage }: Readonly<PagerProps>) {
+  return (
+    <button type="button" className={PAGE_BTN} disabled={isLastPage || pageLoading} onClick={goToNextPage} aria-label="Next page" title="Next page (⌘>)">
+      {pageLoading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
+    </button>
+  )
+}
+
+// The pager under the call list beside an open call.
+function SplitListFooter(props: Readonly<PagerProps & { rangeLabel: React.ReactNode; currentPage: number }>) {
+  return (
+    <div className="flex h-[52px] flex-none items-center justify-between border-t border-[var(--cl-border)] px-3 text-[13px] text-[var(--cl-text3)]">
+      <span>{props.rangeLabel}</span>
+      <div className="flex items-center gap-[3px]">
+        <PrevPageButton {...props} />
+        <span className="px-1 tabular-nums text-[var(--cl-text2)]">{props.currentPage}</span>
+        <NextPageButton {...props} />
+      </div>
+    </div>
+  )
+}
+
+// The pager under the table: numbered pages, with gaps and "load more".
+function TablePager(props: Readonly<PagerProps & {
+  rangeLabel: React.ReactNode
+  currentPage: number
+  pageItems: PageItem[]
+  goToPage: (page: number) => void
+}>) {
+  const { rangeLabel, currentPage, pageItems, goToPage, isLoading, pageLoading, goToNextPage } = props
+  return (
+    <div className="flex h-[52px] flex-none items-center justify-between border-t border-[var(--cl-border)] bg-[var(--cl-panel)] px-3 text-[13px] text-[var(--cl-text3)]">
+      <span className="min-w-[120px]">
+        {rangeLabel}
+      </span>
+      <div className="flex items-center gap-[3px]">
+        <PrevPageButton {...props} />
+        {pageItems.map((item) => {
+          if (typeof item === "number") {
+            const on = item === currentPage
+            return (
+              <button
+                key={item} type="button" aria-label={`Page ${item}`} aria-current={on ? "page" : undefined}
+                disabled={isLoading || pageLoading} onClick={() => goToPage(item)}
+                className={cn(PAGE_BTN, on && "pointer-events-none bg-[var(--cl-raised)] text-[var(--cl-text)] shadow-[0_0_0_1px_var(--cl-border2)]")}
+              >
+                {item}
+              </button>
+            )
+          }
+          if (item === "load-more") {
+            return (
+              <button key="load-more" type="button" className={PAGE_BTN} disabled={pageLoading} onClick={goToNextPage} aria-label="Load more pages">…</button>
+            )
+          }
+          return <span key={item} className="px-1 select-none">…</span>
+        })}
+        <NextPageButton {...props} />
+      </div>
+      <div className="flex min-w-[120px] justify-end">
+        <ShortcutsHint />
+      </div>
     </div>
   )
 }

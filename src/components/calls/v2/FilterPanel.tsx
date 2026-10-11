@@ -58,6 +58,15 @@ interface FilterPanelProps {
   onOpenChange?: (open: boolean) => void
 }
 
+const replaceRow = (rows: RowState[], id: string, updated: RowState) => rows.map((r) => (r.id === id ? updated : r))
+const withoutRow = (rows: RowState[], id: string) => rows.filter((r) => r.id !== id)
+
+// The footer's note on how many of the rows are ready to apply.
+function readyLabel(completeCount: number, rowCount: number): string {
+  if (completeCount > 0) return `${completeCount} ready`
+  return rowCount > 0 ? "Complete the filters above" : ""
+}
+
 export function FilterPanel({ activeFilters, distinctConfig, onApply, metadataFields, transcriptionFields, role, open: openProp, onOpenChange }: Readonly<FilterPanelProps>) {
   const [openState, setOpenState] = useState(false)
   const open = openProp ?? openState
@@ -179,8 +188,8 @@ export function FilterPanel({ activeFilters, distinctConfig, onApply, metadataFi
                   <div className="min-w-0 flex-1">
                     <FilterRow
                       row={row}
-                      onChange={(updated) => setRows((prev) => prev.map((r) => (r.id === row.id ? updated : r)))}
-                      onRemove={() => setRows((prev) => prev.filter((r) => r.id !== row.id))}
+                      onChange={(updated) => setRows((prev) => replaceRow(prev, row.id, updated))}
+                      onRemove={() => setRows((prev) => withoutRow(prev, row.id))}
                       availableMetadataFields={metadataFields}
                       availableTranscriptionFields={transcriptionFields}
                       columnsForRole={roleColumns}
@@ -221,7 +230,7 @@ export function FilterPanel({ activeFilters, distinctConfig, onApply, metadataFi
           </button>
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-400">
-              {complete.length > 0 ? `${complete.length} ready` : rows.length > 0 ? "Complete the filters above" : ""}
+              {readyLabel(complete.length, rows.length)}
             </span>
             <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setOpen(false)}>
               Cancel
@@ -370,5 +379,6 @@ function RemoveButton({ onClick }: Readonly<{ onClick: () => void }>) {
 function chipTitle(op: FilterOperation): string {
   if (op.type === "distinct") return `Unique by ${op.jsonField || columnLabel(op.column)}`
   const value = op.operation === "exists" || op.operation === "json_exists" ? "" : ` ${op.value}`
-  return `${columnLabel(op.column)}${op.jsonField ? ` · ${op.jsonField}` : ""} ${operationLabel(op.operation).toLowerCase()}${value}`
+  const field = op.jsonField ? ` · ${op.jsonField}` : ""
+  return `${columnLabel(op.column)}${field} ${operationLabel(op.operation).toLowerCase()}${value}`
 }

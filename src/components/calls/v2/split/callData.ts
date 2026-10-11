@@ -1,5 +1,4 @@
 import { EXCLUDED_METADATA_COLUMNS } from "@/lib/metadataColumnDenylist"
-import { isViewerRole } from "@/utils/callLogsUtils"
 import type { CallLog } from "@/types/logs"
 
 // transcription_metrics keys that are not dispositions: tag/flag/QA state the
@@ -61,9 +60,22 @@ export function callLabel(call: CallLog): { text: string; isId: boolean } {
 }
 
 const PHONE_LIKE = /\+?\d[\d\s-]{8,}\d/g
-/** Masks anything that looks like a phone number, for people the number is hidden from. */
-export function maskNumbers(value: string, hide: boolean): string {
-  return hide ? value.replace(PHONE_LIKE, "•••• ••••") : value
+/** Masks anything that looks like a phone number. */
+export function maskNumbers(value: string): string {
+  return value.replaceAll(PHONE_LIKE, "•••• ••••")
+}
+
+const showAsIs = (value: string) => value
+
+/** How to show a call's text: numbers masked for people the call's number is hidden from, as-is otherwise. */
+export function numberMaskFor(call: CallLog): (value: string) => string {
+  return isNumberHidden(call) ? maskNumbers : showAsIs
+}
+
+/** A tool call's arguments as text: kept as-is when already a string, pretty JSON otherwise. */
+export function toolArgumentsText(args: unknown): string | null {
+  if (args == null) return null
+  return typeof args === "string" ? args : JSON.stringify(args, null, 2)
 }
 
 export function relativeTime(iso: string | null | undefined): string {
@@ -113,7 +125,11 @@ export interface TranscriptCue {
   start: number
 }
 
-const cueSeconds = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? (value > 100 ? value / 1000 : value) : 0)
+// Durations come in seconds or milliseconds; anything over 100 is taken as milliseconds.
+function cueSeconds(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 0
+  return value > 100 ? value / 1000 : value
+}
 
 /**
  * Where each bubble starts in the recording. A turn's timestamp is when the
@@ -182,5 +198,6 @@ export function formatValue(value: unknown): string {
   if (typeof value === "string" && EMPTY_STRINGS.has(value.trim().toLowerCase())) return ""
   if (typeof value === "boolean") return value ? "Yes" : "No"
   if (typeof value === "object") return JSON.stringify(value)
-  return String(value)
+  if (typeof value === "number" || typeof value === "bigint" || typeof value === "string") return String(value)
+  return ""
 }

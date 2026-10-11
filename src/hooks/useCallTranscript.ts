@@ -54,6 +54,84 @@ export const METRICS_LOGS_TRANSCRIPT_SELECT = METRICS_LOGS_SELECT.replace(
   "fallback_events:enhanced_data->fallback_events"
 )
 
+// Metrics-log turns that have anything to show, in turn order.
+function metricsLogTurns(traceData: TraceLog[] | null | undefined): TraceLog[] {
+  if (!traceData?.length) return []
+  const filtered = traceData.filter((item: TraceLog) =>
+    item.user_transcript || item.agent_response || item.tool_calls?.length || item.otel_spans?.length
+  )
+  filtered.sort((a, b) => turnNumber(a.turn_id) - turnNumber(b.turn_id))
+  return filtered
+}
+
+const turnNumber = (turnId: string) => Number.parseInt(turnId.replace('turn_', '')) || 0
+
+/** call_logs.transcript_json as a non-empty message list, or null when there is none. */
+function transcriptMessages(raw: unknown): any[] | null {
+  if (!raw) return null
+  let parsed = raw
+  if (typeof raw === 'string') {
+    try { parsed = JSON.parse(raw) } catch { return null }
+  }
+  return Array.isArray(parsed) && parsed.length > 0 ? parsed : null
+}
+
+const messageText = (msg: any): string => {
+  const c = msg.content
+  if (Array.isArray(c)) return c.join(' ').trim()
+  return (c || '').trim()
+}
+
+function transcriptTurn(call: any, index: number, userText: string, agentText: string): TraceLog {
+  return {
+    id: `transcript_${index}`,
+    session_id: call.id,
+    turn_id: `turn_${index + 1}`,
+    user_transcript: userText,
+    agent_response: agentText,
+    created_at: call.created_at,
+    unix_timestamp: index,
+  } as TraceLog
+}
+
+// Pair messages into conversation turns: each turn holds one user message
+// and the immediately following assistant reply (or vice-versa for agent-opens flows).
+function turnsFromTranscriptJson(call: any): TraceLog[] {
+  const messages = transcriptMessages(call?.transcript_json)
+  if (!messages) return []
+
+  const turns: TraceLog[] = []
+  let i = 0
+  while (i < messages.length) {
+    const role = messages[i].role?.toLowerCase()
+    const text = messageText(messages[i])
+
+    if (!text || (role !== 'assistant' && role !== 'user')) {
+      i++
+    } else if (role === 'assistant') {
+      // Whether assistant[i] is followed by a user message (opening
+      // greeting) or is an orphan message at the end, it's emitted as
+      // its own standalone turn either way.
+      turns.push(transcriptTurn(call, turns.length, '', text))
+      i++
+    } else {
+      // Pair user message with the immediately following assistant reply
+      const nextMsg = messages[i + 1]
+      const nextText = nextMsg ? messageText(nextMsg) : ''
+      if (nextMsg?.role?.toLowerCase() === 'assistant' && nextText) {
+        turns.push(transcriptTurn(call, turns.length, text, nextText))
+        i += 2 // consume both
+      } else {
+        // User message with no following assistant reply
+        turns.push(transcriptTurn(call, turns.length, text, ''))
+        i++
+      }
+    }
+  }
+
+  return turns.filter(t => t.user_transcript || t.agent_response)
+}
+
 export function useCallTranscript({
   sessionId, agentId, light = false,
 }: { sessionId?: string; agentId: string; light?: boolean }) {
@@ -119,6 +197,8 @@ export function useCallTranscript({
         bug_flagged_turns: metadata?.bug_flagged_turns || null
       }
     } catch (e) {
+      // Unreadable metadata just means no bug-report marks on this call.
+      console.warn("useCallTranscript: could not parse call metadata for bug reports", e)
       return null
     }
   }, [callData])
@@ -150,110 +230,14 @@ export function useCallTranscript({
 
   // Filter and process data
   const processedTraces = useMemo(() => {
-    if (traceData?.length) {
-      const filtered = traceData.filter((item: TraceLog) => 
-        item.user_transcript || item.agent_response || item.tool_calls?.length || item.otel_spans?.length
-      )
-    
-      filtered.sort((a, b) => {
-        const aTurnNum = parseInt(a.turn_id.replace('turn_', '')) || 0
-        const bTurnNum = parseInt(b.turn_id.replace('turn_', '')) || 0
-        return aTurnNum - bTurnNum
-      })
-
-      // If at least one turn has actual transcript text, use the metrics data.
-      // Otherwise fall through to transcript_json so the conversation is still visible.
-      const hasTranscriptContent = filtered.some(t => t.user_transcript || t.agent_response)
-      if (hasTranscriptContent) return filtered
-    }
+    const fromMetrics = metricsLogTurns(traceData)
+    // If at least one turn has actual transcript text, use the metrics data.
+    // Otherwise fall through to transcript_json so the conversation is still visible.
+    if (fromMetrics.some(t => t.user_transcript || t.agent_response)) return fromMetrics
 
     // Fallback: build traces from transcript_json in call_logs.
     // Used when metrics logs are absent OR contain no transcript text.
-    if (callData?.length) {
-      const call = callData[0]
-      let transcriptJson = call?.transcript_json
-      if (!transcriptJson) return []
-
-      if (typeof transcriptJson === 'string') {
-        try { transcriptJson = JSON.parse(transcriptJson) } catch { return [] }
-      }
-      if (!Array.isArray(transcriptJson) || transcriptJson.length === 0) return []
-
-      // Pair messages into conversation turns: each turn holds one user message
-      // and the immediately following assistant reply (or vice-versa for agent-opens flows).
-      const getText = (msg: any): string => {
-        const c = msg.content
-        if (Array.isArray(c)) return c.join(' ').trim()
-        return (c || '').trim()
-      }
-
-      const turns: TraceLog[] = []
-      let turnIdx = 0
-      let i = 0
-
-      while (i < transcriptJson.length) {
-        const msg = transcriptJson[i]
-        const role = msg.role?.toLowerCase()
-        const text = getText(msg)
-
-        if (!text) { i++; continue }
-
-        if (role === 'assistant') {
-          // Whether assistant[i] is followed by a user message (opening
-          // greeting) or is an orphan message at the end, it's emitted as
-          // its own standalone turn either way.
-          turns.push({
-            id: `transcript_${turnIdx}`,
-            session_id: call.id,
-            turn_id: `turn_${turnIdx + 1}`,
-            user_transcript: '',
-            agent_response: text,
-            created_at: call.created_at,
-            unix_timestamp: turnIdx,
-          } as TraceLog)
-          turnIdx++
-          i++
-        } else if (role === 'user') {
-          // Pair user message with the immediately following assistant reply
-          const nextMsg = transcriptJson[i + 1]
-          const nextRole = nextMsg?.role?.toLowerCase()
-          const nextText = nextMsg ? getText(nextMsg) : ''
-
-          if (nextRole === 'assistant' && nextText) {
-            turns.push({
-              id: `transcript_${turnIdx}`,
-              session_id: call.id,
-              turn_id: `turn_${turnIdx + 1}`,
-              user_transcript: text,
-              agent_response: nextText,
-              created_at: call.created_at,
-              unix_timestamp: turnIdx,
-            } as TraceLog)
-            turnIdx++
-            i += 2 // consume both
-          } else {
-            // User message with no following assistant reply
-            turns.push({
-              id: `transcript_${turnIdx}`,
-              session_id: call.id,
-              turn_id: `turn_${turnIdx + 1}`,
-              user_transcript: text,
-              agent_response: '',
-              created_at: call.created_at,
-              unix_timestamp: turnIdx,
-            } as TraceLog)
-            turnIdx++
-            i++
-          }
-        } else {
-          i++
-        }
-      }
-
-      return turns.filter(t => t.user_transcript || t.agent_response)
-    }
-
-    return []
+    return callData?.length ? turnsFromTranscriptJson(callData[0]) : []
   }, [traceData, callData])
 
   // Enrich turns that have no tool_calls using the targeted functionToolSpans fetch.

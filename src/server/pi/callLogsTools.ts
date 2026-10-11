@@ -177,7 +177,7 @@ export function callLogsToolSchemas(): OpenAI.Chat.ChatCompletionTool[] {
 
 export function callLogsPromptBlock(ctx: CallLogsPageContext): string {
   const now = new Date()
-  const ist = new Date(now.getTime() + 5.5 * 3600_000).toISOString().slice(0, 10)
+  const ist = new Date(now.getTime() + 5.5 * 3_600_000).toISOString().slice(0, 10)
   return `PAGE CONTEXT — the user is on the Call Logs page of agent_id=${ctx.agentId}.
 ${ctx.openCall ? `They have this call open, and questions are about it unless they clearly ask about other calls:
 OPEN CALL id=${ctx.openCall.id} started=${ctx.openCall.startedAt ?? '?'} status=${ctx.openCall.status ?? '?'}
@@ -207,6 +207,12 @@ function toUtcNaive(iso: unknown): string | null {
   return Number.isNaN(ms) ? null : new Date(ms).toISOString().replace('Z', '')
 }
 
+function messageContent(m: any): unknown {
+  if (typeof m?.content === 'string') return m.content
+  if (Array.isArray(m?.content)) return m.content.join(' ')
+  return m?.text
+}
+
 function transcriptFromJson(raw: unknown): string {
   let items: any = raw
   if (typeof raw === 'string') {
@@ -216,7 +222,7 @@ function transcriptFromJson(raw: unknown): string {
   if (!Array.isArray(items)) return ''
   return items
     .map((m: any) => {
-      const text = typeof m?.content === 'string' ? m.content : Array.isArray(m?.content) ? m.content.join(' ') : m?.text
+      const text = messageContent(m)
       if (!text) return null
       return `${m.role === 'user' ? 'Customer' : 'Agent'}: ${text}`
     })
@@ -234,7 +240,10 @@ function applySelection(q: any, args: any) {
   const statuses = strings(args.statuses)
   if (statuses.length) q = q.in('call_ended_reason', statuses)
   const excluded = strings(args.exclude_statuses)
-  if (excluded.length) q = q.not('call_ended_reason', 'in', `(${excluded.map((v) => `"${v.replaceAll('"', '')}"`).join(',')})`)
+  if (excluded.length) {
+    const quoted = excluded.map((v) => `"${v.replaceAll('"', '')}"`).join(',')
+    q = q.not('call_ended_reason', 'in', `(${quoted})`)
+  }
   const d = args.disposition
   if (d && typeof d.field === 'string' && /^[\w.-]{1,80}$/.test(d.field)) {
     const values = strings(d.values)
@@ -256,7 +265,7 @@ async function fetchAllPages(build: () => any, max: number): Promise<{ rows: any
   for (let from = 0; from < max; from += PAGE_ROWS) {
     const { data, count: total, error } = await build().range(from, Math.min(from + PAGE_ROWS, max) - 1)
     if (error) return { rows, count, error }
-    if (count === null) count = total ?? null
+    count ??= total ?? null
     rows.push(...(data ?? []))
     if (!data || data.length < PAGE_ROWS) break
   }
@@ -266,6 +275,37 @@ const MAX_LISTED_CALLS = 10
 // disposition fields worth counting: short labels, not free text or numbers per call
 const MAX_DISTINCT_VALUES = 15
 const SKIP_FIELDS = new Set(['tags', 'tagComments', 'flag', 'qa', 'call_summary', 'notes'])
+
+/** A disposition value as a short label to count, or null when it isn't one. */
+function dispositionLabel(key: string, value: unknown): string | null {
+  if (SKIP_FIELDS.has(key)) return null
+  if (typeof value !== 'string' && typeof value !== 'number' && typeof value !== 'boolean' && typeof value !== 'bigint') return null
+  const label = String(value).trim()
+  return !label || label.length > 40 ? null : label
+}
+
+/** Calls per status, and per value of each short-label disposition field. */
+function countBreakdown(rows: any[]) {
+  const statuses: Record<string, number> = {}
+  const fields = new Map<string, Map<string, number>>()
+  for (const row of rows) {
+    const status = row.call_ended_reason ?? '(none)'
+    statuses[status] = (statuses[status] ?? 0) + 1
+    for (const [key, value] of Object.entries((row.transcription_metrics ?? {}) as Record<string, unknown>)) {
+      const label = dispositionLabel(key, value)
+      if (label === null) continue
+      const counts = fields.get(key) ?? new Map<string, number>()
+      counts.set(label, (counts.get(label) ?? 0) + 1)
+      fields.set(key, counts)
+    }
+  }
+  const dispositions: Record<string, Record<string, number>> = {}
+  for (const [key, counts] of fields) {
+    if (counts.size > MAX_DISTINCT_VALUES) continue
+    dispositions[key] = Object.fromEntries([...counts].sort((a, b) => b[1] - a[1]))
+  }
+  return { statuses, dispositions }
+}
 
 export async function runCallBreakdown(projectId: string, pageContext: CallLogsPageContext, args: any) {
   const scope = await resolveScope({ agentId: pageContext.agentId })
@@ -277,25 +317,7 @@ export async function runCallBreakdown(projectId: string, pageContext: CallLogsP
   ).order('call_started_at', { ascending: false })
   const { rows: data, count, error } = await fetchAllPages(query, BREAKDOWN_ROWS)
   if (error) return { success: false, result: { error: error.message } }
-  const statuses: Record<string, number> = {}
-  const fields = new Map<string, Map<string, number>>()
-  for (const row of data ?? []) {
-    const status = row.call_ended_reason ?? '(none)'
-    statuses[status] = (statuses[status] ?? 0) + 1
-    for (const [key, value] of Object.entries((row.transcription_metrics ?? {}) as Record<string, unknown>)) {
-      if (SKIP_FIELDS.has(key) || value === null || value === undefined || typeof value === 'object') continue
-      const label = String(value).trim()
-      if (!label || label.length > 40) continue
-      const counts = fields.get(key) ?? new Map<string, number>()
-      counts.set(label, (counts.get(label) ?? 0) + 1)
-      fields.set(key, counts)
-    }
-  }
-  const dispositions: Record<string, Record<string, number>> = {}
-  for (const [key, counts] of fields) {
-    if (counts.size > MAX_DISTINCT_VALUES) continue
-    dispositions[key] = Object.fromEntries([...counts].sort((a, b) => b[1] - a[1]))
-  }
+  const { statuses, dispositions } = countBreakdown(data ?? [])
   const total = count ?? data?.length ?? 0
   // a handful of matches is usually what the user wants to look at next ("show me that call")
   const fewCalls = total > 0 && total <= MAX_LISTED_CALLS
@@ -385,8 +407,8 @@ export async function runSummarizeCallTranscripts(
 
   const summaries = await mapLimit(calls, SUMMARY_CONCURRENCY, async (c) => {
     const text = (bySession.get(c.id)?.join('\n') || transcriptFromJson(c.transcript_json)).slice(0, MAX_TRANSCRIPT_CHARS)
-    const startedMs = c.call_started_at ? Date.parse(`${c.call_started_at}Z`) : NaN
-    const endedMs = c.call_ended_at ? Date.parse(`${c.call_ended_at}Z`) : NaN
+    const startedMs = c.call_started_at ? Date.parse(`${c.call_started_at}Z`) : Number.NaN
+    const endedMs = c.call_ended_at ? Date.parse(`${c.call_ended_at}Z`) : Number.NaN
     const duration = c.duration_seconds || (Number.isFinite(startedMs) && Number.isFinite(endedMs) ? Math.round((endedMs - startedMs) / 1000) : null)
     return {
       id: c.id,

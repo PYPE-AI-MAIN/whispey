@@ -72,7 +72,7 @@ export function CallList({ calls, openId, role, hasSummaryField, onOpen, onBack,
 
 function ListSkeleton() {
   return (
-    <div role="status" aria-label="Loading calls" className="animate-pulse">
+    <output aria-label="Loading calls" className="block animate-pulse">
       {Array.from({ length: 10 }, (_, i) => (
         <div key={i} className="border-b border-[var(--cl-border)] py-3 pl-4 pr-3">
           <div className="flex items-center gap-1.5">
@@ -83,7 +83,7 @@ function ListSkeleton() {
           <span className="mt-2.5 block h-[10px] w-[38%] rounded-full bg-[var(--cl-hover)]" />
         </div>
       ))}
-    </div>
+    </output>
   )
 }
 
@@ -98,19 +98,26 @@ function CallListItem({
   const status = call.call_ended_reason || "—"
   const isWeb = !call.customer_number
   return (
+    // Not a <button>: it holds the flag editor and the quick-details button. An
+    // invisible full-size button behind the content is the click target instead.
+    // Out of the tab order, as before: J/K and the arrow keys move between calls.
     <div
-      role="button"
-      tabIndex={-1}
       data-call-id={call.id}
-      onClick={() => onOpen(call)}
-      onMouseEnter={onHover ? () => onHover(call) : undefined}
       className={cn(
         "group relative cursor-pointer border-b border-[var(--cl-border)] py-3 pl-4 pr-3",
         active ? "bg-[var(--cl-accent-soft)]" : "hover:bg-[var(--cl-hover)]"
       )}
     >
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-label={`Open call ${label.text}`}
+        onClick={() => onOpen(call)}
+        onMouseEnter={onHover ? () => onHover(call) : undefined}
+        className="absolute inset-0 cursor-pointer"
+      />
       {active && <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-[var(--cl-accent)]" />}
-      <div className="flex items-center gap-1.5">
+      <div className="pointer-events-none relative flex items-center gap-1.5">
         <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[var(--cl-hover)] text-[var(--cl-text3)]">
           {isWeb ? <Globe className="h-[11px] w-[11px]" /> : <Phone className="h-[11px] w-[11px]" />}
         </span>
@@ -119,22 +126,25 @@ function CallListItem({
         </span>
         <span className="shrink-0 whitespace-nowrap text-[12.5px] text-[var(--cl-text3)]">{relativeTime(call.call_started_at)}</span>
       </div>
-      <div className="mt-1 flex items-center gap-2 text-[13px] text-[var(--cl-text3)]">
+      <div className="pointer-events-none relative mt-1 flex items-center gap-2 text-[13px] text-[var(--cl-text3)]">
         {status !== "completed" && <span aria-hidden className="h-[7px] w-[7px] shrink-0 rounded-full bg-[var(--cl-st-fail)]" />}
         <span className="min-w-0 flex-1 truncate">
           {status} · <span className="font-mono">{formatDuration(callDurationSeconds(call) ?? 0)}</span>
         </span>
-        <FlagEditor
-          key={`flag-${call.id}`}
-          variant="icon"
-          callId={call.id}
-          initialFlag={call.transcription_metrics?.flag}
-          currentUserId={flag.currentUserId}
-          currentUserEmail={flag.currentUserEmail}
-          canDeleteAnyFlag={role !== null && !isViewerRole(role)}
-          onUpdated={flag.onUpdated}
-        />
-        <QuickDetails call={call} role={role} hasSummaryField={hasSummaryField} />
+        {/* display: contents — no box of its own, it only lets these two take clicks again. */}
+        <span className="pointer-events-auto contents">
+          <FlagEditor
+            key={`flag-${call.id}`}
+            variant="icon"
+            callId={call.id}
+            initialFlag={call.transcription_metrics?.flag}
+            currentUserId={flag.currentUserId}
+            currentUserEmail={flag.currentUserEmail}
+            canDeleteAnyFlag={role !== null && !isViewerRole(role)}
+            onUpdated={flag.onUpdated}
+          />
+          <QuickDetails call={call} role={role} hasSummaryField={hasSummaryField} />
+        </span>
       </div>
     </div>
   )

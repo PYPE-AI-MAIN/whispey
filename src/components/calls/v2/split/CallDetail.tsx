@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 import CallAgainDialog from "../../CallAgainDialog"
 import { TagEditor } from "../../TagEditor"
 import { FlagEditor } from "../../FlagEditor"
-import { callDurationSeconds, callLabel, callSummary, formatClock, isNumberHidden, maskNumbers, type TranscriptCue } from "./callData"
+import { callDurationSeconds, callLabel, callSummary, formatClock, numberMaskFor, toolArgumentsText, type TranscriptCue } from "./callData"
 
 export interface ToolRef {
   key: string
@@ -76,21 +76,26 @@ export function CallDetail(props: Readonly<CallDetailProps>) {
     readerScrolledAt.current = Date.now()
   }
 
+  let transcript: React.ReactNode
+  if (transcriptLoading && turns.length === 0) {
+    transcript = <TranscriptSkeleton />
+  } else if (turns.length === 0) {
+    transcript = <p className="px-6 py-10 text-center text-sm text-[var(--cl-text3)]">No transcript for this call.</p>
+  } else {
+    transcript = (
+      <div className="flex flex-col gap-[18px] px-[22px] pb-7 pt-[18px]">
+        {turns.map((turn) => (
+          <Turn key={turn.id} turn={turn} {...props} cueStarts={cueStarts} role={role} />
+        ))}
+      </div>
+    )
+  }
+
   return (
     <section className="flex min-h-0 min-w-0 flex-col bg-[var(--cl-bg)]">
       <DetailHeader {...props} />
       <div ref={scrollRef} onWheel={markReaderScroll} onTouchMove={markReaderScroll} className="min-h-0 flex-1 overflow-y-auto">
-        {transcriptLoading && turns.length === 0 ? (
-          <TranscriptSkeleton />
-        ) : turns.length === 0 ? (
-          <p className="px-6 py-10 text-center text-sm text-[var(--cl-text3)]">No transcript for this call.</p>
-        ) : (
-          <div className="flex flex-col gap-[18px] px-[22px] pb-7 pt-[18px]">
-            {turns.map((turn) => (
-              <Turn key={turn.id} turn={turn} {...props} cueStarts={cueStarts} role={role} />
-            ))}
-          </div>
-        )}
+        {transcript}
       </div>
     </section>
   )
@@ -154,7 +159,7 @@ function DetailHeader({
                   </button>
                 ))}
               </div>
-              <CopyButton text={maskNumbers(transcriptText, isNumberHidden(call))} label="Copy transcript" />
+              <CopyButton text={numberMaskFor(call)(transcriptText)} label="Copy transcript" />
               <span aria-hidden className="mx-1 h-4 w-px bg-[var(--cl-border2)]" />
             </>
           )}
@@ -235,7 +240,9 @@ export function CopyButton({ text, label }: Readonly<{ text: string; label: stri
       title={label}
       onClick={(e) => {
         e.stopPropagation()
-        void navigator.clipboard.writeText(text)
+        navigator.clipboard.writeText(text).catch(() => {
+          // copying is best-effort
+        })
         setCopied(true)
         setTimeout(() => setCopied(false), 1500)
       }}
@@ -252,14 +259,16 @@ function Turn({
   const userKey = `${turn.id}:user`
   const agentKey = `${turn.id}:agent`
   const tools: any[] = Array.isArray(turn.tool_calls) ? turn.tool_calls : []
-  const fallbacks: any[] = Array.isArray(turn.enhanced_data?.fallback_events) ? turn.enhanced_data!.fallback_events! : []
+  const fallbackEvents = turn.enhanced_data?.fallback_events
+  const fallbacks: any[] = Array.isArray(fallbackEvents) ? fallbackEvents : []
+  const mask = numberMaskFor(call)
   const hasBug = bugReportTurnIds.has(String(turn.turn_id))
   return (
     <>
       {turn.user_transcript && (
         <Bubble
           cueKey={userKey}
-          text={maskNumbers(formatTranscript(turn.user_transcript), isNumberHidden(call))}
+          text={mask(formatTranscript(turn.user_transcript))}
           start={cueStarts.get(userKey)}
           active={activeCue === userKey}
           onSeek={onSeek}
@@ -270,9 +279,10 @@ function Turn({
           <Avatar who="agent" />
           <div className="min-w-0">
             {turn.agent_response && (
+              // Not a <button>: the transcript text must stay selectable.
               <div
                 data-cue={agentKey}
-                onClick={seekHandler(cueStarts.get(agentKey), onSeek)}
+                {...seekProps(cueStarts.get(agentKey), onSeek)}
                 title={onSeek && cueStarts.has(agentKey) ? "Play from here" : undefined}
                 className={cn(
                   onSeek && cueStarts.has(agentKey) && "cursor-pointer hover:border-[var(--cl-accent-line)]",
@@ -297,16 +307,14 @@ function Turn({
             {tools.length > 0 && (
               <div className="mt-[7px] flex flex-wrap gap-1.5">
                 {tools.map((tool, i) => (
-                  <ToolPill key={toolKey(turn.turn_id, i)} tool={tool} hideNumbers={isNumberHidden(call)} onOpen={() => onOpenTool(toolKey(turn.turn_id, i))} />
+                  <ToolPill key={toolKey(turn.turn_id, i)} tool={tool} mask={mask} onOpen={() => onOpenTool(toolKey(turn.turn_id, i))} />
                 ))}
               </div>
             )}
             {fallbacks.map((fb, i) => (
               <p key={`${fb.timestamp}-${i}`} className="mt-1.5 flex items-center gap-1 text-[12px] text-[var(--cl-red-text)]">
                 <AlertTriangle className="h-3 w-3" />
-                {fb.event_type === "provider_recovered"
-                  ? `${fb.provider_type || "Provider"} recovered`
-                  : `${fb.provider_type || "Provider"} fallback: ${fb.provider_label || fb.provider_name} → ${fb.fallback_label || fb.fallback_provider || "none"}`}
+                {fallbackText(fb)}
               </p>
             ))}
           </div>
@@ -316,23 +324,30 @@ function Turn({
   )
 }
 
+function fallbackText(fb: any): string {
+  const provider = fb.provider_type || "Provider"
+  if (fb.event_type === "provider_recovered") return `${provider} recovered`
+  return `${provider} fallback: ${fb.provider_label || fb.provider_name} → ${fb.fallback_label || fb.fallback_provider || "none"}`
+}
+
 // Placeholder bubbles in the transcript's own shape, alternating agent/customer.
-const SKELETON_TURNS: Array<{ side: "agent" | "user"; lines: number[] }> = [
-  { side: "agent", lines: [92, 64] },
-  { side: "user", lines: [48] },
-  { side: "agent", lines: [100, 86, 40] },
-  { side: "user", lines: [70, 36] },
-  { side: "agent", lines: [80, 52] },
-  { side: "user", lines: [42] },
+// Line widths are distinct within a bubble, so they double as keys.
+const SKELETON_TURNS: Array<{ id: string; side: "agent" | "user"; lines: number[] }> = [
+  { id: "a1", side: "agent", lines: [92, 64] },
+  { id: "u1", side: "user", lines: [48] },
+  { id: "a2", side: "agent", lines: [100, 86, 40] },
+  { id: "u2", side: "user", lines: [70, 36] },
+  { id: "a3", side: "agent", lines: [80, 52] },
+  { id: "u3", side: "user", lines: [42] },
 ]
 
 function TranscriptSkeleton() {
   return (
-    <div role="status" aria-label="Loading transcript" className="flex animate-pulse flex-col gap-[18px] px-[22px] pb-7 pt-[18px]">
-      {SKELETON_TURNS.map((turn, i) => {
+    <output aria-label="Loading transcript" className="flex animate-pulse flex-col gap-[18px] px-[22px] pb-7 pt-[18px]">
+      {SKELETON_TURNS.map((turn) => {
         const user = turn.side === "user"
         return (
-          <div key={i} className={cn("flex w-[62%] gap-3", user && "flex-row-reverse self-end w-[46%]")}>
+          <div key={turn.id} className={cn("flex w-[62%] gap-3", user && "flex-row-reverse self-end w-[46%]")}>
             <span className="mt-0.5 h-[30px] w-[30px] shrink-0 rounded-full bg-[var(--cl-hover)]" />
             <div className="min-w-0 flex-1">
               <div
@@ -341,8 +356,8 @@ function TranscriptSkeleton() {
                   user ? "rounded-tr-[4px] bg-[var(--cl-panel2)]" : "rounded-tl-[4px] bg-[var(--cl-panel)]"
                 )}
               >
-                {turn.lines.map((w, j) => (
-                  <span key={j} className="h-[11px] rounded-full bg-[var(--cl-hover)]" style={{ width: `${w}%` }} />
+                {turn.lines.map((w) => (
+                  <span key={w} className="h-[11px] rounded-full bg-[var(--cl-hover)]" style={{ width: `${w}%` }} />
                 ))}
               </div>
               <span className={cn("mt-[7px] block h-[9px] w-9 rounded-full bg-[var(--cl-hover)]", user && "ml-auto")} />
@@ -350,7 +365,7 @@ function TranscriptSkeleton() {
           </div>
         )
       })}
-    </div>
+    </output>
   )
 }
 
@@ -374,9 +389,10 @@ function Bubble({
     <div className="flex max-w-[84%] flex-row-reverse gap-3 self-end">
       <Avatar who="user" />
       <div className="min-w-0">
+        {/* Not a <button>: the transcript text must stay selectable. */}
         <div
           data-cue={cueKey}
-          onClick={seekHandler(start, onSeek)}
+          {...seekProps(start, onSeek)}
           title={onSeek && start !== undefined ? "Play from here" : undefined}
           className={cn(
             onSeek && start !== undefined && "cursor-pointer hover:border-[#93c5fd] dark:hover:border-[#2f4a7a]",
@@ -415,10 +431,30 @@ function seekHandler(start: number | undefined, onSeek?: (seconds: number) => vo
   }
 }
 
-function ToolPill({ tool, hideNumbers, onOpen }: Readonly<{ tool: any; hideNumbers: boolean; onOpen: () => void }>) {
+/**
+ * A seekable bubble's click handler, plus focus and Enter so the keyboard can do
+ * the same (Space stays the page-wide play/pause key). Nothing when the bubble
+ * can't seek (no recording or no time).
+ */
+function seekProps(start: number | undefined, onSeek?: (seconds: number) => void) {
+  const seek = seekHandler(start, onSeek)
+  if (!seek) return {}
+  return {
+    tabIndex: 0,
+    onClick: seek,
+    onKeyDown: (e: React.KeyboardEvent) => {
+      if (e.key !== "Enter") return
+      e.preventDefault()
+      seek()
+    },
+  }
+}
+
+function ToolPill({ tool, mask, onOpen }: Readonly<{ tool: any; mask: (value: string) => string; onOpen: () => void }>) {
   const failed = toolFailed(tool)
-  const args = tool.arguments == null ? null : maskNumbers(typeof tool.arguments === "string" ? tool.arguments : JSON.stringify(tool.arguments, null, 2), hideNumbers)
-  const result = tool.result == null ? null : maskNumbers(String(tool.result), hideNumbers)
+  const argsText = toolArgumentsText(tool.arguments)
+  const args = argsText === null ? null : mask(argsText)
+  const result = tool.result == null ? null : mask(String(tool.result))
   return (
     <Tooltip>
       <TooltipTrigger asChild>

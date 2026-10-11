@@ -24,7 +24,7 @@ export function downloadTranscriptJson(enrichedTraces: ExportTurn[], sessionId: 
       }
       
       // Add user transcript if available
-      if (trace.user_transcript && trace.user_transcript.trim()) {
+      if (trace.user_transcript?.trim()) {
         turnData.user = trace.user_transcript.trim()
       }
 
@@ -41,7 +41,7 @@ export function downloadTranscriptJson(enrichedTraces: ExportTurn[], sessionId: 
       }
 
       // Add assistant response if available
-      if (trace.agent_response && trace.agent_response.trim()) {
+      if (trace.agent_response?.trim()) {
         turnData.assistant = trace.agent_response.trim()
       }
 
@@ -61,7 +61,7 @@ export function downloadTranscriptJson(enrichedTraces: ExportTurn[], sessionId: 
 
   const transcriptJson = JSON.stringify(transcriptData, null, 2)
   const sessionIdShort = sessionId ? sessionId.slice(-8) : 'unknown'
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
+  const timestamp = new Date().toISOString().replaceAll(/[:.]/g, '-').slice(0, -5)
   const blob = new Blob([transcriptJson], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')

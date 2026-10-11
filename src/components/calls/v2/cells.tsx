@@ -39,7 +39,9 @@ export function CallIdCell({ call }: Readonly<{ call: CallLog }>) {
   if (!call.call_id) return <Nil />
   const copy = (e: React.MouseEvent) => {
     e.stopPropagation()
-    void navigator.clipboard.writeText(call.call_id)
+    navigator.clipboard.writeText(call.call_id).catch(() => {
+      // copying is best-effort; the id is still in the tooltip
+    })
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
@@ -72,9 +74,11 @@ export function StartTimeCell({ call }: Readonly<{ call: CallLog }>) {
   return <span className="text-[var(--cl-text)]">{formatToIndianDateTime(call.call_started_at)}</span>
 }
 
+const CALL_EVENT_LABELS: Record<string, string> = { call_ended: "Ended", call_started: "Started" }
+
 export function CallEventCell({ call }: Readonly<{ call: CallLog }>) {
   if (!call.wcall_event) return <Nil />
-  const label = call.wcall_event === "call_ended" ? "Ended" : call.wcall_event === "call_started" ? "Started" : call.wcall_event
+  const label = CALL_EVENT_LABELS[call.wcall_event] ?? call.wcall_event
   return <span className="text-[var(--cl-text2)]">{label}</span>
 }
 

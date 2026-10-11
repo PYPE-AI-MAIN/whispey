@@ -187,7 +187,7 @@ export function SplitView(props: Readonly<SplitViewProps>) {
         {acefoneCallId && (
           <button
             type="button"
-            onClick={() => void openAcefoneRecording(acefoneCallId, agent.id)}
+            onClick={() => { openAcefoneRecording(acefoneCallId, agent.id).catch(() => {}) }}
             title="Open the telephony (Acefone) recording in a new tab"
             className="inline-flex h-8 flex-none items-center gap-1.5 rounded-lg border border-[var(--cl-border)] bg-[var(--cl-panel2)] px-2.5 text-[13px] text-[var(--cl-text2)] hover:bg-[var(--cl-hover)] hover:text-[var(--cl-text)]"
           >

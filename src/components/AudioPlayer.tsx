@@ -246,22 +246,27 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
   useEffect(() => {
     if (!preload || preloaded.current) return
     preloaded.current = true
-    void getAudioUrl().then((src) => {
+    getAudioUrl().then((src) => {
       const audio = audioRef.current
       if (!src || !audio || audio.src) return
       audio.src = src
       audio.playbackRate = playbackSpeed
+    }).catch(() => {
+      // preload is best-effort; play() fetches the URL again
     })
   }, [preload, getAudioUrl, playbackSpeed])
 
   useImperativeHandle(controlRef, () => ({
-    seek: (seconds: number) => void seek(seconds),
-    toggle: () => void togglePlay(),
+    seek: (seconds: number) => { seek(seconds).catch(() => {}) },
+    toggle: () => { togglePlay().catch(() => {}) },
     skip: (delta: number) => {
       const audio = audioRef.current
       if (!audio) return
       // Not loaded yet: skipping forward starts from there, skipping back from the start.
-      if (!audio.src || audio.readyState < 1) return void seek(Math.max(0, delta))
+      if (!audio.src || audio.readyState < 1) {
+        seek(Math.max(0, delta)).catch(() => {})
+        return
+      }
       audio.currentTime = Math.max(0, Math.min(audio.duration || Infinity, audio.currentTime + delta))
       setCurrentTime(audio.currentTime)
     },

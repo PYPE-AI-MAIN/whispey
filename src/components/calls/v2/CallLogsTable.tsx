@@ -103,7 +103,7 @@ export function CallLogsTable({
                 {/* Filler: takes the width left over when the columns don't fill the
                     screen, so real columns stay as wide as their content instead of
                     each being stretched (a short Flag column turning very wide). */}
-                <th aria-hidden className="sticky top-0 z-20 w-full border-b border-[var(--cl-border)] bg-[var(--cl-panel)] p-0" style={{ boxShadow: "inset 1px 0 0 var(--cl-border)" }} />
+                <th className="sticky top-0 z-20 w-full border-b border-[var(--cl-border)] bg-[var(--cl-panel)] p-0" style={{ boxShadow: "inset 1px 0 0 var(--cl-border)" }} />
               </tr>
             ))}
           </thead>
@@ -216,7 +216,7 @@ const TableRow = React.memo(function TableRow({
           </td>
         )
       })}
-      <td aria-hidden className="w-full border-b border-[var(--cl-border)] bg-[var(--cl-bg)] p-0 group-hover:bg-[var(--cl-hover)]" style={{ boxShadow: "inset 1px 0 0 var(--cl-border)", background: highlighted ? HIGHLIGHT_BG : undefined }} />
+      <td className="w-full border-b border-[var(--cl-border)] bg-[var(--cl-bg)] p-0 group-hover:bg-[var(--cl-hover)]" style={{ boxShadow: "inset 1px 0 0 var(--cl-border)", background: highlighted ? HIGHLIGHT_BG : undefined }} />
     </tr>
   )
 })

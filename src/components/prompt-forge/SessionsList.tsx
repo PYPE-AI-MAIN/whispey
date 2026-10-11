@@ -83,7 +83,7 @@ export function SessionsList({ projectId, agentId }: Props) {
 
       {/* Navbar */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
-        <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-8 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push(`/${projectId}/agents/${agentId}`)}
@@ -108,7 +108,7 @@ export function SessionsList({ projectId, agentId }: Props) {
         </div>
 
         {/* Tab row */}
-        <div className="max-w-5xl mx-auto px-6 flex items-center">
+        <div className="max-w-6xl mx-auto px-8 flex items-center">
           {TABS.map(t => (
             <button
               key={t.key}
@@ -147,7 +147,7 @@ export function SessionsList({ projectId, agentId }: Props) {
 
       {/* Forge content */}
       {tab === 'forge' && (
-        <div className="max-w-4xl mx-auto px-10 py-10">
+        <div className="max-w-6xl mx-auto px-8 py-8">
           {error && <p className="text-xs text-red-400 mb-4">{error}</p>}
           <SessionsTable
             sessions={sessions}

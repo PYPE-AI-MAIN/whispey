@@ -21,7 +21,7 @@ export function useCallLogsViewMode(): [CallLogsViewMode, (mode: CallLogsViewMod
   const setViewMode = useCallback((mode: CallLogsViewMode) => {
     setLocal(mode)
     if (user && user.unsafeMetadata?.[KEY] !== mode) {
-      void user.update({ unsafeMetadata: { ...user.unsafeMetadata, [KEY]: mode } }).catch(() => {
+      user.update({ unsafeMetadata: { ...user.unsafeMetadata, [KEY]: mode } }).catch(() => {
         // the browser copy still holds the choice
       })
     }

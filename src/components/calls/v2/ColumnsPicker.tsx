@@ -7,7 +7,6 @@ import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
 import { CSS } from "@dnd-kit/utilities"
 import { Columns3, GripVertical, Search, Check } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { V2_BTN, V2_THEME } from "./theme"
 

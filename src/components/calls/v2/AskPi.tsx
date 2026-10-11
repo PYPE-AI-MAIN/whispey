@@ -7,11 +7,12 @@
 // read transcripts and suggest filters; filters only change on an Apply click.
 // Not rendered for viewers.
 
-import React, { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
-import ReactMarkdown from "react-markdown"
+import React, { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import ReactMarkdown, { type Components } from "react-markdown"
 import { ArrowUp, Check, Filter, Maximize2, Minimize2, RotateCcw, X } from "lucide-react"
 import type { FilterOperation } from "@/components/CallFilter"
-import { applyEvent, classifyEvent, consumeSse, failAssistant, parseSseLine, type Message } from "@/lib/piStream"
+import type { Message } from "@/lib/piStream"
+import { usePiConversation } from "@/hooks/usePiConversation"
 import { cn } from "@/lib/utils"
 
 export interface FilterProposal {
@@ -90,7 +91,7 @@ export function AskPi(props: Readonly<AskPiProps>) {
     const d = drag.current
     if (!d) return
     drag.current = null
-    fabRef.current?.removeAttribute("data-dragging")
+    if (fabRef.current) delete fabRef.current.dataset.dragging
     if (d.moved) {
       try { globalThis.localStorage?.setItem(FAB_OFFSET_KEY, String(lift)) } catch { /* per-viewer nicety only */ }
     }
@@ -137,7 +138,7 @@ export function AskPi(props: Readonly<AskPiProps>) {
           const dy = e.clientY - d.y
           if (!d.moved && Math.abs(dy) > 4) {
             d.moved = true
-            e.currentTarget.setAttribute("data-dragging", "")
+            e.currentTarget.dataset.dragging = ""
           }
           if (d.moved) setLift(Math.max(-maxFabLift(), Math.min(0, d.start + dy)))
         }}
@@ -161,7 +162,7 @@ export function AskPi(props: Readonly<AskPiProps>) {
         )}
       >
         <span className="grid h-7 w-7 place-items-center rounded-full bg-white/20"><PiMark className="h-3.5 w-3.5" /></span>
-        Ask Pi
+        <span>Ask Pi</span>
       </button>
 
       {/* Kept mounted while closed, so the conversation survives closing the box. */}
@@ -184,79 +185,37 @@ export function AskPi(props: Readonly<AskPiProps>) {
 function PiChat({
   projectId, agentId, openCallId, filters, dateRange, contextLabel, onApplyFilters, onOpenCall, max, onToggleMax, onClose,
 }: Readonly<AskPiProps & { max: boolean; onToggleMax: () => void; onClose: () => void }>) {
-  const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
-  const [busy, setBusy] = useState(false)
   const [applied, setApplied] = useState<Record<string, "applied" | "dismissed">>({})
-  const sessionRef = useRef<string | null>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
-  const abortRef = useRef<AbortController | null>(null)
+  const pi = usePiConversation({
+    projectId,
+    getPageContext: () => ({
+      surface: "call_logs",
+      agentId,
+      openCallId,
+      filters: filters.map((f) => (f.type === "filter" ? { column: f.column, operation: f.operation, value: f.value, jsonField: f.jsonField } : { column: f.column, operation: "unique_by", jsonField: f.jsonField })),
+      dateRange: filters.some((f) => f.type === "filter" && f.column === "call_started_at") ? null : dateRange ?? null,
+    }),
+  })
+  const { messages, busy } = pi
 
   useLayoutEffect(() => {
     const el = bodyRef.current
     if (el) el.scrollTop = el.scrollHeight
   }, [messages])
 
-  useEffect(() => () => abortRef.current?.abort(), [])
-
   const ask = useCallback(async (text: string) => {
-    const message = text.trim()
-    if (!message || busy) return
+    if (!text.trim() || busy) return
     setInput("")
-    setBusy(true)
-    const assistantId = `a-${Date.now()}`
-    setMessages((m) => [...m, { id: `u-${Date.now()}`, role: "user", content: message, isFinal: true }, { id: assistantId, role: "assistant", content: "", isFinal: false }])
-    const controller = new AbortController()
-    abortRef.current = controller
-    try {
-      const res = await fetch("/api/pi/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          message,
-          projectId,
-          sessionId: sessionRef.current,
-          pageContext: {
-            surface: "call_logs",
-            agentId,
-            openCallId,
-            filters: filters.map((f) => (f.type === "filter" ? { column: f.column, operation: f.operation, value: f.value, jsonField: f.jsonField } : { column: f.column, operation: "unique_by", jsonField: f.jsonField })),
-            dateRange: filters.some((f) => f.type === "filter" && f.column === "call_started_at") ? null : dateRange ?? null,
-          },
-        }),
-      })
-      if (!res.ok || !res.body) {
-        const err = await res.json().catch(() => null)
-        setMessages((m) => failAssistant(m, assistantId, err?.error ?? "Pi couldn't answer. Please try again."))
-        return
-      }
-      await consumeSse(res.body, (line) => {
-        const parsed = parseSseLine(line)
-        if (!parsed) return
-        const event = "done" in parsed ? ({ kind: "done" } as const) : classifyEvent(parsed.event, !!sessionRef.current)
-        if (event.kind === "session") {
-          sessionRef.current = event.sessionId
-          return
-        }
-        setMessages((m) => applyEvent(m, assistantId, event))
-      })
-      setMessages((m) => m.map((x) => (x.id === assistantId ? { ...x, isFinal: true } : x)))
-    } catch (err: any) {
-      if (err?.name !== "AbortError") setMessages((m) => failAssistant(m, assistantId, "Pi couldn't answer. Please try again."))
-    } finally {
-      setBusy(false)
-      inputRef.current?.focus()
-    }
-  }, [busy, projectId, agentId, openCallId, filters, dateRange])
+    await pi.ask(text)
+    inputRef.current?.focus()
+  }, [busy, pi])
 
   const reset = () => {
-    abortRef.current?.abort()
-    sessionRef.current = null
-    setMessages([])
+    pi.reset()
     setApplied({})
-    setBusy(false)
   }
 
   return (
@@ -282,7 +241,7 @@ function PiChat({
             </p>
             <div className={cn("flex flex-wrap", max ? "mt-[18px] gap-2" : "mt-3 gap-1.5")}>
               {(openCallId ? CALL_SUGGESTIONS : SUGGESTIONS).map((q) => (
-                <button key={q} type="button" onClick={() => void ask(q)} className="rounded-full border border-[var(--cl-border2)] bg-[var(--cl-panel)] px-2.5 py-[5px] text-left text-[13px] text-[var(--cl-text2)] hover:bg-[var(--cl-hover)] hover:text-[var(--cl-text)]">
+                <button key={q} type="button" onClick={() => { ask(q).catch(() => {}) }} className="rounded-full border border-[var(--cl-border2)] bg-[var(--cl-panel)] px-2.5 py-[5px] text-left text-[13px] text-[var(--cl-text2)] hover:bg-[var(--cl-hover)] hover:text-[var(--cl-text)]">
                   {q}
                 </button>
               ))}
@@ -303,25 +262,22 @@ function PiChat({
       </div>
 
       <div className="flex-none border-t border-[var(--cl-border)] px-2.5 pb-2.5 pt-2">
-        {/* The whole box is the text field's hit area, not just its first line. */}
-        <div
-          onMouseDown={(e) => {
-            if ((e.target as HTMLElement).closest("button, textarea")) return
-            e.preventDefault()
-            inputRef.current?.focus()
-          }}
-          className="cursor-text rounded-xl border border-[var(--cl-border2)] bg-[var(--cl-panel)] px-2 py-1.5 focus-within:border-[var(--cl-text3)]"
+        {/* The whole box is the text field's hit area, not just its first line: a
+            <label> around the textarea focuses it on a click anywhere outside the button. */}
+        <label
+          className="block cursor-text rounded-xl border border-[var(--cl-border2)] bg-[var(--cl-panel)] px-2 py-1.5 focus-within:border-[var(--cl-text3)]"
         >
           <textarea
             ref={inputRef}
             rows={1}
             value={input}
             placeholder="Ask Pi…"
+            aria-label="Ask Pi"
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault()
-                void ask(input)
+                ask(input).catch(() => {})
               }
             }}
             className={cn("max-h-32 w-full resize-none border-0 bg-transparent p-1 leading-[1.5] text-[var(--cl-text)] outline-none placeholder:text-[var(--cl-text3)]", max ? "text-[15px]" : "text-[14px]")}
@@ -331,13 +287,13 @@ function PiChat({
               type="button"
               aria-label="Send"
               disabled={busy || !input.trim()}
-              onClick={() => void ask(input)}
+              onClick={() => { ask(input).catch(() => {}) }}
               className="grid h-7 w-7 place-items-center rounded-full bg-[var(--cl-text)] text-[var(--cl-bg)] disabled:cursor-not-allowed disabled:opacity-30"
             >
               <ArrowUp className="h-4 w-4" />
             </button>
           </div>
-        </div>
+        </label>
         <p className="mt-1.5 text-center text-[11.5px] text-[var(--cl-text3)]">Pi reads this agent&apos;s calls and transcripts. Filters change only when you click Apply.</p>
       </div>
     </>
@@ -384,41 +340,65 @@ const AssistantMessage = memo(function AssistantMessage({
   )
 })
 
+// Renderers for Pi's markdown, kept outside any component so they aren't
+// redefined on every render. Only `code` needs the page: a cited call id opens it.
+const PI_MARKDOWN_STATIC: Components = {
+  // a model-written image or link is a free request to any URL; neither is needed here
+  img: () => null,
+  a: ({ children }) => <span>{children}</span>,
+  p: ({ children }) => <p className="m-0 [&+*]:mt-2.5">{children}</p>,
+  ul: ({ children }) => <ul className="mb-0 mt-2 list-disc pl-5 [&+*]:mt-2.5">{children}</ul>,
+  ol: ({ children }) => <ol className="mb-0 mt-2 list-decimal pl-5 [&+*]:mt-2.5">{children}</ol>,
+  li: ({ children }) => <li className="my-1">{children}</li>,
+  strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+}
+
+function piMarkdownComponents(onOpenCall: (id: string) => void): Components {
+  return {
+    ...PI_MARKDOWN_STATIC,
+    code: ({ children }) => {
+      const value = String(children ?? "").trim()
+      // call ids Pi cites open that call
+      if (UUID.test(value)) {
+        return (
+          <button type="button" onClick={() => onOpenCall(value)} title="Open this call" className="rounded-[5px] bg-[var(--cl-accent-soft)] px-[5px] font-mono text-[13px] text-[var(--cl-accent-text)] hover:underline">
+            …{value.slice(-8)}
+          </button>
+        )
+      }
+      return <code className="rounded bg-[var(--cl-hover)] px-1 font-mono text-[13px]">{children}</code>
+    },
+  }
+}
+
 function PiMarkdown({ text, onOpenCall }: Readonly<{ text: string; onOpenCall: (id: string) => void }>) {
-  return (
-    <ReactMarkdown
-      components={{
-        // a model-written image or link is a free request to any URL; neither is needed here
-        img: () => null,
-        a: ({ children }) => <span>{children}</span>,
-        p: ({ children }) => <p className="m-0 [&+*]:mt-2.5">{children}</p>,
-        ul: ({ children }) => <ul className="mb-0 mt-2 list-disc pl-5 [&+*]:mt-2.5">{children}</ul>,
-        ol: ({ children }) => <ol className="mb-0 mt-2 list-decimal pl-5 [&+*]:mt-2.5">{children}</ol>,
-        li: ({ children }) => <li className="my-1">{children}</li>,
-        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-        code: ({ children }) => {
-          const value = String(children ?? "").trim()
-          // call ids Pi cites open that call
-          if (UUID.test(value)) {
-            return (
-              <button type="button" onClick={() => onOpenCall(value)} title="Open this call" className="rounded-[5px] bg-[var(--cl-accent-soft)] px-[5px] font-mono text-[13px] text-[var(--cl-accent-text)] hover:underline">
-                …{value.slice(-8)}
-              </button>
-            )
-          }
-          return <code className="rounded bg-[var(--cl-hover)] px-1 font-mono text-[13px]">{children}</code>
-        },
-      }}
-    >
-      {text}
-    </ReactMarkdown>
-  )
+  const components = useMemo(() => piMarkdownComponents(onOpenCall), [onOpenCall])
+  return <ReactMarkdown components={components}>{text}</ReactMarkdown>
 }
 
 const OP_LABELS: Record<string, string> = {
   equals: "is", not_equals: "is not", contains: "contains", starts_with: "starts with", greater_than: ">", less_than: "<",
   exists: "exists", flagged_by: "flagged by", json_equals: "is", json_not_equals: "is not", json_contains: "contains",
   json_exists: "exists", json_greater_than: ">", json_less_than: "<",
+}
+
+function filterFieldLabel(f: FilterProposal["filters"][number]): string {
+  if (!f.jsonField) return f.column.replaceAll("_", " ")
+  const root = f.column === "metadata" ? "metadata" : "disposition"
+  return `${root}.${f.jsonField}`
+}
+
+function FilterCardActions({ state, onApply, onDismiss }: Readonly<{ state?: "applied" | "dismissed"; onApply: () => void; onDismiss: () => void }>) {
+  if (state === "applied") {
+    return <span className="inline-flex items-center gap-1 text-[13px] text-emerald-600 dark:text-emerald-400"><Check className="h-3.5 w-3.5" /> Applied</span>
+  }
+  if (state === "dismissed") return <span className="text-[13px] text-[var(--cl-text3)]">Not applied</span>
+  return (
+    <>
+      <button type="button" onClick={onApply} className="h-7 rounded-lg bg-[var(--cl-violet)] px-3 text-[13px] font-medium text-white hover:opacity-90">Apply</button>
+      <button type="button" onClick={onDismiss} className="h-7 rounded-lg px-2.5 text-[13px] text-[var(--cl-text2)] hover:bg-[var(--cl-hover)]">Dismiss</button>
+    </>
+  )
 }
 
 function FilterCard({ proposal, state, onApply, onDismiss }: Readonly<{ proposal: FilterProposal; state?: "applied" | "dismissed"; onApply: () => void; onDismiss: () => void }>) {
@@ -428,9 +408,9 @@ function FilterCard({ proposal, state, onApply, onDismiss }: Readonly<{ proposal
         <Filter className="h-3.5 w-3.5" /> {proposal.explanation || (proposal.mode === "replace" ? "Replace the filters with" : "Add filters")}
       </p>
       <div className="mt-2 flex flex-wrap gap-1.5">
-        {proposal.filters.map((f, i) => (
-          <span key={i} className="rounded-full border border-[var(--cl-border2)] bg-[var(--cl-panel)] px-2 py-0.5 text-[12.5px] text-[var(--cl-text2)]">
-            {f.jsonField ? `${f.column === "metadata" ? "metadata" : "disposition"}.${f.jsonField}` : f.column.replaceAll("_", " ")}{" "}
+        {proposal.filters.map((f) => (
+          <span key={`${f.column}|${f.jsonField ?? ""}|${f.operation}|${f.value}`} className="rounded-full border border-[var(--cl-border2)] bg-[var(--cl-panel)] px-2 py-0.5 text-[12.5px] text-[var(--cl-text2)]">
+            {filterFieldLabel(f)}{" "}
             {OP_LABELS[f.operation] ?? f.operation}
             {f.operation === "exists" || f.operation === "json_exists" ? "" : <b className="font-medium text-[var(--cl-text)]"> {f.value}</b>}
           </span>
@@ -438,16 +418,7 @@ function FilterCard({ proposal, state, onApply, onDismiss }: Readonly<{ proposal
       </div>
       {proposal.mode === "replace" && !state && <p className="mt-1.5 text-[12px] text-[var(--cl-text3)]">Replaces the filters you have now.</p>}
       <div className="mt-2.5 flex items-center gap-2">
-        {state === "applied" ? (
-          <span className="inline-flex items-center gap-1 text-[13px] text-emerald-600 dark:text-emerald-400"><Check className="h-3.5 w-3.5" /> Applied</span>
-        ) : state === "dismissed" ? (
-          <span className="text-[13px] text-[var(--cl-text3)]">Not applied</span>
-        ) : (
-          <>
-            <button type="button" onClick={onApply} className="h-7 rounded-lg bg-[var(--cl-violet)] px-3 text-[13px] font-medium text-white hover:opacity-90">Apply</button>
-            <button type="button" onClick={onDismiss} className="h-7 rounded-lg px-2.5 text-[13px] text-[var(--cl-text2)] hover:bg-[var(--cl-hover)]">Dismiss</button>
-          </>
-        )}
+        <FilterCardActions state={state} onApply={onApply} onDismiss={onDismiss} />
       </div>
     </div>
   )

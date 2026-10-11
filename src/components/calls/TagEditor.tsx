@@ -147,25 +147,32 @@ const TagBadge: React.FC<TagBadgeProps> = ({
           : `1px solid ${color.border}`,
         cursor: canComment ? 'pointer' : 'default',
       }}
-      className={cn('inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] font-medium select-none', quiet && 'min-w-0 max-w-[120px]')}
+      className={cn('relative inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] font-medium select-none', quiet && 'min-w-0 max-w-[120px]')}
       title={quiet ? tag : undefined}
-      onClick={e => { if (canComment) { e.stopPropagation(); setCommentOpen(true) } }}
-      role={canComment ? 'button' : undefined}
-      tabIndex={canComment ? 0 : undefined}
-      onKeyDown={e => { if (canComment && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.stopPropagation(); setCommentOpen(true) } }}
     >
-      <span className={cn(quiet && 'truncate')}>{tag}</span>
+      {/* Not a <button> itself: it holds the remove button. An invisible full-size
+          button behind the content opens the annotation instead. The click toggles,
+          as the badge did when it was also the popover trigger's click target. */}
+      {canComment && (
+        <button
+          type="button"
+          aria-label={`Annotate tag ${tag}`}
+          onClick={e => { e.stopPropagation(); setCommentOpen(o => !o) }}
+          className="absolute inset-0 rounded-full cursor-pointer"
+        />
+      )}
+      <span className={cn('relative pointer-events-none', quiet && 'truncate')}>{tag}</span>
       {/* Comment indicator dot */}
       {comment && (
         <MessageSquare
           style={{ color: color.text }}
-          className="w-2.5 h-2.5 ml-0.5 opacity-70 shrink-0"
+          className="relative pointer-events-none w-2.5 h-2.5 ml-0.5 opacity-70 shrink-0"
         />
       )}
       <button
         onClick={e => { e.stopPropagation(); onRemove(tag) }}
         style={{ color: color.text }}
-        className="ml-0.5 opacity-60 hover:opacity-100 transition-opacity rounded-full"
+        className="relative ml-0.5 opacity-60 hover:opacity-100 transition-opacity rounded-full"
         aria-label={`Remove tag ${tag}`}
       >
         <X className="w-2.5 h-2.5" />

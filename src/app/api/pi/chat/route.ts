@@ -36,6 +36,8 @@ import { catalogIsStale, rescan as rescanAnalyticsFields } from '@/server/analyt
 import { Spec, ALL_COLS } from '@/server/analytics/spec'
 import { planDashboardQueries, isPhoneField } from '@/server/analytics/buildQuery'
 import { runQuery, isTimeout } from '@/server/analytics/db'
+import { parsePromptForgeContext, promptForgePromptBlock, type PromptForgePageContext } from '@/server/pi/promptForgeContext'
+import { requireForgeUser } from '@/server/promptForge/access'
 import { CALL_LOGS_TOOL_NAMES, SUMMARIZE_RESULT_CHARS, callLogsPromptBlock, callLogsToolSchemas, parsePageContext, withOpenCall, runCallBreakdown, runProposeCallFilters, runSummarizeCallTranscripts, type CallLogsPageContext } from '@/server/pi/callLogsTools'
 
 interface StoredToolCall {
@@ -1550,8 +1552,8 @@ type TurnContext = {
   projectId: string
   userId: string
   canWrite: boolean
-  /** Set when the message comes from the Call Logs page — unlocks its two tools. */
-  pageContext: CallLogsPageContext | null
+  /** Set when the message comes from the Call Logs page or Prompt Forge — unlocks the call tools. */
+  pageContext: CallLogsPageContext | PromptForgePageContext | null
   /** The small model that summarises each transcript for summarize_call_transcripts. */
   transcriptModel: string
   conversation: any[]
@@ -1677,12 +1679,12 @@ const FIELD_NOT_FOUND_NUDGE = 'Your previous reply concluded a field/disposition
 // hoping static instructions get followed. Soft hint, not a forced tool
 // call: tool_choice stays 'auto', this just raises the odds in the exact
 // situation that kept failing.
-function buildConversation(projectId: string, canWrite: boolean, history: StoredMessage[], message: string, pageContext: CallLogsPageContext | null = null): any[] {
+function buildConversation(projectId: string, canWrite: boolean, history: StoredMessage[], message: string, pageContext: CallLogsPageContext | PromptForgePageContext | null = null): any[] {
   const lastAssistant = [...history].reverse().find((m) => m.role === 'assistant')
   const saidFieldNotFound = !!lastAssistant && /does not have a (disposition|field)|do not see any disposition/i.test(lastAssistant.content ?? '')
   const conversation: any[] = [
     { role: 'system', content: systemPrompt(projectId, canWrite, history) },
-    ...(pageContext ? [{ role: 'system', content: callLogsPromptBlock(pageContext) }] : []),
+    ...(pageContext ? [{ role: 'system', content: pageContext.surface === 'prompt_forge' ? promptForgePromptBlock(pageContext) : callLogsPromptBlock(pageContext) }] : []),
     ...toWireMessages(history),
     { role: 'user', content: message },
   ]
@@ -1763,11 +1765,16 @@ async function runToolCall(tc: PendingToolCall, ctx: TurnContext) {
 
 /** The Call Logs page's tools: only with that page's context, and never for viewers. */
 async function runCallLogsTool(name: string, args: any, ctx: TurnContext): Promise<{ result: any; success: boolean }> {
-  if (!ctx.pageContext || !ctx.canWrite) return { success: false, result: { error: 'Only available from the Call Logs page' } }
+  // Prompt Forge can ask about the agent's real calls too (no filters there — nothing to apply them to).
+  const callLogs: CallLogsPageContext | null = ctx.pageContext?.surface === 'call_logs'
+    ? ctx.pageContext
+    : ctx.pageContext ? { surface: 'call_logs', agentId: ctx.pageContext.agentId } : null
+  if (!callLogs || (ctx.pageContext?.surface === 'call_logs' && !ctx.canWrite)) return { success: false, result: { error: 'Only available from the Call Logs page' } }
+  if (name === 'propose_call_filters' && ctx.pageContext?.surface !== 'call_logs') return { success: false, result: { error: 'Filters can only be set on the Call Logs page' } }
   try {
     if (name === 'propose_call_filters') return runProposeCallFilters(args)
-    if (name === 'call_breakdown') return await runCallBreakdown(ctx.projectId, ctx.pageContext, args)
-    return await runSummarizeCallTranscripts(ctx.projectId, ctx.pageContext, args, { client: ctx.client, model: ctx.transcriptModel })
+    if (name === 'call_breakdown') return await runCallBreakdown(ctx.projectId, callLogs, args)
+    return await runSummarizeCallTranscripts(ctx.projectId, callLogs, args, { client: ctx.client, model: ctx.transcriptModel })
   } catch (err: any) {
     return { success: false, result: { error: err?.message ?? 'Tool execution failed' } }
   }
@@ -1884,25 +1891,66 @@ function tooManyRequests(userId: string): boolean {
   return false
 }
 
+/** The 400 response for a request missing what it needs, or null when it's fine. */
+function invalidChatRequest(projectId: unknown, message: unknown, resolveAction: unknown): NextResponse | null {
+  if (!projectId) return NextResponse.json({ error: 'projectId is required' }, { status: 400 })
+  if (resolveAction) return null
+  if (!message || typeof message !== 'string') return NextResponse.json({ error: 'message is required' }, { status: 400 })
+  if (message.length > MAX_MESSAGE_CHARS) return NextResponse.json({ error: `Message is too long (max ${MAX_MESSAGE_CHARS} characters)` }, { status: 400 })
+  return null
+}
+
+type ChatPageContext = CallLogsPageContext | PromptForgePageContext
+
+// Ask Pi on a page. Call Logs: members who can write (viewers don't get it).
+// Prompt Forge: anyone who can use Prompt Forge. Either way, only for an agent they can see.
+async function resolvePageContext(
+  rawPageContext: unknown,
+  projectId: string,
+  canWrite: boolean,
+): Promise<{ pageContext: ChatPageContext | null } | { response: Response }> {
+  const pageContext: ChatPageContext | null = parsePageContext(rawPageContext) ?? parsePromptForgeContext(rawPageContext)
+  if (rawPageContext && !pageContext) return { response: NextResponse.json({ error: 'Invalid page context' }, { status: 400 }) }
+  if (!pageContext) return { pageContext: null }
+  if (pageContext.surface === 'call_logs' && !canWrite) return { response: NextResponse.json({ error: 'Ask Pi is not available for viewers' }, { status: 403 }) }
+  if (pageContext.surface === 'prompt_forge') {
+    const forge = await requireForgeUser(projectId)
+    if ('response' in forge) return { response: forge.response }
+  }
+  if (!(await agentBelongsToProject(pageContext.agentId, projectId))) return { response: NextResponse.json({ error: 'No access to this agent' }, { status: 403 }) }
+  if (pageContext.surface === 'call_logs') return { pageContext: await withOpenCall(pageContext) }
+  return { pageContext }
+}
+
+// On a page, Pi also gets the call-log tools; only Call Logs can propose filters.
+function chatTools(pageContext: ChatPageContext | null, canWrite: boolean) {
+  if (!pageContext) return toolSchemas(canWrite)
+  return [
+    ...toolSchemas(canWrite),
+    ...callLogsToolSchemas().filter((t) => pageContext.surface === 'call_logs' || (t.type === 'function' && t.function.name !== 'propose_call_filters')),
+  ]
+}
+
+// summaries are many small calls — the mini model, on its own deployment name per provider
+function transcriptModelName(): string {
+  const configured = process.env.PI_TRANSCRIPT_MODEL?.trim()
+  if (configured) return configured
+  return process.env.AZURE_OPENAI_API_KEY && process.env.AZURE_OPENAI_ENDPOINT ? 'gpt-4.1-mini-2' : 'gpt-4.1-mini'
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { message, projectId, sessionId: incomingSessionId, resolveAction, model: requestedModel, pageContext: rawPageContext } = await request.json()
-    if (!projectId) return NextResponse.json({ error: 'projectId is required' }, { status: 400 })
-    if (!resolveAction && (!message || typeof message !== 'string')) return NextResponse.json({ error: 'message is required' }, { status: 400 })
-    if (!resolveAction && message.length > MAX_MESSAGE_CHARS) return NextResponse.json({ error: `Message is too long (max ${MAX_MESSAGE_CHARS} characters)` }, { status: 400 })
+    const invalid = invalidChatRequest(projectId, message, resolveAction)
+    if (invalid) return invalid
 
     const who = await authorize(projectId)
     if ('response' in who) return who.response
     const { userId, canWrite } = who
 
-    // Ask Pi on Call Logs: members who can write only (viewers don't get it), and only for an agent they can see.
-    let pageContext = parsePageContext(rawPageContext)
-    if (rawPageContext && !pageContext) return NextResponse.json({ error: 'Invalid page context' }, { status: 400 })
-    if (pageContext) {
-      if (!canWrite) return NextResponse.json({ error: 'Ask Pi is not available for viewers' }, { status: 403 })
-      if (!(await agentBelongsToProject(pageContext.agentId, projectId))) return NextResponse.json({ error: 'No access to this agent' }, { status: 403 })
-      pageContext = await withOpenCall(pageContext)
-    }
+    const page = await resolvePageContext(rawPageContext, projectId, canWrite)
+    if ('response' in page) return page.response
+    const { pageContext } = page
 
     if (!resolveAction && tooManyRequests(userId)) return NextResponse.json({ error: 'Too many messages — please wait a moment and try again.' }, { status: 429 })
 
@@ -1931,13 +1979,12 @@ export async function POST(request: NextRequest) {
       model: models.primary,
       fallbackModel: models.fallback,
       titleModel: models.fallback ?? models.primary,
-      tools: pageContext ? [...toolSchemas(canWrite), ...callLogsToolSchemas()] : toolSchemas(canWrite),
+      tools: chatTools(pageContext, canWrite),
       projectId,
       userId,
       canWrite,
       pageContext,
-      // summaries are many small calls — the mini model, on its own deployment name per provider
-      transcriptModel: process.env.PI_TRANSCRIPT_MODEL?.trim() || (process.env.AZURE_OPENAI_API_KEY && process.env.AZURE_OPENAI_ENDPOINT ? 'gpt-4.1-mini-2' : 'gpt-4.1-mini'),
+      transcriptModel: transcriptModelName(),
       conversation: buildConversation(projectId, canWrite, history, message, pageContext),
       // What actually gets persisted back to the session at the end — the UI
       // shape, not the OpenAI wire shape, so a resumed session needs no

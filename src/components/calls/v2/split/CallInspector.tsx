@@ -9,7 +9,7 @@ import type { TraceLog } from "@/hooks/useCallTranscript"
 import type { CallLog } from "@/types/logs"
 import { cn } from "@/lib/utils"
 import { computeConversationMetrics, formatLatency, latencyTone } from "@/lib/latencyStats"
-import { formatValue, isNumberHidden, maskNumbers, splitTranscriptionMetrics, visibleMetadata } from "./callData"
+import { formatValue, numberMaskFor, splitTranscriptionMetrics, toolArgumentsText, visibleMetadata } from "./callData"
 import { CopyButton, toolFailed, toolKey, toolName } from "./CallDetail"
 
 interface CallInspectorProps {
@@ -36,19 +36,17 @@ export function CallInspector(props: Readonly<CallInspectorProps>) {
 
   if (collapsed) {
     return (
-      <section
-        role="button"
-        tabIndex={0}
+      <button
+        type="button"
         aria-label="Show call data"
         title="Show call data (⌘ ])"
         onClick={onToggleCollapsed}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onToggleCollapsed() }}
         className="group grid min-h-0 cursor-pointer place-items-center border-l border-[var(--cl-border)] bg-[var(--cl-panel)] transition-colors hover:bg-[var(--cl-hover)]"
       >
         <span className="grid h-14 w-8 place-items-center rounded-lg text-[var(--cl-text2)] group-hover:bg-[var(--cl-border)] group-hover:text-[var(--cl-text)]">
           <ChevronsRight className="h-5 w-5 rotate-180" />
         </span>
-      </section>
+      </button>
     )
   }
 
@@ -58,7 +56,7 @@ export function CallInspector(props: Readonly<CallInspectorProps>) {
         <div className="flex rounded-lg border border-[var(--cl-border)] bg-[var(--cl-panel2)] p-0.5" role="tablist">
           <TabButton active={tab === "data"} onClick={() => onTabChange("data")}>Call data</TabButton>
           <TabButton active={tab === "tools"} onClick={() => onTabChange("tools")}>
-            Tools
+            <span>Tools</span>
             <span className={cn("ml-1.5 rounded-full px-1.5 text-[11px]", anyFailed ? "bg-[var(--cl-red-soft)] text-[var(--cl-red-text)]" : "bg-[var(--cl-hover)] text-[var(--cl-text3)]")}>
               {tools.length}
             </span>
@@ -70,7 +68,7 @@ export function CallInspector(props: Readonly<CallInspectorProps>) {
             <span className={cn("relative h-[15px] w-[26px] rounded-full transition-colors", showEmpty ? "bg-[var(--cl-accent)]" : "bg-[var(--cl-border2)]")}>
               <span className={cn("absolute top-[2px] h-[11px] w-[11px] rounded-full bg-white shadow transition-all", showEmpty ? "left-[13px]" : "left-[2px]")} />
             </span>
-            Empty
+            <span>Empty</span>
           </label>
         )}
         <button
@@ -107,6 +105,13 @@ function TabButton({ active, onClick, children }: Readonly<{ active: boolean; on
   )
 }
 
+// The list query has no total_cost column, so the total is the sum of its parts.
+function callTotalCost(call: CallLog): number | null {
+  if (typeof call.total_cost === "number") return call.total_cost
+  const costParts = [call.total_llm_cost, call.total_tts_cost, call.total_stt_cost].filter((v): v is number => typeof v === "number")
+  return costParts.length ? costParts.reduce((a, b) => a + b, 0) : null
+}
+
 function CallDataGroups({ call, agentId, role, showEmpty, turns, isVapiAgent }: Readonly<CallInspectorProps & { showEmpty: boolean }>) {
   const openGroups = useCallLogsStore((s) => s.openInspectorGroups)
   const setOpenGroups = useCallLogsStore((s) => s.setOpenInspectorGroups)
@@ -126,9 +131,8 @@ function CallDataGroups({ call, agentId, role, showEmpty, turns, isVapiAgent }: 
   const variables = Object.entries(varsRows?.[0]?.dynamic_variables ?? {})
   const metadata = visibleMetadata(call)
   const metrics = Object.entries((call.metrics ?? {}) as Record<string, { score?: number; reason?: string }>)
-  const costParts = [call.total_llm_cost, call.total_tts_cost, call.total_stt_cost].filter((v): v is number => typeof v === "number")
-  // The list query has no total_cost column, so the total is the sum of its parts.
-  const totalCost = typeof call.total_cost === "number" ? call.total_cost : costParts.length ? costParts.reduce((a, b) => a + b, 0) : null
+  const totalCost = callTotalCost(call)
+  const mask = numberMaskFor(call)
   const showCost = isColumnVisibleForRole("total_llm_cost", role) && totalCost !== null
   const keep = (rows: Array<[string, unknown]>) => (showEmpty ? rows : rows.filter(([, v]) => formatValue(v) !== ""))
 
@@ -136,18 +140,18 @@ function CallDataGroups({ call, agentId, role, showEmpty, turns, isVapiAgent }: 
     <>
       <LatencyGroup turns={turns} isVapiAgent={isVapiAgent} open={openGroups.includes("latency")} onToggle={toggle} />
       <Group id="disp" title="Dispositions" count={keep(dispositions).length} open={openGroups.includes("disp")} onToggle={toggle}>
-        <KeyValues rows={keep(dispositions)} hideNumbers={isNumberHidden(call)} />
+        <KeyValues rows={keep(dispositions)} mask={mask} />
       </Group>
       {checks.length > 0 && (
         <Group
           id="checks" title="QA checks" open={openGroups.includes("checks")} onToggle={toggle}
           count={<><span>{passed} ✓</span>{failed > 0 && <span className="text-[var(--cl-red-text)]"> · {failed} ✕</span>}</>}
         >
-          <KeyValues rows={keep(checks)} hideNumbers={isNumberHidden(call)} />
+          <KeyValues rows={keep(checks)} mask={mask} />
         </Group>
       )}
       <Group id="vars" title="Call variables" count={varsLoading ? null : keep(variables).length} open={varsOpen} onToggle={toggle}>
-        {varsLoading ? <p className="py-1 text-[12.5px] text-[var(--cl-text3)]">Loading…</p> : <KeyValues rows={keep(variables)} hideNumbers={isNumberHidden(call)} />}
+        {varsLoading ? <p className="py-1 text-[12.5px] text-[var(--cl-text3)]">Loading…</p> : <KeyValues rows={keep(variables)} mask={mask} />}
       </Group>
       {metrics.length > 0 && (
         <Group id="metrics" title="Metrics" count={metrics.length} open={openGroups.includes("metrics")} onToggle={toggle}>
@@ -171,12 +175,12 @@ function CallDataGroups({ call, agentId, role, showEmpty, turns, isVapiAgent }: 
         </Group>
       )}
       <Group id="meta" title="Metadata" count={keep(metadata).length} open={openGroups.includes("meta")} onToggle={toggle}>
-        <KeyValues rows={keep(metadata)} hideNumbers={isNumberHidden(call)} />
+        <KeyValues rows={keep(metadata)} mask={mask} />
       </Group>
       {showCost && (
         <Group id="cost" title="Cost" count={`₹ ${Number(totalCost).toFixed(2)}`} open={openGroups.includes("cost")} onToggle={toggle}>
           <KeyValues
-            hideNumbers={isNumberHidden(call)}
+            mask={mask}
             rows={[
               ["Total Cost (₹)", totalCost === null ? null : Number(totalCost).toFixed(2)],
               ["LLM Cost (₹)", call.total_llm_cost],
@@ -244,12 +248,12 @@ function Group({
   )
 }
 
-function KeyValues({ rows, hideNumbers }: Readonly<{ rows: Array<[string, unknown]>; hideNumbers: boolean }>) {
+function KeyValues({ rows, mask }: Readonly<{ rows: Array<[string, unknown]>; mask: (value: string) => string }>) {
   if (rows.length === 0) return <p className="py-1 text-[12.5px] italic text-[var(--cl-text3)]">Nothing here</p>
   return (
     <>
       {rows.map(([key, value]) => {
-        const text = maskNumbers(formatValue(value), hideNumbers)
+        const text = mask(formatValue(value))
         return (
           <div key={key} className="group/kv grid grid-cols-[48%_1fr] gap-2.5 border-t border-dashed border-[var(--cl-border)] py-1.5 text-[13.5px] first:border-t-0">
             <span className="truncate font-mono text-[12.5px] text-[var(--cl-text3)]" title={key}>{key}</span>
@@ -272,6 +276,7 @@ function ToolsList({
   tools, focusedToolKey, call,
 }: Readonly<CallInspectorProps & { tools: Array<{ key: string; tool: any }> }>) {
   const [open, setOpen] = useState<Set<string>>(new Set())
+  const mask = numberMaskFor(call)
   const focusedRef = useRef<HTMLDivElement>(null)
 
   // Clicking a tool pill in the transcript opens and scrolls to it here.
@@ -288,13 +293,14 @@ function ToolsList({
       {tools.map(({ key, tool }) => {
         const failed = toolFailed(tool)
         const isOpen = open.has(key)
-        const args = tool.arguments == null ? null : maskNumbers(typeof tool.arguments === "string" ? tool.arguments : JSON.stringify(tool.arguments, null, 2), isNumberHidden(call))
-        const result = tool.result == null ? null : maskNumbers(String(tool.result), isNumberHidden(call))
+        const argsText = toolArgumentsText(tool.arguments)
+        const args = argsText === null ? null : mask(argsText)
+        const result = tool.result == null ? null : mask(String(tool.result))
         return (
           <div key={key} ref={key === focusedToolKey ? focusedRef : undefined} className={cn("border-b border-[var(--cl-border)]", failed && "shadow-[inset_3px_0_0_var(--cl-red)]")}>
             <button
               type="button"
-              onClick={() => setOpen((prev) => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next })}
+              onClick={() => setOpen((prev) => toggled(prev, key))}
               className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-[var(--cl-hover)]"
             >
               <ChevronDown className={cn("h-3.5 w-3.5 text-[var(--cl-text3)] transition-transform", !isOpen && "-rotate-90")} />
@@ -314,6 +320,17 @@ function ToolsList({
       })}
     </>
   )
+}
+
+/** A copy of the set with `key` added, or removed if it was there. */
+function toggled(set: Set<string>, key: string): Set<string> {
+  const next = new Set(set)
+  if (next.has(key)) {
+    next.delete(key)
+  } else {
+    next.add(key)
+  }
+  return next
 }
 
 function JsonBlock({ title, text }: Readonly<{ title: string; text: string | null }>) {
