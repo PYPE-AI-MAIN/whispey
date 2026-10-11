@@ -147,13 +147,14 @@ const TagBadge: React.FC<TagBadgeProps> = ({
           : `1px solid ${color.border}`,
         cursor: canComment ? 'pointer' : 'default',
       }}
-      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] font-medium select-none"
+      className={cn('inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] font-medium select-none', quiet && 'min-w-0 max-w-[120px]')}
+      title={quiet ? tag : undefined}
       onClick={e => { if (canComment) { e.stopPropagation(); setCommentOpen(true) } }}
       role={canComment ? 'button' : undefined}
       tabIndex={canComment ? 0 : undefined}
       onKeyDown={e => { if (canComment && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.stopPropagation(); setCommentOpen(true) } }}
     >
-      {tag}
+      <span className={cn(quiet && 'truncate')}>{tag}</span>
       {/* Comment indicator dot */}
       {comment && (
         <MessageSquare
@@ -290,6 +291,8 @@ export interface TagEditorProps {
   /** 'quiet' is the redesigned Call Logs look: neutral pills, and the add
    *  button only shows on row hover once a call already has tags. */
   variant?: 'default' | 'quiet'
+  /** Show at most this many tags; the rest become a "+N" pill listing them on hover. */
+  maxVisible?: number
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -301,6 +304,7 @@ export const TagEditor: React.FC<TagEditorProps> = ({
   canComment = false,
   onUpdated,
   variant = 'default',
+  maxVisible,
 }) => {
   const quiet = variant === 'quiet'
   const [tags, setTags] = useState<string[]>(initialTags)
@@ -397,8 +401,8 @@ export const TagEditor: React.FC<TagEditorProps> = ({
   )
 
   return (
-    <div className="flex flex-wrap items-center gap-1 min-w-[120px] max-w-[280px]">
-      {tags.map(tag => (
+    <div className={cn('flex items-center gap-1', maxVisible ? 'min-w-0 flex-nowrap' : 'flex-wrap min-w-[120px] max-w-[280px]')}>
+      {(maxVisible ? tags.slice(0, maxVisible) : tags).map(tag => (
         <TagBadge
           key={tag}
           tag={tag}
@@ -411,6 +415,16 @@ export const TagEditor: React.FC<TagEditorProps> = ({
           quiet={quiet}
         />
       ))}
+      {maxVisible !== undefined && tags.length > maxVisible && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex shrink-0 items-center rounded-full border border-[var(--cl-border2)] px-1.5 py-px text-[11.5px] text-[var(--cl-text2)] select-none">
+              +{tags.length - maxVisible}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top">{tags.slice(maxVisible).join(', ')}</TooltipContent>
+        </Tooltip>
+      )}
 
       {/* Add tag trigger + popover */}
       <Popover open={open} onOpenChange={setOpen}>

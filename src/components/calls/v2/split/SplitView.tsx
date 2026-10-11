@@ -13,6 +13,9 @@ import { CallList } from "./CallList"
 import { CallDetail } from "./CallDetail"
 import { CallInspector } from "./CallInspector"
 import { keyboardIsBusy } from "../keyboard"
+import { acefoneCallIdOf, openAcefoneRecording } from "@/lib/acefoneRecording"
+import { isVapiAgentConfig } from "@/lib/latencyStats"
+import { ExternalLink } from "lucide-react"
 import { SUMMARY_FIELD, activeCueKey, extractorKeys, recordingTimeZero, transcriptCues } from "./callData"
 
 interface SplitViewProps {
@@ -76,6 +79,9 @@ export function SplitView(props: Readonly<SplitViewProps>) {
   const onPlayhead = useCallback((seconds: number) => setActiveCue(activeCueKey(cues, seconds)), [cues])
   const seekTo = useCallback((seconds: number) => playerRef.current?.seek(seconds), [])
 
+  const acefoneCallId = acefoneCallIdOf(call.metadata)
+  const isVapiAgent = useMemo(() => isVapiAgentConfig(agent), [agent])
+
   // Recording keys, as in the mockup: Space plays/pauses, ← / → jump 5 seconds.
   const rootRef = useRef<HTMLDivElement>(null)
   const hasRecording = !!call.recording_url
@@ -126,6 +132,9 @@ export function SplitView(props: Readonly<SplitViewProps>) {
             onBack={onClose}
             onHover={prefetchSoon}
             loading={listLoading}
+            currentUserId={props.currentUserId}
+            currentUserEmail={props.currentUserEmail}
+            onUpdated={props.onUpdated}
             footer={listFooter}
           />
         </div>
@@ -153,6 +162,7 @@ export function SplitView(props: Readonly<SplitViewProps>) {
         agentId={agent.id}
         role={role}
         turns={turns}
+        isVapiAgent={isVapiAgent}
         tab={inspectorTab}
         onTabChange={setInspectorTab}
         focusedToolKey={focusedToolKey}
@@ -165,11 +175,25 @@ export function SplitView(props: Readonly<SplitViewProps>) {
       {!traceDataLoading && prefetchIds.map((id) => <PrefetchTranscript key={id} callId={id} agentId={agent.id} />)}
 
       {/* The existing player for now; restyling it comes later. */}
-      <div className="col-span-2 col-start-2 border-t border-[var(--cl-border)] bg-[var(--cl-panel)] px-4 py-2">
-        {call.recording_url ? (
-          <AudioPlayer key={call.id} s3Key={extractS3Key(call.recording_url)} url={call.recording_url} callId={call.id} controlRef={playerRef} onTimeUpdate={onPlayhead} preload className="border-0 bg-transparent p-0 shadow-none dark:bg-transparent" />
-        ) : (
-          <p className="py-2 text-center text-[13px] text-[var(--cl-text3)]">No recording for this call.</p>
+      <div className="col-span-2 col-start-2 flex items-center gap-3 border-t border-[var(--cl-border)] bg-[var(--cl-panel)] px-4 py-2">
+        <div className="min-w-0 flex-1">
+          {call.recording_url ? (
+            <AudioPlayer key={call.id} s3Key={extractS3Key(call.recording_url)} url={call.recording_url} callId={call.id} controlRef={playerRef} onTimeUpdate={onPlayhead} preload className="border-0 bg-transparent p-0 shadow-none dark:bg-transparent" />
+          ) : (
+            <p className="py-2 text-center text-[13px] text-[var(--cl-text3)]">No recording for this call.</p>
+          )}
+        </div>
+        {/* Calls placed through Acefone also have the carrier's own recording. */}
+        {acefoneCallId && (
+          <button
+            type="button"
+            onClick={() => void openAcefoneRecording(acefoneCallId, agent.id)}
+            title="Open the telephony (Acefone) recording in a new tab"
+            className="inline-flex h-8 flex-none items-center gap-1.5 rounded-lg border border-[var(--cl-border)] bg-[var(--cl-panel2)] px-2.5 text-[13px] text-[var(--cl-text2)] hover:bg-[var(--cl-hover)] hover:text-[var(--cl-text)]"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            Telephony recording
+          </button>
         )}
       </div>
     </div>

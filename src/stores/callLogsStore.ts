@@ -8,11 +8,18 @@ export interface SelectedCampaign {
   status: string
 }
 
-interface VisibleColumns {
+export interface VisibleColumns {
   basic: string[]
   metadata: string[]
   transcription_metrics: string[]
   metrics: string[]
+  /**
+   * Groups already filled with their defaults once. After that an empty group
+   * means the person hid every column in it, not "not set up yet". Basic
+   * columns also record which ones existed, so a newly added column still
+   * appears without bringing back the ones someone hid.
+   */
+  seeded?: { basic?: string[]; metadata?: boolean; transcription_metrics?: boolean; metrics?: boolean }
 }
 
 export interface DistinctConfig {
@@ -71,9 +78,13 @@ interface CallLogsState {
   dateFilterByAgent: Record<string, DateFilter>
   setDateFilterForAgent: (agentId: string, filter: DateFilter) => void
 
-  // Column visibility — intentionally global (shared across agents, user preference)
+  // Column visibility. `visibleColumns` is the starting point for an agent the
+  // person hasn't customised yet; their choices are then kept per agent, since
+  // each agent has its own metadata / disposition columns.
   visibleColumns: VisibleColumns
   setVisibleColumns: (columns: VisibleColumns | ((prev: VisibleColumns) => VisibleColumns)) => void
+  visibleColumnsByAgent: Record<string, VisibleColumns>
+  setVisibleColumnsForAgent: (agentId: string, columns: VisibleColumns | ((prev: VisibleColumns) => VisibleColumns)) => void
 
   // Per-agent selected campaign — persisted so navigating away and back restores selection
   selectedCampaignByAgent: Record<string, SelectedCampaign | null>
@@ -91,6 +102,8 @@ interface CallLogsState {
   // both views agree on which columns are shown; this only adds the order.
   columnOrder: string[]
   setColumnOrder: (order: string[]) => void
+  columnOrderByAgent: Record<string, string[]>
+  setColumnOrderForAgent: (agentId: string, order: string[]) => void
 
   density: CallLogsDensity
   setDensity: (density: CallLogsDensity) => void
@@ -174,6 +187,16 @@ export const useCallLogsStore = create<CallLogsState>()(
           visibleColumns: typeof columns === 'function' ? columns(state.visibleColumns) : columns
         })),
 
+      visibleColumnsByAgent: {},
+      setVisibleColumnsForAgent: (agentId, columns) =>
+        set((state) => {
+          const prev = state.visibleColumnsByAgent[agentId] ?? state.visibleColumns
+          const next = typeof columns === 'function' ? columns(prev) : columns
+          // same reference back means nothing changed — keep the store untouched
+          if (next === prev && state.visibleColumnsByAgent[agentId]) return state
+          return { visibleColumnsByAgent: { ...state.visibleColumnsByAgent, [agentId]: next } }
+        }),
+
       selectedCampaignByAgent: {},
       setSelectedCampaignForAgent: (agentId, campaign) =>
         set((state) => ({
@@ -188,6 +211,9 @@ export const useCallLogsStore = create<CallLogsState>()(
 
       columnOrder: [],
       setColumnOrder: (columnOrder) => set({ columnOrder }),
+      columnOrderByAgent: {},
+      setColumnOrderForAgent: (agentId, order) =>
+        set((state) => ({ columnOrderByAgent: { ...state.columnOrderByAgent, [agentId]: order } })),
 
       density: 'comfortable',
       setDensity: (density) => set({ density }),
@@ -202,7 +228,7 @@ export const useCallLogsStore = create<CallLogsState>()(
     }),
     {
       name: 'call-logs-storage',
-      version: 5, // bumped: added viewMode, columnOrder, density, pinnedFilterFields
+      version: 6, // bumped: columns kept per agent (visibleColumnsByAgent, columnOrderByAgent)
       migrate: (old: any, version: number) => ({
         filtersByAgent: old?.filtersByAgent ?? {},
         distinctConfigByAgent: old?.distinctConfigByAgent ?? {},
@@ -213,6 +239,8 @@ export const useCallLogsStore = create<CallLogsState>()(
         selectedCampaignByAgent: version >= 4 ? (old?.selectedCampaignByAgent ?? {}) : {},
         viewMode: old?.viewMode ?? 'legacy',
         columnOrder: old?.columnOrder ?? [],
+        visibleColumnsByAgent: old?.visibleColumnsByAgent ?? {},
+        columnOrderByAgent: old?.columnOrderByAgent ?? {},
         density: old?.density ?? 'comfortable',
         pinnedFilterFields: old?.pinnedFilterFields ?? DEFAULT_PINNED_FILTER_FIELDS,
         rightPanelCollapsed: old?.rightPanelCollapsed ?? false,
@@ -233,3 +261,24 @@ export const useCallLogsStore = create<CallLogsState>()(
 )
 
 export { DEFAULT_DATE_FILTER }
+
+const SHARED_STORAGE_KEY = 'call-logs-storage'
+
+/**
+ * Keeps Call Logs preferences (filters, columns, view…) per signed-in person:
+ * the store is saved under a key with their user id, so two people sharing a
+ * browser don't get each other's setup. The first time, it starts from what
+ * was saved before this existed. Browser-local — not synced across devices.
+ */
+export function scopeCallLogsStoreToUser(userId: string) {
+  const name = `${SHARED_STORAGE_KEY}:${userId}`
+  if (useCallLogsStore.persist.getOptions().name === name) return
+  try {
+    const shared = globalThis.localStorage?.getItem(SHARED_STORAGE_KEY)
+    if (shared && !globalThis.localStorage.getItem(name)) globalThis.localStorage.setItem(name, shared)
+  } catch {
+    // storage blocked: preferences just won't persist
+  }
+  useCallLogsStore.persist.setOptions({ name })
+  void useCallLogsStore.persist.rehydrate()
+}

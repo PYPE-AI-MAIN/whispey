@@ -91,6 +91,7 @@ export function TagsCell({
       availableTags={availableTags}
       canComment={role !== null && !isViewerRole(role)}
       onUpdated={onUpdated}
+      maxVisible={1}
     />
   )
 }

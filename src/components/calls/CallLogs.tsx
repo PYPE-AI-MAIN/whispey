@@ -693,7 +693,8 @@ const CallLogs: React.FC<CallLogsProps> = ({
   }, [currentPage, activeFilters])
 
   const { data: outboundPhoneNumbers = [] } = useOutboundPhoneNumbersQuery(project?.id)
-  const canOfferCallAgain = agent?.agent_type === 'pype_agent' && outboundPhoneNumbers.length > 0
+  // Calling a customer back from the logs is for owners/admins only.
+  const canOfferCallAgain = (role === 'owner' || role === 'admin') && agent?.agent_type === 'pype_agent' && outboundPhoneNumbers.length > 0
 
   const columns = useMemo(() => {
     const callAgainColumn = agent?.id

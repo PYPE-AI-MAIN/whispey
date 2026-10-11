@@ -1,8 +1,8 @@
-import { useMemo, useEffect, useRef } from 'react'
+import { useMemo, useEffect, useRef, useCallback } from 'react'
 import { CallLog } from "@/types/logs"
 import { toCamelCase, isColumnVisibleForRole } from '@/utils/callLogsUtils'
 import { FilterRule } from '@/components/CallFilter'
-import { useCallLogsStore } from '@/stores/callLogsStore'
+import { useCallLogsStore, type VisibleColumns } from '@/stores/callLogsStore'
 import { EXCLUDED_METADATA_COLUMNS } from '@/lib/metadataColumnDenylist'
 
 
@@ -43,12 +43,6 @@ export const EXTRA_RESTRICTABLE_COLUMNS = [
 // transcription_metrics keys managed as first-class BASIC_COLUMNS — skip auto-discovery
 const EXCLUDED_TRANSCRIPTION_METRICS_COLUMNS = new Set(['tags', 'tagComments', 'flag', 'qa'])
 
-interface VisibleColumns {
-  basic: string[]
-  metadata: string[]
-  transcription_metrics: string[]
-  metrics: string[]
-}
 
 export const useCallLogsColumns = (agent: any, calls: CallLog[], role: string | null) => {
   // Parse dynamic columns from agent config
@@ -110,8 +104,14 @@ export const useCallLogsColumns = (agent: any, calls: CallLog[], role: string | 
     )
   }, [role])
 
-  // Get visible columns from store
-  const { visibleColumns, setVisibleColumns } = useCallLogsStore()
+  // This agent's columns (falling back to the person's general choice until they customise it)
+  const agentId: string = agent?.id ?? ''
+  const visibleColumns = useCallLogsStore((s) => s.visibleColumnsByAgent[agentId] ?? s.visibleColumns)
+  const setForAgent = useCallLogsStore((s) => s.setVisibleColumnsForAgent)
+  const setVisibleColumns = useCallback(
+    (columns: VisibleColumns | ((prev: VisibleColumns) => VisibleColumns)) => setForAgent(agentId, columns),
+    [agentId, setForAgent]
+  )
 
   // Shallow array equality helper — avoids JSON.stringify allocations
   const arrEq = (a: string[], b: string[]) =>
@@ -139,32 +139,45 @@ export const useCallLogsColumns = (agent: any, calls: CallLog[], role: string | 
     ).sort((a, b) => a.localeCompare(b))
 
     setVisibleColumns((prev) => {
-      const needsInitialization =
-        prev.basic.length === 0 ||
-        !allowedBasicColumns.every(col => prev.basic.includes(col))
+      const seeded = prev.seeded ?? {}
 
-      const nextBasic = needsInitialization
-        ? allowedBasicColumns
-        : prev.basic.filter(col => allowedBasicColumns.includes(col))
+      // Basic columns: the first time, all of them. After that keep the person's
+      // choice, and only add basic columns that didn't exist when they last chose.
+      // (Before, hiding any one basic column brought all of them back.)
+      const knownBasic = seeded.basic
+      const nextBasic = knownBasic === undefined
+        ? (prev.basic.length > 0 ? prev.basic.filter(col => allowedBasicColumns.includes(col)) : allowedBasicColumns)
+        : [
+            ...prev.basic.filter(col => allowedBasicColumns.includes(col)),
+            ...allowedBasicColumns.filter(col => !knownBasic.includes(col) && !prev.basic.includes(col)),
+          ]
 
-      const nextMetadata = prev.metadata.length === 0 && availableMetadata.length > 0
-        ? availableMetadata
-        : prev.metadata.filter(col => dynamicColumns.metadata.includes(col))
+      // Dynamic groups: filled with everything once, the first time there is
+      // anything to show; an empty group after that is a deliberate "hide all".
+      const seedOnce = (current: string[], available: string[], done: boolean | undefined, keepIn: string[]) =>
+        !done && current.length === 0 && available.length > 0 ? available : current.filter(col => keepIn.includes(col))
 
-      const nextTranscription = prev.transcription_metrics.length === 0 && allAvailableTranscriptionMetrics.length > 0
-        ? allAvailableTranscriptionMetrics
-        : prev.transcription_metrics.filter(col => allAvailableTranscriptionMetrics.includes(col))
+      const nextMetadata = seedOnce(prev.metadata, availableMetadata, seeded.metadata, dynamicColumns.metadata)
+      const nextTranscription = seedOnce(prev.transcription_metrics, allAvailableTranscriptionMetrics, seeded.transcription_metrics, allAvailableTranscriptionMetrics)
+      const nextMetrics = seedOnce(prev.metrics, dynamicColumns.metrics, seeded.metrics, dynamicColumns.metrics)
 
-      const nextMetrics = prev.metrics.length === 0 && dynamicColumns.metrics.length > 0
-        ? dynamicColumns.metrics
-        : prev.metrics.filter(col => dynamicColumns.metrics.includes(col))
+      const nextSeeded = {
+        basic: allowedBasicColumns,
+        metadata: seeded.metadata || availableMetadata.length > 0,
+        transcription_metrics: seeded.transcription_metrics || allAvailableTranscriptionMetrics.length > 0,
+        metrics: seeded.metrics || dynamicColumns.metrics.length > 0,
+      }
 
       // Return the SAME prev reference if nothing changed — Zustand won't re-render
       if (
         arrEq(nextBasic, prev.basic) &&
         arrEq(nextMetadata, prev.metadata) &&
         arrEq(nextTranscription, prev.transcription_metrics) &&
-        arrEq(nextMetrics, prev.metrics)
+        arrEq(nextMetrics, prev.metrics) &&
+        arrEq(nextSeeded.basic, seeded.basic ?? []) &&
+        nextSeeded.metadata === !!seeded.metadata &&
+        nextSeeded.transcription_metrics === !!seeded.transcription_metrics &&
+        nextSeeded.metrics === !!seeded.metrics
       ) return prev
 
       return {
@@ -172,6 +185,7 @@ export const useCallLogsColumns = (agent: any, calls: CallLog[], role: string | 
         metadata: nextMetadata,
         transcription_metrics: nextTranscription,
         metrics: nextMetrics,
+        seeded: nextSeeded,
       }
     })
   }, [role, dynamicColumns, dynamicColumnsKey, filteredBasicColumns, setVisibleColumns])

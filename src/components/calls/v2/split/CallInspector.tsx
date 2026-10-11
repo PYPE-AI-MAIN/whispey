@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useRef, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 import { ChevronDown, ChevronsRight } from "lucide-react"
 import { useSupabaseQuery } from "@/hooks/useSupabase"
 import { useCallLogsStore } from "@/stores/callLogsStore"
@@ -8,7 +8,8 @@ import { isColumnVisibleForRole } from "@/utils/callLogsUtils"
 import type { TraceLog } from "@/hooks/useCallTranscript"
 import type { CallLog } from "@/types/logs"
 import { cn } from "@/lib/utils"
-import { formatValue, maskForRole, splitTranscriptionMetrics, visibleMetadata } from "./callData"
+import { computeConversationMetrics, formatLatency, latencyTone } from "@/lib/latencyStats"
+import { formatValue, isNumberHidden, maskNumbers, splitTranscriptionMetrics, visibleMetadata } from "./callData"
 import { CopyButton, toolFailed, toolKey, toolName } from "./CallDetail"
 
 interface CallInspectorProps {
@@ -16,6 +17,8 @@ interface CallInspectorProps {
   agentId: string
   role: string | null
   turns: TraceLog[]
+  /** Vapi agents report STT inside the turn latency, so it counts toward the totals. */
+  isVapiAgent: boolean
   tab: "data" | "tools"
   onTabChange: (tab: "data" | "tools") => void
   focusedToolKey: string | null
@@ -104,7 +107,7 @@ function TabButton({ active, onClick, children }: Readonly<{ active: boolean; on
   )
 }
 
-function CallDataGroups({ call, agentId, role, showEmpty }: Readonly<CallInspectorProps & { showEmpty: boolean }>) {
+function CallDataGroups({ call, agentId, role, showEmpty, turns, isVapiAgent }: Readonly<CallInspectorProps & { showEmpty: boolean }>) {
   const openGroups = useCallLogsStore((s) => s.openInspectorGroups)
   const setOpenGroups = useCallLogsStore((s) => s.setOpenInspectorGroups)
   const toggle = (id: string) => setOpenGroups(openGroups.includes(id) ? openGroups.filter((g) => g !== id) : [...openGroups, id])
@@ -131,19 +134,20 @@ function CallDataGroups({ call, agentId, role, showEmpty }: Readonly<CallInspect
 
   return (
     <>
+      <LatencyGroup turns={turns} isVapiAgent={isVapiAgent} open={openGroups.includes("latency")} onToggle={toggle} />
       <Group id="disp" title="Dispositions" count={keep(dispositions).length} open={openGroups.includes("disp")} onToggle={toggle}>
-        <KeyValues rows={keep(dispositions)} role={role} />
+        <KeyValues rows={keep(dispositions)} hideNumbers={isNumberHidden(call)} />
       </Group>
       {checks.length > 0 && (
         <Group
           id="checks" title="QA checks" open={openGroups.includes("checks")} onToggle={toggle}
           count={<><span>{passed} ✓</span>{failed > 0 && <span className="text-[var(--cl-red-text)]"> · {failed} ✕</span>}</>}
         >
-          <KeyValues rows={keep(checks)} role={role} />
+          <KeyValues rows={keep(checks)} hideNumbers={isNumberHidden(call)} />
         </Group>
       )}
       <Group id="vars" title="Call variables" count={varsLoading ? null : keep(variables).length} open={varsOpen} onToggle={toggle}>
-        {varsLoading ? <p className="py-1 text-[12.5px] text-[var(--cl-text3)]">Loading…</p> : <KeyValues rows={keep(variables)} role={role} />}
+        {varsLoading ? <p className="py-1 text-[12.5px] text-[var(--cl-text3)]">Loading…</p> : <KeyValues rows={keep(variables)} hideNumbers={isNumberHidden(call)} />}
       </Group>
       {metrics.length > 0 && (
         <Group id="metrics" title="Metrics" count={metrics.length} open={openGroups.includes("metrics")} onToggle={toggle}>
@@ -167,12 +171,12 @@ function CallDataGroups({ call, agentId, role, showEmpty }: Readonly<CallInspect
         </Group>
       )}
       <Group id="meta" title="Metadata" count={keep(metadata).length} open={openGroups.includes("meta")} onToggle={toggle}>
-        <KeyValues rows={keep(metadata)} role={role} />
+        <KeyValues rows={keep(metadata)} hideNumbers={isNumberHidden(call)} />
       </Group>
       {showCost && (
         <Group id="cost" title="Cost" count={`₹ ${Number(totalCost).toFixed(2)}`} open={openGroups.includes("cost")} onToggle={toggle}>
           <KeyValues
-            role={role}
+            hideNumbers={isNumberHidden(call)}
             rows={[
               ["Total Cost (₹)", totalCost === null ? null : Number(totalCost).toFixed(2)],
               ["LLM Cost (₹)", call.total_llm_cost],
@@ -183,6 +187,40 @@ function CallDataGroups({ call, agentId, role, showEmpty }: Readonly<CallInspect
         </Group>
       )}
     </>
+  )
+}
+
+const TONE_CLASS = {
+  good: "text-emerald-600 dark:text-emerald-400",
+  fair: "text-amber-600 dark:text-amber-400",
+  poor: "text-[var(--cl-red-text)]",
+} as const
+
+/** The call's overall latency (p75 per stage), as on the full trace page. */
+function LatencyGroup({ turns, isVapiAgent, open, onToggle }: Readonly<{ turns: TraceLog[]; isVapiAgent: boolean; open: boolean; onToggle: (id: string) => void }>) {
+  const m = useMemo(() => (turns.length ? computeConversationMetrics(turns, isVapiAgent) : null), [turns, isVapiAgent])
+  if (!m || m.endToEndStats.count + m.llmStats.count === 0) return null
+  const rows: Array<[string, { p75: number; count: number }, "e2e" | "stt" | "llm" | "tts" | "eou"]> = [
+    ["End to end", m.endToEndStats, "e2e"],
+    ["STT", m.sttStats, "stt"],
+    ["LLM (time to first token)", m.llmStats, "llm"],
+    ["TTS (time to first byte)", m.ttsStats, "tts"],
+    ["End of utterance", m.eouStats, "eou"],
+  ]
+  const e2e = m.endToEndStats.p75
+  return (
+    <Group
+      id="latency" title="Latency" open={open} onToggle={onToggle}
+      count={e2e > 0 ? <span className={TONE_CLASS[latencyTone(e2e, "e2e")]}>p75 {formatLatency(e2e)}</span> : `${m.totalTurns} turns`}
+    >
+      {rows.filter(([, s]) => s.count > 0).map(([label, s, type]) => (
+        <div key={label} className="grid grid-cols-[48%_1fr] gap-2.5 border-t border-dashed border-[var(--cl-border)] py-1.5 text-[13.5px] first:border-t-0">
+          <span className="truncate text-[var(--cl-text3)]">{label}</span>
+          <span className={cn("text-right font-mono", TONE_CLASS[latencyTone(s.p75, type)])}>{formatLatency(s.p75)} <span className="text-[11.5px] text-[var(--cl-text3)]">p75</span></span>
+        </div>
+      ))}
+      <p className="pt-1.5 text-[12px] text-[var(--cl-text3)]">{m.totalTurns} turns · per-turn detail in the full trace</p>
+    </Group>
   )
 }
 
@@ -206,12 +244,12 @@ function Group({
   )
 }
 
-function KeyValues({ rows, role }: Readonly<{ rows: Array<[string, unknown]>; role: string | null }>) {
+function KeyValues({ rows, hideNumbers }: Readonly<{ rows: Array<[string, unknown]>; hideNumbers: boolean }>) {
   if (rows.length === 0) return <p className="py-1 text-[12.5px] italic text-[var(--cl-text3)]">Nothing here</p>
   return (
     <>
       {rows.map(([key, value]) => {
-        const text = maskForRole(formatValue(value), role)
+        const text = maskNumbers(formatValue(value), hideNumbers)
         return (
           <div key={key} className="group/kv grid grid-cols-[48%_1fr] gap-2.5 border-t border-dashed border-[var(--cl-border)] py-1.5 text-[13.5px] first:border-t-0">
             <span className="truncate font-mono text-[12.5px] text-[var(--cl-text3)]" title={key}>{key}</span>
@@ -231,7 +269,7 @@ function KeyValues({ rows, role }: Readonly<{ rows: Array<[string, unknown]>; ro
 }
 
 function ToolsList({
-  tools, focusedToolKey, role,
+  tools, focusedToolKey, call,
 }: Readonly<CallInspectorProps & { tools: Array<{ key: string; tool: any }> }>) {
   const [open, setOpen] = useState<Set<string>>(new Set())
   const focusedRef = useRef<HTMLDivElement>(null)
@@ -250,8 +288,8 @@ function ToolsList({
       {tools.map(({ key, tool }) => {
         const failed = toolFailed(tool)
         const isOpen = open.has(key)
-        const args = tool.arguments == null ? null : maskForRole(typeof tool.arguments === "string" ? tool.arguments : JSON.stringify(tool.arguments, null, 2), role)
-        const result = tool.result == null ? null : maskForRole(String(tool.result), role)
+        const args = tool.arguments == null ? null : maskNumbers(typeof tool.arguments === "string" ? tool.arguments : JSON.stringify(tool.arguments, null, 2), isNumberHidden(call))
+        const result = tool.result == null ? null : maskNumbers(String(tool.result), isNumberHidden(call))
         return (
           <div key={key} ref={key === focusedToolKey ? focusedRef : undefined} className={cn("border-b border-[var(--cl-border)]", failed && "shadow-[inset_3px_0_0_var(--cl-red)]")}>
             <button

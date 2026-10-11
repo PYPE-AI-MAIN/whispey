@@ -51,6 +51,9 @@ function cellShadow(index: number, pinnedEdge: boolean, marker: string | null): 
   return parts.length ? parts.join(", ") : undefined
 }
 
+/** A column's own width cap (Tags, Flag), from its definition's meta. */
+const columnMaxWidth = (def: { meta?: unknown }): number | undefined => (def.meta as { maxWidth?: number } | undefined)?.maxWidth
+
 const HIGHLIGHT_BG = "linear-gradient(var(--cl-accent-soft), var(--cl-accent-soft)), var(--cl-bg)"
 
 export function CallLogsTable({
@@ -82,6 +85,7 @@ export function CallLogsTable({
                       key={h.id}
                       style={{
                         minWidth: h.column.id === "select" ? SELECT_COL_WIDTH : (h.column.columnDef.minSize ?? 120),
+                        maxWidth: columnMaxWidth(h.column.columnDef),
                         width: h.column.id === "select" ? SELECT_COL_WIDTH : undefined,
                         left: left ?? undefined,
                         boxShadow: cellShadow(i, i === lastPinnedIndex, null),
@@ -96,13 +100,17 @@ export function CallLogsTable({
                     </th>
                   )
                 })}
+                {/* Filler: takes the width left over when the columns don't fill the
+                    screen, so real columns stay as wide as their content instead of
+                    each being stretched (a short Flag column turning very wide). */}
+                <th aria-hidden className="sticky top-0 z-20 w-full border-b border-[var(--cl-border)] bg-[var(--cl-panel)] p-0" style={{ boxShadow: "inset 1px 0 0 var(--cl-border)" }} />
               </tr>
             ))}
           </thead>
           <tbody className={cn("transition-opacity", pageLoading && "pointer-events-none opacity-40")} aria-busy={pageLoading}>
             {rows.length === 0 && !isLoading ? (
               <tr>
-                <td colSpan={leafColumns.length} className="h-[360px] text-center">
+                <td colSpan={leafColumns.length + 1} className="h-[360px] text-center">
                   <div className="flex flex-col items-center gap-3 py-12 text-[var(--cl-text3)]">
                     <Inbox className="h-10 w-10" />
                     <p className="text-base font-semibold text-[var(--cl-text)]">No call logs found</p>
@@ -188,6 +196,7 @@ const TableRow = React.memo(function TableRow({
             key={cell.id}
             style={{
               left: left ?? undefined,
+              maxWidth: columnMaxWidth(cell.column.columnDef),
               background: highlighted ? HIGHLIGHT_BG : undefined,
               boxShadow: cellShadow(i, i === lastPinnedIndex, i === 0 ? marker : null),
             }}
@@ -207,6 +216,7 @@ const TableRow = React.memo(function TableRow({
           </td>
         )
       })}
+      <td aria-hidden className="w-full border-b border-[var(--cl-border)] bg-[var(--cl-bg)] p-0 group-hover:bg-[var(--cl-hover)]" style={{ boxShadow: "inset 1px 0 0 var(--cl-border)", background: highlighted ? HIGHLIGHT_BG : undefined }} />
     </tr>
   )
 })

@@ -39,6 +39,13 @@ const SUGGESTIONS = [
   "Show me flagged calls",
 ]
 
+const CALL_SUGGESTIONS = [
+  "Summarise this call",
+  "What did the customer want?",
+  "Why did the call end this way?",
+  "Did the agent handle it correctly?",
+]
+
 const TOOL_STEPS: Record<string, string> = {
   call_breakdown: "Counting calls",
   summarize_call_transcripts: "Reading transcripts",
@@ -269,10 +276,12 @@ function PiChat({
           <div>
             <h2 className={cn("font-semibold tracking-[-0.02em]", max ? "mb-1.5 mt-5 text-[24px]" : "mb-1 mt-1.5 text-[19px]")}>Hi, I&apos;m π.</h2>
             <p className={cn("leading-[1.6] text-[var(--cl-text2)]", max ? "text-[15px]" : "text-[14px]")}>
-              Ask me about this agent&apos;s calls: what&apos;s happening in them, why they fail, how many there are, or which ones to look at. I can read transcripts and set filters for you.
+              {openCallId
+                ? "Ask me about the call you have open — I've read its transcript. You can still ask about other calls too."
+                : "Ask me about this agent's calls: what's happening in them, why they fail, how many there are, or which ones to look at. I can read transcripts and set filters for you."}
             </p>
             <div className={cn("flex flex-wrap", max ? "mt-[18px] gap-2" : "mt-3 gap-1.5")}>
-              {SUGGESTIONS.map((q) => (
+              {(openCallId ? CALL_SUGGESTIONS : SUGGESTIONS).map((q) => (
                 <button key={q} type="button" onClick={() => void ask(q)} className="rounded-full border border-[var(--cl-border2)] bg-[var(--cl-panel)] px-2.5 py-[5px] text-left text-[13px] text-[var(--cl-text2)] hover:bg-[var(--cl-hover)] hover:text-[var(--cl-text)]">
                   {q}
                 </button>
@@ -294,7 +303,15 @@ function PiChat({
       </div>
 
       <div className="flex-none border-t border-[var(--cl-border)] px-2.5 pb-2.5 pt-2">
-        <div className="rounded-xl border border-[var(--cl-border2)] bg-[var(--cl-panel)] px-2 py-1.5 focus-within:border-[var(--cl-text3)]">
+        {/* The whole box is the text field's hit area, not just its first line. */}
+        <div
+          onMouseDown={(e) => {
+            if ((e.target as HTMLElement).closest("button, textarea")) return
+            e.preventDefault()
+            inputRef.current?.focus()
+          }}
+          className="cursor-text rounded-xl border border-[var(--cl-border2)] bg-[var(--cl-panel)] px-2 py-1.5 focus-within:border-[var(--cl-text3)]"
+        >
           <textarea
             ref={inputRef}
             rows={1}

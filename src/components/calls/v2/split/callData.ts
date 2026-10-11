@@ -48,18 +48,22 @@ export function visibleMetadata(call: CallLog): Array<[string, unknown]> {
 }
 
 /**
- * How a call is named on screen. Viewers never see the customer's number — the
- * call id stands in, and they can copy that instead.
+ * Whether this person may see the customer's number. The agent's call-log
+ * settings can hide it per person/role; the server then leaves the field out
+ * of the call entirely, which is what this reads.
  */
-export function callLabel(call: CallLog, role: string | null): { text: string; isId: boolean } {
-  if (!isViewerRole(role) && call.customer_number) return { text: call.customer_number, isId: false }
+export const isNumberHidden = (call: CallLog) => !("customer_number" in call)
+
+/** How a call is named on screen: its number, or its id when the number is hidden (or it's a web call). */
+export function callLabel(call: CallLog): { text: string; isId: boolean } {
+  if (call.customer_number) return { text: call.customer_number, isId: false }
   return { text: `…${(call.call_id || call.id).slice(-8)}`, isId: true }
 }
 
 const PHONE_LIKE = /\+?\d[\d\s-]{8,}\d/g
-/** Masks anything that looks like a phone number, for values shown to viewers. */
-export function maskForRole(value: string, role: string | null): string {
-  return isViewerRole(role) ? value.replace(PHONE_LIKE, "•••• ••••") : value
+/** Masks anything that looks like a phone number, for people the number is hidden from. */
+export function maskNumbers(value: string, hide: boolean): string {
+  return hide ? value.replace(PHONE_LIKE, "•••• ••••") : value
 }
 
 export function relativeTime(iso: string | null | undefined): string {
@@ -117,18 +121,32 @@ const cueSeconds = (value: unknown) => (typeof value === "number" && Number.isFi
  * length plus the end-of-turn wait.
  */
 export function transcriptCues(
-  turns: Array<{ id: string; unix_timestamp?: number; user_transcript?: string; agent_response?: string; stt_metrics?: any; eou_metrics?: any }>,
+  turns: Array<{ id: string; unix_timestamp?: number; user_transcript?: string; agent_response?: string; stt_metrics?: any; eou_metrics?: any; tts_metrics?: any }>,
   timeZero: number | null
 ): TranscriptCue[] {
+  const timed = turns
+    .map((turn) => ({ turn, offset: turnOffsetSeconds(turn.unix_timestamp, timeZero) }))
+    .filter((t): t is { turn: (typeof turns)[number]; offset: number } => t.offset !== null)
+    .sort((a, b) => a.offset - b.offset)
   const cues: TranscriptCue[] = []
-  for (const turn of turns) {
-    const offset = turnOffsetSeconds(turn.unix_timestamp, timeZero)
-    if (offset === null) continue
+  // When the agent's previous line finished playing — the customer can't have
+  // started talking before then.
+  let agentDoneAt: number | null = null
+  for (const { turn, offset } of timed) {
     if (turn.user_transcript) {
+      // Counting back from the reply by the customer's audio length is often too
+      // short (a long greeting, a missing STT duration), which lit their bubble
+      // late. The end of the agent's last line is a safer floor, so take the earlier.
       const spoken = cueSeconds(turn.stt_metrics?.audio_duration) + cueSeconds(turn.eou_metrics?.end_of_utterance_delay)
-      cues.push({ key: `${turn.id}:user`, start: Math.max(0, offset - spoken) })
+      const fromReply = offset - spoken
+      const start = agentDoneAt !== null && agentDoneAt < fromReply ? agentDoneAt : fromReply
+      cues.push({ key: `${turn.id}:user`, start: Math.max(0, start) })
     }
-    if (turn.agent_response) cues.push({ key: `${turn.id}:agent`, start: offset })
+    if (turn.agent_response) {
+      cues.push({ key: `${turn.id}:agent`, start: offset })
+      const speaking = cueSeconds(turn.tts_metrics?.audio_duration)
+      agentDoneAt = speaking > 0 ? offset + speaking : null
+    }
   }
   return cues.sort((a, b) => a.start - b.start)
 }

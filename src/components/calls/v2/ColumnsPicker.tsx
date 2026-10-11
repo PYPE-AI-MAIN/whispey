@@ -38,9 +38,11 @@ interface ColumnsPickerProps {
   onReorder: (shownIds: string[]) => void
   onReset: () => void
   onShowAll: () => void
+  /** Shown but not clickable, with this reason on hover (e.g. while a campaign is selected). */
+  disabledReason?: string
 }
 
-export function ColumnsPicker({ columns, shownIds, onToggle, onReorder, onReset, onShowAll }: Readonly<ColumnsPickerProps>) {
+export function ColumnsPicker({ columns, shownIds, onToggle, onReorder, onReset, onShowAll, disabledReason }: Readonly<ColumnsPickerProps>) {
   const [query, setQuery] = useState("")
   const byId = useMemo(() => new Map(columns.map((c) => [c.id, c])), [columns])
   const q = query.trim().toLowerCase()
@@ -59,6 +61,18 @@ export function ColumnsPicker({ columns, shownIds, onToggle, onReorder, onReset,
     const to = shownIds.indexOf(String(e.over.id))
     if (from < 0 || to < 0) return
     onReorder(arrayMove(shownIds, from, to))
+  }
+
+  // A disabled button shows no tooltip of its own, so the reason sits on a wrapper.
+  if (disabledReason) {
+    return (
+      <span title={disabledReason} className="inline-flex cursor-not-allowed">
+        <button type="button" disabled className={V2_BTN}>
+          <Columns3 className="h-4 w-4" />
+          Columns
+        </button>
+      </span>
+    )
   }
 
   return (

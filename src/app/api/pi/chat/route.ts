@@ -36,7 +36,7 @@ import { catalogIsStale, rescan as rescanAnalyticsFields } from '@/server/analyt
 import { Spec, ALL_COLS } from '@/server/analytics/spec'
 import { planDashboardQueries, isPhoneField } from '@/server/analytics/buildQuery'
 import { runQuery, isTimeout } from '@/server/analytics/db'
-import { CALL_LOGS_TOOL_NAMES, SUMMARIZE_RESULT_CHARS, callLogsPromptBlock, callLogsToolSchemas, parsePageContext, runCallBreakdown, runProposeCallFilters, runSummarizeCallTranscripts, type CallLogsPageContext } from '@/server/pi/callLogsTools'
+import { CALL_LOGS_TOOL_NAMES, SUMMARIZE_RESULT_CHARS, callLogsPromptBlock, callLogsToolSchemas, parsePageContext, withOpenCall, runCallBreakdown, runProposeCallFilters, runSummarizeCallTranscripts, type CallLogsPageContext } from '@/server/pi/callLogsTools'
 
 interface StoredToolCall {
   id: string
@@ -1896,11 +1896,12 @@ export async function POST(request: NextRequest) {
     const { userId, canWrite } = who
 
     // Ask Pi on Call Logs: members who can write only (viewers don't get it), and only for an agent they can see.
-    const pageContext = parsePageContext(rawPageContext)
+    let pageContext = parsePageContext(rawPageContext)
     if (rawPageContext && !pageContext) return NextResponse.json({ error: 'Invalid page context' }, { status: 400 })
     if (pageContext) {
       if (!canWrite) return NextResponse.json({ error: 'Ask Pi is not available for viewers' }, { status: 403 })
       if (!(await agentBelongsToProject(pageContext.agentId, projectId))) return NextResponse.json({ error: 'No access to this agent' }, { status: 403 })
+      pageContext = await withOpenCall(pageContext)
     }
 
     if (!resolveAction && tooManyRequests(userId)) return NextResponse.json({ error: 'Too many messages — please wait a moment and try again.' }, { status: 429 })

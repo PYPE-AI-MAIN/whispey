@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { ChevronDown, Filter, Plus, Star, X } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
@@ -53,10 +53,18 @@ interface FilterPanelProps {
   metadataFields: string[]
   transcriptionFields: string[]
   role: string | null
+  /** Lets the page open the panel, e.g. from a filter chip. Uncontrolled when omitted. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function FilterPanel({ activeFilters, distinctConfig, onApply, metadataFields, transcriptionFields, role }: Readonly<FilterPanelProps>) {
-  const [open, setOpen] = useState(false)
+export function FilterPanel({ activeFilters, distinctConfig, onApply, metadataFields, transcriptionFields, role, open: openProp, onOpenChange }: Readonly<FilterPanelProps>) {
+  const [openState, setOpenState] = useState(false)
+  const open = openProp ?? openState
+  const setOpen = useCallback((next: boolean) => {
+    setOpenState(next)
+    onOpenChange?.(next)
+  }, [onOpenChange])
   const [rows, setRows] = useState<RowState[]>(() => buildRows(activeFilters, distinctConfig))
   const pinned = useCallLogsStore((s) => s.pinnedFilterFields)
   const setPinned = useCallLogsStore((s) => s.setPinnedFilterFields)
@@ -229,43 +237,138 @@ export function FilterPanel({ activeFilters, distinctConfig, onApply, metadataFi
 }
 
 /** The applied filters as plain-words chips; ✕ removes one straight away. */
-export function FilterChips({ activeFilters, onChange }: Readonly<{ activeFilters: FilterOperation[]; onChange: (ops: FilterOperation[]) => void }>) {
+// At most this many chips, even on a wide screen; the rest are behind "+N more".
+const MAX_CHIPS = 3
+const CHIP_GAP = 6
+// room kept for the "+N more" pill
+const MORE_PILL_WIDTH = 96
+
+/**
+ * Applied filters on one line: up to 3 whole chips (fewer when the row is
+ * narrow), the rest folded into "+N more", which lists them all. Chips never
+ * shrink into empty bubbles.
+ */
+export function FilterChips({ activeFilters, onChange, onEdit }: Readonly<{
+  activeFilters: FilterOperation[]
+  onChange: (ops: FilterOperation[]) => void
+  /** Clicking a chip opens the filter panel to change it. */
+  onEdit: () => void
+}>) {
+  const slotRef = useRef<HTMLDivElement>(null)
+  const measureRef = useRef<HTMLDivElement>(null)
+  const [fit, setFit] = useState(Math.min(MAX_CHIPS, activeFilters.length))
+
+  useLayoutEffect(() => {
+    const slot = slotRef.current
+    const measure = measureRef.current
+    if (!slot || !measure) return
+    const recompute = () => {
+      const widths = Array.from(measure.children, (el) => (el as HTMLElement).offsetWidth).slice(0, MAX_CHIPS)
+      const capped = activeFilters.length > MAX_CHIPS
+      const room = slot.clientWidth
+      const total = widths.reduce((a, w) => a + w, 0) + CHIP_GAP * Math.max(0, widths.length - 1)
+      if (!capped && total <= room) return setFit(widths.length)
+      let used = 0
+      let n = 0
+      for (const w of widths) {
+        const next = used + (n ? CHIP_GAP : 0) + w
+        if (next > room - MORE_PILL_WIDTH) break
+        used = next
+        n++
+      }
+      setFit(n)
+    }
+    recompute()
+    const ro = new ResizeObserver(recompute)
+    ro.observe(slot)
+    return () => ro.disconnect()
+  }, [activeFilters])
+
   if (activeFilters.length === 0) return null
   const remove = (id: string) => onChange(activeFilters.filter((op) => op.id !== id))
+  const shown = activeFilters.slice(0, fit)
+  const rest = activeFilters.length - shown.length
   return (
-    <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto [scrollbar-width:none]">
-      {activeFilters.map((op) => (
-        <span
-          key={op.id}
-          className="inline-flex h-[26px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-[var(--cl-border2)] bg-[var(--cl-hover)] pl-2.5 pr-1 text-[13px] text-[var(--cl-text2)]"
-        >
-          {op.type === "distinct" ? (
-            <>Unique by <b className="font-medium text-[var(--cl-text)]">{op.jsonField || columnLabel(op.column)}</b></>
-          ) : (
-            <>
-              {columnLabel(op.column)}
-              {op.jsonField && <span className="font-mono text-[11px]">· {op.jsonField}</span>}
-              <b className="font-medium text-[var(--cl-text)]">
-                {operationLabel(op.operation).toLowerCase()}
-                {op.operation !== "exists" && op.operation !== "json_exists" && ` ${op.value}`}
-              </b>
-            </>
-          )}
-          <button
-            type="button"
-            onClick={() => remove(op.id)}
-            aria-label="Remove filter"
-            className="grid h-[18px] w-[18px] place-items-center rounded-full text-[var(--cl-text3)] hover:bg-[var(--cl-border)] hover:text-[var(--cl-text)]"
-          >
-            <X className="h-3 w-3" />
-          </button>
-        </span>
-      ))}
+    <div className="relative flex flex-none items-center gap-1.5 border-b border-[var(--cl-border)] bg-[var(--cl-panel)] px-4 py-1.5">
+      <span className="mr-0.5 flex-none text-[12.5px] text-[var(--cl-text3)]">Filtered by</span>
+      {/* off-screen copy, only to measure each chip's natural width */}
+      <div ref={measureRef} aria-hidden className="pointer-events-none invisible absolute left-0 top-0 flex gap-1.5">
+        {activeFilters.map((op) => <FilterChip key={op.id} op={op} onRemove={() => {}} />)}
+      </div>
+      <div ref={slotRef} className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+        {shown.map((op) => <FilterChip key={op.id} op={op} onRemove={() => remove(op.id)} onEdit={onEdit} />)}
+      {rest > 0 && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <button type="button" className="inline-flex h-6 flex-none items-center gap-1 rounded-full border border-[var(--cl-border2)] px-2.5 text-[12.5px] text-[var(--cl-text2)] hover:bg-[var(--cl-hover)] hover:text-[var(--cl-text)]">
+              {shown.length ? `+${rest} more` : `${rest} filters`}
+              <ChevronDown className="h-3 w-3" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className={cn("w-[360px] border-[var(--cl-border2)] bg-[var(--cl-panel)] p-2 text-[var(--cl-text)]", V2_THEME)}>
+            <p className="px-1.5 pb-1.5 pt-0.5 text-[12px] font-medium text-[var(--cl-text3)]">{activeFilters.length} filters</p>
+            <div className="flex max-h-[320px] flex-col gap-1 overflow-y-auto">
+              {activeFilters.map((op) => (
+                <div key={op.id} className="flex items-center gap-2 rounded-md px-1.5 py-1 text-[13px] hover:bg-[var(--cl-hover)]">
+                  <button type="button" onClick={onEdit} className="min-w-0 flex-1 truncate text-left text-[var(--cl-text2)]" title={`${chipTitle(op)} — click to edit`}><ChipText op={op} /></button>
+                  <RemoveButton onClick={() => remove(op.id)} />
+                </div>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
+      </div>
       {activeFilters.length > 1 && (
-        <button type="button" onClick={() => onChange([])} className="shrink-0 text-[13px] text-[var(--cl-text3)] hover:text-[var(--cl-text)]">
+        <button type="button" onClick={() => onChange([])} className="ml-auto flex-none pl-2 text-[12.5px] text-[var(--cl-text3)] hover:text-[var(--cl-text)]">
           Clear all
         </button>
       )}
     </div>
   )
+}
+
+function FilterChip({ op, onRemove, onEdit }: Readonly<{ op: FilterOperation; onRemove: () => void; onEdit?: () => void }>) {
+  return (
+    <span
+      title={`${chipTitle(op)} — click to edit`}
+      className="inline-flex h-6 max-w-[260px] flex-none items-center gap-1.5 whitespace-nowrap rounded-full border border-[var(--cl-border2)] bg-[var(--cl-hover)] pl-2.5 pr-1 text-[12.5px] text-[var(--cl-text2)] hover:border-[var(--cl-text3)]"
+    >
+      <button type="button" onClick={onEdit} className="min-w-0 truncate text-left"><ChipText op={op} /></button>
+      <RemoveButton onClick={onRemove} />
+    </span>
+  )
+}
+
+function ChipText({ op }: Readonly<{ op: FilterOperation }>) {
+  if (op.type === "distinct") return <>Unique by <b className="font-medium text-[var(--cl-text)]">{op.jsonField || columnLabel(op.column)}</b></>
+  return (
+    <>
+      {columnLabel(op.column)}
+      {op.jsonField && <span className="font-mono text-[11px]"> · {op.jsonField}</span>}{" "}
+      <b className="font-medium text-[var(--cl-text)]">
+        {operationLabel(op.operation).toLowerCase()}
+        {op.operation !== "exists" && op.operation !== "json_exists" && ` ${op.value}`}
+      </b>
+    </>
+  )
+}
+
+function RemoveButton({ onClick }: Readonly<{ onClick: () => void }>) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Remove filter"
+      className="grid h-[18px] w-[18px] flex-none place-items-center rounded-full text-[var(--cl-text3)] hover:bg-[var(--cl-border)] hover:text-[var(--cl-text)]"
+    >
+      <X className="h-3 w-3" />
+    </button>
+  )
+}
+
+function chipTitle(op: FilterOperation): string {
+  if (op.type === "distinct") return `Unique by ${op.jsonField || columnLabel(op.column)}`
+  const value = op.operation === "exists" || op.operation === "json_exists" ? "" : ` ${op.value}`
+  return `${columnLabel(op.column)}${op.jsonField ? ` · ${op.jsonField}` : ""} ${operationLabel(op.operation).toLowerCase()}${value}`
 }

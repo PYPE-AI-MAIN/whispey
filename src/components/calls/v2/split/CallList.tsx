@@ -1,9 +1,10 @@
 "use client"
 
 import React, { useEffect, useRef } from "react"
-import { ArrowLeft, Flag, Globe, Info, Phone } from "lucide-react"
+import { ArrowLeft, Globe, Info, Phone } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { formatDuration, formatToIndianDateTime, isRowFlaggedForRole, normalizeFlags } from "@/utils/callLogsUtils"
+import { FlagEditor } from "../../FlagEditor"
+import { formatDuration, formatToIndianDateTime, isViewerRole, normalizeFlags } from "@/utils/callLogsUtils"
 import type { CallLog } from "@/types/logs"
 import { cn } from "@/lib/utils"
 import { callDurationSeconds, callLabel, callSummary, formatValue, relativeTime, splitTranscriptionMetrics } from "./callData"
@@ -17,6 +18,10 @@ interface CallListProps {
   onBack: () => void
   /** Pointer resting on a call — used to start loading it early. */
   onHover?: (call: CallLog) => void
+  /** Who is flagging, so a call can be flagged straight from the list. */
+  currentUserId: string | null
+  currentUserEmail: string | null
+  onUpdated: () => void
   /** Another page is loading: show placeholders instead of the outgoing page. */
   loading?: boolean
   footer: React.ReactNode
@@ -24,7 +29,7 @@ interface CallListProps {
 
 // The left pane once a call is open: just enough to pick the next call — who,
 // when, how it ended, how long. Everything else sits behind the ⓘ card.
-export function CallList({ calls, openId, role, hasSummaryField, onOpen, onBack, onHover, loading = false, footer }: Readonly<CallListProps>) {
+export function CallList({ calls, openId, role, hasSummaryField, onOpen, onBack, onHover, loading = false, footer, currentUserId, currentUserEmail, onUpdated }: Readonly<CallListProps>) {
   const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -56,6 +61,7 @@ export function CallList({ calls, openId, role, hasSummaryField, onOpen, onBack,
             hasSummaryField={hasSummaryField}
             onOpen={onOpen}
             onHover={onHover}
+            flag={{ currentUserId, currentUserEmail, onUpdated }}
           />
         ))}
       </div>
@@ -82,10 +88,13 @@ function ListSkeleton() {
 }
 
 function CallListItem({
-  call, active, role, hasSummaryField, onOpen, onHover,
-}: Readonly<{ call: CallLog; active: boolean; role: string | null; hasSummaryField: boolean; onOpen: (c: CallLog) => void; onHover?: (c: CallLog) => void }>) {
-  const label = callLabel(call, role)
-  const flagged = isRowFlaggedForRole(call, role)
+  call, active, role, hasSummaryField, onOpen, onHover, flag,
+}: Readonly<{
+  call: CallLog; active: boolean; role: string | null; hasSummaryField: boolean
+  onOpen: (c: CallLog) => void; onHover?: (c: CallLog) => void
+  flag: { currentUserId: string | null; currentUserEmail: string | null; onUpdated: () => void }
+}>) {
+  const label = callLabel(call)
   const status = call.call_ended_reason || "—"
   const isWeb = !call.customer_number
   return (
@@ -115,7 +124,16 @@ function CallListItem({
         <span className="min-w-0 flex-1 truncate">
           {status} · <span className="font-mono">{formatDuration(callDurationSeconds(call) ?? 0)}</span>
         </span>
-        {flagged && <Flag className="h-3.5 w-3.5 shrink-0 fill-current text-[var(--cl-red)]" aria-label="Flagged" />}
+        <FlagEditor
+          key={`flag-${call.id}`}
+          variant="icon"
+          callId={call.id}
+          initialFlag={call.transcription_metrics?.flag}
+          currentUserId={flag.currentUserId}
+          currentUserEmail={flag.currentUserEmail}
+          canDeleteAnyFlag={role !== null && !isViewerRole(role)}
+          onUpdated={flag.onUpdated}
+        />
         <QuickDetails call={call} role={role} hasSummaryField={hasSummaryField} />
       </div>
     </div>
@@ -141,7 +159,7 @@ function QuickDetails({ call, role, hasSummaryField }: Readonly<{ call: CallLog;
         </button>
       </TooltipTrigger>
       <TooltipContent side="right" align="start" className="w-[300px] p-3 text-[13px]">
-        <p className="font-semibold">{callLabel(call, role).text}</p>
+        <p className="font-semibold">{callLabel(call).text}</p>
         <p className="text-xs opacity-70">
           {call.call_started_at ? formatToIndianDateTime(call.call_started_at) : ""} · {formatDuration(callDurationSeconds(call) ?? 0)}
         </p>

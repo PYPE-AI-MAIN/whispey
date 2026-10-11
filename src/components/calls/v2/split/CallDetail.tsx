@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useMemo, useRef, useState } from "react"
-import { AlertTriangle, Check, Copy, ExternalLink, Loader2, Play, Wrench } from "lucide-react"
+import { AlertTriangle, Check, Copy, ExternalLink, Loader2, Wrench } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { formatDuration, formatToIndianDateTime, isColumnVisibleForRole, isViewerRole } from "@/utils/callLogsUtils"
 import type { TraceLog } from "@/hooks/useCallTranscript"
@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 import CallAgainDialog from "../../CallAgainDialog"
 import { TagEditor } from "../../TagEditor"
 import { FlagEditor } from "../../FlagEditor"
-import { callDurationSeconds, callLabel, callSummary, formatClock, maskForRole, type TranscriptCue } from "./callData"
+import { callDurationSeconds, callLabel, callSummary, formatClock, isNumberHidden, maskNumbers, type TranscriptCue } from "./callData"
 
 export interface ToolRef {
   key: string
@@ -100,7 +100,7 @@ function DetailHeader({
   call, agent, projectId, role, currentUserId, currentUserEmail, hasSummaryField, availableTags, onUpdated,
   canOfferCallAgain, outboundPhoneNumbers, turns, viewEnglish, setViewEnglish, isTranslating, formatTranscript,
 }: Readonly<CallDetailProps>) {
-  const label = callLabel(call, role)
+  const label = callLabel(call)
   const summary = callSummary(call, hasSummaryField)
   const tags: string[] = Array.isArray(call.transcription_metrics?.tags) ? call.transcription_metrics.tags : []
   const tagComments = call.transcription_metrics?.tagComments
@@ -154,7 +154,7 @@ function DetailHeader({
                   </button>
                 ))}
               </div>
-              <CopyButton text={maskForRole(transcriptText, role)} label="Copy transcript" />
+              <CopyButton text={maskNumbers(transcriptText, isNumberHidden(call))} label="Copy transcript" />
               <span aria-hidden className="mx-1 h-4 w-px bg-[var(--cl-border2)]" />
             </>
           )}
@@ -247,7 +247,7 @@ export function CopyButton({ text, label }: Readonly<{ text: string; label: stri
 }
 
 function Turn({
-  turn, cueStarts, activeCue, onSeek, role, bugReportTurnIds, formatTranscript, onOpenTool,
+  call, turn, cueStarts, activeCue, onSeek, role, bugReportTurnIds, formatTranscript, onOpenTool,
 }: Readonly<CallDetailProps & { turn: TraceLog; cueStarts: Map<string, number> }>) {
   const userKey = `${turn.id}:user`
   const agentKey = `${turn.id}:agent`
@@ -259,7 +259,7 @@ function Turn({
       {turn.user_transcript && (
         <Bubble
           cueKey={userKey}
-          text={maskForRole(formatTranscript(turn.user_transcript), role)}
+          text={maskNumbers(formatTranscript(turn.user_transcript), isNumberHidden(call))}
           start={cueStarts.get(userKey)}
           active={activeCue === userKey}
           onSeek={onSeek}
@@ -272,7 +272,10 @@ function Turn({
             {turn.agent_response && (
               <div
                 data-cue={agentKey}
+                onClick={seekHandler(cueStarts.get(agentKey), onSeek)}
+                title={onSeek && cueStarts.has(agentKey) ? "Play from here" : undefined}
                 className={cn(
+                  onSeek && cueStarts.has(agentKey) && "cursor-pointer hover:border-[var(--cl-accent-line)]",
                   "rounded-[14px] rounded-tl-[4px] border px-[15px] py-[11px] text-[15.5px] leading-[1.6] transition-[border-color,box-shadow] duration-300",
                   activeCue === agentKey
                     ? "border-[var(--cl-accent-line)] bg-[var(--cl-raised)] shadow-[0_0_0_3px_var(--cl-accent-soft)]"
@@ -283,7 +286,7 @@ function Turn({
               </div>
             )}
             <div className="mt-[5px] flex flex-wrap items-center gap-2 font-mono text-[12.5px] text-[var(--cl-text3)]">
-              {turn.agent_response && <CueTime start={cueStarts.get(agentKey)} active={activeCue === agentKey} onSeek={onSeek} />}
+              {turn.agent_response && <CueTime start={cueStarts.get(agentKey)} active={activeCue === agentKey} />}
               {typeof turn.llm_metrics?.ttft === "number" && <span title="Time to first token">{Math.round(turn.llm_metrics.ttft * 1000)}ms</span>}
               {hasBug && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-[var(--cl-red-line)] bg-[var(--cl-red-soft)] px-2 font-sans text-[11.5px] text-[var(--cl-red-text)]">
@@ -294,7 +297,7 @@ function Turn({
             {tools.length > 0 && (
               <div className="mt-[7px] flex flex-wrap gap-1.5">
                 {tools.map((tool, i) => (
-                  <ToolPill key={toolKey(turn.turn_id, i)} tool={tool} role={role} onOpen={() => onOpenTool(toolKey(turn.turn_id, i))} />
+                  <ToolPill key={toolKey(turn.turn_id, i)} tool={tool} hideNumbers={isNumberHidden(call)} onOpen={() => onOpenTool(toolKey(turn.turn_id, i))} />
                 ))}
               </div>
             )}
@@ -373,7 +376,10 @@ function Bubble({
       <div className="min-w-0">
         <div
           data-cue={cueKey}
+          onClick={seekHandler(start, onSeek)}
+          title={onSeek && start !== undefined ? "Play from here" : undefined}
           className={cn(
+            onSeek && start !== undefined && "cursor-pointer hover:border-[#93c5fd] dark:hover:border-[#2f4a7a]",
             "rounded-[14px] rounded-tr-[4px] border bg-[#eff6ff] px-[15px] py-[11px] text-[15.5px] leading-[1.6] transition-[border-color,box-shadow] duration-300 dark:bg-[#1c2b4a]",
             active
               ? "border-[#60a5fa] shadow-[0_0_0_3px_rgba(59,130,246,.18)] dark:border-[#3b82f6]"
@@ -383,38 +389,36 @@ function Bubble({
           {text}
         </div>
         <div className="mt-[5px] flex justify-end font-mono text-[12.5px] text-[var(--cl-text3)]">
-          <CueTime start={start} active={active} onSeek={onSeek} />
+          <CueTime start={start} active={active} />
         </div>
       </div>
     </div>
   )
 }
 
-/** A bubble's time in the recording; clicking it plays from there. */
-function CueTime({ start, active, onSeek }: Readonly<{ start: number | undefined; active: boolean; onSeek?: (seconds: number) => void }>) {
+/** A bubble's time in the recording. */
+function CueTime({ start, active }: Readonly<{ start: number | undefined; active: boolean }>) {
   if (start === undefined) return null
-  const label = formatClock(start)
-  if (!onSeek) return <span>{label}</span>
-  return (
-    <button
-      type="button"
-      onClick={() => onSeek(start)}
-      title={`Play from ${label}`}
-      className={cn(
-        "group/cue -mx-1 inline-flex items-center gap-1 rounded px-1 hover:bg-[var(--cl-hover)] hover:text-[var(--cl-text)]",
-        active && "text-[var(--cl-accent-text)]"
-      )}
-    >
-      <Play className={cn("h-2.5 w-2.5 fill-current", active ? "inline" : "hidden group-hover/cue:inline")} />
-      {label}
-    </button>
-  )
+  return <span className={cn(active && "text-[var(--cl-accent-text)]")}>{formatClock(start)}</span>
 }
 
-function ToolPill({ tool, role, onOpen }: Readonly<{ tool: any; role: string | null; onOpen: () => void }>) {
+// Turn times are logged a moment after the speech starts, so a jump lands this
+// much earlier to catch the first words.
+const SEEK_PREROLL_S = 1
+
+/** Click handler that jumps the recording to a bubble — unless the click was selecting text. */
+function seekHandler(start: number | undefined, onSeek?: (seconds: number) => void) {
+  if (start === undefined || !onSeek) return undefined
+  return () => {
+    if (globalThis.getSelection?.()?.toString()) return
+    onSeek(Math.max(0, start - SEEK_PREROLL_S))
+  }
+}
+
+function ToolPill({ tool, hideNumbers, onOpen }: Readonly<{ tool: any; hideNumbers: boolean; onOpen: () => void }>) {
   const failed = toolFailed(tool)
-  const args = tool.arguments == null ? null : maskForRole(typeof tool.arguments === "string" ? tool.arguments : JSON.stringify(tool.arguments, null, 2), role)
-  const result = tool.result == null ? null : maskForRole(String(tool.result), role)
+  const args = tool.arguments == null ? null : maskNumbers(typeof tool.arguments === "string" ? tool.arguments : JSON.stringify(tool.arguments, null, 2), hideNumbers)
+  const result = tool.result == null ? null : maskNumbers(String(tool.result), hideNumbers)
   return (
     <Tooltip>
       <TooltipTrigger asChild>

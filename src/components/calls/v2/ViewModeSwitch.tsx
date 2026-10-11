@@ -2,13 +2,13 @@
 
 import React from "react"
 import { Sparkles } from "lucide-react"
-import { useCallLogsStore } from "@/stores/callLogsStore"
+import { useCallLogsViewMode } from "@/hooks/useCallLogsViewMode"
 
 // Shown on the legacy page while the redesigned Call Logs is opt-in. The shimmer
 // is the only thing that makes it read as "new" — no badge, no banner — so it
 // stays one quiet button in a toolbar that already has plenty of them.
 export function TryNewViewButton() {
-  const setViewMode = useCallLogsStore((s) => s.setViewMode)
+  const [, setViewMode] = useCallLogsViewMode()
   return (
     <button
       type="button"

@@ -20,7 +20,7 @@ export interface FlagEditorProps {
   onUpdated?: () => void
   /** 'quiet' is the redesigned Call Logs look: a soft pill naming the flag, and
    *  the "Flag" button only shows on row hover. */
-  variant?: 'default' | 'quiet'
+  variant?: 'default' | 'quiet' | 'icon'
 }
 
 type FlagApiAction =
@@ -119,7 +119,10 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
   onUpdated,
   variant = 'default',
 }) => {
-  const quiet = variant === 'quiet'
+  // 'icon' is the call list beside an open call: just a flag icon (filled when
+  // flagged, on hover otherwise); the popover is the same.
+  const iconOnly = variant === 'icon'
+  const quiet = variant === 'quiet' || iconOnly
   const [flags, setFlags] = useState<FlagEntry[]>(() => normalizeFlags(initialFlag))
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState('')
@@ -286,7 +289,22 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
         <Tooltip open={open ? false : undefined}>
           <TooltipTrigger asChild>
             <PopoverTrigger asChild>
-              {isFlagged ? (
+              {iconOnly ? (
+                <button
+                  aria-label={isFlagged ? `View ${pluralizeFlags(flags.length)}` : 'Add flag'}
+                  disabled={saving}
+                  onClick={stop}
+                  className={cn(
+                    'grid h-5 w-5 shrink-0 place-items-center rounded-full transition cursor-pointer',
+                    isFlagged
+                      ? 'text-[var(--cl-red)] hover:bg-[var(--cl-red-soft)]'
+                      : cn('text-[var(--cl-text3)] hover:bg-[var(--cl-red-soft)] hover:text-[var(--cl-red-text)]', !open && 'opacity-0 group-hover:opacity-100'),
+                    saving && 'opacity-40 pointer-events-none'
+                  )}
+                >
+                  <Flag className="h-3.5 w-3.5" style={isFlagged ? { fill: 'currentColor' } : undefined} />
+                </button>
+              ) : isFlagged ? (
                 // Flagged — solid red pill; a count beyond 1 rides as a small badge
                 // in the corner instead of inline text, so the pill never wraps.
                 <button
@@ -295,7 +313,7 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
                   onClick={stop}
                   className={cn(
                     quiet
-                      ? 'relative inline-flex max-w-[200px] shrink-0 items-center gap-1 rounded-full border border-[var(--cl-red-line)] bg-[var(--cl-red-soft)] px-2 py-px text-[11.5px] text-[var(--cl-red-text)] whitespace-nowrap select-none transition cursor-pointer hover:brightness-110'
+                      ? 'relative inline-flex max-w-[140px] shrink-0 items-center gap-1 rounded-full border border-[var(--cl-red-line)] bg-[var(--cl-red-soft)] px-2 py-px text-[11.5px] text-[var(--cl-red-text)] whitespace-nowrap select-none transition cursor-pointer hover:brightness-110'
                       : cn(
                           'relative inline-flex shrink-0 items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap select-none transition-all cursor-pointer',
                           'bg-rose-600 text-white border border-rose-700',
@@ -352,7 +370,7 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
         {/* Standalone "+" — visible next to the badge at all times, so it's obvious
             more flags can always be added without first opening the list. Mirrors
             TagEditor's separate "Add tag" pill next to existing tag chips. */}
-        {isFlagged && (
+        {isFlagged && !iconOnly && (
           <button
             aria-label="Add another flag"
             disabled={saving}

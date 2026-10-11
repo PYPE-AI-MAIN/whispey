@@ -20,6 +20,7 @@ import { canShowOrgSection } from "@/types/visibility"
 import { useCallLogsStore } from "@/stores/callLogsStore"
 import { flattenCallLogForCSV, isViewerRole, triggerCSVFileDownload } from "@/utils/callLogsUtils"
 import { AskPi, type FilterProposal } from "./AskPi"
+import { useCallLogsViewMode } from "@/hooks/useCallLogsViewMode"
 import type { CallLog } from "@/types/logs"
 import { createTableColumns } from "../tableColumns"
 import { FilterHeaderSkeleton, TableSkeleton, ReanalyzeDialogWrapper } from "../sub-components"
@@ -60,6 +61,11 @@ const columnIdFor = (group: ColumnGroup, key: string) => {
 }
 
 // True when focus is somewhere the user is typing, or a dialog/menu owns the keyboard.
+const COLUMN_BANDS: Record<string, { min: number; max: number }> = {
+  tags: { min: 140, max: 200 },
+  flag: { min: 110, max: 180 },
+}
+
 const CallLogsV2: React.FC<CallLogsV2Props> = ({
   project, agent, isLoading: parentLoading, dateRange, onAgentUpdated, openDownloadSettings,
 }) => {
@@ -83,11 +89,13 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
   const canManageFlagRules = canShowOrgSection(visibility, "fieldExtractor")
   const { isSuperAdmin } = useGlobalRole()
 
-  const setViewMode = useCallLogsStore((s) => s.setViewMode)
+  const [, setViewMode] = useCallLogsViewMode()
   const density = useCallLogsStore((s) => s.density)
   const setDensity = useCallLogsStore((s) => s.setDensity)
-  const columnOrder = useCallLogsStore((s) => s.columnOrder)
-  const setColumnOrder = useCallLogsStore((s) => s.setColumnOrder)
+  // Column order is kept per agent, like the columns themselves.
+  const columnOrder = useCallLogsStore((s) => s.columnOrderByAgent[agent?.id ?? ""] ?? s.columnOrder)
+  const setColumnOrderForAgent = useCallLogsStore((s) => s.setColumnOrderForAgent)
+  const setColumnOrder = useCallback((order: string[]) => setColumnOrderForAgent(agent?.id ?? "", order), [agent?.id, setColumnOrderForAgent])
   const distinctConfig = useCallLogsStore((s) => (agent?.id ? s.distinctConfigByAgent[agent.id] : undefined))
   const selectedCampaign = useCallLogsStore((s) => (agent?.id ? (s.selectedCampaignByAgent[agent.id] ?? null) : null))
   const setSelectedCampaignForAgent = useCallLogsStore((s) => s.setSelectedCampaignForAgent)
@@ -134,7 +142,10 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
     return cols.map((c): ColumnDef<CallLog> => {
       const cell = v2Cell[c.id as string]
       // Size columns to their content like the mockup, instead of the legacy fixed minimums.
-      return cell ? { ...c, cell, minSize: c.id === "customer_number" ? 180 : 90, size: undefined } : { ...c, minSize: 120 }
+      if (!cell) return { ...c, minSize: 120 }
+      // Tags and Flag hold editable pills: a fixed band, the overflow shown as "+N".
+      const band = COLUMN_BANDS[c.id as string]
+      return { ...c, cell, minSize: band?.min ?? (c.id === "customer_number" ? 180 : 90), size: undefined, ...(band ? { meta: { maxWidth: band.max } } : {}) }
     })
   }, [visibleColumns, availableTags, refetchCurrentPage, role, user?.id, userEmail])
 
@@ -142,7 +153,8 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
   useEffect(() => { setSelectedIds(new Set()) }, [currentPage, activeFilters])
 
   const { data: outboundPhoneNumbers = [] } = useOutboundPhoneNumbersQuery(project?.id)
-  const canOfferCallAgain = agent?.agent_type === "pype_agent" && outboundPhoneNumbers.length > 0
+  // Calling a customer back from the logs is for owners/admins only.
+  const canOfferCallAgain = (role === "owner" || role === "admin") && agent?.agent_type === "pype_agent" && outboundPhoneNumbers.length > 0
 
   const columns = useMemo(() => {
     const legacyCallAgain = agent?.id ? buildCallAgainColumn(canOfferCallAgain, project?.id, agent, outboundPhoneNumbers) : null
@@ -372,6 +384,7 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
 
   const clearFilters = useCallback(() => setActiveFilters([]), [setActiveFilters])
   const applyFilters = useCallback((ops: FilterOperation[]) => setActiveFilters(ops), [setActiveFilters])
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false)
 
   // Ask Pi's Apply button: its filters become ordinary filter-panel filters (chips you can remove).
   const applyPiFilters = useCallback((proposal: FilterProposal) => {
@@ -420,8 +433,9 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
           metadataFields={dynamicColumns.metadata}
           transcriptionFields={dynamicColumns.transcription_metrics}
           role={role}
+          open={filterPanelOpen}
+          onOpenChange={setFilterPanelOpen}
         />
-        <FilterChips activeFilters={activeFilters} onChange={applyFilters} />
         {project?.id && (
           <CampaignSelector projectId={project.id} agentId={agent?.id ?? ""} selectedCampaign={selectedCampaign} onSelect={setSelectedCampaign} />
         )}
@@ -452,8 +466,9 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
           <RefreshCw className={cn("h-4 w-4", (isLoading || isRefetching) && "animate-spin")} />
         </button>
 
-        {!selectedCampaign && !splitOpen && (
+        {!splitOpen && (
           <ColumnsPicker
+            disabledReason={selectedCampaign ? "Columns can't be changed while a campaign is selected" : undefined}
             columns={pickerColumns}
             shownIds={shownIds}
             onToggle={onToggleColumn}
@@ -521,6 +536,9 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
         </MoreMenu>
       </div>
 
+      {/* Applied filters get their own slim row, so adding filters never pushes the toolbar onto more lines. */}
+      <FilterChips activeFilters={activeFilters} onChange={applyFilters} onEdit={() => setFilterPanelOpen(true)} />
+
       {/* ── Campaign view replaces the table, exactly as on the legacy page ── */}
       {/* A failed load keeps the toolbar, filter chips and Ask Pi on screen, so a
           filter that made the query fail can be removed right here. */}
@@ -529,11 +547,10 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
           <div className="max-w-md space-y-3 text-center">
             <AlertCircle className="mx-auto h-10 w-10 text-[var(--cl-red)]" />
             <h3 className="text-[16px] font-semibold">Couldn&apos;t load calls</h3>
-            <p className="text-[13.5px] text-[var(--cl-text3)]">
-              {activeFilters.length > 0
-                ? "These filters took too long to run. Try a shorter Period, or remove a filter."
-                : error}
-            </p>
+            <p className="text-[13.5px] text-[var(--cl-text3)]">{error}</p>
+            {activeFilters.length > 0 && /timeout|timed out|took too long|57014/i.test(error) && (
+              <p className="text-[13.5px] text-[var(--cl-text3)]">These filters took too long to run. Try a shorter Period, or remove a filter.</p>
+            )}
             {activeFilters.length > 0 && (
               <Button variant="outline" size="sm" onClick={clearFilters}>Clear filters and retry</Button>
             )}
@@ -683,7 +700,7 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
           openCallId={openCallId}
           filters={activeFilters}
           dateRange={dateRange}
-          contextLabel={activeFilters.length ? `${totalCount ?? currentPageCalls.length} calls · ${activeFilters.length} filter${activeFilters.length > 1 ? "s" : ""}` : `${totalCount ?? currentPageCalls.length} calls · date range`}
+          contextLabel={openCallId ? `This call · …${openCallId.slice(-8)}` : activeFilters.length ? `${totalCount ?? currentPageCalls.length} calls · ${activeFilters.length} filter${activeFilters.length > 1 ? "s" : ""}` : `${totalCount ?? currentPageCalls.length} calls · date range`}
           onApplyFilters={applyPiFilters}
           onOpenCall={openCallFromPi}
         />

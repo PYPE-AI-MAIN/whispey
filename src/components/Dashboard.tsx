@@ -44,7 +44,9 @@ import { canShowOrgSection } from '@/types/visibility'
 import { useAgentById } from '@/hooks/useAgentById'
 import AgentHeaderIdentity from './agents/AgentHeaderIdentity'
 import { agentDisplayName } from '@/lib/agentDisplayName'
-import { useCallLogsStore, DEFAULT_DATE_FILTER } from '@/stores/callLogsStore'
+import { useCallLogsStore, DEFAULT_DATE_FILTER, scopeCallLogsStoreToUser } from '@/stores/callLogsStore'
+import { useUser } from '@clerk/nextjs'
+import { useCallLogsViewMode } from '@/hooks/useCallLogsViewMode'
 
 interface DashboardProps {
   agentId: string
@@ -165,11 +167,14 @@ function NoCallsMessage() {
 // Renders the legacy or the redesigned Call Logs page, per the user's saved choice.
 // Both take the same props, so switching never changes what data is loaded.
 function CallLogsForMode(props: React.ComponentProps<typeof CallLogs>) {
-  const viewMode = useCallLogsStore((s) => s.viewMode)
+  const [viewMode] = useCallLogsViewMode()
   return viewMode === 'new' ? <CallLogsV2 {...props} /> : <CallLogs {...props} />
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
+  // Call Logs preferences (filters, columns, view) are saved per signed-in person.
+  const { user } = useUser()
+  useEffect(() => { if (user?.id) scopeCallLogsStoreToUser(user.id) }, [user?.id])
   const router = useRouter()
   const searchParams = useSearchParams()
   // projectid comes from the URL path — always available, no async needed
