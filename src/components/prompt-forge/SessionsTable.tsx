@@ -57,8 +57,8 @@ export function SessionsTable({
   return (
     <div className="space-y-4">
       <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed max-w-2xl">
-        Test this agent&apos;s prompt in text before it goes live. Each session is a draft — change the prompt, model, greeting or tools and chat with it.
-        <span className="text-gray-400 dark:text-gray-500"> Save keeps a version (prompt + conversation) you can share; only the person who created a session can change it.</span>
+        Test this agent&apos;s prompt in text before it goes live. Each session is a draft — change the prompt, model, greeting or tools and chat with it.{' '}
+        <span className="text-gray-400 dark:text-gray-500">Save keeps a version (prompt + conversation) you can share; only the person who created a session can change it.</span>
       </p>
 
       <div className="flex items-center gap-3">
@@ -110,11 +110,11 @@ export function SessionsTable({
   )
 }
 
-function SessionRow({ session, renaming, onNavigate, onRename, onRenameStart, onRenameEnd, onDeleteStart }: {
+function SessionRow({ session, renaming, onNavigate, onRename, onRenameStart, onRenameEnd, onDeleteStart }: Readonly<{
   session: Session; renaming: boolean
   onNavigate: (id: string) => void; onRename: (s: Session, name: string) => void
   onRenameStart: (id: string) => void; onRenameEnd: () => void; onDeleteStart: (s: Session) => void
-}) {
+}>) {
   const { title, fromPrompt } = sessionTitle(session)
   const preview = lastMessage(session)
   const messages = (session.messages ?? []).filter((m: any) => m?.role === 'user').length

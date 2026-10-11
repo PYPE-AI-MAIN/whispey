@@ -280,5 +280,7 @@ export function scopeCallLogsStoreToUser(userId: string) {
     // storage blocked: preferences just won't persist
   }
   useCallLogsStore.persist.setOptions({ name })
-  void useCallLogsStore.persist.rehydrate()
+  Promise.resolve(useCallLogsStore.persist.rehydrate()).catch(() => {
+    // unreadable saved preferences: the defaults stay
+  })
 }

@@ -147,56 +147,65 @@ interface FlagTriggerState {
   flags: FlagEntry[]
 }
 
-// The popover trigger's label, classes and content for each look: the bare icon
-// (call list), the flagged pill, or the dashed "Flag" pill.
-function flagTriggerLook({ iconOnly, quiet, isFlagged, open, saving, flags }: FlagTriggerState): {
+interface FlagTriggerLook {
   label: string
   className: string
   content: React.ReactNode
-} {
-  if (iconOnly) {
-    return {
-      label: isFlagged ? `View ${pluralizeFlags(flags.length)}` : 'Add flag',
-      className: cn(
-        'grid h-5 w-5 shrink-0 place-items-center rounded-full transition cursor-pointer',
-        isFlagged
-          ? 'text-[var(--cl-red)] hover:bg-[var(--cl-red-soft)]'
-          : cn('text-[var(--cl-text3)] hover:bg-[var(--cl-red-soft)] hover:text-[var(--cl-red-text)]', !open && 'opacity-0 group-hover:opacity-100'),
-        saving && 'opacity-40 pointer-events-none'
-      ),
-      content: <Flag className="h-3.5 w-3.5" style={isFlagged ? { fill: 'currentColor' } : undefined} />,
-    }
+}
+
+// The popover trigger's label, classes and content for each look: the bare icon
+// (call list), the flagged pill, or the dashed "Flag" pill.
+function flagTriggerLook(state: FlagTriggerState): FlagTriggerLook {
+  if (state.iconOnly) return iconTriggerLook(state)
+  return state.isFlagged ? flaggedTriggerLook(state) : unflaggedTriggerLook(state)
+}
+
+function iconTriggerLook({ isFlagged, open, saving, flags }: FlagTriggerState): FlagTriggerLook {
+  return {
+    label: isFlagged ? `View ${pluralizeFlags(flags.length)}` : 'Add flag',
+    className: cn(
+      'grid h-5 w-5 shrink-0 place-items-center rounded-full transition cursor-pointer',
+      isFlagged
+        ? 'text-[var(--cl-red)] hover:bg-[var(--cl-red-soft)]'
+        : cn('text-[var(--cl-text3)] hover:bg-[var(--cl-red-soft)] hover:text-[var(--cl-red-text)]', !open && 'opacity-0 group-hover:opacity-100'),
+      saving && 'opacity-40 pointer-events-none'
+    ),
+    content: <Flag className="h-3.5 w-3.5" style={isFlagged ? { fill: 'currentColor' } : undefined} />,
   }
-  if (isFlagged) {
-    // Flagged — solid red pill; a count beyond 1 rides as a small badge
-    // in the corner instead of inline text, so the pill never wraps.
-    return {
-      label: `View ${pluralizeFlags(flags.length)}`,
-      className: cn(
-        quiet
-          ? 'relative inline-flex max-w-[140px] shrink-0 items-center gap-1 rounded-full border border-[var(--cl-red-line)] bg-[var(--cl-red-soft)] px-2 py-px text-[11.5px] text-[var(--cl-red-text)] whitespace-nowrap select-none transition cursor-pointer hover:brightness-110'
-          : cn(
-              'relative inline-flex shrink-0 items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap select-none transition-all cursor-pointer',
-              'bg-rose-600 text-white border border-rose-700',
-              'hover:bg-rose-700 active:scale-95'
-            ),
-        saving && 'opacity-40 pointer-events-none'
-      ),
-      content: (
-        <>
-          <Flag className="w-2.5 h-2.5 shrink-0" style={{ fill: 'currentColor' }} />
-          {/* The quiet pill names what was flagged; the full list is in the tooltip. */}
-          <span className={cn(quiet && 'truncate')}>{quiet ? (flags[0]?.text || 'Flagged') : 'Flagged'}</span>
-          {flags.length > 1 && (
-            <span className="absolute -top-1.5 -right-1.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-white px-1 text-[9px] font-bold text-rose-600 shadow-sm ring-1 ring-rose-700/20">
-              {flags.length}
-            </span>
-          )}
-        </>
-      ),
-    }
+}
+
+function flaggedTriggerLook({ quiet, saving, flags }: FlagTriggerState): FlagTriggerLook {
+  // Flagged — solid red pill; a count beyond 1 rides as a small badge
+  // in the corner instead of inline text, so the pill never wraps.
+  return {
+    label: `View ${pluralizeFlags(flags.length)}`,
+    className: cn(
+      quiet
+        ? 'relative inline-flex max-w-[140px] shrink-0 items-center gap-1 rounded-full border border-[var(--cl-red-line)] bg-[var(--cl-red-soft)] px-2 py-px text-[11.5px] text-[var(--cl-red-text)] whitespace-nowrap select-none transition cursor-pointer hover:brightness-110'
+        : cn(
+            'relative inline-flex shrink-0 items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap select-none transition-all cursor-pointer',
+            'bg-rose-600 text-white border border-rose-700',
+            'hover:bg-rose-700 active:scale-95'
+          ),
+      saving && 'opacity-40 pointer-events-none'
+    ),
+    content: (
+      <>
+        <Flag className="w-2.5 h-2.5 shrink-0" style={{ fill: 'currentColor' }} />
+        {/* The quiet pill names what was flagged; the full list is in the tooltip. */}
+        <span className={cn(quiet && 'truncate')}>{quiet ? (flags[0]?.text || 'Flagged') : 'Flagged'}</span>
+        {flags.length > 1 && (
+          <span className="absolute -top-1.5 -right-1.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-white px-1 text-[9px] font-bold text-rose-600 shadow-sm ring-1 ring-rose-700/20">
+            {flags.length}
+          </span>
+        )}
+      </>
+    ),
   }
-  // Unflagged — dashed pill, turns rose-red on hover
+}
+
+// Unflagged — dashed pill, turns rose-red on hover
+function unflaggedTriggerLook({ quiet, open, saving }: FlagTriggerState): FlagTriggerLook {
   return {
     label: 'Add flag',
     className: cn(

@@ -34,8 +34,6 @@ import type { Message as PiMessage } from '@/lib/piStream'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-// Any provider from the Agent Config list (config/llmCatalog); the server says which it can run.
-type Provider = string
 
 // The agent's greeting, as Agent Config defines it (first_message_mode). Text only here.
 type GreetingMode = 'assistant_waits_for_user' | 'assistant_speaks_first' | 'assistant_speaks_with_generated'
@@ -57,7 +55,7 @@ function readGreeting(modeRaw: unknown, firstMessage: unknown): Greeting | null 
 }
 
 /** Pipecat and workflow configs call Azure `azure`; Agent Config calls it `azure_openai`. */
-function normalizeProvider(p: unknown): Provider {
+function normalizeProvider(p: unknown): string {
   if (p === 'azure') return 'azure_openai'
   return typeof p === 'string' && p ? p : 'openai'
 }
@@ -68,7 +66,7 @@ function initialVariablesFor<T>(saved: T[] | undefined, isVersion: boolean, agen
   return isVersion ? [] : agentVariables ?? []
 }
 
-function modelLabelFor(provider: Provider, model: string): string {
+function modelLabelFor(provider: string, model: string): string {
   const entry = modelProviders[provider]
   const models = entry?.type === 'grouped' ? entry.groups?.flatMap(g => g.models) ?? [] : entry?.models ?? []
   const label = models.find(m => m.value === model)?.label ?? model
@@ -77,8 +75,14 @@ function modelLabelFor(provider: Provider, model: string): string {
 
 /** What the real agent is configured with (Agent Config / Pipecat). */
 interface AgentDefaults {
-  prompt: string; model: string; provider: Provider; temperature: number | null
+  prompt: string; model: string; provider: string; temperature: number | null
   greeting: Greeting | null; tools: AgentTool[]; variables: Variable[]
+}
+
+/** A variable's value as text; non-string values (numbers, objects) as JSON. */
+const variableText = (value: unknown): string => {
+  if (value == null) return ''
+  return typeof value === 'string' ? value : JSON.stringify(value)
 }
 
 /** Agent configs keep variables as { name: value }. */
@@ -86,7 +90,7 @@ const variablesFromRecord = (rec: unknown): Variable[] =>
   rec && typeof rec === 'object' && !Array.isArray(rec)
     ? Object.entries(rec as Record<string, unknown>)
         .filter(([name]) => !isSystemVariable(name))
-        .map(([name, value]) => ({ name, value: value == null ? '' : String(value), description: '' }))
+        .map(([name, value]) => ({ name, value: variableText(value), description: '' }))
     : []
 
 /** Every {{name}} used in these texts, in order of first use. */
@@ -99,10 +103,10 @@ function usedVariableNames(...texts: string[]): string[] {
 }
 /** What the session (or version) itself stored — empty where it never set anything. */
 interface SavedValues {
-  prompt: string; model: string; provider: Provider | ''; temperature: number | null
+  prompt: string; model: string; provider: string; temperature: number | null
   greeting: Greeting | null; tools: AgentTool[]
 }
-interface Resolved { prompt: string; model: string; provider: Provider; temperature: number; greeting: Greeting; tools: AgentTool[] }
+interface Resolved { prompt: string; model: string; provider: string; temperature: number; greeting: Greeting; tools: AgentTool[] }
 
 /** The session's own values win; the agent's config fills the rest (so tests run like the real agent). */
 function mergeAgentDefaults(saved: SavedValues, agent: AgentDefaults | null): Resolved {
@@ -110,7 +114,7 @@ function mergeAgentDefaults(saved: SavedValues, agent: AgentDefaults | null): Re
   return {
     prompt: saved.prompt || agent?.prompt || '',
     model: saved.model || agent?.model || 'gpt-4o-mini',
-    provider: (useAgentModel ? agent!.provider : saved.provider) || 'openai',
+    provider: (useAgentModel ? agent?.provider : saved.provider) || 'openai',
     temperature: saved.temperature ?? agent?.temperature ?? 0.7,
     greeting: saved.greeting ?? agent?.greeting ?? { mode: 'assistant_waits_for_user', text: '' },
     tools: saved.tools.length ? saved.tools : agent?.tools ?? [],
@@ -150,7 +154,7 @@ interface AgentTool {
   mock?: { enabled: boolean; response: string; success?: boolean }
 }
 interface ParsedConfig {
-  llm: { provider: Provider; model: string; temperature: number }
+  llm: { provider: string; model: string; temperature: number }
   prompt: string; variables: Variable[]; tools: AgentTool[]; greeting: Greeting | null
 }
 interface ToolCall {
@@ -161,8 +165,9 @@ interface ToolCall {
 type MessagePart = { type: 'text'; text: string } | { type: 'tool'; id: string }
 
 /** Adds streamed text to the reply — to the current text piece, or a new one after a tool call. */
-function appendTextPart(parts: MessagePart[] = [], text: string): MessagePart[] {
-  const last = parts[parts.length - 1]
+function appendTextPart(existing: MessagePart[] | undefined, text: string): MessagePart[] {
+  const parts = existing ?? []
+  const last = parts.at(-1)
   if (last?.type === 'text') return [...parts.slice(0, -1), { type: 'text', text: last.text + text }]
   return [...parts, { type: 'text', text }]
 }
@@ -187,6 +192,39 @@ function parseChatChunk(payload: string): ChatChunk | null {
     return parsed && typeof parsed === 'object' ? parsed : null
   } catch {
     return null // malformed chunk
+  }
+}
+
+/** The conversation with the new user message (none for a generated greeting), and the empty reply to stream into. */
+function startTurn(userContent: string | null, historyBefore: Message[]): { history: Message[]; assistantMsg: Message } {
+  const assistantMsg: Message = { id: crypto.randomUUID(), role: 'assistant', content: '', isFinal: false, toolCalls: [] }
+  if (userContent === null) return { history: historyBefore, assistantMsg: { ...assistantMsg, isGreeting: true } }
+  const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content: userContent, isFinal: true }
+  return { history: [...historyBefore, userMsg], assistantMsg }
+}
+
+/** Reads the chat route's SSE stream: each useful chunk to `onChunk`, then `onDone` at [DONE]. */
+async function readChatStream(body: ReadableStream<Uint8Array>, onChunk: (chunk: ChatChunk) => void, onDone: () => void) {
+  const reader = body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  const handleLine = (line: string) => {
+    if (!line.startsWith('data: ')) return
+    const payload = line.slice(6).trim()
+    if (payload === '[DONE]') {
+      onDone()
+      return
+    }
+    const chunk = parseChatChunk(payload)
+    if (chunk && (chunk.error || chunk.text || chunk.toolCall || chunk.toolResult)) onChunk(chunk)
+  }
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+    lines.forEach(handleLine)
   }
 }
 
@@ -259,7 +297,7 @@ function systemVariableValues(now = new Date()): Record<string, string> {
 function substituteVariables(text: string, variables: Variable[]): string {
   const withUser = variables.reduce((t, v) => {
     if (!v.value || isSystemVariable(v.name)) return t
-    return t.replace(new RegExp(`\\{\\{\\s*${v.name}\\s*\\}\\}`, 'g'), v.value)
+    return t.replaceAll(new RegExp(String.raw`\{\{\s*${v.name}\s*\}\}`, 'g'), v.value)
   }, text)
   const system = systemVariableValues()
   return withUser.replaceAll(/\{\{\s*(\w+)\s*\}\}/g, (match, name: string) => (name in system ? system[name] : match))
@@ -347,7 +385,7 @@ async function fetchCallLogPage(agentId: string, page: number, filters: FilterOp
 const stripEod = (text: string | null | undefined) => (text ?? '').replaceAll(/<(?:eod)\s*\/>/gi, '').trim()
 
 // The import dialog's right side: the selected call's conversation.
-function CallPreview({ selectedId, loading, turns }: { selectedId: string | null; loading: boolean; turns: any[] | null }) {
+function CallPreview({ selectedId, loading, turns }: Readonly<{ selectedId: string | null; loading: boolean; turns: any[] | null }>) {
   if (!selectedId) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-2 text-center px-6">
@@ -454,8 +492,8 @@ function SessionDetailLoader({ projectId, agentId, sessionId }: { projectId: str
   const router = useRouter()
   // ?v=3 opens that saved version, read-only (what a shared link points to)
   const viewVersion = Number(useSearchParams().get('v')) || null
-  const [session, setSession] = useState<any | null>(null)
-  const [version, setVersion] = useState<any | null>(null)
+  const [session, setSession] = useState<any>(null)
+  const [version, setVersion] = useState<any>(null)
   const [sessionLoading, setSessionLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
@@ -601,15 +639,15 @@ function SessionDetailLoader({ projectId, agentId, sessionId }: { projectId: str
 
 // ─── Settings dialog ──────────────────────────────────────────────────────────
 
-function SettingsDialog({ open, onClose, provider, onProviderChange, model, onModelChange, temperature, onTemperatureChange, availability, readOnly }: {
+function SettingsDialog({ open, onClose, provider, onProviderChange, model, onModelChange, temperature, onTemperatureChange, availability, readOnly }: Readonly<{
   open: boolean; onClose: () => void
-  provider: Provider; onProviderChange: (v: Provider) => void
+  provider: string; onProviderChange: (v: string) => void
   model: string; onModelChange: (v: string) => void
   temperature: number; onTemperatureChange: (v: number) => void
   /** Which providers this server can run (has their key); null while loading. */
   availability: Record<string, { available: boolean; reason?: string }> | null
   readOnly: boolean
-}) {
+}>) {
   const status = availability?.[provider]
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -704,12 +742,12 @@ function ConfigImportDialog({ open, onClose, onApply }: {
 
 // ─── Import call log dialog ───────────────────────────────────────────────────
 
-function ImportLogDialog({ open, onClose, agentId, onImport, transcriptionFields }: {
+function ImportLogDialog({ open, onClose, agentId, onImport, transcriptionFields }: Readonly<{
   open: boolean; onClose: () => void; agentId: string
   onImport: (messages: Message[], meta: ImportedMeta) => void
   /** The agent's extracted fields, offered in the filter builder. */
   transcriptionFields: string[]
-}) {
+}>) {
   const [filters, setFilters] = useState<FilterOperation[]>([])
   const [range, setRange] = useState<ImportRange>('7d')
   const [logs, setLogs] = useState<any[]>([])
@@ -868,17 +906,25 @@ const FIELD_LABEL = 'text-[10px] font-medium uppercase tracking-wide text-gray-5
 
 // One tool, editable in place (owner only). Changes apply to the next message
 // and are saved with the session; they never touch the agent's real config.
-function ToolCard({ tool, onChange, readOnly, original, onReset }: {
+function ToolCard({ tool, onChange, readOnly, original, onReset }: Readonly<{
   tool: AgentTool; onChange: (t: AgentTool) => void; readOnly: boolean
   /** The agent's own version of this tool, when known. */
   original?: AgentTool
   onReset: () => void
-}) {
+}>) {
   const [expanded, setExpanded] = useState(false)
   const [headersText, setHeadersText] = useState(() => JSON.stringify(tool.headers ?? {}, null, 2))
   const [headersError, setHeadersError] = useState(false)
   const typeStyle = TOOL_TYPE_STYLES[tool.type] ?? TOOL_TYPE_STYLES.custom_function
   const set = (patch: Partial<AgentTool>) => onChange({ ...tool, ...patch })
+  // Rows need a stable key that survives edits (the objects are replaced on every
+  // keystroke, and a changing key would drop focus mid-typing).
+  const paramKeys = useRef<string[]>([])
+  const paramKey = (i: number) => (paramKeys.current[i] ??= crypto.randomUUID())
+  const removeParam = (i: number) => {
+    paramKeys.current.splice(i, 1)
+    set({ parameters: tool.parameters.filter((_, j) => j !== i) })
+  }
   const setParam = (i: number, patch: Partial<ToolParam>) => set({ parameters: tool.parameters.map((p, j) => (j === i ? { ...p, ...patch } : p)) })
   const mock = tool.mock ?? { enabled: false, response: '', success: true }
   const mockInvalid = mock.enabled && mock.response.trim().startsWith('{') && (() => { try { JSON.parse(mock.response); return false } catch { return true } })()
@@ -911,7 +957,7 @@ function ToolCard({ tool, onChange, readOnly, original, onReset }: {
           <div className="px-3 py-2.5 space-y-2 bg-violet-50/50 dark:bg-violet-900/10">
             <label className="flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-300">
               <input type="checkbox" checked={mock.enabled} disabled={readOnly} onChange={e => set({ mock: { ...mock, enabled: e.target.checked } })} />
-              Mock response — reply with this instead of calling the endpoint
+              <span>Mock response — reply with this instead of calling the endpoint</span>
             </label>
             {mock.enabled && (
               <>
@@ -926,7 +972,7 @@ function ToolCard({ tool, onChange, readOnly, original, onReset }: {
                 <div className="flex items-center justify-between">
                   <label className="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400">
                     <input type="checkbox" checked={mock.success === false} disabled={readOnly} onChange={e => set({ mock: { ...mock, success: !e.target.checked } })} />
-                    Treat as a failed call
+                    <span>Treat as a failed call</span>
                   </label>
                   {mockInvalid && <span className="text-[11px] text-red-500">Not valid JSON — it will be sent as plain text</span>}
                 </div>
@@ -981,7 +1027,7 @@ function ToolCard({ tool, onChange, readOnly, original, onReset }: {
             </div>
             <div className="space-y-2">
               {tool.parameters.map((p, i) => (
-                <div key={i} className="rounded-md border border-gray-100 dark:border-gray-800 p-2 space-y-1.5">
+                <div key={paramKey(i)} className="rounded-md border border-gray-100 dark:border-gray-800 p-2 space-y-1.5">
                   <div className="flex items-center gap-1.5">
                     <input value={p.name} disabled={readOnly} placeholder="name" onChange={e => setParam(i, { name: e.target.value })} className={cn(FIELD, 'font-mono text-blue-600 dark:text-blue-400')} />
                     <select value={p.type} disabled={readOnly} onChange={e => setParam(i, { type: e.target.value })} className={cn(FIELD, 'w-24 shrink-0')}>
@@ -991,7 +1037,7 @@ function ToolCard({ tool, onChange, readOnly, original, onReset }: {
                       <input type="checkbox" checked={p.required} disabled={readOnly} onChange={e => setParam(i, { required: e.target.checked })} />req
                     </label>
                     {!readOnly && (
-                      <button aria-label="Remove parameter" className="text-gray-400 hover:text-red-500 shrink-0" onClick={() => set({ parameters: tool.parameters.filter((_, j) => j !== i) })}>
+                      <button aria-label="Remove parameter" className="text-gray-400 hover:text-red-500 shrink-0" onClick={() => removeParam(i)}>
                         <X className="w-3.5 h-3.5" />
                       </button>
                     )}
@@ -1007,11 +1053,11 @@ function ToolCard({ tool, onChange, readOnly, original, onReset }: {
   )
 }
 
-function ToolsSheet({ open, onClose, tools, onChange, readOnly, agentTools }: {
+function ToolsSheet({ open, onClose, tools, onChange, readOnly, agentTools }: Readonly<{
   open: boolean; onClose: () => void; tools: AgentTool[]; onChange: (tools: AgentTool[]) => void; readOnly: boolean
   /** The agent's own tools (null while its config hasn't loaded) — what Reset goes back to. */
   agentTools: AgentTool[] | null
-}) {
+}>) {
   // Bumped on reset so a card drops what's typed in it (e.g. half-written headers).
   const [resetCount, setResetCount] = useState(0)
   const originalOf = (t: AgentTool) => agentTools?.find(a => a.name === t.name)
@@ -1037,7 +1083,7 @@ function ToolsSheet({ open, onClose, tools, onChange, readOnly, agentTools }: {
             <div className="flex items-center justify-between rounded-lg border border-amber-200 dark:border-amber-800/40 bg-amber-50/60 dark:bg-amber-900/10 px-3 py-2">
               <span className="text-xs text-amber-700 dark:text-amber-300">These tools differ from the agent&apos;s.</span>
               <button className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300 hover:underline"
-                onClick={() => reset(agentTools!.map(a => ({ ...a, id: crypto.randomUUID() })))}>
+                onClick={() => reset((agentTools ?? []).map(a => ({ ...a, id: crypto.randomUUID() })))}>
                 <RotateCcw className="w-3 h-3" />Reset all to agent&apos;s tools
               </button>
             </div>
@@ -1109,7 +1155,7 @@ function ToolCallBlock({ tc }: { tc: ToolCall }) {
 
 // ─── Variable panel ───────────────────────────────────────────────────────────
 
-function VariablePanel({ variables, onChange, disabled, autoFilled = [] }: { variables: Variable[]; onChange: (v: Variable[]) => void; disabled?: boolean; autoFilled?: string[] }) {
+function VariablePanel({ variables, onChange, disabled, autoFilled = [] }: Readonly<{ variables: Variable[]; onChange: (v: Variable[]) => void; disabled?: boolean; autoFilled?: string[] }>) {
   // closed by default — the prompt and greeting matter more at a glance
   const [open, setOpen] = useState(false)
   if (variables.length === 0 && autoFilled.length === 0) return null
@@ -1161,7 +1207,7 @@ function VariablePanel({ variables, onChange, disabled, autoFilled = [] }: { var
 
 // ─── Greeting panel ───────────────────────────────────────────────────────────
 
-function GreetingPanel({ greeting, onChange, disabled }: { greeting: Greeting; onChange: (g: Greeting) => void; disabled?: boolean }) {
+function GreetingPanel({ greeting, onChange, disabled }: Readonly<{ greeting: Greeting; onChange: (g: Greeting) => void; disabled?: boolean }>) {
   const [open, setOpen] = useState(true)
   const current = GREETING_MODES.find(m => m.value === greeting.mode)
   return (
@@ -1256,11 +1302,11 @@ const DRAFT_LABELS: Record<DraftState, string> = {
   error: 'Couldn’t save draft — retry',
 }
 
-function ReadOnlyNotice({ viewingVersion, canEdit, ownerEmail }: {
+function ReadOnlyNotice({ viewingVersion, canEdit, ownerEmail }: Readonly<{
   viewingVersion: { version: number; createdBy: string | null; createdAt: string } | null
   canEdit: boolean
   ownerEmail: string | null
-}) {
+}>) {
   if (viewingVersion && canEdit) {
     return <>Saved version <b>v{viewingVersion.version}</b> · {formatRelative(viewingVersion.createdAt)} — versions are snapshots and don&apos;t change. Edit in your draft, or restore this version into it.</>
   }
@@ -1289,16 +1335,213 @@ const MIN_LEFT_PCT = 25
 const MAX_LEFT_PCT = 65
 const SPLIT_KEY = 'promptForge:promptPanelPct'
 
+// The header's main action: your own saved version opens the draft (versions
+// never change, so editing happens in your draft); someone else's session can
+// be duplicated; your draft is saved as a new version.
+function HeaderAction({ viewingVersion, canEdit, readOnly, onRestore, onOpenDraft, onDuplicate, draftState, onDraftRetry, saveState, latestVersion, onSave }: Readonly<{
+  viewingVersion: boolean; canEdit: boolean; readOnly: boolean
+  onRestore: () => void; onOpenDraft: () => void; onDuplicate: () => void
+  draftState: DraftState; onDraftRetry: () => void
+  saveState: SaveState; latestVersion: number | undefined; onSave: () => void
+}>) {
+  if (viewingVersion && canEdit) {
+    return (
+      <>
+        <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs px-2 ml-1 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200" onClick={onRestore}>
+          <RotateCcw className="w-3 h-3" />Restore into draft
+        </Button>
+        <Button size="sm" className="h-7 gap-1.5 text-xs px-3 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300" onClick={onOpenDraft}>
+          Open draft
+        </Button>
+      </>
+    )
+  }
+  if (readOnly) {
+    return (
+      <Button size="sm" className="h-7 gap-1.5 text-xs px-3 ml-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300" onClick={onDuplicate}>
+        <CopyPlus className="w-3 h-3" />Duplicate to edit
+      </Button>
+    )
+  }
+  return (
+    <>
+      <DraftStatus state={draftState} onRetry={onDraftRetry} />
+      <SaveVersionButton state={saveState} latestVersion={latestVersion} onSave={onSave} />
+    </>
+  )
+}
+
+/** Auto-save status of the draft (versions are separate — that's the Save button). */
+function DraftStatus({ state, onRetry }: Readonly<{ state: DraftState; onRetry: () => void }>) {
+  if (state === 'error') {
+    return <button type="button" onClick={onRetry} className="text-[11px] text-red-500 hover:underline mr-1">{DRAFT_LABELS.error}</button>
+  }
+  return (
+    <span className="text-[11px] text-gray-400 dark:text-gray-500 mr-1 flex items-center gap-1" aria-live="polite">
+      {state === 'saving' && <Loader2 className="w-3 h-3 animate-spin" />}
+      {state === 'saved' && <Check className="w-3 h-3" />}
+      {DRAFT_LABELS[state]}
+    </span>
+  )
+}
+
+const SAVE_ICONS: Record<SaveState, React.ReactNode> = {
+  saving: <Loader2 className="w-3 h-3 animate-spin" />,
+  saved: <Check className="w-3 h-3" />,
+  idle: <Save className="w-3 h-3" />,
+}
+
+function SaveVersionButton({ state, latestVersion, onSave }: Readonly<{ state: SaveState; latestVersion: number | undefined; onSave: () => void }>) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          size="sm"
+          className={cn(
+            'h-7 gap-1.5 text-xs px-3 ml-1 transition-colors',
+            state === 'saved'
+              ? 'bg-green-600 hover:bg-green-700 text-white'
+              : 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300',
+          )}
+          onClick={onSave}
+          disabled={state === 'saving'}
+        >
+          {SAVE_ICONS[state]}
+          {saveButtonLabel(state, latestVersion)}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>Your draft saves automatically. Save adds a new version — a snapshot of this prompt, settings, greeting and conversation you can share.</TooltipContent>
+    </Tooltip>
+  )
+}
+
+function versionsLabel(count: number): string {
+  if (!count) return 'No versions'
+  return count === 1 ? '1 version' : `${count} versions`
+}
+
+/** Saved versions: each Save is one; `onOpen(null)` opens the working draft. */
+function VersionsMenu({ versions, viewingVersion, onOpen }: Readonly<{ versions: SessionVersion[]; viewingVersion: number | null; onOpen: (version: number | null) => void }>) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 px-2" disabled={versions.length === 0}>
+          <History className="w-3 h-3" /><span>{versionsLabel(versions.length)}</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-72 max-h-80 overflow-y-auto">
+        <DropdownMenuLabel className="text-xs">Saved versions</DropdownMenuLabel>
+        <DropdownMenuItem className="text-xs" onClick={() => onOpen(null)}>
+          <span className="flex-1">Working draft</span>{viewingVersion === null && <Check className="w-3 h-3" />}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        {versions.map(v => (
+          <DropdownMenuItem key={v.id} className="text-xs" onClick={() => onOpen(v.version)}>
+            <span className="font-mono w-8 shrink-0">v{v.version}</span>
+            <span className="flex-1 min-w-0 truncate text-gray-500 dark:text-gray-400">{formatRelative(v.created_at)}{v.created_by_email ? ` · ${v.created_by_email}` : ''}</span>
+            {viewingVersion === v.version && <Check className="w-3 h-3" />}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+/** Copies a link: to the open version (a fixed snapshot), else to the session's latest draft. */
+function ShareButton({ copied, version, onShare }: Readonly<{ copied: boolean; version: number | null; onShare: () => void }>) {
+  const hint = version
+    ? `Copy a link to v${version} — a snapshot that won’t change`
+    : 'Copy a link to this session — always shows the latest draft (read-only for others)'
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 px-2" onClick={onShare}>
+          {copied ? <Check className="w-3 h-3 text-green-500" /> : <Link2 className="w-3 h-3" />}<span>{copied ? 'Copied' : 'Share'}</span>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{hint}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+/** Shown over the chat after a call log is imported. */
+function ImportedBanner({ meta, onClose }: Readonly<{ meta: ImportedMeta; onClose: () => void }>) {
+  return (
+    <div className="shrink-0 flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800/30">
+      <Phone className="w-3 h-3 text-blue-500 dark:text-blue-400 shrink-0" />
+      <span className="text-xs text-blue-700 dark:text-blue-300 flex-1 min-w-0 truncate">
+        <span className="font-medium">{meta.phone}</span>
+        <span className="text-blue-500 dark:text-blue-400 ml-1.5">· {meta.date}{meta.duration && ` · ${meta.duration}`}</span>
+      </span>
+      <span className="text-[10px] text-blue-400 dark:text-blue-600 shrink-0">Imported · edit prompt &amp; replay</span>
+      <button onClick={onClose} aria-label="Dismiss" className="w-4 h-4 flex items-center justify-center rounded text-blue-400 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-800/30 transition-colors"><X className="w-3 h-3" /></button>
+    </div>
+  )
+}
+
+/** The message box: Enter sends, Shift+Enter is a new line, the switch below turns it into Ask Pi. */
+function MessageComposer({ inputRef, value, onChange, onSend, busy, blockedReason, onAskPi }: Readonly<{
+  inputRef: React.RefObject<HTMLTextAreaElement | null>
+  value: string; onChange: (v: string) => void; onSend: () => void; busy: boolean
+  /** Why the chosen model can't run here, if it can't. */
+  blockedReason: string | null
+  onAskPi: () => void
+}>) {
+  const canSend = !!value.trim() && !busy
+  return (
+    <div className="shrink-0 px-4 pb-4 pt-3 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+      {blockedReason && (
+        <p className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-300">
+          {blockedReason} Choose another in the model settings to test.
+        </p>
+      )}
+      {/* The whole box is the text field's hit area: a <label> around the
+          textarea focuses it on a click anywhere outside the send button. */}
+      <label className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2.5 focus-within:border-gray-300 dark:focus-within:border-gray-600 focus-within:ring-1 focus-within:ring-gray-200 dark:focus-within:ring-gray-700 transition-all cursor-text">
+        <span className="sr-only">Message</span>
+        <textarea
+          ref={inputRef}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          onKeyDown={e => {
+            if (e.key !== 'Enter' || e.shiftKey) return
+            e.preventDefault()
+            onSend()
+          }}
+          placeholder="Message…  (press / to jump here)"
+          rows={1}
+          className="flex-1 resize-none bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-600 outline-none border-none leading-5 max-h-28 overflow-y-auto caret-gray-900 dark:caret-gray-100 py-0"
+        />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            aria-label="Send"
+            onClick={e => { e.stopPropagation(); onSend() }}
+            disabled={!canSend}
+            className={cn('w-7 h-7 flex items-center justify-center rounded-lg transition-colors',
+              canSend ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-300 dark:text-gray-600 cursor-not-allowed')}
+          >
+            <Send className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </label>
+      <div className="flex items-center justify-between mt-1.5 px-1">
+        <span className="text-[10px] text-gray-400 dark:text-gray-600 flex items-center gap-1"><CornerDownLeft className="w-2.5 h-2.5" />Enter to send · Shift+Enter for new line</span>
+        <AskPiSwitch on={false} onChange={on => { if (on) onAskPi() }} />
+      </div>
+    </div>
+  )
+}
+
 function ForgeUI({
   projectId, agentId, agentName, sessionId, sessionName: initialSessionName,
   initialPrompt, initialModel, initialProvider, initialTemperature,
   initialVariables, initialTools, initialMessages, initialGreeting, backendDown,
   saved, agentDefaults, agentConfigLoading, extractorFields,
   canEdit, ownerEmail, initialVersions, viewingVersion,
-}: {
+}: Readonly<{
   projectId: string; agentId: string; agentName: string
   sessionId: string; sessionName: string
-  initialPrompt: string; initialModel: string; initialProvider: Provider
+  initialPrompt: string; initialModel: string; initialProvider: string
   initialTemperature: number; initialVariables: Variable[]; initialTools: AgentTool[]
   initialMessages: Message[]; initialGreeting: Greeting; backendDown: boolean
   saved: SavedValues
@@ -1313,14 +1556,14 @@ function ForgeUI({
   initialVersions: SessionVersion[]
   /** Set when a saved version is open — always read-only. */
   viewingVersion: { version: number; createdBy: string | null; createdAt: string } | null
-}) {
+}>) {
   const router = useRouter()
   // Others can chat to try the prompt, but only the owner changes it — and saved versions never change.
   const readOnly = !canEdit || !!viewingVersion
   const [sessionName, setSessionName] = useState(initialSessionName)
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [systemPrompt, setSystemPrompt] = useState(initialPrompt)
-  const [provider, setProvider] = useState<Provider>(initialProvider)
+  const [provider, setProvider] = useState<string>(initialProvider)
   const [model, setModel] = useState(initialModel || 'gpt-4o-mini')
   const [temperature, setTemperature] = useState(initialTemperature)
   const [variables, setVariables] = useState<Variable[]>(initialVariables)
@@ -1558,13 +1801,18 @@ function ForgeUI({
   // The draft link always shows the latest work; on a saved version, share that version.
   const shareLink = useCallback(() => {
     const v = viewingVersion?.version
-    const url = `${globalThis.location.origin}/${projectId}/agents/${agentId}/prompt-forge/${sessionId}${v ? `?v=${v}` : ''}`
+    const query = v ? `?v=${v}` : ''
+    const url = `${globalThis.location.origin}/${projectId}/agents/${agentId}/prompt-forge/${sessionId}${query}`
     navigator.clipboard.writeText(url).catch(() => {
       // copying is best-effort; the link is still in the address bar
     })
     setLinkCopied(true)
     setTimeout(() => setLinkCopied(false), 2000)
   }, [viewingVersion, projectId, agentId, sessionId])
+
+  const draftPath = `/${projectId}/agents/${agentId}/prompt-forge/${sessionId}`
+  const openDraft = useCallback(() => router.push(draftPath), [router, draftPath])
+  const openVersion = useCallback((v: number | null) => router.push(v ? `${draftPath}?v=${v}` : draftPath), [router, draftPath])
 
   const handleNameSave = useCallback(async (name: string) => {
     if (readOnly) return
@@ -1580,10 +1828,9 @@ function ForgeUI({
   // model writes itself (greeting mode "generated").
   const runTurn = useCallback(async (userContent: string | null, historyBefore: Message[]) => {
     if (isStreaming) return
-    const userMsg: Message | null = userContent === null ? null : { id: crypto.randomUUID(), role: 'user', content: userContent, isFinal: true }
-    const assistantId = crypto.randomUUID()
-    const assistantMsg: Message = { id: assistantId, role: 'assistant', content: '', isFinal: false, toolCalls: [], ...(userMsg ? {} : { isGreeting: true }) }
-    const history = userMsg ? [...historyBefore, userMsg] : historyBefore
+    const { history, assistantMsg } = startTurn(userContent, historyBefore)
+    const assistantId = assistantMsg.id
+    const isGreeting = userContent === null
     setMessages([...history, assistantMsg])
     setImportedFrom(null)
     setIsStreaming(true)
@@ -1597,7 +1844,7 @@ function ForgeUI({
           projectId, agentId,
           messages: historyForApi, systemPrompt: effectivePrompt, model, temperature, provider,
           tools: tools.length > 0 ? tools : undefined,
-          generateGreeting: userMsg === null,
+          generateGreeting: isGreeting,
         }),
       })
       if (!res.ok) {
@@ -1605,25 +1852,12 @@ function ForgeUI({
         setMessages(prev => updateMessage(prev, assistantId, m => ({ ...m, content: err.error ?? 'Error', isFinal: true })))
         return
       }
-      const reader = res.body!.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() ?? ''
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          const payload = line.slice(6).trim()
-          if (payload === '[DONE]') { setMessages(prev => updateMessage(prev, assistantId, m => ({ ...m, isFinal: true }))); continue }
-          const chunk = parseChatChunk(payload)
-          if (chunk && (chunk.error || chunk.text || chunk.toolCall || chunk.toolResult)) {
-            setMessages(prev => updateMessage(prev, assistantId, m => applyChatChunk(m, chunk)))
-          }
-        }
-      }
+      if (!res.body) throw new Error('No response')
+      await readChatStream(
+        res.body,
+        chunk => setMessages(prev => updateMessage(prev, assistantId, m => applyChatChunk(m, chunk))),
+        () => setMessages(prev => updateMessage(prev, assistantId, m => ({ ...m, isFinal: true }))),
+      )
     } catch (err: any) {
       setMessages(prev => updateMessage(prev, assistantId, m => ({ ...m, content: err?.message ?? 'Network error', isFinal: true })))
     } finally { setIsStreaming(false) }
@@ -1673,66 +1907,6 @@ function ForgeUI({
 
   const modelLabel = useMemo(() => modelLabelFor(provider, model), [provider, model])
   const providerBlocked = availability?.[provider]?.available === false
-
-  // The header's main action: your own saved version opens the draft (versions
-  // never change, so editing happens in your draft); someone else's session can
-  // be duplicated; your draft is saved as a new version.
-  let headerAction: React.ReactNode
-  if (viewingVersion && canEdit) {
-    headerAction = (
-      <>
-        <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs px-2 ml-1 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200" onClick={handleRestore}>
-          <RotateCcw className="w-3 h-3" />Restore into draft
-        </Button>
-        <Button size="sm" className="h-7 gap-1.5 text-xs px-3 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300"
-          onClick={() => router.push(`/${projectId}/agents/${agentId}/prompt-forge/${sessionId}`)}>
-          Open draft
-        </Button>
-      </>
-    )
-  } else if (readOnly) {
-    headerAction = (
-      <Button size="sm" className="h-7 gap-1.5 text-xs px-3 ml-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300" onClick={handleDuplicate}>
-        <CopyPlus className="w-3 h-3" />Duplicate to edit
-      </Button>
-    )
-  } else {
-    headerAction = (
-      <>
-      {/* auto-save status of the draft (versions are separate — that's the Save button) */}
-      {draftState === 'error' ? (
-        <button type="button" onClick={() => setDraftRetry(n => n + 1)} className="text-[11px] text-red-500 hover:underline mr-1">{DRAFT_LABELS.error}</button>
-      ) : (
-        <span className="text-[11px] text-gray-400 dark:text-gray-500 mr-1 flex items-center gap-1" aria-live="polite">
-          {draftState === 'saving' && <Loader2 className="w-3 h-3 animate-spin" />}
-          {draftState === 'saved' && <Check className="w-3 h-3" />}
-          {DRAFT_LABELS[draftState]}
-        </span>
-      )}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            size="sm"
-            className={cn(
-              'h-7 gap-1.5 text-xs px-3 ml-1 transition-colors',
-              saveState === 'saved'
-                ? 'bg-green-600 hover:bg-green-700 text-white'
-                : 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300',
-            )}
-            onClick={handleSave}
-            disabled={saveState === 'saving'}
-          >
-            {saveState === 'saving' && <Loader2 className="w-3 h-3 animate-spin" />}
-            {saveState === 'saved' && <Check className="w-3 h-3" />}
-            {saveState === 'idle' && <Save className="w-3 h-3" />}
-            {saveButtonLabel(saveState, versions[0]?.version)}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>Your draft saves automatically. Save adds a new version — a snapshot of this prompt, settings, greeting and conversation you can share.</TooltipContent>
-      </Tooltip>
-      </>
-    )
-  }
 
   return (
     <TooltipProvider delayDuration={100}>
@@ -1812,37 +1986,15 @@ function ForgeUI({
             </Tooltip>
 
             {/* Saved versions: each Save is one; open any read-only. */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 px-2" disabled={versions.length === 0}>
-                  <History className="w-3 h-3" /><span>{versions.length ? `${versions.length} version${versions.length > 1 ? 's' : ''}` : 'No versions'}</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-72 max-h-80 overflow-y-auto">
-                <DropdownMenuLabel className="text-xs">Saved versions</DropdownMenuLabel>
-                <DropdownMenuItem className="text-xs" onClick={() => router.push(`/${projectId}/agents/${agentId}/prompt-forge/${sessionId}`)}>
-                  <span className="flex-1">Working draft</span>{!viewingVersion && <Check className="w-3 h-3" />}
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                {versions.map(v => (
-                  <DropdownMenuItem key={v.id} className="text-xs" onClick={() => router.push(`/${projectId}/agents/${agentId}/prompt-forge/${sessionId}?v=${v.version}`)}>
-                    <span className="font-mono w-8 shrink-0">v{v.version}</span>
-                    <span className="flex-1 min-w-0 truncate text-gray-500 dark:text-gray-400">{formatRelative(v.created_at)}{v.created_by_email ? ` · ${v.created_by_email}` : ''}</span>
-                    {viewingVersion?.version === v.version && <Check className="w-3 h-3" />}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 px-2" onClick={shareLink}>
-                  {linkCopied ? <Check className="w-3 h-3 text-green-500" /> : <Link2 className="w-3 h-3" />}<span>{linkCopied ? 'Copied' : 'Share'}</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>{viewingVersion ? `Copy a link to v${viewingVersion.version} — a snapshot that won’t change` : 'Copy a link to this session — always shows the latest draft (read-only for others)'}</TooltipContent>
-            </Tooltip>
+            <VersionsMenu versions={versions} viewingVersion={viewingVersion?.version ?? null} onOpen={openVersion} />
+            <ShareButton copied={linkCopied} version={viewingVersion?.version ?? null} onShare={shareLink} />
 
-            {headerAction}
+            <HeaderAction
+              viewingVersion={!!viewingVersion} canEdit={canEdit} readOnly={readOnly}
+              onRestore={handleRestore} onOpenDraft={openDraft} onDuplicate={handleDuplicate}
+              draftState={draftState} onDraftRetry={() => setDraftRetry(n => n + 1)}
+              saveState={saveState} latestVersion={versions[0]?.version} onSave={handleSave}
+            />
           </div>
         </header>
 
@@ -1854,7 +2006,7 @@ function ForgeUI({
               <ReadOnlyNotice viewingVersion={viewingVersion} canEdit={canEdit} ownerEmail={ownerEmail} />
             </span>
             {viewingVersion && !canEdit && (
-              <button className="underline-offset-2 hover:underline" onClick={() => router.push(`/${projectId}/agents/${agentId}/prompt-forge/${sessionId}`)}>See the latest draft</button>
+              <button className="underline-offset-2 hover:underline" onClick={openDraft}>See the latest draft</button>
             )}
           </div>
         )}
@@ -1921,17 +2073,7 @@ function ForgeUI({
 
             {/* Right: Chat */}
             <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-gray-900">
-              {importedFrom && (
-                <div className="shrink-0 flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800/30">
-                  <Phone className="w-3 h-3 text-blue-500 dark:text-blue-400 shrink-0" />
-                  <span className="text-xs text-blue-700 dark:text-blue-300 flex-1 min-w-0 truncate">
-                    <span className="font-medium">{importedFrom.phone}</span>
-                    <span className="text-blue-500 dark:text-blue-400 ml-1.5">· {importedFrom.date}{importedFrom.duration && ` · ${importedFrom.duration}`}</span>
-                  </span>
-                  <span className="text-[10px] text-blue-400 dark:text-blue-600 shrink-0">Imported · edit prompt &amp; replay</span>
-                  <button onClick={() => setImportedFrom(null)} className="w-4 h-4 flex items-center justify-center rounded text-blue-400 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-800/30 transition-colors"><X className="w-3 h-3" /></button>
-                </div>
-              )}
+              {importedFrom && <ImportedBanner meta={importedFrom} onClose={() => setImportedFrom(null)} />}
               <div className="flex-1 overflow-y-auto">
                 {messages.length === 0
                   ? <ChatEmptyState hasTools={tools.length > 0} hasVariables={variables.length > 0}
@@ -1949,42 +2091,11 @@ function ForgeUI({
               {piMode ? (
                 <ForgePiPanel pi={pi} inputRef={piInputRef} onExit={() => setPiMode(false)} />
               ) : (
-              <div className="shrink-0 px-4 pb-4 pt-3 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-                {providerBlocked && (
-                  <p className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-300">
-                    {availability?.[provider]?.reason ?? 'This model can’t run here.'} Choose another in the model settings to test.
-                  </p>
-                )}
-                {/* The whole box is the text field's hit area: a <label> around the
-                    textarea focuses it on a click anywhere outside the send button. */}
-                <label
-                  className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2.5 focus-within:border-gray-300 dark:focus-within:border-gray-600 focus-within:ring-1 focus-within:ring-gray-200 dark:focus-within:ring-gray-700 transition-all cursor-text"
-                >
-                  <textarea
-                    ref={inputRef}
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-                    placeholder="Message…  (press / to jump here)"
-                    rows={1}
-                    className="flex-1 resize-none bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-600 outline-none border-none leading-5 max-h-28 overflow-y-auto caret-gray-900 dark:caret-gray-100 py-0"
-                  />
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      onClick={e => { e.stopPropagation(); handleSend() }}
-                      disabled={!input.trim() || isStreaming}
-                      className={cn('w-7 h-7 flex items-center justify-center rounded-lg transition-colors',
-                        input.trim() && !isStreaming ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-300 dark:text-gray-600 cursor-not-allowed')}
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </label>
-                <div className="flex items-center justify-between mt-1.5 px-1">
-                  <span className="text-[10px] text-gray-400 dark:text-gray-600 flex items-center gap-1"><CornerDownLeft className="w-2.5 h-2.5" />Enter to send · Shift+Enter for new line</span>
-                  <AskPiSwitch on={false} onChange={setPiMode} />
-                </div>
-              </div>
+                <MessageComposer
+                  inputRef={inputRef} value={input} onChange={setInput} onSend={handleSend} busy={isStreaming}
+                  blockedReason={providerBlocked ? (availability?.[provider]?.reason ?? 'This model can’t run here.') : null}
+                  onAskPi={() => setPiMode(true)}
+                />
               )}
             </div>
           </div>
@@ -2001,7 +2112,7 @@ function ForgeUI({
 
 // ─── Ask Pi mode ──────────────────────────────────────────────────────────────
 
-function PiGlyph({ className }: { className?: string }) {
+function PiGlyph({ className }: Readonly<{ className?: string }>) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M9 4v16M4 7c0-1.7 1.3-3 3-3h13M18 20c-1.7 0-3-1.3-3-3V4" />
@@ -2010,7 +2121,7 @@ function PiGlyph({ className }: { className?: string }) {
 }
 
 /** Talk to the agent ↔ ask Pi about it. */
-function AskPiSwitch({ on, onChange }: { on: boolean; onChange: (on: boolean) => void }) {
+function AskPiSwitch({ on, onChange }: Readonly<{ on: boolean; onChange: (on: boolean) => void }>) {
   return (
     <button
       type="button"
@@ -2057,15 +2168,19 @@ const PI_MARKDOWN_COMPONENTS: Components = {
 // The message box, switched to Ask Pi: a taller box with the Pi conversation
 // right above it. Pi sees the draft (prompt, model, greeting, tools, variables)
 // and the test chat. Switching back keeps this conversation.
-function ForgePiPanel({ pi, inputRef, onExit }: {
+function ForgePiPanel({ pi, inputRef, onExit }: Readonly<{
   pi: { messages: PiMessage[]; busy: boolean; ask: (t: string) => void; reset: () => void }
   inputRef: React.RefObject<HTMLTextAreaElement | null>
   onExit: () => void
-}) {
+}>) {
   const [text, setText] = useState('')
   const listRef = useRef<HTMLDivElement>(null)
   useEffect(() => { const el = listRef.current; if (el) el.scrollTop = el.scrollHeight }, [pi.messages])
-  const send = (q: string) => { if (!q.trim() || pi.busy) return; pi.ask(q); setText('') }
+  const send = (q: string) => {
+    if (!q.trim() || pi.busy) return
+    pi.ask(q)
+    setText('')
+  }
   return (
     <div className="shrink-0 flex flex-col border-t-2 border-violet-400/60 bg-violet-50/40 dark:bg-violet-950/20" style={{ height: '46%', minHeight: 260 }}>
       <div className="shrink-0 flex items-center gap-2 px-4 py-2">
@@ -2133,7 +2248,7 @@ function emptyChatHint(hasTools?: boolean, hasVariables?: boolean): string {
   return 'Edit the system prompt, send a message to test, or import a past call log.'
 }
 
-function ChatEmptyState({ hasTools, hasVariables, onGenerateGreeting }: { hasTools?: boolean; hasVariables?: boolean; onGenerateGreeting?: () => void }) {
+function ChatEmptyState({ hasTools, hasVariables, onGenerateGreeting }: Readonly<{ hasTools?: boolean; hasVariables?: boolean; onGenerateGreeting?: () => void }>) {
   return (
     <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-4 select-none px-6 text-center">
       <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center">

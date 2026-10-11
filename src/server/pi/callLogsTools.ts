@@ -207,10 +207,10 @@ function toUtcNaive(iso: unknown): string | null {
   return Number.isNaN(ms) ? null : new Date(ms).toISOString().replace('Z', '')
 }
 
-function messageContent(m: any): unknown {
+function messageContent(m: any): string {
   if (typeof m?.content === 'string') return m.content
   if (Array.isArray(m?.content)) return m.content.join(' ')
-  return m?.text
+  return typeof m?.text === 'string' ? m.text : ''
 }
 
 function transcriptFromJson(raw: unknown): string {
@@ -421,22 +421,40 @@ export async function runSummarizeCallTranscripts(
   return { success: true, result: { total_matching: count ?? calls.length, read: calls.length, calls: summaries } }
 }
 
+type ProposedFilter = { column: string; operation: string; value: string; jsonField?: string }
+
+const PLAIN_JSON_OPS = new Set(['equals', 'not_equals', 'contains', 'exists', 'greater_than', 'less_than'])
+
+/** Why this value doesn't suit the column, or null when it's fine. */
+function filterValueError(kind: string, column: string, value: string): string | null {
+  if (kind === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'Dates must be yyyy-MM-dd'
+  if (kind === 'number' && !Number.isFinite(Number(value))) return `${column} needs a number`
+  return null
+}
+
+/** One filter the model proposed, checked against the columns it may use. */
+function checkProposedFilter(f: any): { filter: ProposedFilter } | { error: string } {
+  const rule = FILTER_RULES[f?.column]
+  if (!rule) return { error: `Unknown column "${f?.column}". Use one of: ${Object.keys(FILTER_RULES).join(', ')}` }
+  // the model keeps reaching for the plain names on JSON columns; they mean the same thing
+  const operation: string = rule.kind === 'jsonb' && PLAIN_JSON_OPS.has(f.operation) ? `json_${f.operation}` : f.operation
+  if (!rule.ops.includes(operation)) return { error: `"${operation}" doesn't work on ${f.column}. Use one of: ${rule.ops.join(', ')}` }
+  const noValue = operation === 'exists' || operation === 'json_exists'
+  const value = noValue ? 'true' : String(f.value ?? '').trim()
+  if (!value) return { error: `${f.column} ${operation} needs a value` }
+  if (rule.kind === 'jsonb' && !f.jsonField) return { error: `${f.column} needs jsonField (the key inside it)` }
+  const valueError = filterValueError(rule.kind, f.column, value)
+  if (valueError) return { error: valueError }
+  return { filter: { column: f.column, operation, value, ...(rule.kind === 'jsonb' ? { jsonField: String(f.jsonField) } : {}) } }
+}
+
 export function runProposeCallFilters(args: any) {
   const filters: any[] = Array.isArray(args.filters) ? args.filters : []
-  const clean: Array<{ column: string; operation: string; value: string; jsonField?: string }> = []
-  for (let f of filters.slice(0, 8)) {
-    const rule = FILTER_RULES[f?.column]
-    if (!rule) return { success: false, result: { error: `Unknown column "${f?.column}". Use one of: ${Object.keys(FILTER_RULES).join(', ')}` } }
-    // the model keeps reaching for the plain names on JSON columns; they mean the same thing
-    if (rule.kind === 'jsonb' && ['equals', 'not_equals', 'contains', 'exists', 'greater_than', 'less_than'].includes(f.operation)) f = { ...f, operation: `json_${f.operation}` }
-    if (!rule.ops.includes(f.operation)) return { success: false, result: { error: `"${f.operation}" doesn't work on ${f.column}. Use one of: ${rule.ops.join(', ')}` } }
-    const noValue = f.operation === 'exists' || f.operation === 'json_exists'
-    const value = noValue ? 'true' : String(f.value ?? '').trim()
-    if (!value) return { success: false, result: { error: `${f.column} ${f.operation} needs a value` } }
-    if (rule.kind === 'jsonb' && !f.jsonField) return { success: false, result: { error: `${f.column} needs jsonField (the key inside it)` } }
-    if (rule.kind === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(value)) return { success: false, result: { error: 'Dates must be yyyy-MM-dd' } }
-    if (rule.kind === 'number' && !Number.isFinite(Number(value))) return { success: false, result: { error: `${f.column} needs a number` } }
-    clean.push({ column: f.column, operation: f.operation, value, ...(rule.kind === 'jsonb' ? { jsonField: String(f.jsonField) } : {}) })
+  const clean: ProposedFilter[] = []
+  for (const f of filters.slice(0, 8)) {
+    const checked = checkProposedFilter(f)
+    if ('error' in checked) return { success: false, result: { error: checked.error } }
+    clean.push(checked.filter)
   }
   if (!clean.length) return { success: false, result: { error: 'No filters given' } }
   return {

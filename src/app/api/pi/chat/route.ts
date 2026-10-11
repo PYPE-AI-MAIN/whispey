@@ -1763,12 +1763,17 @@ async function runToolCall(tc: PendingToolCall, ctx: TurnContext) {
   return { parsedArgs, result, success }
 }
 
+/** Which calls the call tools look at: the Call Logs page's own view, or (from Prompt Forge) the agent's calls. */
+function callLogsScope(pageContext: TurnContext['pageContext']): CallLogsPageContext | null {
+  if (!pageContext) return null
+  if (pageContext.surface === 'call_logs') return pageContext
+  return { surface: 'call_logs', agentId: pageContext.agentId }
+}
+
 /** The Call Logs page's tools: only with that page's context, and never for viewers. */
 async function runCallLogsTool(name: string, args: any, ctx: TurnContext): Promise<{ result: any; success: boolean }> {
   // Prompt Forge can ask about the agent's real calls too (no filters there — nothing to apply them to).
-  const callLogs: CallLogsPageContext | null = ctx.pageContext?.surface === 'call_logs'
-    ? ctx.pageContext
-    : ctx.pageContext ? { surface: 'call_logs', agentId: ctx.pageContext.agentId } : null
+  const callLogs = callLogsScope(ctx.pageContext)
   if (!callLogs || (ctx.pageContext?.surface === 'call_logs' && !ctx.canWrite)) return { success: false, result: { error: 'Only available from the Call Logs page' } }
   if (name === 'propose_call_filters' && ctx.pageContext?.surface !== 'call_logs') return { success: false, result: { error: 'Filters can only be set on the Call Logs page' } }
   try {
