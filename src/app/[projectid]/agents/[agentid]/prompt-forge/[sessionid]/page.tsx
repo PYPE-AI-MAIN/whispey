@@ -1824,6 +1824,9 @@ function ForgeUI({
     })
   }, [sessionId, readOnly])
 
+  /** Updates one message in the chat. */
+  const patchMessage = useCallback((id: string, update: (m: Message) => Message) => setMessages(prev => updateMessage(prev, id, update)), [])
+
   // One assistant reply. With no user message it's the opening greeting the
   // model writes itself (greeting mode "generated").
   const runTurn = useCallback(async (userContent: string | null, historyBefore: Message[]) => {
@@ -1849,19 +1852,19 @@ function ForgeUI({
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Request failed' }))
-        setMessages(prev => updateMessage(prev, assistantId, m => ({ ...m, content: err.error ?? 'Error', isFinal: true })))
+        patchMessage(assistantId, m => ({ ...m, content: err.error ?? 'Error', isFinal: true }))
         return
       }
       if (!res.body) throw new Error('No response')
       await readChatStream(
         res.body,
-        chunk => setMessages(prev => updateMessage(prev, assistantId, m => applyChatChunk(m, chunk))),
-        () => setMessages(prev => updateMessage(prev, assistantId, m => ({ ...m, isFinal: true }))),
+        chunk => patchMessage(assistantId, m => applyChatChunk(m, chunk)),
+        () => patchMessage(assistantId, m => ({ ...m, isFinal: true })),
       )
     } catch (err: any) {
-      setMessages(prev => updateMessage(prev, assistantId, m => ({ ...m, content: err?.message ?? 'Network error', isFinal: true })))
+      patchMessage(assistantId, m => ({ ...m, content: err?.message ?? 'Network error', isFinal: true }))
     } finally { setIsStreaming(false) }
-  }, [isStreaming, systemPrompt, variables, model, temperature, provider, tools, projectId, agentId])
+  }, [isStreaming, systemPrompt, variables, model, temperature, provider, tools, projectId, agentId, patchMessage])
 
   const sendMessage = useCallback((userContent: string, historyBefore: Message[]) => runTurn(userContent, historyBefore), [runTurn])
 

@@ -29,7 +29,9 @@ export function sessionTitle(s: Session): { title: string; fromPrompt: boolean }
 
 export function modelName(provider: string | null, model: string | null): string {
   if (!model) return 'Agent’s model'
-  const entry = provider ? modelProviders[provider === 'azure' ? 'azure_openai' : provider] : undefined
+  // workflow configs say `azure`; the catalog says `azure_openai`
+  const catalogKey = provider === 'azure' ? 'azure_openai' : provider
+  const entry = catalogKey ? modelProviders[catalogKey] : undefined
   const grouped = entry?.type === 'grouped'
   const models = (grouped ? entry.groups?.flatMap(g => g.models) : entry?.models) ?? []
   return models.find(m => m.value === model)?.label ?? model
