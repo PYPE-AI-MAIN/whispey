@@ -286,3 +286,85 @@ describe('logicExpression', () => {
     expect(names).toEqual(expect.arrayContaining(['g', 'age', 'res']))
   })
 })
+
+describe('lintWorkflow — tool names, notes and logic variables (mirror of the runtime linter)', () => {
+  const errors = (issues: ReturnType<typeof lintWorkflow>) => issues.filter((i) => i.severity === 'error').map((i) => i.message)
+  const warnings = (issues: ReturnType<typeof lintWorkflow>) => issues.filter((i) => i.severity === 'warning').map((i) => i.message)
+
+  it('errors when an attached function is named like a handoff tool', () => {
+    const issues = lintWorkflow(wf({
+      nodes: [
+        { id: 'a', type: 'conversation', prompt: 'x', functions: ['f'] },
+        { id: 'end', type: 'ending' },
+        { id: 'f', type: 'function', name: 'go_end', url: 'http://x' },
+      ] as never,
+      edges: [{ id: 'e', source: 'a', target: 'end', kind: 'always' }] as never,
+      start: 'a',
+    }))
+    expect(errors(issues).some((m) => m.includes("several tools named 'go_end'"))).toBe(true)
+  })
+
+  it('errors when a language tool is named like an attached function', () => {
+    const issues = lintWorkflow(wf({
+      nodes: [
+        { id: 'a', type: 'conversation', prompt: 'x', functions: ['f'] },
+        { id: 'f', type: 'function', name: 'to_hi', url: 'http://x' },
+      ] as never,
+      start: 'a',
+      agent: { languages: [{ tool_name: 'to_hi', language_code: 'hi' }] } as never,
+    }))
+    expect(errors(issues).some((m) => m.includes("several tools named 'to_hi'"))).toBe(true)
+  })
+
+  it('reserves the capture tool name on extract nodes', () => {
+    const issues = lintWorkflow(wf({
+      nodes: [{ id: 'a', type: 'extract_variable', extractions: [{ variable: 'x' }] }] as never,
+      start: 'a',
+      agent: { languages: [{ tool_name: 'save_extracted', language_code: 'hi' }] } as never,
+    }))
+    expect(errors(issues).some((m) => m.includes("several tools named 'save_extracted'"))).toBe(true)
+  })
+
+  it('warns when something that is not a function node is attached', () => {
+    const issues = lintWorkflow(wf({
+      nodes: [{ id: 'a', type: 'conversation', prompt: 'x', functions: ['ghost'] }] as never,
+      start: 'a',
+    }))
+    expect(warnings(issues).some((m) => m.includes('not a function node'))).toBe(true)
+  })
+
+  it('warns on an edge into a note', () => {
+    const issues = lintWorkflow(wf({
+      nodes: [{ id: 'a', type: 'conversation', prompt: 'x' }, { id: 'n', type: 'note', text: 'hi' }] as never,
+      edges: [{ id: 'e', source: 'a', target: 'n', kind: 'always' }] as never,
+      start: 'a',
+    }))
+    expect(warnings(issues).some((m) => m.includes('only exists on the canvas'))).toBe(true)
+  })
+
+  const logicWf = (expression: string) => wf({
+    nodes: [{ id: 's', type: 'logic_split' }, { id: 'end', type: 'ending' }] as never,
+    edges: [
+      { id: 'e', source: 's', target: 'end', kind: 'logic', expression },
+      { id: 'f', source: 's', target: 'end', kind: 'fallback' },
+    ] as never,
+    start: 's',
+    variables: [{ key: 'age', type: 'number' }, { key: 'result', type: 'object' }] as never,
+  })
+
+  it('warns on an undeclared variable in a logic expression', () => {
+    expect(warnings(lintWorkflow(logicWf('agee > 18'))).some((m) => m.includes('undeclared variable(s) agee'))).toBe(true)
+  })
+
+  it('accepts declared, built-in, dotted and quoted names in a logic expression', () => {
+    const issues = lintWorkflow(logicWf('result.category == \'vip\' && wcurrent_day != "Sunday" && age in [1, 2] || age == "no such var"'))
+    expect(warnings(issues).some((m) => m.includes('undeclared variable(s)'))).toBe(false)
+  })
+
+  it('does not call built-in variables undeclared in text', () => {
+    const issues = lintWorkflow(wf({
+      nodes: [{ id: 's', type: 'conversation', prompt: 'Today is {{wcurrent_date}} for {{wcalling_number}}' }] as never,
+    }))
+    expect(warnings(issues).some((m) => m.includes('undeclared'))).toBe(false)
+  })
+})

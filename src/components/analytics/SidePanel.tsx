@@ -162,7 +162,7 @@ function SidePanelContent({
             onClick={onOpenAi}
             className="mb-3 w-full justify-center gap-1.5 border-dashed border-blue-300 text-blue-700 hover:border-blue-400 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950/30"
           >
-            <Sparkles className="h-3.5 w-3.5" /> Generate with AI
+            <Sparkles className="h-3.5 w-3.5" /> Generate with Pi
           </Button>
         )}
         <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
@@ -226,7 +226,7 @@ function SidePanelContent({
 }
 
 /**
- * The panel on the right of the dashboard. "Generate with AI" turns it into a
+ * The panel on the right of the dashboard. "Generate with Pi" turns it into a
  * chat; the chat stays mounted (just hidden) while a chart's settings are open,
  * so going to tweak one chart does not throw the conversation away.
  */

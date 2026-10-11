@@ -322,7 +322,7 @@ function WorkflowPageInner() {
           onClick={() => setChatOpen((v) => !v)}
           className={chatOpen ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
         >
-          <Sparkles className="h-3.5 w-3.5 mr-1.5" /> AI Builder
+          <Sparkles className="h-3.5 w-3.5 mr-1.5" /> Ask Pi
         </Button>
         {/* icon-only: the toolbar has no room left for two more labels */}
         <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setImportOpen(true)}

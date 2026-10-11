@@ -13,10 +13,6 @@ export const BASIC_COLUMNS = [
   { key: "duration_seconds", label: "Duration" },        // 4
   { key: "tags", label: "Tags" },                        // 5
   { key: "flag", label: "Flag" },                        // 6
-  // Written by the nightly QA job into transcription_metrics.qa. Hidden by
-  // default so adding QA does not silently change every existing table; one
-  // click in the column picker turns it on.
-  { key: "qa_issues", label: "QA", hidden: true },
   { key: "billing_duration_seconds", label: "Billing Duration" },
   { key: "total_cost", label: "Total Cost (₹)" },
   { key: "call_started_at", label: "Start Time" },

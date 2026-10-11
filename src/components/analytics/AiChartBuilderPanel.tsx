@@ -1,5 +1,5 @@
 /**
- * "Generate with AI" — a chat that lives in the dashboard's side panel, not a
+ * "Generate with Pi" — a chat that lives in the dashboard's side panel, not a
  * dialog, so the dashboard stays in view while you build. It is a chat rather
  * than a one-shot box so a vague first try can be refined ("make it a pie",
  * "last 7 days") and so one conversation can produce several charts: every
@@ -320,7 +320,7 @@ export function AiChartBuilderPanel({
           <Sparkles className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">Generate with AI</p>
+          <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">Generate with Pi</p>
           <p className="truncate text-[11px] leading-tight text-gray-500 dark:text-gray-400">Describe charts, then add the ones you want</p>
         </div>
         {messages.length > 0 && (

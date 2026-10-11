@@ -392,7 +392,7 @@ export function WorkflowChat({
               <Sparkles className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">AI Workflow Builder</h3>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Ask Pi</h3>
               <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-tight truncate">
                 {formatContextSummary(contextSummary)}
               </p>
