@@ -19,6 +19,7 @@ function FlowNodeComponent({ data, id, selected }: NodeProps<any>) {
   const activeNodeId = useWorkflowStore((s) => s.activeNodeId)
   const lintIssues = useWorkflowStore((s) => s.lintIssues)
   const isActive = activeNodeId === id
+  const incoming = useWorkflowStore((s) => s.workflow?.edges.filter((e) => e.target === id).length ?? 0)
 
   const nodeIssues = lintIssues.filter((i) => i.nodeId === id)
   const hasError = nodeIssues.some((i) => i.severity === 'error')
@@ -60,6 +61,11 @@ function FlowNodeComponent({ data, id, selected }: NodeProps<any>) {
             </div>
           )}
         </div>
+        {isTerminal && incoming >= 3 && (
+          <span className="shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400" title={`${incoming} steps can end here`}>
+            {incoming} steps
+          </span>
+        )}
         {nodeData.isStart && (
           <div
             className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"

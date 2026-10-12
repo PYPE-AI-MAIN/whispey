@@ -185,6 +185,21 @@ export function WorkflowCanvas() {
   // Whole-workflow replaces (chat apply, template pick, undo/redo) don't trigger
   // ReactFlow's own `fitView` (that only runs on mount) — re-fit manually so new
   // nodes are actually visible instead of sitting outside the current viewport.
+  // A 40-step flow fitted whole is unreadably small: open on the first steps instead,
+  // at a readable zoom. "Fit view" still shows everything.
+  const nodeCount = workflow?.nodes.length ?? 0
+  React.useEffect(() => {
+    if (!workflow || nodeCount <= 12) return
+    const first = workflow.nodes
+      .filter((n) => n.type !== 'ending' && n.type !== 'note')
+      .sort((a, b) => (a.position?.y ?? 0) - (b.position?.y ?? 0) || (a.position?.x ?? 0) - (b.position?.x ?? 0))
+      .slice(0, 8)
+      .map((n) => ({ id: n.id }))
+    const t = setTimeout(() => fitView({ nodes: first, padding: 0.3, minZoom: 0.6, maxZoom: 1, duration: 300 }), 150)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-run on load / whole-workflow replace only, not every edit
+  }, [nodeCount > 12, replaceCount, fitView])
+
   React.useEffect(() => {
     if (replaceCount === 0) return
     const t = setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50)
