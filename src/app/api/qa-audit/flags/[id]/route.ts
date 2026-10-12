@@ -30,6 +30,7 @@ async function announce(
     await notifyQaStatusChange({
       ...base,
       clientEmail: next.assignee,
+      flaggedBy: ticket.flagged_by_email,
       detail: 'Flagged call assigned to you to fix',
       note: [`Flag: ${ticket.reason}`, next.said].filter(Boolean).join(' | '),
       sheetUrl: next.sheet || null,

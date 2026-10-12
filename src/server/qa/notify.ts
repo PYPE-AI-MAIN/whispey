@@ -92,6 +92,8 @@ type QaStatusAlert = {
   projectId: string
   /** The customer who flagged / requested; gets the email. */
   clientEmail: string
+  /** The customer behind the ticket, when `clientEmail` is someone else (the prompt engineer). */
+  flaggedBy?: string | null
   /** The QA team member who made the change. */
   byEmail: string
   callLogId?: string
@@ -112,7 +114,7 @@ async function postToSlack(a: QaStatusAlert, link: string): Promise<void> {
   const extra = [a.note && `Note: ${a.note}`, a.sheetUrl && `Sheet: ${a.sheetUrl}`].filter(Boolean) as string[]
   const text = [
     `${tag}*QA update* on <${link.replace('/qa', '')}|${slackEscape(a.agentName)}>: ${slackEscape(a.detail)}`,
-    `By: ${slackEscape(a.byEmail || 'unknown')}  |  Client: ${slackEscape(a.clientEmail || 'unknown')}`,
+    `By: ${slackEscape(a.byEmail || 'unknown')}  |  Client: ${slackEscape(a.flaggedBy || a.clientEmail || 'unknown')}`,
     ...extra.map(slackEscape),
     `<${link}|Open QA Audit>`,
   ].join('\n')
