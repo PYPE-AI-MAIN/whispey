@@ -229,6 +229,8 @@ export function WorkflowCanvas() {
 
   if (!workflow) return null
 
+  const hiddenNote = hiddenCount ? `${hiddenCount} connections to shared endings are hidden. ` : ''
+
   return (
     <div
       ref={wrapperRef}
@@ -278,9 +280,7 @@ export function WorkflowCanvas() {
               onClick={() => setShowAll((v) => !v)}
               className="rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground shadow-sm hover:text-foreground"
             >
-              {showAll
-                ? 'Hide shared connections'
-                : `${hiddenCount ? `${hiddenCount} connections to shared endings are hidden. ` : ''}Click a step to see its connections. Show all`}
+              {showAll ? 'Hide shared connections' : `${hiddenNote}Click a step to see its connections. Show all`}
             </button>
           </Panel>
         )}

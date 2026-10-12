@@ -32,6 +32,11 @@ const HINT: Record<string, string> = {
 // Steps that listen to the caller can be told "go there only when...".
 const LISTENING = new Set(['conversation', 'extract_variable', 'subagent'])
 
+function pathKind(sourceType: string | undefined, outgoing: number): 'always' | 'logic' | 'fallback' {
+  if (sourceType === 'logic_split') return 'logic'
+  return outgoing === 0 ? 'always' : 'fallback'
+}
+
 /** The "+" after a step. Pick what comes next, say when the call goes there, and it is added and connected. */
 export function AddNextStep({ id, x, y }: Readonly<{ id: string; x: number; y: number }>) {
   const addNode = useWorkflowStore((s) => s.addNode)
@@ -72,7 +77,7 @@ export function AddNextStep({ id, x, y }: Readonly<{ id: string; x: number; y: n
     if (!canSayWhen) {
       // Branch, API and other non-listening steps cannot judge what the caller says: next step, or a rule to set on the connection.
       // A Branch makes rule paths; another kind of step gets a second path for when it fails.
-      add(type, { kind: sourceType === 'logic_split' ? 'logic' : (outgoing === 0 ? 'always' : 'fallback') })
+      add(type, { kind: pathKind(sourceType, outgoing) })
       return
     }
     setPicked(type)
