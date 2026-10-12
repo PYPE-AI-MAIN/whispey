@@ -11,6 +11,7 @@ import { Mic, Bell, Search, Settings, BarChart3, FileText, Zap, ChevronDown, Hel
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import NotificationBell from "@/components/shared/NotificationBell";
 
 interface HeaderProps {
   breadcrumb?: {
@@ -151,6 +152,8 @@ function Header({ breadcrumb, isLoading }: HeaderProps) {
 
             {/* Vertical Separator */}
             <div className="w-px h-5 bg-gray-200 dark:bg-gray-700"></div>
+
+            <SignedIn><NotificationBell /></SignedIn>
 
             {/* Help Dropdown */}
             <DropdownMenu>

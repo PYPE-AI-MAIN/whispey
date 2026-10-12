@@ -87,3 +87,25 @@ describe('slack alert', () => {
     expect(text).not.toContain('Open call')
   })
 })
+
+describe('teamMemberError', () => {
+  it('validates a roster entry and its Slack ID', async () => {
+    const { teamMemberError } = await import('@/lib/qaAudit')
+    const ok = { name: 'Joe', email: 'Joe@pypeai.com', role: 'prompt_engineer', slack_id: 'U0AJMAJ5694' }
+    expect(teamMemberError(ok)).toEqual({ member: { ...ok, email: 'joe@pypeai.com' } })
+    expect(teamMemberError({ ...ok, slack_id: '' })).toEqual({ member: { ...ok, email: 'joe@pypeai.com', slack_id: null } })
+    expect('error' in teamMemberError({ ...ok, slack_id: 'joe' })).toBe(true)
+    expect('error' in teamMemberError({ ...ok, role: 'admin' })).toBe(true)
+    expect('error' in teamMemberError({ ...ok, email: 'nope' })).toBe(true)
+  })
+})
+
+describe('ticketAttachments', () => {
+  it('keeps only images uploaded for this ticket, max 5', async () => {
+    const { ticketAttachments } = await import('@/lib/qaAudit')
+    const mine = { key: 'qa/t1/a.png', name: 'a.png' }
+    expect(ticketAttachments([mine, { key: 'qa/other/b.png', name: 'b' }, { key: 5 }, null], 't1')).toEqual([mine])
+    expect(ticketAttachments(Array(9).fill(mine), 't1')).toHaveLength(5)
+    expect(ticketAttachments('nope', 't1')).toEqual([])
+  })
+})
