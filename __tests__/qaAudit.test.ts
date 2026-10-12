@@ -88,12 +88,14 @@ describe('slack alert', () => {
   })
 })
 
-describe('assigneeError', () => {
-  it('allows only @pypeai.com (or empty to clear)', async () => {
-    const { assigneeError } = await import('@/lib/qaAudit')
-    expect(assigneeError('')).toBeNull()
-    expect(assigneeError('dev@pypeai.com')).toBeNull()
-    expect(assigneeError('dev@gmail.com')).not.toBeNull()
-    expect(assigneeError('a@pypeai.com.evil.io')).not.toBeNull()
+describe('teamMemberError', () => {
+  it('validates a roster entry and its Slack ID', async () => {
+    const { teamMemberError } = await import('@/lib/qaAudit')
+    const ok = { name: 'Joe', email: 'Joe@pypeai.com', role: 'prompt_engineer', slack_id: 'U0AJMAJ5694' }
+    expect(teamMemberError(ok)).toEqual({ member: { ...ok, email: 'joe@pypeai.com' } })
+    expect(teamMemberError({ ...ok, slack_id: '' })).toEqual({ member: { ...ok, email: 'joe@pypeai.com', slack_id: null } })
+    expect('error' in teamMemberError({ ...ok, slack_id: 'joe' })).toBe(true)
+    expect('error' in teamMemberError({ ...ok, role: 'admin' })).toBe(true)
+    expect('error' in teamMemberError({ ...ok, email: 'nope' })).toBe(true)
   })
 })

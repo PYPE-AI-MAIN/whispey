@@ -1,18 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isQaDenied, qaDb, resolveAgentAccess } from '@/server/qa/access'
 
-/** Flagged-call tickets for one agent, newest first. */
+const PAGE_SIZE = 25
+const STATUSES = ['pending', 'in_review', 'resolved'] as const
+
+/** One page of flagged-call tickets for an agent, newest first, plus a count per status. */
 export async function GET(request: NextRequest) {
-  const agentId = request.nextUrl.searchParams.get('agentId') ?? ''
+  const params = request.nextUrl.searchParams
+  const agentId = params.get('agentId') ?? ''
   const access = await resolveAgentAccess(agentId)
   if (isQaDenied(access)) return NextResponse.json({ error: access.error }, { status: access.status })
 
-  const { data, error } = await qaDb
+  const status = STATUSES.find((s) => s === params.get('status'))
+  const page = Math.max(1, Number.parseInt(params.get('page') ?? '1', 10) || 1)
+
+  let query = qaDb
     .from('qa_flag_tickets')
-    .select('id, call_log_id, reason, flagged_by_email, flagged_at, status, resolution_note, resolved_by, resolved_at, sheet_url, assignee_email')
+    .select('id, call_log_id, reason, flagged_by_email, flagged_at, status, resolution_note, resolved_by, resolved_at, sheet_url, assignee_email', { count: 'exact' })
     .eq('agent_id', agentId)
-    .order('flagged_at', { ascending: false })
-    .limit(500)
+  if (status) query = query.eq('status', status)
+  const [{ data, error, count }, ...counts] = await Promise.all([
+    query.order('flagged_at', { ascending: false }).range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1),
+    ...STATUSES.map((s) => qaDb.from('qa_flag_tickets').select('id', { count: 'exact', head: true }).eq('agent_id', agentId).eq('status', s)),
+  ])
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   const ids = (data ?? []).map((t) => t.id)
@@ -27,5 +37,13 @@ export async function GET(request: NextRequest) {
     comments: (comments ?? []).filter((c) => c.ticket_id === t.id),
   }))
 
-  return NextResponse.json({ tickets, canManage: access.canManage, internal: access.internal })
+  return NextResponse.json({
+    tickets,
+    total: count ?? 0,
+    page,
+    pageSize: PAGE_SIZE,
+    counts: Object.fromEntries(STATUSES.map((s, i) => [s, counts[i].count ?? 0])),
+    canManage: access.canManage,
+    internal: access.internal,
+  })
 }

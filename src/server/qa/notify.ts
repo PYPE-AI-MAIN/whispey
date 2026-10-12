@@ -80,6 +80,8 @@ type QaStatusAlert = {
   detail: string
   note?: string | null
   sheetUrl?: string | null
+  /** Slack member ID to tag in the alert, e.g. U0AJMAJ5694. */
+  slackId?: string | null
 }
 
 /**
@@ -94,8 +96,9 @@ export async function notifyQaStatusChange(a: QaStatusAlert): Promise<void> {
   try {
     const url = process.env.QA_SLACK_WEBHOOK_URL
     if (url) {
+      const tag = a.slackId && /^[UW][A-Z0-9]{6,}$/.test(a.slackId) ? `<@${a.slackId}> ` : ''
       const text = [
-        `*QA update* on <${link.replace('/qa', '')}|${slackEscape(a.agentName)}>: ${slackEscape(a.detail)}`,
+        `${tag}*QA update* on <${link.replace('/qa', '')}|${slackEscape(a.agentName)}>: ${slackEscape(a.detail)}`,
         `By: ${slackEscape(a.byEmail || 'unknown')}  |  Client: ${slackEscape(a.clientEmail || 'unknown')}`,
         ...extra.map(slackEscape),
         `<${link}|Open QA Audit>`,

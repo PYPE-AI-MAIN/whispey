@@ -15,10 +15,11 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { QaTeamAdmin } from '@/components/qa/QaTeamAdmin'
 import { CreateMetricTemplateForm } from '@/components/CreateMetricTemplateForm'
 
 type GlobalRole = 'superadmin' | 'prompter' | 'user'
-type Tab = 'users' | 'metrics'
+type Tab = 'users' | 'metrics' | 'qa'
 
 interface MetricTemplate {
   metric_id: string
@@ -435,7 +436,7 @@ export default function UsersSettingsPage() {
       {/* ── Tabs ── */}
       <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-5xl mx-auto px-6 flex gap-1 pt-1">
-          {(['users', 'metrics'] as Tab[]).map(tab => (
+          {(['users', 'metrics', 'qa'] as Tab[]).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -445,13 +446,14 @@ export default function UsersSettingsPage() {
                   : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
               }`}
             >
-              {tab === 'users' ? 'Users' : 'Metrics'}
+              {{ users: 'Users', metrics: 'Metrics', qa: 'QA team' }[tab]}
             </button>
           ))}
         </div>
       </div>
 
       {activeTab === 'metrics' && <MetricsTab />}
+      {activeTab === 'qa' && <div className="max-w-5xl w-full mx-auto px-6 pt-6"><QaTeamAdmin /></div>}
 
       {/* ── Users tab content ── */}
       {activeTab === 'users' && <>

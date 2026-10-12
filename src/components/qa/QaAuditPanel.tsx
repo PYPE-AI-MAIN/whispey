@@ -12,8 +12,8 @@
  * everyone else sees the same rows read-only.
  */
 import { useState, type ReactNode } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ExternalLink, FileSpreadsheet, ImagePlus } from 'lucide-react'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ChevronDown, ExternalLink, FileSpreadsheet, ImagePlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -174,24 +174,47 @@ export default function QaAuditPanel({ agentId, projectId }: Readonly<{ agentId:
   )
 }
 
+type FlagsPage = {
+  tickets: Ticket[]
+  total: number
+  page: number
+  pageSize: number
+  counts: Record<Ticket['status'], number>
+  canManage: boolean
+  internal: boolean
+}
+
 function FlaggedCalls({ agentId, projectId }: Readonly<{ agentId: string; projectId: string }>) {
   const [filter, setFilter] = useState<'all' | Ticket['status']>('all')
-  const { data, isLoading, error } = useQuery<{ tickets: Ticket[]; canManage: boolean; internal: boolean }>({
-    queryKey: ['qa-audit', 'flags', agentId],
-    queryFn: () => load(`/api/qa-audit/flags?agentId=${agentId}`, 'flagged calls'),
+  const [page, setPage] = useState(1)
+  const { data, isLoading, error } = useQuery<FlagsPage>({
+    queryKey: ['qa-audit', 'flags', agentId, filter, page],
+    queryFn: () => load(`/api/qa-audit/flags?agentId=${agentId}&page=${page}${filter === 'all' ? '' : `&status=${filter}`}`, 'flagged calls'),
+    placeholderData: keepPreviousData,
+  })
+  const { data: team } = useQuery<{ engineers: { name: string; email: string }[] }>({
+    queryKey: ['qa-audit', 'team', agentId],
+    queryFn: () => load(`/api/qa-audit/team?agentId=${agentId}`, 'the team'),
+    enabled: !!data?.canManage,
   })
 
   const tickets = data?.tickets ?? []
-  const shown = filter === 'all' ? tickets : tickets.filter((t) => t.status === filter)
-  const count = (s: string) => tickets.filter((t) => t.status === s).length
+  const counts = data?.counts
+  const all = counts ? counts.pending + counts.in_review + counts.resolved : 0
+  const lastPage = Math.max(1, Math.ceil((data?.total ?? 0) / (data?.pageSize ?? 25)))
+  const from = tickets.length ? ((data?.page ?? 1) - 1) * (data?.pageSize ?? 25) + 1 : 0
+  const pick = (s: 'all' | Ticket['status']) => {
+    setFilter(s)
+    setPage(1)
+  }
 
   let body: ReactNode
   if (isLoading) body = <Skeleton className="h-40 w-full rounded-xl" />
   else if (error) body = <p className="text-sm text-red-600">{(error as Error).message}</p>
-  else if (shown.length === 0) {
+  else if (tickets.length === 0) {
     body = (
       <Empty>
-        {tickets.length === 0 ? (
+        {all === 0 ? (
           <>
             Nothing has been flagged for this agent. Open{' '}
             <a href={`/${projectId}/agents/${agentId}?tab=logs`} className="font-medium text-gray-900 underline underline-offset-2 dark:text-gray-100">Call Logs</a>{' '}
@@ -202,9 +225,35 @@ function FlaggedCalls({ agentId, projectId }: Readonly<{ agentId: string; projec
     )
   } else {
     body = (
-      <RowList>
-        {shown.map((t) => <TicketRow key={t.id} ticket={t} canManage={!!data?.canManage} internal={!!data?.internal} agentId={agentId} projectId={projectId} />)}
-      </RowList>
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+        <div className="max-h-[65vh] overflow-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="sticky top-0 z-10 bg-gray-50 text-xs font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+              <tr>
+                <th className="px-4 py-2.5">Flag</th>
+                <th className="px-4 py-2.5">Flagged by</th>
+                <th className="px-4 py-2.5">Date</th>
+                <th className="px-4 py-2.5">Status</th>
+                {data?.internal && <th className="px-4 py-2.5">Assigned to</th>}
+                <th className="w-8" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+              {tickets.map((t) => (
+                <TicketRow key={t.id} ticket={t} canManage={!!data?.canManage} internal={!!data?.internal} engineers={team?.engineers ?? []} agentId={agentId} projectId={projectId} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex items-center justify-between border-t border-gray-200 px-4 py-2.5 text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
+          <span className="tabular-nums">{from}–{from + tickets.length - 1} of {data?.total}</span>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</Button>
+            <span className="tabular-nums">Page {page} of {lastPage}</span>
+            <Button size="sm" variant="outline" disabled={page >= lastPage} onClick={() => setPage(page + 1)}>Next</Button>
+          </div>
+        </div>
+      </div>
     )
   }
 
@@ -215,10 +264,10 @@ function FlaggedCalls({ agentId, projectId }: Readonly<{ agentId: string; projec
           <button
             key={s}
             type="button"
-            onClick={() => setFilter(s)}
+            onClick={() => pick(s)}
             className={filter === s ? 'font-medium text-gray-900 dark:text-gray-100' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'}
           >
-            {s === 'all' ? 'All' : STATUS_LABEL[s]} <span className="tabular-nums text-gray-400">{s === 'all' ? tickets.length : count(s)}</span>
+            {s === 'all' ? 'All' : STATUS_LABEL[s]} <span className="tabular-nums text-gray-400">{s === 'all' ? all : (counts?.[s] ?? 0)}</span>
           </button>
         ))}
       </div>
@@ -227,8 +276,9 @@ function FlaggedCalls({ agentId, projectId }: Readonly<{ agentId: string; projec
   )
 }
 
-function TicketRow({ ticket, canManage, internal, agentId, projectId }: Readonly<{ ticket: Ticket; canManage: boolean; internal: boolean; agentId: string; projectId: string }>) {
+function TicketRow({ ticket, canManage, internal, engineers, agentId, projectId }: Readonly<{ ticket: Ticket; canManage: boolean; internal: boolean; engineers: { name: string; email: string }[]; agentId: string; projectId: string }>) {
   const qc = useQueryClient()
+  const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [status, setStatus] = useState<Ticket['status']>(ticket.status)
   const [note, setNote] = useState(ticket.resolution_note ?? '')
@@ -241,66 +291,71 @@ function TicketRow({ ticket, canManage, internal, agentId, projectId }: Readonly
       return qc.invalidateQueries({ queryKey: ['qa-audit', 'flags', agentId] })
     },
   })
+  const engineerName = (email: string | null) => engineers.find((e) => e.email === email)?.name ?? email
 
   return (
-    <li className="px-5 py-4">
-      <div className="flex items-start justify-between gap-4">
-        <p className="min-w-0 flex-1 text-sm font-medium text-gray-900 dark:text-gray-100">{ticket.reason}</p>
-        <StatusPill status={ticket.status} />
-      </div>
-      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-        <span>{fmtDate(ticket.flagged_at)}</span>
-        {ticket.flagged_by_email && <span>{ticket.flagged_by_email}</span>}
-        <a
-          href={`/${projectId}/agents/${agentId}/observability?session_id=${ticket.call_log_id}`}
-          className="inline-flex items-center gap-1 font-medium text-blue-600 hover:underline dark:text-blue-400"
-        >
-          Open call <ExternalLink className="h-3 w-3" />
-        </a>
-        {canManage && !editing && (
-          <button type="button" onClick={() => setEditing(true)} className="font-medium text-gray-700 hover:underline dark:text-gray-300">
-            Update
-          </button>
-        )}
-      </div>
-      {ticket.status === 'resolved' && ticket.resolution_note && (
-        <p className="mt-3 border-l-2 border-emerald-500 pl-3 text-sm text-gray-700 dark:text-gray-300">
-          {ticket.resolution_note}
-          {ticket.resolved_at && <span className="ml-2 text-xs text-gray-400">{fmtDate(ticket.resolved_at)}</span>}
-        </p>
+    <>
+      <tr onClick={() => setOpen(!open)} className="cursor-pointer align-top hover:bg-gray-50 dark:hover:bg-gray-800/50">
+        <td className="max-w-xs px-4 py-3 font-medium text-gray-900 dark:text-gray-100"><span className="line-clamp-2">{ticket.reason}</span></td>
+        <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">{ticket.flagged_by_email ?? '—'}</td>
+        <td className="whitespace-nowrap px-4 py-3 text-xs text-gray-500 dark:text-gray-400">{fmtDate(ticket.flagged_at)}</td>
+        <td className="px-4 py-3"><StatusPill status={ticket.status} /></td>
+        {internal && <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">{engineerName(ticket.assignee_email) ?? '—'}</td>}
+        <td className="px-2 py-3 text-gray-400"><ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} /></td>
+      </tr>
+      {open && (
+        <tr className="bg-gray-50/50 dark:bg-gray-800/20">
+          <td colSpan={internal ? 6 : 5} className="px-4 pb-4 pt-1">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+              <a
+                href={`/${projectId}/agents/${agentId}/observability?session_id=${ticket.call_log_id}`}
+                className="inline-flex items-center gap-1 font-medium text-blue-600 hover:underline dark:text-blue-400"
+              >
+                Open call <ExternalLink className="h-3 w-3" />
+              </a>
+              {internal && ticket.sheet_url && (
+                <a href={ticket.sheet_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-blue-600 hover:underline dark:text-blue-400">
+                  <FileSpreadsheet className="h-3 w-3" /> Internal sheet
+                </a>
+              )}
+              {canManage && !editing && (
+                <button type="button" onClick={() => setEditing(true)} className="font-medium text-gray-700 hover:underline dark:text-gray-300">Update</button>
+              )}
+            </div>
+            {ticket.status === 'resolved' && ticket.resolution_note && (
+              <p className="mt-3 border-l-2 border-emerald-500 pl-3 text-sm text-gray-700 dark:text-gray-300">
+                {ticket.resolution_note}
+                {ticket.resolved_at && <span className="ml-2 text-xs text-gray-400">{fmtDate(ticket.resolved_at)}</span>}
+              </p>
+            )}
+            <Thread ticket={ticket} canManage={canManage} agentId={agentId} />
+            {canManage && editing && (
+              <Editor onSave={() => save.mutate()} saving={save.isPending} error={save.isError ? (save.error as Error).message : undefined}>
+                <Labelled label="Status">
+                  <select className={fieldClass} value={status} onChange={(e) => setStatus(e.target.value as Ticket['status'])}>
+                    <option value="pending">Pending</option>
+                    <option value="in_review">In review</option>
+                    <option value="resolved">Resolved</option>
+                  </select>
+                </Labelled>
+                <Labelled label="Resolution note (required to resolve)">
+                  <Textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
+                </Labelled>
+                <Labelled label="Prompt engineer (emailed and tagged on Slack when in review)">
+                  <select className={fieldClass} value={assignee} onChange={(e) => setAssignee(e.target.value)}>
+                    <option value="">Nobody</option>
+                    {engineers.map((e) => <option key={e.email} value={e.email}>{e.name}</option>)}
+                  </select>
+                </Labelled>
+                <Labelled label="Internal sheet link (only Pype staff see this)">
+                  <Input value={sheet} onChange={(e) => setSheet(e.target.value)} placeholder="https://docs.google.com/spreadsheets/…" />
+                </Labelled>
+              </Editor>
+            )}
+          </td>
+        </tr>
       )}
-      {internal && (ticket.assignee_email || ticket.sheet_url) && (
-        <p className="mt-2 flex flex-wrap items-center gap-x-4 text-xs text-gray-500 dark:text-gray-400">
-          {ticket.assignee_email && <span>Prompt engineer: {ticket.assignee_email}</span>}
-          {ticket.sheet_url && (
-            <a href={ticket.sheet_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-blue-600 hover:underline dark:text-blue-400">
-              <FileSpreadsheet className="h-3 w-3" /> Internal sheet
-            </a>
-          )}
-        </p>
-      )}
-      <Thread ticket={ticket} canManage={canManage} agentId={agentId} />
-      {canManage && editing && (
-        <Editor onSave={() => save.mutate()} saving={save.isPending} error={save.isError ? (save.error as Error).message : undefined}>
-          <Labelled label="Status">
-            <select className={fieldClass} value={status} onChange={(e) => setStatus(e.target.value as Ticket['status'])}>
-              <option value="pending">Pending</option>
-              <option value="in_review">In review</option>
-              <option value="resolved">Resolved</option>
-            </select>
-          </Labelled>
-          <Labelled label="Resolution note (required to resolve)">
-            <Textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
-          </Labelled>
-          <Labelled label="Prompt engineer (@pypeai.com, emailed when in review)">
-            <Input value={assignee} onChange={(e) => setAssignee(e.target.value)} placeholder="name@pypeai.com" />
-          </Labelled>
-          <Labelled label="Internal sheet link (only Pype staff see this)">
-            <Input value={sheet} onChange={(e) => setSheet(e.target.value)} placeholder="https://docs.google.com/spreadsheets/…" />
-          </Labelled>
-        </Editor>
-      )}
-    </li>
+    </>
   )
 }
 

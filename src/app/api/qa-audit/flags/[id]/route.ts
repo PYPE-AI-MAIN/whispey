@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isQaDenied, qaDb, resolveAgentAccess } from '@/server/qa/access'
-import { assigneeError, sheetUrlError, ticketPatch } from '@/lib/qaAudit'
+import { sheetUrlError, ticketPatch } from '@/lib/qaAudit'
 import { notifyQaStatusChange } from '@/server/qa/notify'
 
 /** QA team only: move a ticket along and record how it was resolved. */
@@ -19,8 +19,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const sheet = typeof body.sheet_url === 'string' ? body.sheet_url.trim() : ''
   const assignee = typeof body.assignee_email === 'string' ? body.assignee_email.trim().toLowerCase() : ''
-  const extraError = (sheet && sheetUrlError(sheet)) || assigneeError(assignee)
+  const extraError = sheet && sheetUrlError(sheet)
   if (extraError) return NextResponse.json({ error: extraError }, { status: 400 })
+  const { data: engineer } = assignee
+    ? await qaDb.from('qa_team_members').select('name, slack_id').eq('role', 'prompt_engineer').eq('email', assignee).maybeSingle()
+    : { data: null }
+  if (assignee && !engineer) return NextResponse.json({ error: 'Pick a prompt engineer from the list' }, { status: 400 })
 
   const done = check.patch.status === 'resolved'
   const { data, error } = await qaDb
@@ -64,6 +68,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       detail: 'Flagged call assigned to you to fix',
       note: [`Flag: ${ticket.reason}`, check.patch.resolution_note].filter(Boolean).join(' | '),
       sheetUrl: sheet || null,
+      slackId: engineer?.slack_id,
     })
   }
 
