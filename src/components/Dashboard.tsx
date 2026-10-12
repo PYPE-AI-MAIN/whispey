@@ -35,6 +35,7 @@ import CampaignLogs from './campaigns/CampaignLogs'
 import Header from '@/components/shared/Header'
 import { useSupabaseQuery } from '../hooks/useSupabase'
 import FieldExtractorDialog from './FieldExtractorLogs'
+import { modelChange } from '@/config/fieldExtractorModels'
 import MetricsDialog from './MetricsDialog'
 import { AlertTriangle, Link as LinkIcon } from 'lucide-react'
 import QuickStartGuide from './QuickStartGuide'
@@ -797,7 +798,8 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                             initialData={JSON.parse(agent?.field_extractor_prompt || '[]')}
                             initialVariables={(agent as any)?.field_extractor_variables || {}}
                             isEnabled={!!agent?.field_extractor}
-                            onSave={async (data, enabled, variables) => {
+                            initialModel={agent?.field_extractor_model}
+                            onSave={async (data, enabled, variables, model) => {
                               const res = await fetch(`/api/agents/${agent.id}`, {
                                 method: 'PATCH',
                                 headers: { 'Content-Type': 'application/json' },
@@ -805,6 +807,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                                   field_extractor_prompt: JSON.stringify(data),
                                   field_extractor: enabled,
                                   field_extractor_variables: variables,
+                                  ...modelChange(agent?.field_extractor_model, model),
                                 }),
                               })
                               const j = (await res.json()) as { error?: string }
@@ -965,7 +968,8 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                     initialData={JSON.parse(agent?.field_extractor_prompt || '[]')}
                     initialVariables={(agent as any)?.field_extractor_variables || {}}
                     isEnabled={!!agent?.field_extractor}
-                    onSave={async (data, enabled, variables) => {
+                    initialModel={agent?.field_extractor_model}
+                    onSave={async (data, enabled, variables, model) => {
                       const res = await fetch(`/api/agents/${agent.id}`, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
@@ -973,6 +977,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                           field_extractor_prompt: JSON.stringify(data),
                           field_extractor: enabled,
                           field_extractor_variables: variables,
+                          ...modelChange(agent?.field_extractor_model, model),
                         }),
                       })
                       const j = (await res.json()) as { error?: string }
