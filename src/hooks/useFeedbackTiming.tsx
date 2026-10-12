@@ -211,15 +211,15 @@ export function useFeedbackTiming() {
         }
       case 1:
         return {
-          title: "Quick feedback? 🙏",
+          title: "Quick feedback?",
           subtitle: "Your input helps us improve",
-          emoji: "🙏"
+          emoji: ""
         }
       case 2:
         return {
-          title: "One more time? 😊",
+          title: "One more time?",
           subtitle: "We value your feedback",
-          emoji: "😊"
+          emoji: ""
         }
       default:
         return {

@@ -377,7 +377,7 @@ export default function PrivacyPolicy() {
             <div className="p-6 space-y-4">
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
                 <p className="text-green-900 font-medium">
-                  🛡️ We NEVER sell, rent, or trade your personal data
+                   We NEVER sell, rent, or trade your personal data
                 </p>
               </div>
 

@@ -372,7 +372,6 @@ export function AiChartBuilderPanel({
               ))}
               {!(isStreaming && isLast) && msg.errors?.map((err) => (
                 <div key={err} className="flex items-start gap-1.5 rounded-md bg-red-50 px-2 py-1.5 text-[11px] font-medium text-red-700 dark:bg-red-900/20 dark:text-red-400">
-                  <span>⚠</span>
                   <span>Couldn&apos;t build one of the charts: {err}</span>
                 </div>
               ))}

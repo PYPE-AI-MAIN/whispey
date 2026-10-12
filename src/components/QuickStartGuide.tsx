@@ -75,13 +75,13 @@ if __name__ == "__main__":
         title: 'Install Whispey',
         subtitle: 'One command to get started',
         code: 'pip install whispey',
-        icon: '📦'
+        icon: ''
       },
       {
         id: 'credentials',
         title: 'Your Agent Credentials',
         subtitle: 'Everything you need to get started',
-        icon: '🔐',
+        icon: '',
         items: [
           { text: 'Organization created with API key', status: 'done' },
           { text: `Your Agent ID: ${agentId}`, status: 'ready', copyable: agentId },
@@ -93,13 +93,13 @@ if __name__ == "__main__":
         title: 'Environment Setup',
         subtitle: 'Put this in your .env file',
         code: `WHISPEY_API_KEY=your_whispey_api_key_here`,
-        icon: '⚙️'
+        icon: ''
       },
       {
         id: 'integration',
         title: 'Integrate with LiveKit',
         subtitle: 'Add monitoring in just 3 simple steps',
-        icon: '🚀',
+        icon: '',
         integrationSteps: [
           {
             title: '1. Import Whispey',
@@ -188,7 +188,7 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                     </p>
                     <p className="text-xs text-gray-500">{step.subtitle}</p>
                   </div>
-                  <div className="text-lg">{step.icon}</div>
+                  
                 </div>
               ))}
             </div>
@@ -217,7 +217,7 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                     {/* Icon & Number */}
                     <div className="flex flex-col items-center">
                       <div className="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center text-white mb-2">
-                        <span className="text-lg">{step.icon}</span>
+                        
                       </div>
                       <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium text-gray-700">
                         {index + 1}
@@ -335,7 +335,7 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                                   </button>
                                 </div>
                                 <p className="text-xs text-gray-500 mt-2">
-                                  💡 This is a complete working example. Copy and modify for your needs.
+                                   This is a complete working example. Copy and modify for your needs.
                                 </p>
                               </div>
                             )}

@@ -484,14 +484,11 @@ function Campaigns() {
           <div className="flex items-center gap-3">
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-foreground">Campaigns</h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Manage and monitor your calling campaigns
-                {pagination && (
-                  <span className="ml-1">
-                    · {pagination.total} total
-                  </span>
-                )}
-              </p>
+              {pagination && (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {pagination.total} {pagination.total === 1 ? 'campaign' : 'campaigns'}
+                </p>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">

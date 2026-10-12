@@ -184,9 +184,6 @@ export default function SimplifiedSipManagement() {
             </div>
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-foreground">Phone Settings</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Manage phone numbers and assignments
-              </p>
             </div>
           </div>
           

@@ -25,7 +25,7 @@ export default async function InvitePage({
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
         <div className="max-w-md w-full text-center space-y-4">
-          <div className="text-5xl">🔗</div>
+          
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Invalid Invite Link
           </h1>

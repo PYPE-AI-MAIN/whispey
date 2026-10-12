@@ -620,7 +620,7 @@ export default function PhoneNumbersPage() {
                   <div>
                     <p className="text-[11px] text-gray-500 mb-1">WebSocket stream (audio)</p>
                     <code className="block bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-xs text-green-600 dark:text-green-400 font-mono break-all">wss://your-bridge-domain/bridge</code>
-                    <p className="text-[11px] text-gray-500 mt-1">⚠️ Use <span className="text-yellow-600 dark:text-yellow-400">wss://</span> with a domain in production</p>
+                    <p className="text-[11px] text-gray-500 mt-1">Use <span className="text-yellow-600 dark:text-yellow-400">wss://</span> with a domain in production</p>
                   </div>
                   <div>
                     <p className="text-[11px] text-gray-500 mb-1">Prewarm webhook (Call received on Server)</p>

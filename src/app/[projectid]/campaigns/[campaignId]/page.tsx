@@ -377,7 +377,7 @@ function ViewCampaign() {
         ? 'All contacts' 
         : `Filtered by: ${downloadStatusFilter}`
       
-      alert(`✅ Downloaded ${filteredContacts.length} contacts\n🔍 ${filterInfo} (server-side filtered)\n📊 Total columns: ${columns.length}\n📋 Columns from additionalData: ${additionalDataCount}\n\nCheck browser console for full column list.`)
+      alert(`Downloaded ${filteredContacts.length} contacts\n${filterInfo} (server-side filtered)\nTotal columns: ${columns.length}\n Columns from additionalData: ${additionalDataCount}\n\nCheck browser console for full column list.`)
     } catch (error: any) {
       console.error('Error downloading contacts:', error)
       alert('Failed to download contacts: ' + error.message)
