@@ -195,7 +195,7 @@ function flaggedTriggerLook({ quiet, saving, flags }: FlagTriggerState): FlagTri
         {/* The quiet pill names what was flagged; the full list is in the tooltip. */}
         <span className={cn(quiet && 'truncate')}>{quiet ? (flags[0]?.text || 'Flagged') : 'Flagged'}</span>
         {flags.length > 1 && (
-          <span className="absolute -top-1.5 -right-1.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-white px-1 text-[9px] font-bold text-rose-600 shadow-sm ring-1 ring-rose-700/20">
+          <span className="absolute -top-1.5 -right-1.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-white px-1 text-[9px] font-bold text-rose-600 shadow-sm ring-1 ring-rose-700/20 dark:bg-gray-900">
             {flags.length}
           </span>
         )}

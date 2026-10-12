@@ -377,7 +377,7 @@ function ViewCampaign() {
         ? 'All contacts' 
         : `Filtered by: ${downloadStatusFilter}`
       
-      alert(`✅ Downloaded ${filteredContacts.length} contacts\n🔍 ${filterInfo} (server-side filtered)\n📊 Total columns: ${columns.length}\n📋 Columns from additionalData: ${additionalDataCount}\n\nCheck browser console for full column list.`)
+      alert(`Downloaded ${filteredContacts.length} contacts\n${filterInfo} (server-side filtered)\nTotal columns: ${columns.length}\n Columns from additionalData: ${additionalDataCount}\n\nCheck browser console for full column list.`)
     } catch (error: any) {
       console.error('Error downloading contacts:', error)
       alert('Failed to download contacts: ' + error.message)
@@ -631,7 +631,7 @@ function ViewCampaign() {
     return (
       <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
         {/* Header */}
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm">
+        <div className="px-6 py-4 border-border bg-background border-b shadow-sm">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
@@ -641,7 +641,7 @@ function ViewCampaign() {
             >
               <ArrowLeft className="h-3.5 w-3.5" />
             </Button>
-            <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
               Campaign Details
             </h1>
           </div>
@@ -679,7 +679,7 @@ function ViewCampaign() {
   }
 
   const renderHeader = () => (
-    <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm">
+    <div className="px-6 py-4 border-border bg-background border-b shadow-sm">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Button
@@ -691,7 +691,7 @@ function ViewCampaign() {
             <ArrowLeft className="h-3.5 w-3.5" />
           </Button>
           <div>
-            <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
               {campaignDetails.campaignName}
             </h1>
             <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -706,7 +706,7 @@ function ViewCampaign() {
               size="sm"
               onClick={handlePauseCampaign}
               disabled={actionLoading}
-              className="h-7 text-xs gap-1.5"
+              className="h-9 text-sm gap-2 px-4"
             >
               <Pause className="w-3 h-3" />
               {actionLoading ? 'Pausing...' : 'Pause'}
@@ -718,7 +718,7 @@ function ViewCampaign() {
               size="sm"
               onClick={handleResumeCampaign}
               disabled={actionLoading}
-              className="h-7 text-xs gap-1.5"
+              className="h-9 text-sm gap-2 px-4"
             >
               <Play className="w-3 h-3" />
               {actionLoading ? 'Resuming...' : 'Resume'}
@@ -762,7 +762,7 @@ function ViewCampaign() {
             variant="outline"
             size="sm"
             onClick={handleRefresh}
-            className="h-7 text-xs gap-1.5"
+            className="h-9 text-sm gap-2 px-4"
           >
             <RefreshCw className="w-3 h-3" />
             Refresh

@@ -30,8 +30,8 @@ const brandFont = Poppins({
 })
 
 export const metadata: Metadata = {
-  title: 'Whispey - OSS LiveKit observability platform',
-  description: 'An observability platform for all your agents built on LiveKit.',
+  title: 'Whispey by Pype AI',
+  description: "Pype AI's workspace for building voice agents and reviewing every patient call.",
   icons: {
     icon: [
       { url: '/favicon.ico' },
@@ -69,8 +69,8 @@ export default function RootLayout({
 
           <ThemeProvider
             attribute="class"
-            defaultTheme="system"
-            enableSystem
+            defaultTheme="light"
+            enableSystem={false}
             disableTransitionOnChange
           >
             <QueryProvider>

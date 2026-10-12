@@ -198,7 +198,7 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
     return (
       <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-8 text-center border">
         <Activity className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-        <h4 className="text-lg font-semibold text-gray-600 mb-2">No Timeline Data</h4>
+        <h4 className="text-lg font-semibold text-gray-600 mb-2 dark:text-gray-400">No Timeline Data</h4>
         <p className="text-sm text-muted-foreground">
           Trace timeline will appear here when execution data is available
         </p>
@@ -211,7 +211,7 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
 
   return (
     <TooltipProvider>
-      <div className="bg-white border rounded-xl p-6 shadow-sm">
+      <div className="bg-white border rounded-xl p-6 shadow-sm dark:bg-gray-900">
         {/* Timeline Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -219,7 +219,7 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
               <Zap className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h4 className="text-lg font-semibold text-gray-900">Execution Timeline</h4>
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Execution Timeline</h4>
               <p className="text-sm text-muted-foreground">
                 {processedItems.length ? (
                   <>
@@ -251,14 +251,13 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
 
         {/* Conversation Preview */}
         {(conversationSummary.hasInput || conversationSummary.hasOutput) && (
-          <>
             <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border">
-              <h5 className="text-sm font-semibold text-gray-900 mb-2">Conversation</h5>
+              <h5 className="text-sm font-semibold text-gray-900 mb-2 dark:text-gray-100">Conversation</h5>
               <div className="space-y-2">
                 {conversationSummary.hasInput && (
                   <div className="text-sm">
                     <span className="font-medium text-blue-600">User:</span>
-                    <span className="ml-2 text-gray-700">
+                    <span className="ml-2 text-gray-700 dark:text-gray-300">
                       {trace.user_transcript}
                     </span>
                   </div>
@@ -266,14 +265,13 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
                 {conversationSummary.hasOutput && (
                   <div className="text-sm">
                     <span className="font-medium text-purple-600">Assistant:</span>
-                    <span className="ml-2 text-gray-700">
+                    <span className="ml-2 text-gray-700 dark:text-gray-300">
                       {trace.agent_response}
                     </span>
                   </div>
                 )}
               </div>
             </div>
-          </>
         )}
 
         {/* Timeline Scale */}
@@ -323,7 +321,7 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
                     </div>
 
                     {/* Timeline Bar Container */}
-                    <div className="flex-1 relative h-8 bg-gray-50 rounded-full border ml-4">
+                    <div className="flex-1 relative h-8 bg-gray-50 rounded-full border ml-4 dark:bg-gray-800">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <div
@@ -396,7 +394,7 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
 
                     {/* Duration Label */}
                     <div className="w-20 text-right pl-4">
-                      <div className="text-sm font-mono text-gray-900">
+                      <div className="text-sm font-mono text-gray-900 dark:text-gray-100">
                         {formatDuration(item.duration)}
                       </div>
                       <div className="text-xs text-muted-foreground">
@@ -411,9 +409,9 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
         ) : (
           // Fallback view when no detailed timeline items
           <div className="space-y-4">
-            <div className="text-center py-8 bg-gray-50 rounded-lg">
+            <div className="text-center py-8 bg-gray-50 rounded-lg dark:bg-gray-800">
               <Clock className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-              <div className="text-sm text-gray-600">No detailed timeline available</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">No detailed timeline available</div>
               <div className="text-xs text-gray-500 mt-1">
                 Showing basic trace information
               </div>
@@ -473,7 +471,7 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
           <div className="flex justify-between items-center text-sm">
             <div className="flex items-center gap-6">
               <div>
-                <span className="font-medium text-gray-900">
+                <span className="font-medium text-gray-900 dark:text-gray-100">
                   {processedItems.length || 'Basic'}
                 </span>
                 <span className="text-muted-foreground ml-1">
@@ -481,12 +479,12 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
                 </span>
               </div>
               <div>
-                <span className="font-medium text-gray-900">{formatDuration(maxDuration)}</span>
+                <span className="font-medium text-gray-900 dark:text-gray-100">{formatDuration(maxDuration)}</span>
                 <span className="text-muted-foreground ml-1">total duration</span>
               </div>
               {trace?.session_id && (
                 <div>
-                  <span className="font-medium text-gray-900">
+                  <span className="font-medium text-gray-900 dark:text-gray-100">
                     {trace.session_id.slice(-8)}
                   </span>
                   <span className="text-muted-foreground ml-1">session</span>

@@ -32,7 +32,6 @@ import AnalyticsCanvas from './analytics/AnalyticsCanvas'
 import CallLogs from './calls/CallLogs'
 import CallLogsV2 from './calls/v2/CallLogsV2'
 import CampaignLogs from './campaigns/CampaignLogs'
-import Header from '@/components/shared/Header'
 import { useSupabaseQuery } from '../hooks/useSupabase'
 import FieldExtractorDialog from './FieldExtractorLogs'
 import { modelChange } from '@/config/fieldExtractorModels'
@@ -312,14 +311,14 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
     
     if (agent && !agent.project_id) {
       return {
-        project: 'No Project',
+        project: 'No Organization',
         item: agentDisplayName(agent)
       }
     }
     
     if (agent && !project) {
       return {
-        project: 'Unknown Project',
+        project: 'Unknown Organization',
         item: agentDisplayName(agent)
       }
     }

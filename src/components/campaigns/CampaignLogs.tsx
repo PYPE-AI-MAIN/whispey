@@ -138,7 +138,7 @@ function CampaignHeaderSkeleton() {
 // Skeleton for table
 function CampaignTableSkeleton() {
   return (
-    <main className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-950">
+    <div className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-950">
       <div className="h-full flex flex-col">
         <div className="flex-1 overflow-auto">
           <div className="min-w-full" style={{ minWidth: "1500px" }}>
@@ -183,7 +183,7 @@ function CampaignTableSkeleton() {
           </div>
         </div>
       </div>
-    </main>
+    </div>
   )
 }
 
@@ -285,7 +285,7 @@ function DeleteDialogContent({
 
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3">
           <p className="text-sm text-red-800 dark:text-red-300 mb-2">
-            <strong>⚠️ Warning:</strong> This action cannot be undone!
+            <strong>Warning:</strong> This action cannot be undone!
           </p>
         </div>
 
@@ -1088,12 +1088,12 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-gray-50 dark:bg-gray-900">
       {/* Header - shows immediately with working controls */}
-      <header className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
+      <header className="px-6 py-4 border-border bg-background border-b">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
               <div>
-                <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Campaign Logs</h1>
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground">Campaign Logs</h1>
               </div>
             </div>
 
@@ -1217,7 +1217,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
       </header>
 
       {/* Table - show loading state only for data */}
-      <main className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900 flex flex-col">
+      <div className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900 flex flex-col">
         {loading && logs.length === 0 ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
@@ -1366,7 +1366,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
             )}
           </>
         )}
-      </main>
+      </div>
 
       {/* All dialog components with dark mode support */}
       <Dialog open={showUploadDialog} onOpenChange={(open) => { setShowUploadDialog(open); if (!open) setCsvFile(null) }}>

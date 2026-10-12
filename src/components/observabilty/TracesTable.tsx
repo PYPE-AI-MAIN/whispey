@@ -555,7 +555,7 @@ const handleRowClick = (trace: TraceLog) => {
                           <div className="text-xs text-gray-400 dark:text-gray-500 space-y-0.5">
                             <div>Session: {trace.session_id.slice(-8)}</div>
                             {trace.phone_number && (
-                              <div>📞 {trace.phone_number.slice(-4)}</div>
+                              <div>{trace.phone_number.slice(-4)}</div>
                             )}
                           </div>
                         </div>

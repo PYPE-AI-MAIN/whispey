@@ -174,9 +174,9 @@ logging.basicConfig(level=logging.INFO)
        try:
            result = await whispey.export(session_id)
            if result.get("success"):
-               print("✅ Successfully exported to Whispey Voice Analytics!")
+               print("Successfully exported to Whispey Voice Analytics!")
            else:
-               print(f"❌ Export failed: {result.get('error')}")
+               print(f"Export failed: {result.get('error')}")
        except Exception as e:
            print(f"Export error: {e}")
    
@@ -185,6 +185,6 @@ logging.basicConfig(level=logging.INFO)
 
 ## Next Steps
 
-- Learn about [Advanced Features](/docs/sdk/features)
-- Check out [Examples](/docs/examples) for real-world usage
+- Learn about [Advanced Features](/sdk/features)
+- Check out [Examples](/examples) for real-world usage
 - Visit our [GitHub Examples Repository](https://github.com/PYPE-AI-MAIN/whispey-examples)

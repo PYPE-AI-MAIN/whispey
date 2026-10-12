@@ -488,7 +488,7 @@ export function Inspector() {
                             : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
                         }`}
                       >
-                        {iss.severity === 'error' ? '⛔ ' : '⚠️ '}
+                        {iss.severity === 'error' ? 'Error: ' : 'Warning: '}
                         {iss.message}
                       </p>
                     ))}

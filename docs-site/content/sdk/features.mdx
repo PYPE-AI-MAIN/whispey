@@ -212,9 +212,9 @@ async def whispey_shutdown():
     result = await whispey.export(session_id)
     
     if result.get("success"):
-        print("✅ Successfully exported to Whispey Voice Analytics!")
+        print("Successfully exported to Whispey Voice Analytics!")
     else:
-        print(f"❌ Export failed: {result.get('error')}")
+        print(f"Export failed: {result.get('error')}")
 
 ctx.add_shutdown_callback(whispey_shutdown)
 ```
@@ -229,9 +229,9 @@ async def whispey_shutdown():
     )
     
     if result.get("success"):
-        print("✅ Successfully exported to Whispey Voice Analytics!")
+        print("Successfully exported to Whispey Voice Analytics!")
     else:
-        print(f"❌ Export failed: {result.get('error')}")
+        print(f"Export failed: {result.get('error')}")
 
 ctx.add_shutdown_callback(whispey_shutdown)
 ```
@@ -274,6 +274,6 @@ result = await whispey.export(
 
 ## Next Steps
 
-- Learn about [Bug Reporting](/docs/sdk/bug-reporting) feature
-- Check out [Examples](/docs/examples) for real-world usage
+- Learn about [Bug Reporting](/sdk/bug-reporting) feature
+- Check out [Examples](/examples) for real-world usage
 - Visit our [GitHub Examples Repository](https://github.com/PYPE-AI-MAIN/whispey-examples)

@@ -161,9 +161,9 @@ async def entrypoint(ctx: agents.JobContext):
     async def whispey_shutdown():
         result = await whispey.export(session_id)
         if result.get("success"):
-            print("✅ Healthcare conversation evaluated and exported!")
+            print("Healthcare conversation evaluated and exported!")
         else:
-            print(f"❌ Export failed: {result.get('error')}")
+            print(f"Export failed: {result.get('error')}")
     
     ctx.add_shutdown_callback(whispey_shutdown)
     
@@ -198,6 +198,6 @@ if __name__ == "__main__":
 
 ## Next Steps
 
-- Learn about [Bug Reporting](/docs/sdk/bug-reporting) for quality monitoring
-- Check out [Advanced Features](/docs/sdk/features) for more SDK capabilities
-- Visit [Examples](/docs/examples) for more healthcare use cases
+- Learn about [Bug Reporting](/sdk/bug-reporting) for quality monitoring
+- Check out [Advanced Features](/sdk/features) for more SDK capabilities
+- Visit [Examples](/examples) for more healthcare use cases
