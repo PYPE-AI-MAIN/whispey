@@ -262,6 +262,7 @@ function NodeFields({
     case 'knowledge':
       return (
         <>
+          <p className="text-xs text-muted-foreground">Searches the documents uploaded under Knowledge base in the top bar.</p>
           <Field label="Query"><Input value={node.query ?? ''} onChange={(e) => patch({ query: e.target.value } as any)} placeholder="{{var}} or blank = last user message" /></Field>
           <Field label="Knowledge base agent ID (blank = this agent)"><Input value={node.knowledgeBase ?? ''} onChange={(e) => patch({ knowledgeBase: e.target.value } as any)} placeholder="this agent" /></Field>
           <Field label="Top K"><Input type="number" value={node.topK} onChange={(e) => patch({ topK: Number(e.target.value) } as any)} /></Field>

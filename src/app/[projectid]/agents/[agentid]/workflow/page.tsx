@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ReactFlowProvider } from '@xyflow/react'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Braces, ClipboardPaste, Copy, Loader2, PhoneIcon, Rocket, Settings2, ShieldCheck, Sparkles } from 'lucide-react'
+import { ArrowLeft, BookOpen, Braces, ClipboardPaste, Copy, Loader2, PhoneIcon, Rocket, Settings2, ShieldCheck, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -338,6 +338,11 @@ function WorkflowPageInner() {
         </Button>
         <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
           <Settings2 className="h-3.5 w-3.5 mr-1.5" /> Agent
+        </Button>
+        <Button variant="outline" size="sm" asChild title="Upload documents the agent can answer from (opens in a new tab)">
+          <a href={`/${projectId}/agents/${agentId}/knowledge`} target="_blank" rel="noopener noreferrer">
+            <BookOpen className="h-3.5 w-3.5 mr-1.5" /> Knowledge base
+          </a>
         </Button>
         <Button
           variant="outline"
