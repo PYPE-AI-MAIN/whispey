@@ -63,6 +63,140 @@ const filterProjects = (projects: Project[] | undefined, query: string): Project
 
 const errorText = (error: unknown, fallback: string): string => (error instanceof Error ? error.message : fallback)
 
+function TokenDialog({
+  project, token, visible, copied, onToggleVisible, onCopy, onClose,
+}: Readonly<{
+  project: Project | null
+  token: string | null
+  visible: boolean
+  copied: boolean
+  onToggleVisible: () => void
+  onCopy: () => void
+  onClose: () => void
+}>) {
+  return (
+  <Dialog open={project !== null} onOpenChange={onClose}>
+    <DialogContent className="sm:max-w-[500px]">
+      <DialogHeader>
+        <DialogTitle className="text-base font-semibold">API token generated</DialogTitle>
+        <DialogDescription className="text-xs text-gray-600 dark:text-gray-400">
+          A new API token has been generated for "{project?.name}". Save this securely.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="space-y-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-900 dark:text-gray-100 mb-1">API Token</label>
+          <div className="relative">
+            <input
+              type={visible ? 'text' : 'password'}
+              value={token ?? ''}
+              readOnly
+              className="w-full h-8 px-2 pr-16 text-xs border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-mono focus:outline-none"
+            />
+            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-0.5">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={onToggleVisible}
+                className="h-5 w-5 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+              >
+                {visible ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={onCopy}
+                className="h-5 w-5 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+              >
+                <Copy className="w-3 h-3" />
+              </Button>
+            </div>
+          </div>
+          {copied && (
+            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">Token copied to clipboard</p>
+          )}
+        </div>
+        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded">
+          <p className="text-xs text-amber-800 dark:text-amber-200">
+            <strong>Important:</strong> Store this token securely. The previous token has been invalidated.
+          </p>
+        </div>
+        <div className="flex justify-end pt-3">
+          <Button onClick={onClose} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs">
+            Done
+          </Button>
+        </div>
+      </div>
+    </DialogContent>
+  </Dialog>
+  )
+}
+
+function ViewControls({
+  viewMode, onViewMode, density, onDensity,
+}: Readonly<{
+  viewMode: 'grid' | 'list'
+  onViewMode: (mode: 'grid' | 'list') => void
+  density: 'comfortable' | 'compact'
+  onDensity: (density: 'comfortable' | 'compact') => void
+}>) {
+  const otherDensity = density === 'comfortable' ? 'compact' : 'comfortable'
+  return (
+      <div className="flex items-center gap-3">
+        {/* Density Control - Single toggle */}
+        {viewMode === 'grid' && <button
+          onClick={() => onDensity(otherDensity)}
+          title={`Switch to ${otherDensity} view`}
+          className="flex items-center justify-center w-7 h-7 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        >
+          <ChevronsUpDown className="w-3 h-3" />
+        </button>}
+
+        {/* View Mode Control */}
+        <div className="flex items-center border border-gray-200 dark:border-gray-700 rounded p-0.5 bg-gray-50 dark:bg-gray-800">
+          <Button
+            variant={viewMode === 'grid' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => onViewMode('grid')}
+            className={`w-6 h-6 p-0 text-xs ${viewMode === 'grid' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100 hover:bg-white dark:hover:bg-gray-700' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-transparent'}`}
+          >
+            <Grid3X3 className="w-3 h-3" />
+          </Button>
+          <Button
+            variant={viewMode === 'list' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => onViewMode('list')}
+            className={`w-6 h-6 p-0 text-xs ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100 hover:bg-white dark:hover:bg-gray-700' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-transparent'}`}
+          >
+            <List className="w-3 h-3" />
+          </Button>
+        </div>
+      </div>
+  )
+}
+
+async function apiJson(url: string, init: RequestInit, failure: string) {
+  const response = await fetch(url, init)
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.error || failure)
+  }
+  return response.json()
+}
+
+async function copyText(text: string | null): Promise<boolean> {
+  if (!text) return false
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch (err) {
+    console.error('Failed to copy token:', err)
+    return false
+  }
+}
+
 function readStored<T extends string>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback
   return (localStorage.getItem(key) as T) || fallback
@@ -144,16 +278,10 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
   const handleDeleteProject = async (project: Project) => {
     setDeletingProject(project.id)
     try {
-      const response = await fetch(`/api/projects/${project.id}`, {
+      await apiJson(`/api/projects/${project.id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-      })
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to delete organization')
-      }
-
-      const result = await response.json()
+      }, 'Failed to delete organization')
       refetch()
       setShowDeleteConfirm(null)
     } catch (error: unknown) {
@@ -168,16 +296,11 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
   const handleRegenerateToken = async (project: Project) => {
     setRegeneratingToken(project.id)
     try {
-      const response = await fetch(`/api/projects/${project.id}`, {
+      const result = await apiJson(`/api/projects/${project.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'regenerate_token' }),
-      })
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to regenerate token')
-      }
-      const result = await response.json()
+      }, 'Failed to regenerate token')
       setRegeneratedToken(result.api_token)
       setShowTokenDialog(project)
       setShowRegenerateConfirm(null)
@@ -192,14 +315,9 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
   }
 
   const handleCopyToken = async () => {
-    if (regeneratedToken) {
-      try {
-        await navigator.clipboard.writeText(regeneratedToken)
-        setTokenCopied(true)
-        setTimeout(() => setTokenCopied(false), 2000)
-      } catch (err) {
-        console.error('Failed to copy token:', err)
-      }
+    if (await copyText(regeneratedToken)) {
+      setTokenCopied(true)
+      setTimeout(() => setTokenCopied(false), 2000)
     }
   }
 
@@ -554,36 +672,12 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
               </div>
             </div>
             
-            <div className="flex items-center gap-3">
-              {/* Density Control - Single toggle */}
-              {viewMode === 'grid' && <button
-                onClick={() => setDensity(density === 'comfortable' ? 'compact' : 'comfortable')}
-                title={`Switch to ${density === 'comfortable' ? 'compact' : 'comfortable'} view`}
-                className="flex items-center justify-center w-7 h-7 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              >
-                <ChevronsUpDown className="w-3 h-3" />
-              </button>}
-
-              {/* View Mode Control */}
-              <div className="flex items-center border border-gray-200 dark:border-gray-700 rounded p-0.5 bg-gray-50 dark:bg-gray-800">
-                <Button
-                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('grid')}
-                  className={`w-6 h-6 p-0 text-xs ${viewMode === 'grid' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100 hover:bg-white dark:hover:bg-gray-700' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-transparent'}`}
-                >
-                  <Grid3X3 className="w-3 h-3" />
-                </Button>
-                <Button
-                  variant={viewMode === 'list' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('list')}
-                  className={`w-6 h-6 p-0 text-xs ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100 hover:bg-white dark:hover:bg-gray-700' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-transparent'}`}
-                >
-                  <List className="w-3 h-3" />
-                </Button>
-              </div>
-            </div>
+            <ViewControls
+              viewMode={viewMode}
+              onViewMode={setViewMode}
+              density={density}
+              onDensity={setDensity}
+            />
           </div>
         </div>
       </div>
@@ -781,62 +875,15 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
         onProjectCreated={handleProjectCreated}
       />
 
-      <Dialog open={showTokenDialog !== null} onOpenChange={handleCloseTokenDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold">API token generated</DialogTitle>
-            <DialogDescription className="text-xs text-gray-600 dark:text-gray-400">
-              A new API token has been generated for "{showTokenDialog?.name}". Save this securely.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-900 dark:text-gray-100 mb-1">API Token</label>
-              <div className="relative">
-                <input
-                  type={showToken ? 'text' : 'password'}
-                  value={regeneratedToken || ''}
-                  readOnly
-                  className="w-full h-8 px-2 pr-16 text-xs border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-mono focus:outline-none"
-                />
-                <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-0.5">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setShowToken(!showToken)}
-                    className="h-5 w-5 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                  >
-                    {showToken ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleCopyToken}
-                    className="h-5 w-5 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                  >
-                    <Copy className="w-3 h-3" />
-                  </Button>
-                </div>
-              </div>
-              {tokenCopied && (
-                <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">Token copied to clipboard</p>
-              )}
-            </div>
-            <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded">
-              <p className="text-xs text-amber-800 dark:text-amber-200">
-                <strong>Important:</strong> Store this token securely. The previous token has been invalidated.
-              </p>
-            </div>
-            <div className="flex justify-end pt-3">
-              <Button onClick={handleCloseTokenDialog} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs">
-                Done
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <TokenDialog
+        project={showTokenDialog}
+        token={regeneratedToken}
+        visible={showToken}
+        copied={tokenCopied}
+        onToggleVisible={() => setShowToken(!showToken)}
+        onCopy={handleCopyToken}
+        onClose={handleCloseTokenDialog}
+      />
 
       <Dialog open={showDeleteConfirm !== null} onOpenChange={() => setShowDeleteConfirm(null)}>
         <DialogContent className="sm:max-w-[400px]">

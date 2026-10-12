@@ -1,7 +1,7 @@
 // src/components/agents/AgentSelect/AgentSelection.tsx
 'use client'
 
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { AlertCircle, X, ArrowUpDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -52,13 +52,6 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
   }, [])
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
-  const [breadcrumb, setBreadcrumb] = useState<{
-    project?: string;
-    item?: string;
-  }>({
-    project: '',
-    item: ''
-  })
   // const router = useRouter()
 
   const invalidatePermissions = useInvalidateUserPermissions()
@@ -66,21 +59,10 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
   const { isMobile } = useMobile(768)
 
   // Fetch project data
-  const { data: projects, isLoading: projectLoading, error: projectError } = useSupabaseQuery('pype_voice_projects', {
+  const { isLoading: projectLoading, error: projectError } = useSupabaseQuery('pype_voice_projects', {
     select: 'id, name, description, environment, created_at, is_active, plans, agent',
     filters: [{ column: 'id', operator: 'eq', value: projectId }]
   })
-
-  const project = projects?.[0]
-
-  useEffect(() => {
-    if (projectId && project) {
-      setBreadcrumb({
-        project: project.name,
-        item: 'Monitoring'
-      })
-    }
-  }, [projectId, project])
 
   // Fetch agents data
   const { data: agents, isLoading: agentsLoading, error: agentsError, refetch } = useSupabaseQuery('pype_voice_agents', {

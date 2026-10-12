@@ -46,7 +46,7 @@ export default function SupportSheet({ isOpen, onClose }: SupportSheetProps) {
               variant="outline"
               className="w-full text-xs h-8 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-900 dark:text-gray-100"
               onClick={() => {
-                window.open('https://docs.whispey.pypeai.com', '_blank')
+                window.open('https://docs.whispey.pypeai.com', '_blank', 'noopener,noreferrer')
                 onClose()
               }}
             >
@@ -78,7 +78,7 @@ I need help with:
 
 Best regards,
 User`)
-                window.open(`mailto:deepesh@pypeai.com?subject=${subject}&body=${body}`, '_blank')
+                window.open(`mailto:deepesh@pypeai.com?subject=${subject}&body=${body}`, '_blank', 'noopener,noreferrer')
                 onClose()
               }}
             >
