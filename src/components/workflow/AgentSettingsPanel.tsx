@@ -48,7 +48,6 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
   const [editingLSIndex, setEditingLSIndex] = useState<number | null>(null)
   const params = useParams()
   const projectId = Array.isArray(params.projectid) ? params.projectid[0] : params.projectid || ''
-  const agentIdFromPath = Array.isArray(params.agentid) ? params.agentid[0] : params.agentid || ''
   const [phoneNumbers, setPhoneNumbers] = useState<OutboundPhoneNumber[]>([])
   const [loadingPhoneNumbers, setLoadingPhoneNumbers] = useState(false)
 
@@ -116,14 +115,7 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
             />
           </div>
           {agent.knowledge?.enabled && (
-            <a
-              href={`/${projectId}/agents/${agentIdFromPath}/knowledge`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="-mt-2 block text-xs font-medium text-foreground underline underline-offset-2"
-            >
-              Upload documents (opens in a new tab)
-            </a>
+            <p className="-mt-2 text-xs text-muted-foreground">Add or remove documents from Setup, then Knowledge base.</p>
           )}
 
           {/* LLM */}

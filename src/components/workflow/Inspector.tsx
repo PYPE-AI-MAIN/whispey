@@ -266,7 +266,7 @@ function NodeFields({
     case 'knowledge':
       return (
         <>
-          <p className="text-xs text-muted-foreground">Looks things up in the documents you uploaded (Setup menu, Knowledge base). Most flows do not need this step: turn on &quot;Answer from the knowledge base&quot; in Voice, model and language instead.</p>
+          <p className="text-xs text-muted-foreground">Looks things up in your documents. Most flows do not need this step: upload documents under Setup, then Knowledge base, and the agent can use them on any step.</p>
           <Field label="What to search for" hint="Leave blank to search for what the caller just said."><Input value={node.query ?? ''} onChange={(e) => patch({ query: e.target.value } as any)} placeholder="{{var}} or blank = last user message" /></Field>
           <Field label="Use another agent's documents (leave blank for this agent)"><Input value={node.knowledgeBase ?? ''} onChange={(e) => patch({ knowledgeBase: e.target.value } as any)} placeholder="this agent" /></Field>
           <Field label="How many results to use"><Input type="number" value={node.topK} onChange={(e) => patch({ topK: Number(e.target.value) } as any)} /></Field>
@@ -410,7 +410,7 @@ function NodeFields({
 }
 
 const EDGE_KINDS: Record<EdgeKind, { label: string; help: string }> = {
-  always: { label: 'Next step', help: 'Go here as soon as this step is done.' },
+  always: { label: 'Next step', help: 'Go here as soon as the caller has replied to this step. To wait for something specific, use "When the caller says something" instead.' },
   condition: { label: 'When the caller says something', help: 'Go here when what the caller says matches the description below.' },
   logic: { label: 'When a saved value matches', help: 'Go here when a variable matches a rule, like age > 18. No AI involved.' },
   fallback: { label: 'Otherwise (automatic)', help: 'Used when none of the other connections apply. The system handles this for you, so you rarely need to touch it.' },

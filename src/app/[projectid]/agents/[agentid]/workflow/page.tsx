@@ -19,6 +19,7 @@ import { WorkflowCanvas } from '@/components/workflow/WorkflowCanvas'
 import { Inspector } from '@/components/workflow/Inspector'
 import type { LintIssue } from '@/lib/workflow/linter'
 import { WorkflowHeader } from '@/components/workflow/WorkflowHeader'
+import { KnowledgePanel } from '@/components/workflow/KnowledgePanel'
 import { GlobalRulesPanel } from '@/components/workflow/GlobalRulesPanel'
 import { VariablesPanel } from '@/components/workflow/VariablesPanel'
 import { AgentSettingsPanel } from '@/components/workflow/AgentSettingsPanel'
@@ -142,6 +143,7 @@ function WorkflowPageInner() {
   const [variablesOpen, setVariablesOpen] = useState(false)
   const [rulesOpen, setRulesOpen] = useState(false)
   const [issuesOpen, setIssuesOpen] = useState(false)
+  const [knowledgeOpen, setKnowledgeOpen] = useState(false)
   const [serverIssues, setServerIssues] = useState<LintIssue[]>([])
   // Steps are added with the + on a step, so the side list stays out of the way until asked for.
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -318,7 +320,7 @@ function WorkflowPageInner() {
         onOpenVariables={() => setVariablesOpen(true)}
         onOpenRules={() => setRulesOpen(true)}
         rulesCount={workflow?.globalRules?.length ?? 0}
-        knowledgeHref={`/${projectId}/agents/${agentId}/knowledge`}
+        onOpenKnowledge={() => setKnowledgeOpen(true)}
         canTest={agentLifecycle.status.status === 'running'}
         onTest={() => { setTalkOpen(true); setTested(true) }}
         onValidate={handleValidate}
@@ -335,7 +337,7 @@ function WorkflowPageInner() {
           onAskPi={() => setChatOpen(true)}
           onShowIssues={() => setIssuesOpen(true)}
           onOpenAgent={() => { setSettingsOpen(true); setVoiceChecked(true) }}
-          onOpenKnowledge={() => globalThis.open(`/${projectId}/agents/${agentId}/knowledge`, '_blank', 'noopener,noreferrer')}
+          onOpenKnowledge={() => setKnowledgeOpen(true)}
           onTest={() => {
             if (agentLifecycle.status.status !== 'running') return toast('Deploy first, then you can test it')
             setTalkOpen(true)
@@ -361,6 +363,7 @@ function WorkflowPageInner() {
       <Inspector />
       <VariablesPanel open={variablesOpen} onOpenChange={setVariablesOpen} />
       <GlobalRulesPanel open={rulesOpen} onOpenChange={setRulesOpen} />
+      <KnowledgePanel open={knowledgeOpen} onOpenChange={setKnowledgeOpen} agentName={backendAgentName} />
       <ImportJsonSheet open={importOpen} onOpenChange={setImportOpen} />
       <AgentSettingsPanel open={settingsOpen} onOpenChange={setSettingsOpen} />
 

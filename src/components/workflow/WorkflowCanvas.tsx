@@ -84,6 +84,7 @@ export function WorkflowCanvas() {
   const replaceCount = useWorkflowStore((s) => s.replaceCount)
   const selectedNodeId = useWorkflowStore((s) => s.selectedNodeId)
   const selectedEdgeId = useWorkflowStore((s) => s.selectedEdgeId)
+  const activeNodeId = useWorkflowStore((s) => s.activeNodeId)
   const addNode = useWorkflowStore((s) => s.addNode)
   const addEdge = useWorkflowStore((s) => s.addEdge)
   const removeNode = useWorkflowStore((s) => s.removeNode)
@@ -213,6 +214,13 @@ export function WorkflowCanvas() {
     return () => clearTimeout(t)
   }, [replaceCount, fitView])
 
+  // During a test call, keep the step the agent is on in view. Moving the canvas yourself stops following; the pill resumes it.
+  const [follow, setFollow] = useState(true)
+  React.useEffect(() => {
+    if (!activeNodeId) setFollow(true)
+    else if (follow) fitView({ nodes: [{ id: activeNodeId }], padding: 1.2, minZoom: 0.7, maxZoom: 1, duration: 500 })
+  }, [activeNodeId, follow, fitView])
+
   // Outline clicks ask the canvas to bring that step into view.
   React.useEffect(() => {
     const onFocus = (e: Event) => fitView({ nodes: [{ id: (e as CustomEvent<string>).detail }], padding: 1.5, maxZoom: 1, duration: 300 })
@@ -252,6 +260,9 @@ export function WorkflowCanvas() {
         onConnect={onConnect}
         onNodeClick={(_, node) => setSelectedNode(node.id)}
         onEdgeClick={(_, edge) => setSelectedEdge(edge.id)}
+        onMoveStart={(event) => {
+          if (event) setFollow(false) // a person moved it; programmatic moves have no event
+        }}
         onPaneClick={() => {
           setSelectedNode(null)
           setSelectedEdge(null)
@@ -271,6 +282,17 @@ export function WorkflowCanvas() {
               <Sparkles className="h-3.5 w-3.5 shrink-0 animate-pulse" />
               <LoaderFive text="Pi is working…" className="text-xs" />
             </div>
+          </Panel>
+        )}
+        {activeNodeId && (
+          <Panel position="top-center">
+            {follow ? (
+              <span className="rounded-full bg-emerald-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm">Following the call</span>
+            ) : (
+              <button type="button" onClick={() => setFollow(true)} className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-accent">
+                Follow the call
+              </button>
+            )}
           </Panel>
         )}
         {(busy || showAll) && workflow.edges.length > 12 && (

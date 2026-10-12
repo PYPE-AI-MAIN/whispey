@@ -25,7 +25,7 @@ type HeaderProps = Readonly<{
   onOpenVariables: () => void
   onOpenRules: () => void
   rulesCount: number
-  knowledgeHref: string
+  onOpenKnowledge: () => void
   canTest: boolean
   onTest: () => void
   onValidate: () => void
@@ -140,11 +140,9 @@ export function WorkflowHeader(p: HeaderProps) {
             <Globe className="mr-2 h-4 w-4" />
             <span>Rules for any step{p.rulesCount ? ` (${p.rulesCount})` : ''}</span>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <a href={p.knowledgeHref} target="_blank" rel="noopener noreferrer">
-              <BookOpen className="mr-2 h-4 w-4" />
-              <span>Knowledge base (upload documents)</span>
-            </a>
+          <DropdownMenuItem onClick={p.onOpenKnowledge}>
+            <BookOpen className="mr-2 h-4 w-4" />
+            <span>Knowledge base (documents)</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
