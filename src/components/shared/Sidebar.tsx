@@ -50,6 +50,8 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import SupportSheet from './SupportPanel'
+import NotificationBell from './NotificationBell'
+import { ThemeToggle } from './ThemeToggle'
 import { SidebarConfig } from './SidebarWrapper'
 import OrganizationSwitcher from '../projects/OrganisationSwitcher'
 import ProjectCreationDialog from '../projects/ProjectCreationDialog'
@@ -716,26 +718,40 @@ export default function Sidebar({
           onSignOut={handleSignOut}
         />
 
-        {/* Help Center */}
-        <div className="border-t border-gray-100 dark:border-gray-800 p-3">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => setIsSupportOpen(true)}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 w-full ${
-                    isCollapsed && !isMobile ? 'justify-center' : ''
-                  }`}
-                >
-                  <HelpCircle className="w-4 h-4 flex-shrink-0" />
-                  {(!isCollapsed || isMobile) && <span>Help Center</span>}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                <p>Help Center</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+        {/* Docs, help, notifications and theme: kept at the bottom, always in reach */}
+        <div className="space-y-1 border-t border-border p-3">
+          {[
+            { key: 'docs', label: 'Docs', icon: BookOpen, href: 'https://docs.whispey.pypeai.com' },
+            { key: 'help', label: 'Help Center', icon: HelpCircle, onClick: () => setIsSupportOpen(true) },
+          ].map(({ key, label, icon: Icon, href, onClick }) => {
+            const rowClass = `flex w-full items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground ${
+              isCollapsed && !isMobile ? 'justify-center' : ''
+            }`
+            const content = (
+              <>
+                <Icon className="h-4 w-4 flex-shrink-0" />
+                {(!isCollapsed || isMobile) && <span>{label}</span>}
+              </>
+            )
+            return (
+              <TooltipProvider key={key}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {href ? (
+                      <a href={href} target="_blank" rel="noopener noreferrer" className={rowClass}>{content}</a>
+                    ) : (
+                      <button type="button" onClick={onClick} className={rowClass}>{content}</button>
+                    )}
+                  </TooltipTrigger>
+                  <TooltipContent side="right"><p>{label}</p></TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )
+          })}
+          <div className={`flex items-center gap-1 px-1 pt-1 ${isCollapsed && !isMobile ? 'flex-col' : ''}`}>
+            <NotificationBell side="top" align="start" />
+            <ThemeToggle plain />
+          </div>
         </div>
       </aside>
 

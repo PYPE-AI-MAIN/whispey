@@ -8,7 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 
 type Item = { id: string; title: string; body: string | null; link: string; read_at: string | null; created_at: string };
 
-export default function NotificationBell() {
+export default function NotificationBell({ side = 'bottom', align = 'end' }: { side?: 'top' | 'bottom' | 'right'; align?: 'start' | 'end' }) {
   const qc = useQueryClient();
   const { data } = useQuery<{ notifications: Item[]; unread: number }>({
     queryKey: ["qa-audit", "notifications"],
@@ -36,7 +36,7 @@ export default function NotificationBell() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 max-h-96 overflow-y-auto">
+      <DropdownMenuContent side={side} align={align} className="w-80 max-h-96 overflow-y-auto">
         {items.length === 0 ? (
           <p className="px-3 py-6 text-center text-sm text-gray-500">No notifications yet</p>
         ) : (
