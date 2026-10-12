@@ -207,8 +207,8 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className={`max-w-6xl mx-auto py-6 ${isMobile ? 'px-4' : 'px-8 py-8'}`}>
+    <div className="min-h-screen bg-background">
+      <div className={`max-w-7xl mx-auto py-6 ${isMobile ? 'px-4' : 'px-8 py-8'}`}>
         <AgentToolbar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -219,6 +219,7 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
           onCreateAgent={handleCreateAgent}
           onConnectAgent={handleConnectAgent}
           onShowHelp={filteredAgents.length > 0 ? handleShowHelp : undefined}
+          agentCount={filteredAgents.length}
           sortOrder={sortOrder}
           onSortToggle={handleSortToggle}
         />

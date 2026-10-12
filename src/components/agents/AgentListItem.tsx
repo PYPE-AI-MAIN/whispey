@@ -244,11 +244,12 @@ interface AgentBadgesProps {
   isWorkflow: boolean
   sizeClassName: string
   showDeployment: boolean
+  hidePype?: boolean
 }
 
-const AgentBadges: React.FC<AgentBadgesProps> = ({ agent, isWorkflow, sizeClassName, showDeployment }) => (
+const AgentBadges: React.FC<AgentBadgesProps> = ({ agent, isWorkflow, sizeClassName, showDeployment, hidePype }) => (
   <>
-    {agent.agent_type === 'pype_agent' && (
+    {agent.agent_type === 'pype_agent' && !hidePype && (
       <Badge variant="outline" className={sizeClassName}>Pype</Badge>
     )}
     {showDeployment && agent.configuration?.deployment_target === 'docker' && (
@@ -564,17 +565,14 @@ const ListAgentRow: React.FC<AgentViewWithMobileProps> = ({
   return (
     <Link href={`/${projectId}/agents/${agent.id}`} className="block">
       <div
-        className={`group px-4 py-4 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors border-b border-gray-100 dark:border-gray-800 ${
+        className={`group px-4 py-4 hover:bg-accent/50 cursor-pointer transition-colors border-b border-border ${
           isLastItem ? '' : 'border-b'
-        } ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+        } ${isSelected ? 'bg-primary/10' : ''}`}
       >
         <div className="flex items-center gap-3">
           {/* Icon */}
           <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center flex-shrink-0 relative">
             {getAgentTypeIcon(agent.agent_type)}
-            <div className="absolute -bottom-0.5 -right-0.5">
-              {getStatusIndicator(agent, runningAgents, 'sm', isLoadingRunningAgents)}
-            </div>
           </div>
 
           {/* Content */}
@@ -587,14 +585,27 @@ const ListAgentRow: React.FC<AgentViewWithMobileProps> = ({
                 <span className={`text-xs font-medium px-2 py-1 rounded-full ${getEnvironmentBadgeColor(agent.environment)}`}>
                   {agent.environment}
                 </span>
-                <AgentBadges agent={agent} isWorkflow={isWorkflow} sizeClassName="text-xs px-2 py-0 h-5" showDeployment={true} />
+                <AgentBadges agent={agent} isWorkflow={isWorkflow} sizeClassName="text-xs px-2 py-0 h-5" showDeployment={true} hidePype />
               </div>
               <AgentStatusLabel agent={agent} runningStatus={runningStatus} runningAgents={runningAgents} isLoading={isLoadingRunningAgents} className="text-sm font-medium flex items-center gap-2" spinnerClassName="w-4 h-4" />
             </div>
             
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <div className="flex items-center gap-3">
-                <span className="font-mono text-xs">ID: {agent.id.slice(0, 8)}...{agent.id.slice(-4)}</span>
+                {agent.agent_type !== 'pype_agent' && (
+                  <span className="text-xs capitalize">{agent.agent_type.replace(/_/g, ' ')}</span>
+                )}
+                <span className="group/id flex items-center gap-1 font-mono text-xs">
+                  {agent.id.slice(0, 8)}...{agent.id.slice(-4)}
+                  <button
+                    type="button"
+                    aria-label="Copy agent ID"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); onCopyId(e) }}
+                    className="opacity-0 transition-opacity group-hover:opacity-100"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </button>
+                </span>
                 {assignedInboundNumber && (
                   <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-mono">
                     <Phone className="w-3 h-3" />

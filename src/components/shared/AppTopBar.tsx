@@ -109,7 +109,7 @@ export default function AppTopBar() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <ThemeToggle />
+        <ThemeToggle plain />
       </div>
     </header>
   )
