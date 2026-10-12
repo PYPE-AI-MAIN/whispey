@@ -138,7 +138,7 @@ function CampaignHeaderSkeleton() {
 // Skeleton for table
 function CampaignTableSkeleton() {
   return (
-    <main className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-950">
+    <div className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-950">
       <div className="h-full flex flex-col">
         <div className="flex-1 overflow-auto">
           <div className="min-w-full" style={{ minWidth: "1500px" }}>
@@ -183,7 +183,7 @@ function CampaignTableSkeleton() {
           </div>
         </div>
       </div>
-    </main>
+    </div>
   )
 }
 
@@ -1217,7 +1217,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
       </header>
 
       {/* Table - show loading state only for data */}
-      <main className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900 flex flex-col">
+      <div className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900 flex flex-col">
         {loading && logs.length === 0 ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
@@ -1366,7 +1366,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
             )}
           </>
         )}
-      </main>
+      </div>
 
       {/* All dialog components with dark mode support */}
       <Dialog open={showUploadDialog} onOpenChange={(open) => { setShowUploadDialog(open); if (!open) setCsvFile(null) }}>

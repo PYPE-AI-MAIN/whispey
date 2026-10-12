@@ -10,7 +10,6 @@ import AgentToolbar from './AgentToolbar'
 import AgentList from '../AgentList'
 import AgentDeleteDialog from '../AgentDeleteDialog'
 import AdaptiveTutorialEmptyState from './EmptyStates/AdaptiveTutorialEmptyState'
-import Header from '../../shared/Header'
 import AgentCreationDialog from '../AgentCreation/AgentCreationDialog'
 import AgentSelectionSkeleton from './AgentSelectionSkeleton'
 import AgentEmptyStates from './EmptyStates/AgentEmptyStates'
@@ -186,7 +185,6 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <Header breadcrumb={breadcrumb} />
         <div className="flex items-center justify-center py-32">
           <div className="text-center space-y-5 max-w-sm">
             <div className="w-14 h-14 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 flex items-center justify-center mx-auto">
@@ -210,7 +208,7 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <main className={`max-w-6xl mx-auto py-6 ${isMobile ? 'px-4' : 'px-8 py-8'}`}>
+      <div className={`max-w-6xl mx-auto py-6 ${isMobile ? 'px-4' : 'px-8 py-8'}`}>
         <AgentToolbar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -246,7 +244,7 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
             }}
           />
         )}
-      </main>
+      </div>
 
       {/* Dialogs */}
       <AgentCreationDialog

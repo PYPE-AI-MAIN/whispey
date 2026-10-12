@@ -93,7 +93,7 @@ export default function LandingPage() {
       <style>{PAGE_CSS}</style>
       <Header />
 
-      <main>
+      <div>
         <section className="mx-auto max-w-4xl px-6 pb-10 pt-16 text-center sm:pt-24">
           <h1 className="wl-title wl-h1">
             Create voice agents and see how patients <span className="wl-em">engage.</span>
@@ -219,7 +219,7 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
-      </main>
+      </div>
 
       <footer className="wl-rule">
         <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 px-6 py-10 sm:flex-row sm:items-center">

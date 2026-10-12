@@ -9,6 +9,7 @@ import { canViewApiKeys, getUserProjectRole } from '@/services/getUserRole'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
 import { Menu } from 'lucide-react'
+import AppTopBar from '@/components/shared/AppTopBar'
 import Sidebar from './Sidebar'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { useFeatureAccess } from '@/app/providers/FeatureAccessProvider'
@@ -706,9 +707,13 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
             />
           </div>
           
-          <main className={`flex-1 min-h-0 ${pathname?.includes('/pi') ? 'overflow-hidden' : 'overflow-auto'}`}>
-            {children}
-          </main>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <AppTopBar />
+            {/* Pages size themselves with h-screen; inside the column that means the space under the top bar. */}
+            <main className={`flex-1 min-h-0 [&_.h-screen]:h-full! [&_.min-h-screen]:min-h-full! ${pathname?.includes('/pi') ? 'overflow-hidden' : 'overflow-auto'}`}>
+              {children}
+            </main>
+          </div>
         </>
       )}
     </div>

@@ -14,7 +14,7 @@ import { ClerkLoaded, ClerkLoading, SignIn } from '@clerk/nextjs';
 import Image from 'next/image';
 import { Instrument_Serif, Plus_Jakarta_Sans } from 'next/font/google';
 import { useTheme } from 'next-themes';
-import { ThemeToggle } from '@/components/landing/landing-header';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 
 const serif = Instrument_Serif({ weight: '400', style: ['normal', 'italic'], subsets: ['latin'], variable: '--font-sw-serif', display: 'swap' });
 const sans = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-sw-sans', display: 'swap' });

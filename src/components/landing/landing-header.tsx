@@ -3,8 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import React, { useEffect, useState } from 'react'
-import { Moon, Sun } from 'lucide-react'
-import { useTheme } from 'next-themes'
+import { ThemeToggle } from '@/components/shared/ThemeToggle'
 import { useUser } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 
@@ -108,23 +107,6 @@ function Header() {
         </div>
       </div>
     </header>
-  )
-}
-
-export function ThemeToggle() {
-  const { resolvedTheme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
-  const dark = mounted && resolvedTheme === 'dark'
-  return (
-    <button
-      type="button"
-      onClick={() => setTheme(dark ? 'light' : 'dark')}
-      aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-current/20 hover:bg-black/5 dark:hover:bg-white/10"
-    >
-      {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-    </button>
   )
 }
 
