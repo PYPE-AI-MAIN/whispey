@@ -65,6 +65,12 @@ export function sheetUrlError(url: unknown): string | null {
   return null
 }
 
+/** A prompt engineer must be a Pype address; empty clears the assignee. */
+export function assigneeError(email: unknown): string | null {
+  if (email === '' || email === null) return null
+  return typeof email === 'string' && /^[^@\s]+@pypeai\.com$/i.test(email.trim()) ? null : 'Assignee must be an @pypeai.com email'
+}
+
 function cleanNote(note: unknown): string | null {
   return typeof note === 'string' && note.trim() ? note.trim().slice(0, 2000) : null
 }

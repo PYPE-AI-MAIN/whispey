@@ -10,6 +10,8 @@
  * (Slack: profile > More > Copy member ID).
  */
 
+import { createServiceRoleClient } from '@/lib/supabase-server'
+
 type QaAlert = {
   kind: 'flag' | 'weekly'
   agentName: string
@@ -108,6 +110,18 @@ export async function notifyQaStatusChange(a: QaStatusAlert): Promise<void> {
     }
   } catch (e) {
     console.error('QA status Slack alert failed:', e instanceof Error ? e.message : e)
+  }
+  try {
+    if (a.clientEmail) {
+      await createServiceRoleClient().from('qa_notifications').insert({
+        recipient_email: a.clientEmail.toLowerCase(),
+        title: `${a.agentName}: ${a.detail}`,
+        body: a.note ?? null,
+        link,
+      })
+    }
+  } catch (e) {
+    console.error('QA bell notification failed:', e instanceof Error ? e.message : e)
   }
   try {
     const transactionalId = process.env.QA_STATUS_LOOPS_TEMPLATE_ID

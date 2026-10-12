@@ -87,3 +87,13 @@ describe('slack alert', () => {
     expect(text).not.toContain('Open call')
   })
 })
+
+describe('assigneeError', () => {
+  it('allows only @pypeai.com (or empty to clear)', async () => {
+    const { assigneeError } = await import('@/lib/qaAudit')
+    expect(assigneeError('')).toBeNull()
+    expect(assigneeError('dev@pypeai.com')).toBeNull()
+    expect(assigneeError('dev@gmail.com')).not.toBeNull()
+    expect(assigneeError('a@pypeai.com.evil.io')).not.toBeNull()
+  })
+})

@@ -21,6 +21,8 @@ export type QaAccess = {
   projectId: string
   /** QA team: may update tickets and attach the weekly sheet. */
   canManage: boolean
+  /** Pype staff (@pypeai.com): may see the internal sheet and assignee. */
+  internal: boolean
   userId: string
   email: string
 }
@@ -67,7 +69,8 @@ export async function resolveAgentAccess(agentId: string): Promise<QaAccess | Qa
     }
   }
 
-  return { denied: false, agent, projectId: agent.project_id, canManage, userId, email }
+  const internal = canManage || email.toLowerCase().endsWith('@pypeai.com')
+  return { denied: false, agent, projectId: agent.project_id, canManage, internal, userId, email }
 }
 
 export { supabase as qaDb }

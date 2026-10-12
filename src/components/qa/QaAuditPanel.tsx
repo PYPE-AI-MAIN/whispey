@@ -13,7 +13,7 @@
  */
 import { useState, type ReactNode } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ExternalLink, FileSpreadsheet } from 'lucide-react'
+import { ExternalLink, FileSpreadsheet, ImagePlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -29,7 +29,12 @@ type Ticket = {
   resolution_note: string | null
   resolved_by: string | null
   resolved_at: string | null
+  sheet_url: string | null
+  assignee_email: string | null
+  comments: Comment[]
 }
+
+type Comment = { id: string; author_email: string; body: string; attachments: { key: string; name: string }[]; created_at: string }
 
 type Review = {
   id: string
@@ -171,7 +176,7 @@ export default function QaAuditPanel({ agentId, projectId }: Readonly<{ agentId:
 
 function FlaggedCalls({ agentId, projectId }: Readonly<{ agentId: string; projectId: string }>) {
   const [filter, setFilter] = useState<'all' | Ticket['status']>('all')
-  const { data, isLoading, error } = useQuery<{ tickets: Ticket[]; canManage: boolean }>({
+  const { data, isLoading, error } = useQuery<{ tickets: Ticket[]; canManage: boolean; internal: boolean }>({
     queryKey: ['qa-audit', 'flags', agentId],
     queryFn: () => load(`/api/qa-audit/flags?agentId=${agentId}`, 'flagged calls'),
   })
@@ -198,7 +203,7 @@ function FlaggedCalls({ agentId, projectId }: Readonly<{ agentId: string; projec
   } else {
     body = (
       <RowList>
-        {shown.map((t) => <TicketRow key={t.id} ticket={t} canManage={!!data?.canManage} agentId={agentId} projectId={projectId} />)}
+        {shown.map((t) => <TicketRow key={t.id} ticket={t} canManage={!!data?.canManage} internal={!!data?.internal} agentId={agentId} projectId={projectId} />)}
       </RowList>
     )
   }
@@ -222,13 +227,15 @@ function FlaggedCalls({ agentId, projectId }: Readonly<{ agentId: string; projec
   )
 }
 
-function TicketRow({ ticket, canManage, agentId, projectId }: Readonly<{ ticket: Ticket; canManage: boolean; agentId: string; projectId: string }>) {
+function TicketRow({ ticket, canManage, internal, agentId, projectId }: Readonly<{ ticket: Ticket; canManage: boolean; internal: boolean; agentId: string; projectId: string }>) {
   const qc = useQueryClient()
   const [editing, setEditing] = useState(false)
   const [status, setStatus] = useState<Ticket['status']>(ticket.status)
   const [note, setNote] = useState(ticket.resolution_note ?? '')
+  const [sheet, setSheet] = useState(ticket.sheet_url ?? '')
+  const [assignee, setAssignee] = useState(ticket.assignee_email ?? '')
   const save = useMutation({
-    mutationFn: () => send(`/api/qa-audit/flags/${ticket.id}`, 'PATCH', { status, resolution_note: note }),
+    mutationFn: () => send(`/api/qa-audit/flags/${ticket.id}`, 'PATCH', { status, resolution_note: note, sheet_url: sheet, assignee_email: assignee }),
     onSuccess: () => {
       setEditing(false)
       return qc.invalidateQueries({ queryKey: ['qa-audit', 'flags', agentId] })
@@ -262,6 +269,17 @@ function TicketRow({ ticket, canManage, agentId, projectId }: Readonly<{ ticket:
           {ticket.resolved_at && <span className="ml-2 text-xs text-gray-400">{fmtDate(ticket.resolved_at)}</span>}
         </p>
       )}
+      {internal && (ticket.assignee_email || ticket.sheet_url) && (
+        <p className="mt-2 flex flex-wrap items-center gap-x-4 text-xs text-gray-500 dark:text-gray-400">
+          {ticket.assignee_email && <span>Prompt engineer: {ticket.assignee_email}</span>}
+          {ticket.sheet_url && (
+            <a href={ticket.sheet_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-blue-600 hover:underline dark:text-blue-400">
+              <FileSpreadsheet className="h-3 w-3" /> Internal sheet
+            </a>
+          )}
+        </p>
+      )}
+      <Thread ticket={ticket} canManage={canManage} agentId={agentId} />
       {canManage && editing && (
         <Editor onSave={() => save.mutate()} saving={save.isPending} error={save.isError ? (save.error as Error).message : undefined}>
           <Labelled label="Status">
@@ -274,9 +292,94 @@ function TicketRow({ ticket, canManage, agentId, projectId }: Readonly<{ ticket:
           <Labelled label="Resolution note (required to resolve)">
             <Textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
           </Labelled>
+          <Labelled label="Prompt engineer (@pypeai.com, emailed when in review)">
+            <Input value={assignee} onChange={(e) => setAssignee(e.target.value)} placeholder="name@pypeai.com" />
+          </Labelled>
+          <Labelled label="Internal sheet link (only Pype staff see this)">
+            <Input value={sheet} onChange={(e) => setSheet(e.target.value)} placeholder="https://docs.google.com/spreadsheets/…" />
+          </Labelled>
         </Editor>
       )}
     </li>
+  )
+}
+
+const imageSrc = (key: string) => `/api/qa-audit/attachments?key=${encodeURIComponent(key)}`
+
+/** Comments from the QA team (visible to the customer too); the QA team gets a box to add one at any status. */
+function Thread({ ticket, canManage, agentId }: Readonly<{ ticket: Ticket; canManage: boolean; agentId: string }>) {
+  const qc = useQueryClient()
+  const [text, setText] = useState('')
+  const [images, setImages] = useState<{ key: string; name: string }[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [err, setErr] = useState('')
+
+  const upload = async (files: FileList | null) => {
+    if (!files?.length) return
+    setUploading(true)
+    setErr('')
+    try {
+      for (const file of Array.from(files).slice(0, 5 - images.length)) {
+        const form = new FormData()
+        form.append('ticketId', ticket.id)
+        form.append('file', file)
+        const res = await fetch('/api/qa-audit/attachments', { method: 'POST', body: form })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(json.error || 'Upload failed')
+        setImages((prev) => [...prev, json])
+      }
+    } catch (e) {
+      setErr((e as Error).message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const post = useMutation({
+    mutationFn: () => send(`/api/qa-audit/flags/${ticket.id}/comments`, 'POST', { body: text, attachments: images }),
+    onSuccess: () => {
+      setText('')
+      setImages([])
+      return qc.invalidateQueries({ queryKey: ['qa-audit', 'flags', agentId] })
+    },
+  })
+
+  if (!canManage && ticket.comments.length === 0) return null
+  return (
+    <div className="mt-3 space-y-3">
+      {ticket.comments.map((c) => (
+        <div key={c.id} className="border-l-2 border-blue-500 pl-3 text-sm text-gray-700 dark:text-gray-300">
+          {c.body && <p className="whitespace-pre-wrap">{c.body}</p>}
+          {c.attachments.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {c.attachments.map((a) => (
+                <a key={a.key} href={imageSrc(a.key)} target="_blank" rel="noreferrer">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imageSrc(a.key)} alt={a.name} className="h-24 rounded-md border border-gray-200 object-cover dark:border-gray-700" />
+                </a>
+              ))}
+            </div>
+          )}
+          <p className="mt-1 text-xs text-gray-400">QA team · {fmtDate(c.created_at)}</p>
+        </div>
+      ))}
+      {canManage && (
+        <div className="space-y-2">
+          <Textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} placeholder="Add a comment (the customer sees it)" />
+          {images.length > 0 && <p className="text-xs text-gray-500">{images.map((i) => i.name).join(', ')}</p>}
+          <div className="flex flex-wrap items-center gap-3">
+            <Button size="sm" onClick={() => post.mutate()} disabled={post.isPending || uploading || (!text.trim() && images.length === 0)}>
+              {post.isPending ? 'Posting…' : 'Comment'}
+            </Button>
+            <label className="inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-gray-600 hover:underline dark:text-gray-400">
+              <ImagePlus className="h-3.5 w-3.5" /> {uploading ? 'Uploading…' : 'Attach image'}
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple className="hidden" onChange={(e) => { void upload(e.target.files); e.target.value = '' }} />
+            </label>
+            {(err || post.isError) && <span className="text-xs text-red-600">{err || (post.error as Error).message}</span>}
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 

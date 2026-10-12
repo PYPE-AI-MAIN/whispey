@@ -9,11 +9,23 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await qaDb
     .from('qa_flag_tickets')
-    .select('id, call_log_id, reason, flagged_by_email, flagged_at, status, resolution_note, resolved_by, resolved_at')
+    .select('id, call_log_id, reason, flagged_by_email, flagged_at, status, resolution_note, resolved_by, resolved_at, sheet_url, assignee_email')
     .eq('agent_id', agentId)
     .order('flagged_at', { ascending: false })
     .limit(500)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json({ tickets: data ?? [], canManage: access.canManage })
+  const ids = (data ?? []).map((t) => t.id)
+  const { data: comments } = ids.length
+    ? await qaDb.from('qa_flag_comments').select('id, ticket_id, author_email, body, attachments, created_at').in('ticket_id', ids).order('created_at')
+    : { data: [] }
+  // The sheet and assignee are for Pype staff only; customers never get them.
+  const tickets = (data ?? []).map((t) => ({
+    ...t,
+    sheet_url: access.internal ? t.sheet_url : null,
+    assignee_email: access.internal ? t.assignee_email : null,
+    comments: (comments ?? []).filter((c) => c.ticket_id === t.id),
+  }))
+
+  return NextResponse.json({ tickets, canManage: access.canManage, internal: access.internal })
 }
