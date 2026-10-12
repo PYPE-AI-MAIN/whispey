@@ -22,13 +22,12 @@ import { LayoutGrid, Locate, Play, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import { createDefaultNode, type NodeType } from '@/lib/workflow/schema'
-import { FOCUS_NODE_EVENT } from './WorkflowPalette'
 import { computeAutoLayout } from '@/lib/workflow/autoLayout'
 import { LoaderFive } from '@/components/ui/loader-five'
 import { FlowNode } from './FlowNode'
 import { WorkflowEdge } from './WorkflowEdge'
 import { NODE_REGISTRY } from './nodeRegistry'
-import { PALETTE_DND_TYPE } from './WorkflowPalette'
+import { FOCUS_NODE_EVENT, PALETTE_DND_TYPE } from './WorkflowPalette'
 
 const NODE_TYPES = Object.fromEntries(
   Object.keys(NODE_REGISTRY).map((type) => [type, FlowNode])

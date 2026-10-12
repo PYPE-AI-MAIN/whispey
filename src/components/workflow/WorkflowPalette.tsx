@@ -11,7 +11,7 @@ import { NODE_REGISTRY, type NodeMeta } from './nodeRegistry'
 export const PALETTE_DND_TYPE = 'application/whispey-node-type'
 
 // The few nodes most flows are built from; the rest sit under "More nodes".
-const CORE: NodeType[] = ['conversation', 'extract_variable', 'logic_split', 'function', 'call_transfer', 'ending']
+const CORE = new Set<NodeType>(['conversation', 'extract_variable', 'logic_split', 'function', 'call_transfer', 'ending'])
 const ALL = Object.entries(NODE_REGISTRY) as [NodeType, NodeMeta][]
 
 function PaletteItem({ type, meta }: Readonly<{ type: NodeType; meta: NodeMeta }>) {
@@ -119,7 +119,7 @@ export function WorkflowPalette() {
       ) : (
         <div className="p-3 space-y-1">
           <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 px-1">Drag onto the canvas</div>
-          {ALL.filter(([t]) => CORE.includes(t)).map(([t, m]) => <PaletteItem key={t} type={t} meta={m} />)}
+          {ALL.filter(([t]) => CORE.has(t)).map(([t, m]) => <PaletteItem key={t} type={t} meta={m} />)}
           <button
             type="button"
             onClick={() => setMore((v) => !v)}
@@ -129,7 +129,7 @@ export function WorkflowPalette() {
             More nodes
             <ChevronDown className={`h-3.5 w-3.5 transition-transform ${more ? 'rotate-180' : ''}`} />
           </button>
-          {more && ALL.filter(([t]) => !CORE.includes(t)).map(([t, m]) => <PaletteItem key={t} type={t} meta={m} />)}
+          {more && ALL.filter(([t]) => !CORE.has(t)).map(([t, m]) => <PaletteItem key={t} type={t} meta={m} />)}
         </div>
       )}
     </div>

@@ -37,6 +37,20 @@ type HeaderProps = Readonly<{
   deployTitle?: string
 }>
 
+function FixStartButton({ id }: Readonly<{ id: string }>) {
+  const setStart = useWorkflowStore((s) => s.setStart)
+  const name = useWorkflowStore((s) => s.workflow?.nodes.find((n) => n.id === id)?.name || id)
+  return (
+    <button
+      type="button"
+      onClick={() => setStart(id)}
+      className="mx-2 mb-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-accent"
+    >
+      Start with &ldquo;{name}&rdquo; instead
+    </button>
+  )
+}
+
 /** Problems with the flow, one click away from the step they are about. */
 function Issues({ open, onOpenChange, serverIssues }: Readonly<{ open: boolean; onOpenChange: (open: boolean) => void; serverIssues: LintIssue[] }>) {
   const all = useWorkflowStore((s) => s.lintIssues)
@@ -44,9 +58,7 @@ function Issues({ open, onOpenChange, serverIssues }: Readonly<{ open: boolean; 
   const quiet = (i: LintIssue) => i.severity === 'error' || !/can stall|can dead-end|catch-all|no Fallback edge/i.test(i.message)
   const issues = [...all, ...serverIssues.filter((x) => !all.some((a) => a.message === x.message && a.nodeId === x.nodeId))].filter(quiet)
   const setSelectedNode = useWorkflowStore((s) => s.setSelectedNode)
-  const setStart = useWorkflowStore((s) => s.setStart)
   const nodes = useWorkflowStore((s) => s.workflow?.nodes)
-  const stepName = (id: string) => nodes?.find((n) => n.id === id)?.name || id
   if (!issues.length) return null
   const errors = issues.filter((i) => i.severity === 'error').length
   const label = errors ? `${errors} to fix` : `${issues.length} to check`
@@ -78,15 +90,7 @@ function Issues({ open, onOpenChange, serverIssues }: Readonly<{ open: boolean; 
                 </span>
                 {explainIssue(i, { nodes: nodes ?? [] })}
               </button>
-              {i.fixStartTo && (
-                <button
-                  type="button"
-                  onClick={() => setStart(i.fixStartTo!)}
-                  className="mx-2 mb-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-accent"
-                >
-                  Start with &ldquo;{stepName(i.fixStartTo)}&rdquo; instead
-                </button>
-              )}
+              {i.fixStartTo && <FixStartButton id={i.fixStartTo} />}
             </li>
           ))}
         </ul>

@@ -71,14 +71,16 @@ export function extractGlobalRules(wf: Flow, minCopies = 3): { edges: Edge[]; gl
     if (group.length < minCopies) continue
     group.forEach((e) => drop.add(e.id))
     const sources = group.map((e) => e.source)
-    const same = existing.find((r) => r.target === group[0].target && norm(r.condition) === norm(group[0].condition!))
+    const { target, condition, label } = group[0]
+    const text = condition ?? ''
+    const same = existing.find((r) => r.target === target && norm(r.condition) === norm(text))
     if (same) {
       // Already a rule for this: widen it (an empty list already means every step).
       if (same.sources.length) same.sources = [...new Set([...same.sources, ...sources])]
       continue
     }
-    const covers = listening.filter((id) => id !== group[0].target).every((id) => sources.includes(id))
-    rules.push({ id: nextRuleId(existing, rules), target: group[0].target, condition: group[0].condition!, label: group[0].label, sources: covers ? [] : sources })
+    const covers = listening.filter((id) => id !== target).every((id) => sources.includes(id))
+    rules.push({ id: nextRuleId(existing, rules), target, condition: text, label, sources: covers ? [] : sources })
   }
   return { edges: wf.edges.filter((e) => !drop.has(e.id)), globalRules: [...existing, ...rules] }
 }
