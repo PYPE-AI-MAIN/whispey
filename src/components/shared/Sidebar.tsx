@@ -40,6 +40,9 @@ import {
   PanelRightOpen,
   PanelRightClose,
   BookOpen,
+  MoreHorizontal,
+  Moon,
+  Sun,
   FlaskConical,
   GitBranch,
   Pi
@@ -47,6 +50,7 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import SupportSheet from './SupportPanel'
+import { useTheme } from 'next-themes'
 import NotificationBell from './NotificationBell'
 import { ThemeToggle } from './ThemeToggle'
 import { SidebarConfig } from './SidebarWrapper'
@@ -441,6 +445,7 @@ export default function Sidebar({
   const { user, isLoaded } = useUser()
   const { signOut } = useClerk()
   const router = useRouter()
+  const { resolvedTheme, setTheme } = useTheme()
   const searchParams = useSearchParams()
   const [mounted, setMounted] = useState(false)
   const [isSupportOpen, setIsSupportOpen] = useState(false)
@@ -657,8 +662,35 @@ export default function Sidebar({
           {renderContextHeader(config, isCollapsed, isMobile, onMobileClose)}
         </div>
 
-        {/* Utilities: docs, help, notifications and theme, always at the top */}
-        <div className={`flex items-center gap-1 border-b border-border px-3 py-2 ${isCollapsed && !isMobile ? 'flex-col' : 'justify-between'}`}>
+        {/* Utilities: docs, help, notifications and theme, always at the top; one menu when collapsed */}
+        {isCollapsed && !isMobile ? (
+          <div className="flex justify-center border-b border-border px-3 py-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Docs, help and theme"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="right" align="start">
+                <DropdownMenuItem onClick={() => window.open('https://docs.whispey.pypeai.com', '_blank', 'noopener,noreferrer')}>
+                  <BookOpen className="mr-2 h-4 w-4" />Docs
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsSupportOpen(true)}>
+                  <HelpCircle className="mr-2 h-4 w-4" />Help Center
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}>
+                  {mounted && resolvedTheme === 'dark' ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
+                  {mounted && resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ) : (
+        <div className="flex items-center justify-between gap-1 border-b border-border px-3 py-2">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -691,6 +723,7 @@ export default function Sidebar({
           <NotificationBell side="bottom" align="start" />
           <ThemeToggle plain />
         </div>
+        )}
 
         {/* Navigation with Groups */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">

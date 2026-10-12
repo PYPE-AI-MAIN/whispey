@@ -544,7 +544,8 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   // collapsed there without touching the user's saved preference for every
   // other page, so it re-expands automatically the moment they navigate away.
   const isWorkflowRoute = pathname?.endsWith('/workflow') ?? false
-  const effectiveCollapsed = isDesktopCollapsed || isWorkflowRoute
+  const [workflowExpanded, setWorkflowExpanded] = useState(false)
+  const effectiveCollapsed = isWorkflowRoute ? !workflowExpanded : isDesktopCollapsed
   const [userCanViewApiKeys, setUserCanViewApiKeys] = useState<boolean>(false)
   const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true)
 
@@ -584,6 +585,10 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   }, [])
 
   const handleDesktopToggle = () => {
+    if (isWorkflowRoute) {
+      setWorkflowExpanded((v) => !v)
+      return
+    }
     const newState = !isDesktopCollapsed
     setIsDesktopCollapsed(newState)
     if (typeof window !== 'undefined') {
