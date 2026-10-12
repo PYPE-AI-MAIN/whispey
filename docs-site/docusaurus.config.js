@@ -24,7 +24,7 @@ const config = {
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
-      colorMode: {respectPrefersColorScheme: true},
+      colorMode: {defaultMode: 'light', respectPrefersColorScheme: false},
       navbar: {
         title: 'Whispey Docs',
         logo: {alt: 'Whispey', src: 'img/logo.svg', srcDark: 'img/logo-dark.svg'},
