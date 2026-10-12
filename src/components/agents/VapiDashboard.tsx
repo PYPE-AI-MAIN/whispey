@@ -187,7 +187,7 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
               
               <div>
                 <div className="flex items-center gap-3">
-                  <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  <h1 className="text-2xl font-semibold tracking-tight text-foreground">
                     {assistant.name || 'Unnamed Assistant'}
                   </h1>
                   {isConnected ? (

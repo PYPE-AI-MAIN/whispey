@@ -52,7 +52,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
   // Initialize viewMode from localStorage
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
     if (typeof window !== 'undefined') {
-      return (localStorage.getItem('organisation-view-mode') as 'grid' | 'list') || 'grid'
+      return (localStorage.getItem('organization-view-mode') as 'grid' | 'list') || 'grid'
     }
     return 'grid'
   })
@@ -60,7 +60,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
   // Initialize density from localStorage
   const [density, setDensity] = useState<'comfortable' | 'compact'>(() => {
     if (typeof window !== 'undefined') {
-      return (localStorage.getItem('organisation-card-density') as 'comfortable' | 'compact') || 'comfortable'
+      return (localStorage.getItem('organization-card-density') as 'comfortable' | 'compact') || 'comfortable'
     }
     return 'comfortable'
   })
@@ -70,8 +70,8 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
   // Save preferences to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('organisation-view-mode', viewMode)
-      localStorage.setItem('organisation-card-density', density)
+      localStorage.setItem('organization-view-mode', viewMode)
+      localStorage.setItem('organization-card-density', density)
     }
   }, [viewMode, density])
 
@@ -123,16 +123,16 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
       })
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to delete organisation')
+        throw new Error(errorData.error || 'Failed to delete organization')
       }
 
       const result = await response.json()
       refetch()
       setShowDeleteConfirm(null)
     } catch (error: unknown) {
-      console.error('Error deleting organisation:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to delete organisation'
-      alert(`Failed to delete organisation: ${errorMessage}`)
+      console.error('Error deleting organization:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete organization'
+      alert(`Failed to delete organization: ${errorMessage}`)
     } finally {
       setDeletingProject(null)
     }
@@ -301,7 +301,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                 setShowDeleteConfirm(project)
               }} className="text-xs text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400">
                 <Trash2 className="h-3 w-3 mr-2" />
-                Delete organisation
+                Delete organization
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -411,7 +411,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                   setShowDeleteConfirm(project)
                 }} className="text-xs text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400">
                   <Trash2 className="h-3 w-3 mr-2" />
-                  Delete organisation
+                  Delete organization
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -498,7 +498,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
               <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">Failed to load organisations</h3>
+              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">Failed to load organizations</h3>
               <p className="text-xs text-gray-500 dark:text-gray-400">{error}</p>
             </div>
             <Button 
@@ -522,13 +522,13 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
           <div className="flex items-center justify-between mb-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <h1 className="text-2xl font-semibold tracking-tight text-foreground">Organisations</h1>
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground">Organizations</h1>
                 <Badge variant="outline" className="text-xs text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700">
                   {projects.length}
                 </Badge>
               </div>
              {!isMobile && <p className="text-xs text-gray-600 dark:text-gray-400">
-                Organize agents by team. Each organisation provides isolated access and analytics.
+                Organize agents by team. Each organization provides isolated access and analytics.
               </p>}
             </div>
             <Button 
@@ -537,7 +537,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
               className={`bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs h-8 ${isMobile ? 'px-3 py-0' : 'px-3 py-1.5'}`}
             >
               <Plus className={`w-3 h-3 ${isMobile ? '' : 'mr-1.5'}`} />
-              {isMobile ? '' : 'New Organisation'}
+              {isMobile ? '' : 'New Organization'}
             </Button>
           </div>
 
@@ -548,7 +548,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                 <Search className="absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
                 <input
                   type="search"
-                  placeholder="Search organisations..."
+                  placeholder="Search organizations..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className={`${isMobile ? 'w-full' : 'w-64'} pl-7 pr-3 py-1.5 text-xs border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 focus:outline-none transition-all focus:bg-white dark:focus:bg-gray-700`}
@@ -600,7 +600,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
               {/* Table Header */}
               <div className="px-6 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
                 <div className="grid grid-cols-12 gap-4 text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-                  <div className="col-span-6">Organisation Name</div>
+                  <div className="col-span-6">Organization Name</div>
                   <div className="col-span-2">Environment</div>
                   <div className="col-span-2">Created</div>
                   <div className="col-span-2 text-right">Actions</div>
@@ -621,7 +621,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleProjectClick(project) } }}
                   >
                     <div className="grid grid-cols-12 gap-4 items-center">
-                      {/* Organisation */}
+                      {/* Organization */}
                       <div className="col-span-6 flex items-center gap-3 min-w-0">
                         <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-xs flex-shrink-0">
                           {getOrganisationInitials(project.name)}
@@ -703,7 +703,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                               setShowDeleteConfirm(project)
                             }} className="text-xs text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400">
                               <Trash2 className="h-3 w-3 mr-2" />
-                              Delete organisation
+                              Delete organization
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -733,9 +733,9 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
               <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center mx-auto mb-4">
                 <Search className="h-6 w-6 text-gray-400 dark:text-gray-500" />
               </div>
-              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">No organisations found</h3>
+              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">No organizations found</h3>
               <p className="text-xs text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
-                No organisations match "<span className="font-medium text-gray-900 dark:text-gray-100">{searchQuery}</span>". 
+                No organizations match "<span className="font-medium text-gray-900 dark:text-gray-100">{searchQuery}</span>". 
                 Try different search terms.
               </p>
               <Button 
@@ -754,9 +754,9 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
               <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center mx-auto mb-4">
                 <Building2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               </div>
-              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Create your first organisation</h3>
+              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Create your first organization</h3>
               <p className="text-xs text-gray-600 dark:text-gray-400 mb-6 max-w-lg mx-auto">
-                Organize agents by team. Each organisation provides isolated access control and analytics.
+                Organize agents by team. Each organization provides isolated access control and analytics.
               </p>
               <div className="space-y-3">
                 <Button 
@@ -765,7 +765,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                   className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8"
                 >
                   <Plus className="h-3 w-3 mr-1.5" />
-                  Create organisation
+                  Create organization
                 </Button>
                 <div className="text-xs text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
                   <p><strong>Example:</strong> "Sales Team" to organize sales voice agents with team access.</p>
@@ -843,7 +843,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
       <Dialog open={showDeleteConfirm !== null} onOpenChange={() => setShowDeleteConfirm(null)}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold">Delete organisation</DialogTitle>
+            <DialogTitle className="text-base font-semibold">Delete organization</DialogTitle>
             <DialogDescription className="text-xs text-gray-600 dark:text-gray-400">
               Delete "{showDeleteConfirm?.name}"? This permanently removes all agents, logs, and analytics.
             </DialogDescription>

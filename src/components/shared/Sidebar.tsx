@@ -115,10 +115,10 @@ interface SidebarProps {
 
 // Extended pricing configurations
 const PRICING_CONFIGS: Record<string, { showPricingBox: boolean; plan: string; features: string[]; upgradeText: string; upgradeLink: string }> = {
-  organisations: {
+  organizations: {
     showPricingBox: false,
     plan: 'Free Plan',
-    features: ['5 Organisations', 'Basic Analytics', 'Community Support'],
+    features: ['5 Organizations', 'Basic Analytics', 'Community Support'],
     upgradeText: 'Upgrade to Pro',
     upgradeLink: '/pricing'
   },

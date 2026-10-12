@@ -508,8 +508,8 @@ export default function PhoneNumbersPage() {
     <div className="h-full flex flex-col overflow-hidden bg-white dark:bg-gray-900">
 
       {/* ── Navbar ── */}
-      <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
+      <div className="flex-shrink-0 border-b border-border bg-background">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push(`/${projectId}/agents`)}
@@ -518,8 +518,8 @@ export default function PhoneNumbersPage() {
               <ArrowLeft className="h-4 w-4" />
             </button>
             <div className="flex items-center gap-2.5">
-              <div className="h-7 w-7 rounded-lg bg-blue-900/40 border border-blue-800/50 flex items-center justify-center">
-                <Phone className="h-3.5 w-3.5 text-blue-400" />
+              <div className="h-8 w-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+                <Phone className="h-4 w-4 text-primary" />
               </div>
               <h1 className="text-2xl font-semibold tracking-tight text-foreground">Phone Numbers</h1>
             </div>

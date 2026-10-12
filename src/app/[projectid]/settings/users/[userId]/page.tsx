@@ -395,13 +395,13 @@ function AgentColumnChecklist({
                   onClick={handleApplyToAll}
                   disabled={applyingAll || saving || dirty}
                   title={dirty ? 'Save this agent’s settings first' : undefined}
-                  className="h-7 text-xs gap-1.5"
+                  className="h-9 text-sm gap-2 px-4"
                 >
                   <Copy className="h-3 w-3" />
                   {applyingAll ? 'Copying…' : 'Copy to all agents'}
                 </Button>
               )}
-              <Button size="sm" onClick={handleSave} disabled={!dirty || saving} className="h-7 text-xs gap-1.5">
+              <Button size="sm" onClick={handleSave} disabled={!dirty || saving} className="h-9 text-sm gap-2 px-4">
                 <Save className="h-3 w-3" />
                 {saving ? 'Saving…' : 'Save'}
               </Button>

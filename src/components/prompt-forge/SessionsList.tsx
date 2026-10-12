@@ -82,7 +82,7 @@ export function SessionsList({ projectId, agentId }: Props) {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
 
       {/* Navbar */}
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
+      <div className="px-6 py-4 border-border bg-background border-b flex-shrink-0">
         <div className="max-w-6xl mx-auto px-8 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button

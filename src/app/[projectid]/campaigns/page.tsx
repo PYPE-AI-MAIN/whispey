@@ -349,7 +349,7 @@ function Campaigns() {
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 max-w-xs">
                 Create your first campaign to start managing calls.
               </p>
-              <Button onClick={() => router.push(`/${projectId}/campaigns/create`)} size="sm" className="h-7 text-xs gap-2">
+              <Button onClick={() => router.push(`/${projectId}/campaigns/create`)} size="sm" className="h-9 text-xs gap-2">
                 <Plus className="w-3 h-3" />
                 Create Campaign
               </Button>
@@ -499,7 +499,7 @@ function Campaigns() {
               onClick={() => invalidateAndRefetch()}
               variant="outline"
               size="sm"
-              className="h-7 text-xs gap-1.5"
+              className="h-9 text-sm gap-2 px-4"
               disabled={isFetching}
             >
               <RefreshCw className={`w-3 h-3 ${isFetching ? 'animate-spin' : ''}`} />
@@ -508,7 +508,7 @@ function Campaigns() {
             <Button
               onClick={() => router.push(`/${projectId}/campaigns/create`)}
               size="sm"
-              className="h-7 text-xs gap-1.5"
+              className="h-9 text-sm gap-2 px-4"
             >
               <Plus className="w-3 h-3" />
               Create Campaign

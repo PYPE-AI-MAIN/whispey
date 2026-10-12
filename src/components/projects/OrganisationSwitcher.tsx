@@ -187,7 +187,7 @@ export default function OrganizationSwitcher({
               {(!isCollapsed || isMobile) && (
                 <>
                   <span className="truncate flex-1 text-left text-xs">
-                    Select Organisation
+                    Select Organization
                   </span>
                   <ChevronsUpDown className="w-3 h-3 flex-shrink-0 text-gray-400 dark:text-gray-500" />
                 </>
@@ -208,7 +208,7 @@ export default function OrganizationSwitcher({
               {buttonContent}
             </TooltipTrigger>
             <TooltipContent side="right">
-              <p>{loading ? 'Loading...' : (displayOrg ? displayOrg.name : 'Select Organisation')}</p>
+              <p>{loading ? 'Loading...' : (displayOrg ? displayOrg.name : 'Select Organization')}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -219,7 +219,7 @@ export default function OrganizationSwitcher({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="p-0 gap-0 max-w-md backdrop-blur-xl bg-white/95 dark:bg-gray-900/95 border-gray-200 dark:border-gray-800">
           <DialogHeader className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800">
-            <DialogTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100">Switch Organisation</DialogTitle>
+            <DialogTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100">Switch Organization</DialogTitle>
           </DialogHeader>
 
           <Command className="rounded-none border-none bg-transparent">

@@ -282,7 +282,7 @@ const sidebarRoutes: SidebarRoute[] = [
         ],
         showBackButton: false,
         backPath: '/projects',
-        backLabel: 'Back to Organisations'
+        backLabel: 'Back to Organizations'
       }
     },
     priority: 95
@@ -466,14 +466,14 @@ const sidebarRoutes: SidebarRoute[] = [
     priority: 90
   },
 
-  // Main Organisations/projects route
+  // Main Organizations/projects route
   {
     patterns: [
       { pattern: '/', exact: true },
       { pattern: '/projects', exact: true }
     ],
     getSidebarConfig: () => ({
-      type: 'organisations',
+      type: 'organizations',
       context: {},
       navigation: [],
       showBackButton: false
@@ -487,7 +487,7 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '*' }
     ],
     getSidebarConfig: () => ({
-      type: 'organisations',
+      type: 'organizations',
       context: {},
       navigation: [],
       showBackButton: false

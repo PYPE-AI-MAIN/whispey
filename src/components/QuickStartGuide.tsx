@@ -83,7 +83,7 @@ if __name__ == "__main__":
         subtitle: 'Everything you need to get started',
         icon: '🔐',
         items: [
-          { text: 'Organisation created with API key', status: 'done' },
+          { text: 'Organization created with API key', status: 'done' },
           { text: `Your Agent ID: ${agentId}`, status: 'ready', copyable: agentId },
           { text: 'Use your Whispey Project API key which you saved earlier', status: 'ready' }
         ]

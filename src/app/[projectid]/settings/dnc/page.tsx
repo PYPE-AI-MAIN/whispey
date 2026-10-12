@@ -330,8 +330,8 @@ export default function DncPage() {
     <TooltipProvider>
       <div className="min-h-full bg-gray-50 dark:bg-gray-900">
         {/* Navbar */}
-        <div className="border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur">
-          <div className="max-w-5xl mx-auto px-6 py-3 flex items-center gap-3">
+        <div className="border-b border-border sticky top-0 z-10 bg-background/85 backdrop-blur">
+          <div className="max-w-5xl mx-auto px-6 py-4 flex items-center gap-3">
             <Button
               variant="ghost"
               size="icon"
@@ -341,8 +341,8 @@ export default function DncPage() {
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <div className="h-8 w-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 flex items-center justify-center">
-              <ShieldBan className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <div className="h-8 w-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <ShieldBan className="h-4 w-4 text-primary" />
             </div>
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-foreground">Do Not Call (DNC) List</h1>
