@@ -30,8 +30,7 @@ export function CanvasHintBanner() {
     <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200 text-xs rounded-lg px-3 py-2 shadow-sm max-w-md">
       <Lightbulb className="w-3.5 h-3.5 shrink-0" />
       <span>
-        Drag node types from the left onto the canvas to add steps, click a node to edit it, connect nodes by dragging
-        from their edges, then hit <strong>Deploy</strong> when you're ready to test.
+        Add steps from the left, click a step to edit it, and drag from its dot to another step to connect them. Press <strong>Deploy</strong>, then <strong>Test call</strong>.
       </span>
       <button onClick={dismiss} className="shrink-0 hover:opacity-70" aria-label="Dismiss">
         <X className="w-3.5 h-3.5" />

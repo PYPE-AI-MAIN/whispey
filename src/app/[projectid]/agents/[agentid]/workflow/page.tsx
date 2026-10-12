@@ -4,9 +4,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ReactFlowProvider } from '@xyflow/react'
 import toast from 'react-hot-toast'
-import { ArrowLeft, BookOpen, Braces, Globe, ClipboardPaste, Copy, Loader2, PhoneIcon, Rocket, Settings2, ShieldCheck, Sparkles } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
@@ -18,6 +17,7 @@ import { WORKFLOW_TEMPLATES, type WorkflowTemplate } from '@/lib/workflow/templa
 import { WorkflowPalette } from '@/components/workflow/WorkflowPalette'
 import { WorkflowCanvas } from '@/components/workflow/WorkflowCanvas'
 import { Inspector } from '@/components/workflow/Inspector'
+import { WorkflowHeader } from '@/components/workflow/WorkflowHeader'
 import { GlobalRulesPanel } from '@/components/workflow/GlobalRulesPanel'
 import { VariablesPanel } from '@/components/workflow/VariablesPanel'
 import { AgentSettingsPanel } from '@/components/workflow/AgentSettingsPanel'
@@ -30,12 +30,6 @@ import { LoaderFive } from '@/components/ui/loader-five'
 
 const LOADING_LINES = ['yup, warming things up…', 'stitching your nodes together…', 'almost there, hang tight…']
 import { ImportJsonSheet } from '@/components/workflow/ImportJsonSheet'
-
-/** "3 errors" / "1 warning" label for the lint badge — plural-aware, no nested ternary. */
-function formatLintBadgeLabel(errorCount: number, warningCount: number): string {
-  if (errorCount > 0) return `${errorCount} error${errorCount > 1 ? 's' : ''}`
-  return `${warningCount} warning${warningCount > 1 ? 's' : ''}`
-}
 
 /** Deploy is always available; it just has nothing to send when the canvas is unchanged. */
 function deployButtonTitle(isDirty: boolean): string | undefined {
@@ -193,7 +187,6 @@ function WorkflowPageInner() {
   )
 
   const errorCount = useMemo(() => lintIssues.filter((i) => i.severity === 'error').length, [lintIssues])
-  const warningCount = lintIssues.length - errorCount
 
   const handleValidate = async () => {
     if (!workflow) return
@@ -297,81 +290,27 @@ function WorkflowPageInner() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      {/* flex-wrap: shadcn Buttons are whitespace-nowrap so they cannot shrink —
-          without it this 10-button row overflows the viewport instead of reflowing. */}
-      <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 shrink-0">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.push(`/${projectId}/agents/${agentId}`)}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{agentRow?.name || 'Workflow'}</h1>
-        {isDirty && <Badge variant="secondary" className="text-[11px]">Unsaved</Badge>}
-
-        <div className="flex-1" />
-
-        {lintIssues.length > 0 && (
-          <Badge
-            variant={errorCount > 0 ? 'destructive' : 'secondary'}
-            className="text-[11px] cursor-help"
-            title={lintIssues.map((i) => `[${i.severity}] ${i.message}`).join('\n')}
-          >
-            {formatLintBadgeLabel(errorCount, warningCount)}
-          </Badge>
-        )}
-
-        <Button
-          variant={chatOpen ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setChatOpen((v) => !v)}
-          className={chatOpen ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
-        >
-          <Sparkles className="h-3.5 w-3.5 mr-1.5" /> Ask Pi
-        </Button>
-        {/* icon-only: the toolbar has no room left for two more labels */}
-        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setImportOpen(true)}
-                title="Paste workflow JSON" aria-label="Paste workflow JSON">
-          <ClipboardPaste className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="outline" size="icon" className="h-8 w-8" onClick={copyJson}
-                title="Copy workflow JSON" aria-label="Copy workflow JSON">
-          <Copy className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setVariablesOpen(true)}>
-          <Braces className="h-3.5 w-3.5 mr-1.5" /> Variables
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setRulesOpen(true)} title="Rules that apply from any step">
-          <Globe className="h-3.5 w-3.5 mr-1.5" /> Global rules{workflow?.globalRules?.length ? ` (${workflow.globalRules.length})` : ''}
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
-          <Settings2 className="h-3.5 w-3.5 mr-1.5" /> Agent
-        </Button>
-        <Button variant="outline" size="sm" asChild title="Upload documents the agent can answer from (opens in a new tab)">
-          <a href={`/${projectId}/agents/${agentId}/knowledge`} target="_blank" rel="noopener noreferrer">
-            <BookOpen className="h-3.5 w-3.5 mr-1.5" /> Knowledge base
-          </a>
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setTalkOpen(true)}
-          disabled={agentLifecycle.status.status !== 'running'}
-          title={agentLifecycle.status.status === 'running' ? undefined : 'Deploy the workflow first to talk to it'}
-        >
-          <PhoneIcon className="h-3.5 w-3.5 mr-1.5" /> Talk to Assistant
-        </Button>
-        <Button variant="outline" size="sm" onClick={handleValidate} disabled={saving}>
-          {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />}
-          Validate
-        </Button>
-        <Button
-          size="sm"
-          onClick={() => handleDeploy()}
-          disabled={deploying || !isDirty}
-          title={deployButtonTitle(isDirty)}
-        >
-          {deploying ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Rocket className="h-3.5 w-3.5 mr-1.5" />}
-          Deploy
-        </Button>
-      </div>
+      <WorkflowHeader
+        name={agentRow?.name || 'Workflow'}
+        onBack={() => router.push(`/${projectId}/agents/${agentId}`)}
+        isDirty={isDirty}
+        chatOpen={chatOpen}
+        onToggleChat={() => setChatOpen((v) => !v)}
+        onOpenAgent={() => setSettingsOpen(true)}
+        onOpenVariables={() => setVariablesOpen(true)}
+        onOpenRules={() => setRulesOpen(true)}
+        rulesCount={workflow?.globalRules?.length ?? 0}
+        knowledgeHref={`/${projectId}/agents/${agentId}/knowledge`}
+        canTest={agentLifecycle.status.status === 'running'}
+        onTest={() => setTalkOpen(true)}
+        onValidate={handleValidate}
+        validating={saving}
+        onPaste={() => setImportOpen(true)}
+        onCopy={copyJson}
+        onDeploy={() => handleDeploy()}
+        deploying={deploying}
+        deployTitle={deployButtonTitle(isDirty)}
+      />
 
       <div className="flex-1 flex min-h-0 relative">
         <CanvasHintBanner />

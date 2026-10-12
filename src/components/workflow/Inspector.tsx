@@ -405,29 +405,40 @@ function NodeFields({
   }
 }
 
+const EDGE_KINDS: Record<EdgeKind, { label: string; help: string }> = {
+  always: { label: 'Next step', help: 'Go here as soon as this step is done.' },
+  condition: { label: 'When the caller says something', help: 'Go here when what the caller says matches the description below.' },
+  logic: { label: 'When a saved value matches', help: 'Go here when a variable matches a rule, like age > 18. No AI involved.' },
+  fallback: { label: 'Otherwise', help: 'Go here when none of the other connections from this step apply.' },
+}
+
 function EdgeFields({ edge, workflow, patch }: Readonly<{ edge: Edge; workflow: Workflow; patch: (p: Partial<Edge>) => void }>) {
+  const nameOf = (id: string) => workflow.nodes.find((n) => n.id === id)?.name || id
   return (
     <>
-      <Field label="Kind">
+      <p className="text-sm text-foreground">
+        From <strong>{nameOf(edge.source)}</strong> to <strong>{nameOf(edge.target)}</strong>
+      </p>
+      <Field label="When does the call go here?">
         <Select value={edge.kind} onValueChange={(v) => patch({ kind: v as EdgeKind })}>
           <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="always">Always</SelectItem>
-            <SelectItem value="condition">Condition (LLM-judged)</SelectItem>
-            <SelectItem value="logic">Logic (expression)</SelectItem>
-            <SelectItem value="fallback">Fallback (on error)</SelectItem>
+            {(Object.keys(EDGE_KINDS) as EdgeKind[]).map((k) => (
+              <SelectItem key={k} value={k}>{EDGE_KINDS[k].label}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
+        <p className="mt-1 text-xs text-muted-foreground">{EDGE_KINDS[edge.kind].help}</p>
       </Field>
-      {edge.kind === 'condition' && (
-        <Field label="Condition">
+      {(edge.kind === 'condition' || edge.kind === 'fallback') && (
+        <Field label={edge.kind === 'condition' ? 'Describe when' : 'Describe when (optional)'}>
           <Textarea value={edge.condition ?? ''} onChange={(e) => patch({ condition: e.target.value })} placeholder="e.g. the caller wants to cancel" />
         </Field>
       )}
       {edge.kind === 'logic' && (
         <LogicConditionField key={edge.id} workflow={workflow} value={edge.expression ?? ''} onChange={(expression) => patch({ expression })} />
       )}
-      <Field label="Label (optional)">
+      <Field label="Short name on the canvas (optional)">
         <Input value={edge.label ?? ''} onChange={(e) => patch({ label: e.target.value })} />
       </Field>
     </>
@@ -474,7 +485,7 @@ export function Inspector() {
                 {NODE_REGISTRY[node.type]?.label}
                 {node.id === workflow?.start && <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />}
               </SheetTitle>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Node settings — id &ldquo;{node.id}&rdquo;</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Step settings</p>
             </SheetHeader>
             <div className="p-4">
               <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/[0.03] p-4 space-y-4">
@@ -509,11 +520,11 @@ export function Inspector() {
             <SheetFooter className="flex-row justify-between border-t border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/[0.02]">
               {node.id !== workflow?.start && (
                 <Button variant="outline" size="sm" onClick={() => setStart(node.id)}>
-                  Set as start
+                  Make this the first step
                 </Button>
               )}
               <Button variant="destructive" size="sm" onClick={() => removeNode(node.id)}>
-                <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete node
+                <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete step
               </Button>
             </SheetFooter>
           </>
@@ -521,10 +532,8 @@ export function Inspector() {
         {edge && workflow && (
           <>
             <SheetHeader className="border-b border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/[0.02] gap-0.5">
-              <SheetTitle className="text-base">Edge</SheetTitle>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Controls when the workflow takes this path from &ldquo;{edge.source}&rdquo; to &ldquo;{edge.target}&rdquo;
-              </p>
+              <SheetTitle className="text-base">Connection</SheetTitle>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Decides when the call moves from one step to the next.</p>
             </SheetHeader>
             <div className="p-4">
               <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/[0.03] p-4 space-y-4">
@@ -533,7 +542,7 @@ export function Inspector() {
             </div>
             <SheetFooter className="border-t border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/[0.02]">
               <Button variant="destructive" size="sm" onClick={() => removeEdge(edge.id)}>
-                <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete edge
+                <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete connection
               </Button>
             </SheetFooter>
           </>
