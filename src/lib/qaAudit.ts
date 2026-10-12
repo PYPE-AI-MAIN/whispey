@@ -110,5 +110,5 @@ export function ticketAttachments(raw: unknown, ticketId: string): { key: string
   return (Array.isArray(raw) ? raw : [])
     .filter((a): a is { key: string; name?: unknown } => typeof a?.key === 'string' && a.key.startsWith(`qa/${ticketId}/`))
     .slice(0, 5)
-    .map((a) => ({ key: a.key, name: String(a.name ?? 'image').slice(0, 120) }))
+    .map((a) => ({ key: a.key, name: (typeof a.name === 'string' ? a.name : 'image').slice(0, 120) }))
 }
