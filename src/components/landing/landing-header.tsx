@@ -3,6 +3,8 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import React, { useEffect, useState } from 'react'
+import { Moon, Sun } from 'lucide-react'
+import { useTheme } from 'next-themes'
 import { useUser } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 
@@ -93,6 +95,8 @@ function Header() {
           <Link href="#how-it-works" className="wl-link">How it works</Link>
           <a href="https://docs.whispey.pypeai.com" target="_blank" rel="noopener noreferrer" className="wl-link">Docs</a>
         </nav>
+        <div className="flex items-center gap-3">
+        <ThemeToggle />
         <button
           type="button"
           className="wl-btn wl-btn-sm"
@@ -101,8 +105,26 @@ function Header() {
         >
           {getButtonText()}
         </button>
+        </div>
       </div>
     </header>
+  )
+}
+
+export function ThemeToggle() {
+  const { resolvedTheme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  const dark = mounted && resolvedTheme === 'dark'
+  return (
+    <button
+      type="button"
+      onClick={() => setTheme(dark ? 'light' : 'dark')}
+      aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-current/20 hover:bg-black/5 dark:hover:bg-white/10"
+    >
+      {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+    </button>
   )
 }
 
