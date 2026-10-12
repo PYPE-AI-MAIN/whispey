@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isQaDenied, qaDb, resolveAgentAccess } from '@/server/qa/access'
+import { ticketAttachments } from '@/lib/qaAudit'
 import { notifyQaStatusChange } from '@/server/qa/notify'
 
 /** QA team only: add a comment (text and/or images) at any status; the customer sees it and is notified. */
@@ -14,11 +15,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   const b = (await request.json().catch(() => ({}))) as { body?: unknown; attachments?: unknown }
   const text = typeof b.body === 'string' ? b.body.trim().slice(0, 4000) : ''
-  // Only files uploaded for this very ticket may be attached.
-  const attachments = (Array.isArray(b.attachments) ? b.attachments : [])
-    .filter((a): a is { key: string; name: string } => typeof a?.key === 'string' && a.key.startsWith(`qa/${id}/`))
-    .slice(0, 5)
-    .map((a) => ({ key: a.key, name: String(a.name ?? 'image').slice(0, 120) }))
+  const attachments = ticketAttachments(b.attachments, id)
   if (!text && attachments.length === 0) return NextResponse.json({ error: 'Write a comment or attach an image' }, { status: 400 })
 
   const { data, error } = await qaDb

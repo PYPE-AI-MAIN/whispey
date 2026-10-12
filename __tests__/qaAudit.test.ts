@@ -99,3 +99,13 @@ describe('teamMemberError', () => {
     expect('error' in teamMemberError({ ...ok, email: 'nope' })).toBe(true)
   })
 })
+
+describe('ticketAttachments', () => {
+  it('keeps only images uploaded for this ticket, max 5', async () => {
+    const { ticketAttachments } = await import('@/lib/qaAudit')
+    const mine = { key: 'qa/t1/a.png', name: 'a.png' }
+    expect(ticketAttachments([mine, { key: 'qa/other/b.png', name: 'b' }, { key: 5 }, null], 't1')).toEqual([mine])
+    expect(ticketAttachments(Array(9).fill(mine), 't1')).toHaveLength(5)
+    expect(ticketAttachments('nope', 't1')).toEqual([])
+  })
+})

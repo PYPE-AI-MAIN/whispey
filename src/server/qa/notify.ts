@@ -105,6 +105,56 @@ type QaStatusAlert = {
   slackId?: string | null
 }
 
+async function postToSlack(a: QaStatusAlert, link: string): Promise<void> {
+  const url = process.env.QA_SLACK_WEBHOOK_URL
+  if (!a.slack || !url) return
+  const tag = a.slackId && /^[UW][A-Z0-9]{6,}$/.test(a.slackId) ? `<@${a.slackId}> ` : ''
+  const extra = [a.note && `Note: ${a.note}`, a.sheetUrl && `Sheet: ${a.sheetUrl}`].filter(Boolean) as string[]
+  const text = [
+    `${tag}*QA update* on <${link.replace('/qa', '')}|${slackEscape(a.agentName)}>: ${slackEscape(a.detail)}`,
+    `By: ${slackEscape(a.byEmail || 'unknown')}  |  Client: ${slackEscape(a.clientEmail || 'unknown')}`,
+    ...extra.map(slackEscape),
+    `<${link}|Open QA Audit>`,
+  ].join('\n')
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+    signal: AbortSignal.timeout(8000),
+  })
+  if (!res.ok) console.error('QA status Slack alert failed:', res.status, await res.text())
+}
+
+async function addBellItem(a: QaStatusAlert, link: string): Promise<void> {
+  if (!a.clientEmail) return
+  await createServiceRoleClient().from('qa_inbox').insert({
+    recipient_email: a.clientEmail.toLowerCase(),
+    title: `${a.agentName}: ${a.detail}`,
+    body: a.note ?? null,
+    link,
+  })
+}
+
+async function sendEmail(a: QaStatusAlert, link: string): Promise<void> {
+  const transactionalId = process.env.QA_STATUS_LOOPS_TEMPLATE_ID
+  if (!a.clientEmail || !transactionalId || !process.env.LOOPS_API_KEY) {
+    console.warn('QA status email skipped: no client email, QA_STATUS_LOOPS_TEMPLATE_ID or LOOPS_API_KEY')
+    return
+  }
+  const res = await fetch('https://app.loops.so/api/v1/transactional', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.LOOPS_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      transactionalId,
+      email: a.clientEmail,
+      dataVariables: { agentName: a.agentName, update: a.detail, note: a.note ?? '', sheetUrl: a.sheetUrl ?? '', link },
+      addToAudience: false,
+    }),
+    signal: AbortSignal.timeout(8000),
+  })
+  if (!res.ok) console.error('QA status email failed:', res.status, await res.text())
+}
+
 /**
  * Tell one person about a ticket update: an in-app bell item and an email (Loops
  * transactional, template QA_STATUS_LOOPS_TEMPLATE_ID with variables agentName,
@@ -112,62 +162,14 @@ type QaStatusAlert = {
  * the hand-off to a prompt engineer. Best effort, never throws.
  */
 export async function notifyQaStatusChange(a: QaStatusAlert): Promise<void> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-  const link = `${appUrl}/${a.projectId}/agents/${a.agentId}/qa`
-  const extra = [a.note && `Note: ${a.note}`, a.sheetUrl && `Sheet: ${a.sheetUrl}`].filter(Boolean) as string[]
-  try {
-    const url = process.env.QA_SLACK_WEBHOOK_URL
-    if (a.slack && url) {
-      const tag = a.slackId && /^[UW][A-Z0-9]{6,}$/.test(a.slackId) ? `<@${a.slackId}> ` : ''
-      const text = [
-        `${tag}*QA update* on <${link.replace('/qa', '')}|${slackEscape(a.agentName)}>: ${slackEscape(a.detail)}`,
-        `By: ${slackEscape(a.byEmail || 'unknown')}  |  Client: ${slackEscape(a.clientEmail || 'unknown')}`,
-        ...extra.map(slackEscape),
-        `<${link}|Open QA Audit>`,
-      ].join('\n')
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-        signal: AbortSignal.timeout(8000),
-      })
-      if (!res.ok) console.error('QA status Slack alert failed:', res.status, await res.text())
+  const link = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/${a.projectId}/agents/${a.agentId}/qa`
+  const steps = [postToSlack, addBellItem, sendEmail]
+  for (const step of steps) {
+    try {
+      await step(a, link)
+    } catch (e) {
+      console.error(`QA ${step.name} failed:`, e instanceof Error ? e.message : e)
     }
-  } catch (e) {
-    console.error('QA status Slack alert failed:', e instanceof Error ? e.message : e)
-  }
-  try {
-    if (a.clientEmail) {
-      await createServiceRoleClient().from('qa_inbox').insert({
-        recipient_email: a.clientEmail.toLowerCase(),
-        title: `${a.agentName}: ${a.detail}`,
-        body: a.note ?? null,
-        link,
-      })
-    }
-  } catch (e) {
-    console.error('QA bell notification failed:', e instanceof Error ? e.message : e)
-  }
-  try {
-    const transactionalId = process.env.QA_STATUS_LOOPS_TEMPLATE_ID
-    if (!a.clientEmail || !transactionalId || !process.env.LOOPS_API_KEY) {
-      console.warn('QA status email skipped: no client email, QA_STATUS_LOOPS_TEMPLATE_ID or LOOPS_API_KEY')
-      return
-    }
-    const res = await fetch('https://app.loops.so/api/v1/transactional', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${process.env.LOOPS_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        transactionalId,
-        email: a.clientEmail,
-        dataVariables: { agentName: a.agentName, update: a.detail, note: a.note ?? '', sheetUrl: a.sheetUrl ?? '', link },
-        addToAudience: false,
-      }),
-      signal: AbortSignal.timeout(8000),
-    })
-    if (!res.ok) console.error('QA status email failed:', res.status, await res.text())
-  } catch (e) {
-    console.error('QA status email failed:', e instanceof Error ? e.message : e)
   }
 }
 

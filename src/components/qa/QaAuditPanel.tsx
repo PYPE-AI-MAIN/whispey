@@ -192,7 +192,10 @@ function FlaggedCalls({ agentId, projectId }: Readonly<{ agentId: string; projec
   const [page, setPage] = useState(1)
   const { data, isLoading, error } = useQuery<FlagsPage>({
     queryKey: ['qa-audit', 'flags', agentId, filter, page],
-    queryFn: () => load(`/api/qa-audit/flags?agentId=${agentId}&page=${page}${filter === 'all' ? '' : `&status=${filter}`}`, 'flagged calls'),
+    queryFn: () => {
+      const statusParam = filter === 'all' ? '' : `&status=${filter}`
+      return load(`/api/qa-audit/flags?agentId=${agentId}&page=${page}${statusParam}`, 'flagged calls')
+    },
     placeholderData: keepPreviousData,
   })
   const { data: team } = useQuery<{ engineers: { name: string; email: string }[] }>({
@@ -329,8 +332,11 @@ function Thread({ ticket }: Readonly<{ ticket: Ticket }>) {
     ...ticket.events.map((e) => ({ at: e.created_at, event: e })),
     ...ticket.comments.map((c) => ({ at: c.created_at, comment: c })),
   ].sort((a, b) => a.at.localeCompare(b.at))
-  const eventText = (e: FlagEvent) =>
-    e.kind === 'flagged' ? `Flagged: ${e.detail}` : e.kind === 'assigned' ? e.detail : `Status: ${e.detail.split(' -> ').map((s) => STATUS_LABEL[s] ?? s).join(' → ')}`
+  const eventText = (e: FlagEvent) => {
+    if (e.kind === 'flagged') return `Flagged: ${e.detail}`
+    if (e.kind === 'assigned') return e.detail
+    return `Status: ${e.detail.split(' -> ').map((s) => STATUS_LABEL[s] ?? s).join(' → ')}`
+  }
 
   if (journey.length === 0) return null
   return (

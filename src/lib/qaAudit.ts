@@ -104,3 +104,11 @@ export function weeklyPatch(body: Record<string, unknown>): Check<WeeklyPatch> {
   if (error) return { error }
   return { patch: { status: 'ready', sheet_url: (body.sheet_url as string).trim(), note } }
 }
+
+/** Keep only images uploaded for this very ticket (key under qa/<ticketId>/), at most 5. */
+export function ticketAttachments(raw: unknown, ticketId: string): { key: string; name: string }[] {
+  return (Array.isArray(raw) ? raw : [])
+    .filter((a): a is { key: string; name?: unknown } => typeof a?.key === 'string' && a.key.startsWith(`qa/${ticketId}/`))
+    .slice(0, 5)
+    .map((a) => ({ key: a.key, name: String(a.name ?? 'image').slice(0, 120) }))
+}
