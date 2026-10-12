@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isQaDenied, qaDb, resolveAgentAccess } from '@/server/qa/access'
 import { sheetUrlError, ticketPatch } from '@/lib/qaAudit'
-import { notifyQaStatusChange } from '@/server/qa/notify'
+import { logQaEvent, notifyQaStatusChange } from '@/server/qa/notify'
 
 /** QA team only: move a ticket along and record how it was resolved. */
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -42,6 +42,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   if (ticket.status !== check.patch.status) {
+    await logQaEvent(id, 'status', access.email, `${ticket.status} -> ${check.patch.status}`)
     await notifyQaStatusChange({
       kind: 'flag',
       agentName: access.agent.display_name || access.agent.name,
@@ -57,6 +58,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   // The prompt engineer is told when a ticket in review is theirs (new assignee, or it just moved to review).
   if (assignee && check.patch.status === 'in_review' && (assignee !== ticket.assignee_email || ticket.status !== 'in_review')) {
+    await logQaEvent(id, 'assigned', access.email, `Passed to ${engineer?.name ?? assignee}`)
     await notifyQaStatusChange({
       kind: 'flag',
       agentName: access.agent.display_name || access.agent.name,
@@ -68,6 +70,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       detail: 'Flagged call assigned to you to fix',
       note: [`Flag: ${ticket.reason}`, check.patch.resolution_note].filter(Boolean).join(' | '),
       sheetUrl: sheet || null,
+      slack: true,
       slackId: engineer?.slack_id,
     })
   }

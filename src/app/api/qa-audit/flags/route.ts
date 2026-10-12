@@ -29,12 +29,16 @@ export async function GET(request: NextRequest) {
   const { data: comments } = ids.length
     ? await qaDb.from('qa_flag_comments').select('id, ticket_id, author_email, body, attachments, created_at').in('ticket_id', ids).order('created_at')
     : { data: [] }
+  const { data: events } = ids.length
+    ? await qaDb.from('qa_flag_events').select('id, ticket_id, kind, actor_email, detail, created_at').in('ticket_id', ids).order('created_at')
+    : { data: [] }
   // The sheet and assignee are for Pype staff only; customers never get them.
   const tickets = (data ?? []).map((t) => ({
     ...t,
     sheet_url: access.internal ? t.sheet_url : null,
     assignee_email: access.internal ? t.assignee_email : null,
     comments: (comments ?? []).filter((c) => c.ticket_id === t.id),
+    events: (events ?? []).filter((e) => e.ticket_id === t.id),
   }))
 
   return NextResponse.json({

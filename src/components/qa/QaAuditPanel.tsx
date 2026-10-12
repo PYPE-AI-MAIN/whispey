@@ -32,7 +32,10 @@ type Ticket = {
   sheet_url: string | null
   assignee_email: string | null
   comments: Comment[]
+  events: FlagEvent[]
 }
+
+type FlagEvent = { id: string; kind: 'flagged' | 'status' | 'assigned'; actor_email: string | null; detail: string; created_at: string }
 
 type Comment = { id: string; author_email: string; body: string; attachments: { key: string; name: string }[]; created_at: string }
 
@@ -399,10 +402,22 @@ function Thread({ ticket, canManage, agentId }: Readonly<{ ticket: Ticket; canMa
     },
   })
 
-  if (!canManage && ticket.comments.length === 0) return null
+  const journey: { at: string; event?: FlagEvent; comment?: Comment }[] = [
+    ...ticket.events.map((e) => ({ at: e.created_at, event: e })),
+    ...ticket.comments.map((c) => ({ at: c.created_at, comment: c })),
+  ].sort((a, b) => a.at.localeCompare(b.at))
+  const eventText = (e: FlagEvent) =>
+    e.kind === 'flagged' ? `Flagged: ${e.detail}` : e.kind === 'assigned' ? e.detail : `Status: ${e.detail.split(' -> ').map((s) => STATUS_LABEL[s] ?? s).join(' → ')}`
+
+  if (!canManage && journey.length === 0) return null
   return (
     <div className="mt-3 space-y-3">
-      {ticket.comments.map((c) => (
+      {journey.map(({ event, comment: c }) => event ? (
+        <p key={event.id} className="text-xs text-gray-500 dark:text-gray-400">
+          <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-gray-400" />
+          {eventText(event)} · {fmtDate(event.created_at)}
+        </p>
+      ) : c && (
         <div key={c.id} className="border-l-2 border-blue-500 pl-3 text-sm text-gray-700 dark:text-gray-300">
           {c.body && <p className="whitespace-pre-wrap">{c.body}</p>}
           {c.attachments.length > 0 && (
