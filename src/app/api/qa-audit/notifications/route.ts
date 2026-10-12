@@ -13,7 +13,7 @@ export async function GET() {
   const email = await myEmail()
   if (!email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { data, error } = await qaDb
-    .from('qa_notifications')
+    .from('qa_inbox')
     .select('id, title, body, link, read_at, created_at')
     .eq('recipient_email', email)
     .order('created_at', { ascending: false })
@@ -26,7 +26,7 @@ export async function GET() {
 export async function PATCH() {
   const email = await myEmail()
   if (!email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { error } = await qaDb.from('qa_notifications').update({ read_at: new Date().toISOString() }).eq('recipient_email', email).is('read_at', null)
+  const { error } = await qaDb.from('qa_inbox').update({ read_at: new Date().toISOString() }).eq('recipient_email', email).is('read_at', null)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

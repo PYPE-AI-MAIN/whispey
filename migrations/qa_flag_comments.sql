@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS qa_flag_comments (
 );
 CREATE INDEX IF NOT EXISTS qa_flag_comments_ticket_idx ON qa_flag_comments (ticket_id, created_at);
 
-CREATE TABLE IF NOT EXISTS qa_notifications (
+CREATE TABLE IF NOT EXISTS qa_inbox (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   recipient_email text NOT NULL,
   title           text NOT NULL,
@@ -24,10 +24,10 @@ CREATE TABLE IF NOT EXISTS qa_notifications (
   read_at         timestamptz,
   created_at      timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS qa_notifications_recipient_idx ON qa_notifications (lower(recipient_email), created_at DESC);
+CREATE INDEX IF NOT EXISTS qa_inbox_recipient_idx ON qa_inbox (lower(recipient_email), created_at DESC);
 
 -- Same convention as the other qa_* tables: API routes on the service role only.
 ALTER TABLE qa_flag_comments  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE qa_notifications  ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON qa_flag_comments, qa_notifications FROM anon, authenticated;
-GRANT  ALL ON qa_flag_comments, qa_notifications TO service_role;
+ALTER TABLE qa_inbox  ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON qa_flag_comments, qa_inbox FROM anon, authenticated;
+GRANT  ALL ON qa_flag_comments, qa_inbox TO service_role;

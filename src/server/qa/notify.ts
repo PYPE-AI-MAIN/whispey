@@ -57,7 +57,7 @@ export async function notifyQaTeam(a: QaAlert): Promise<void> {
     ])
     const what = a.kind === 'flag' ? `Call flagged by ${a.byEmail || 'a customer'}` : `Weekly review requested by ${a.byEmail || 'a customer'}`
     if (team.size) {
-      await db.from('qa_notifications').insert([...team].map((email) => ({
+      await db.from('qa_inbox').insert([...team].map((email) => ({
         recipient_email: email,
         title: `${a.agentName}: ${what}`,
         body: a.detail,
@@ -138,7 +138,7 @@ export async function notifyQaStatusChange(a: QaStatusAlert): Promise<void> {
   }
   try {
     if (a.clientEmail) {
-      await createServiceRoleClient().from('qa_notifications').insert({
+      await createServiceRoleClient().from('qa_inbox').insert({
         recipient_email: a.clientEmail.toLowerCase(),
         title: `${a.agentName}: ${a.detail}`,
         body: a.note ?? null,
