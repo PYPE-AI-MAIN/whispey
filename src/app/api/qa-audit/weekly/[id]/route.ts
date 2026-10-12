@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isQaDenied, qaDb, resolveAgentAccess } from '@/server/qa/access'
 import { weeklyPatch } from '@/lib/qaAudit'
+import { notifyQaStatusChange } from '@/server/qa/notify'
 
 /** QA team only: mark a weekly review in progress, or ready with its Google Sheet. */
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { data: review } = await qaDb.from('qa_weekly_reviews').select('id, agent_id').eq('id', id).maybeSingle()
+  const { data: review } = await qaDb.from('qa_weekly_reviews').select('id, agent_id, status, requested_by_email, week_start, week_end').eq('id', id).maybeSingle()
   if (!review) return NextResponse.json({ error: 'Review not found' }, { status: 404 })
 
   const access = await resolveAgentAccess(review.agent_id)
@@ -27,6 +28,20 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     .select('id, status, sheet_url, note, ready_at')
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  if (review.status !== check.patch.status) {
+    await notifyQaStatusChange({
+      kind: 'weekly',
+      agentName: access.agent.display_name || access.agent.name,
+      agentId: access.agent.id,
+      projectId: access.projectId,
+      clientEmail: review.requested_by_email ?? '',
+      byEmail: access.email,
+      detail: `Weekly review ${review.week_start} to ${review.week_end}: ${review.status} -> ${check.patch.status}`,
+      note: check.patch.note,
+      sheetUrl: data.sheet_url,
+    })
+  }
 
   return NextResponse.json({ review: data })
 }

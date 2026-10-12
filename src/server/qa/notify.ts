@@ -63,3 +63,71 @@ export async function notifyQaTeam(a: QaAlert): Promise<void> {
     console.error('QA Slack alert failed:', e instanceof Error ? e.message : e)
   }
 }
+
+type QaStatusAlert = {
+  kind: 'flag' | 'weekly'
+  agentName: string
+  agentId: string
+  projectId: string
+  /** The customer who flagged / requested; gets the email. */
+  clientEmail: string
+  /** The QA team member who made the change. */
+  byEmail: string
+  callLogId?: string
+  /** What changed, e.g. "Flagged call -> Resolved". */
+  detail: string
+  note?: string | null
+  sheetUrl?: string | null
+}
+
+/**
+ * A QA status change reaches both sides: the QA team on Slack and the customer by
+ * email (Loops transactional, template QA_STATUS_LOOPS_TEMPLATE_ID with variables
+ * agentName, update, note, sheetUrl, link). Best effort, never throws.
+ */
+export async function notifyQaStatusChange(a: QaStatusAlert): Promise<void> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
+  const link = `${appUrl}/${a.projectId}/agents/${a.agentId}/qa`
+  const extra = [a.note && `Note: ${a.note}`, a.sheetUrl && `Sheet: ${a.sheetUrl}`].filter(Boolean) as string[]
+  try {
+    const url = process.env.QA_SLACK_WEBHOOK_URL
+    if (url) {
+      const text = [
+        `*QA update* on <${link.replace('/qa', '')}|${slackEscape(a.agentName)}>: ${slackEscape(a.detail)}`,
+        `By: ${slackEscape(a.byEmail || 'unknown')}  |  Client: ${slackEscape(a.clientEmail || 'unknown')}`,
+        ...extra.map(slackEscape),
+        `<${link}|Open QA Audit>`,
+      ].join('\n')
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+        signal: AbortSignal.timeout(8000),
+      })
+      if (!res.ok) console.error('QA status Slack alert failed:', res.status, await res.text())
+    }
+  } catch (e) {
+    console.error('QA status Slack alert failed:', e instanceof Error ? e.message : e)
+  }
+  try {
+    const transactionalId = process.env.QA_STATUS_LOOPS_TEMPLATE_ID
+    if (!a.clientEmail || !transactionalId || !process.env.LOOPS_API_KEY) {
+      console.warn('QA status email skipped: no client email, QA_STATUS_LOOPS_TEMPLATE_ID or LOOPS_API_KEY')
+      return
+    }
+    const res = await fetch('https://app.loops.so/api/v1/transactional', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${process.env.LOOPS_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        transactionalId,
+        email: a.clientEmail,
+        dataVariables: { agentName: a.agentName, update: a.detail, note: a.note ?? '', sheetUrl: a.sheetUrl ?? '', link },
+        addToAudience: false,
+      }),
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!res.ok) console.error('QA status email failed:', res.status, await res.text())
+  } catch (e) {
+    console.error('QA status email failed:', e instanceof Error ? e.message : e)
+  }
+}
