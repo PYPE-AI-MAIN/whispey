@@ -39,9 +39,14 @@ function FlowNodeComponent({ data, id, selected }: NodeProps<any>) {
 
   return (
     <div
-      className={`group relative flex items-stretch bg-white dark:bg-gray-900 ${isTerminal ? 'rounded-full' : 'rounded-xl'} shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_20px_-8px_rgba(0,0,0,0.15)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_8px_24px_-8px_rgba(0,0,0,0.6)] min-w-[168px] max-w-[220px] cursor-pointer overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-[0_1px_2px_rgba(0,0,0,0.06),0_12px_28px_-8px_rgba(0,0,0,0.22)] ${ringClass}`}
+      className={`group relative flex items-stretch bg-white dark:bg-gray-900 ${isTerminal ? 'rounded-full' : 'rounded-xl'} shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_20px_-8px_rgba(0,0,0,0.15)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_8px_24px_-8px_rgba(0,0,0,0.6)] min-w-[168px] max-w-[220px] cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-[0_1px_2px_rgba(0,0,0,0.06),0_12px_28px_-8px_rgba(0,0,0,0.22)] ${ringClass}`}
       style={selected ? ({ '--tw-ring-color': color } as React.CSSProperties) : undefined}
     >
+      {nodeData.isStart && (
+        <span className="absolute -top-5 left-0 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+          Start
+        </span>
+      )}
       <Handle type="target" position={Position.Left} className="!w-2.5 !h-2.5 !border-2 !border-white dark:!border-gray-900" style={{ background: color }} />
 
       {/* type-color spine — instant recognition even zoomed out, no need to read the icon */}

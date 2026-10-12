@@ -18,7 +18,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useTheme } from 'next-themes'
-import { LayoutGrid, Locate, Sparkles } from 'lucide-react'
+import { LayoutGrid, Locate, Play, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import { createDefaultNode, type NodeType } from '@/lib/workflow/schema'
@@ -278,6 +278,17 @@ export function WorkflowCanvas() {
             onClick={() => fitView({ padding: 0.2, duration: 300 })}
           >
             <Locate className="h-3.5 w-3.5 mr-1.5" /> Fit view
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 bg-white/90 dark:bg-gray-900/90 backdrop-blur shadow-sm"
+            onClick={() => {
+              setSelectedNode(workflow.start)
+              fitView({ nodes: [{ id: workflow.start }], padding: 1.5, maxZoom: 1, duration: 300 })
+            }}
+          >
+            <Play className="h-3.5 w-3.5 mr-1.5" /> Go to start
           </Button>
           <Button variant="outline" size="sm" className="h-8 bg-white/90 dark:bg-gray-900/90 backdrop-blur shadow-sm" onClick={handleAutoArrange}>
             <LayoutGrid className="h-3.5 w-3.5 mr-1.5" /> Auto-arrange
