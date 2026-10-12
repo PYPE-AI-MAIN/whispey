@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isQaDenied, qaDb, resolveAgentAccess } from '@/server/qa/access'
 import { ticketPatch } from '@/lib/qaAudit'
+import { notifyQaStatusChange } from '@/server/qa/notify'
 
 /** QA team only: move a ticket along and record how it was resolved. */
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { data: ticket } = await qaDb.from('qa_flag_tickets').select('id, agent_id').eq('id', id).maybeSingle()
+  const { data: ticket } = await qaDb.from('qa_flag_tickets').select('id, agent_id, call_log_id, status, flagged_by_email').eq('id', id).maybeSingle()
   if (!ticket) return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
 
   const access = await resolveAgentAccess(ticket.agent_id)
@@ -27,6 +28,20 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     .select('id, status, resolution_note, resolved_by, resolved_at')
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  if (ticket.status !== check.patch.status) {
+    await notifyQaStatusChange({
+      kind: 'flag',
+      agentName: access.agent.display_name || access.agent.name,
+      agentId: access.agent.id,
+      projectId: access.projectId,
+      clientEmail: ticket.flagged_by_email ?? '',
+      byEmail: access.email,
+      callLogId: ticket.call_log_id,
+      detail: `Flagged call ${ticket.status} -> ${check.patch.status}`,
+      note: check.patch.resolution_note,
+    })
+  }
 
   return NextResponse.json({ ticket: data })
 }
