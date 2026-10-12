@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { Instrument_Serif, Plus_Jakarta_Sans } from 'next/font/google'
 import Header, { Brand } from './landing-header'
@@ -30,6 +29,62 @@ const TURNS = [
   { who: 'Patient', text: 'I need to move my appointment to Tuesday.' },
   { who: 'Agent', text: 'Sure. Let me check what is open on Tuesday.' },
 ]
+
+const WAVE = Array.from({ length: 44 }, (_, n) => ({ id: `w-${n}`, h: 18 + ((n * 37) % 62) }))
+const HERO_STATS = [['Turns', '6'], ['Duration', '1:42'], ['Bugs', '0']]
+const HERO_TURNS = [
+  { turn: 'Turn 1', who: 'Agent', text: 'Hello, you have reached the clinic. How can I help you today?' },
+  { turn: 'Turn 2', who: 'Patient', text: 'Can I come in on Tuesday morning instead?' },
+  { turn: 'Turn 3', who: 'Agent', text: 'Yes. I can book you for ten on Tuesday. Does that suit you?' },
+]
+
+function HeroMock() {
+  return (
+    <figure>
+      <div className="wl-frame" aria-hidden="true">
+        <div className="grid md:grid-cols-[190px_1fr]">
+          <aside className="wl-side hidden p-4 md:block">
+            <p className="wl-ink text-sm font-semibold">Whispey</p>
+            <ul className="mt-5 space-y-1 text-sm">
+              {['Overview', 'Call logs', 'QA Audit', 'Agent config'].map((l) => (
+                <li key={l} className={l === 'Call logs' ? 'wl-nav wl-nav-on' : 'wl-nav'}>{l}</li>
+              ))}
+            </ul>
+          </aside>
+          <div className="p-5 sm:p-6">
+            <p className="wl-tag">Call recording</p>
+            <div className="wl-track mt-2 flex items-center gap-3 rounded-xl p-3">
+              <span className="wl-pill-on flex h-8 w-8 flex-none items-center justify-center rounded-full text-[10px]">&#9654;</span>
+              <span className="flex h-8 flex-1 items-center gap-[3px] overflow-hidden">
+                {WAVE.map((w) => (
+                  <span key={w.id} className="wl-wave" style={{ height: `${w.h}%` }} />
+                ))}
+              </span>
+            </div>
+            <dl className="mt-5 flex flex-wrap gap-x-9 gap-y-2 text-sm">
+              {HERO_STATS.map(([k, v]) => (
+                <div key={k}>
+                  <dt className="wl-tag">{k}</dt>
+                  <dd className="wl-ink text-lg font-semibold">{v}</dd>
+                </div>
+              ))}
+            </dl>
+            <ul className="mt-5 divide-y text-sm" style={{ borderColor: 'rgba(37,99,235,0.12)' }}>
+              {HERO_TURNS.map((t) => (
+                <li key={t.turn} className="flex gap-4 py-3" style={{ borderColor: 'rgba(37,99,235,0.12)' }}>
+                  <span className="wl-tag w-14 flex-none pt-0.5">{t.turn}</span>
+                  <span className="wl-tag w-14 flex-none pt-0.5">{t.who}</span>
+                  <span className="wl-ink">{t.text}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+      <figcaption className="wl-soft mt-3 text-center text-xs">Sample call, for illustration</figcaption>
+    </figure>
+  )
+}
 
 const QA_STEPS = ['Flagged', 'In review', 'Resolved']
 const LATENCY = [
@@ -71,18 +126,31 @@ const PAGE_CSS = `
   .wl-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82rem; line-height: 1.6; overflow-x: auto;
     background: rgba(255,255,255,0.75); border: 1px solid rgba(37,99,235,0.14); border-radius: 12px; padding: 0.9rem 1rem; }
   .dark .wl-code { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.12); }
-  .wl-frame { border-radius: 18px; border: 1px solid rgba(37,99,235,0.18); box-shadow: 0 30px 70px -34px rgba(30,64,160,0.55); overflow: hidden; background: #0b1424; }
-  .dark .wl-frame { border-color: rgba(255,255,255,0.14); }
+  .wl-frame { border-radius: 18px; border: 1px solid rgba(37,99,235,0.18); box-shadow: 0 30px 70px -34px rgba(30,64,160,0.55); overflow: hidden; background: #fff; text-align: left; }
+  .dark .wl-frame { border-color: rgba(255,255,255,0.14); background: #0b1424; }
   .wl-eyebrow { font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 600; color: #2563eb; }
   .dark .wl-eyebrow { color: #60a5fa; }
-  .wl-band { background: #08101f; color: #eef4ff; }
-  .wl-card { border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.035); border-radius: 20px; padding: 1.6rem; display: flex; flex-direction: column; gap: 1.1rem; }
-  .wl-card p { color: #9db0d0; line-height: 1.6; }
-  .wl-mock { margin-top: auto; border: 1px solid rgba(255,255,255,0.1); background: rgba(5,10,20,0.6); border-radius: 14px; padding: 1rem; font-size: 0.82rem; }
-  .wl-tag { font-size: 0.66rem; letter-spacing: 0.12em; text-transform: uppercase; color: #6f84a8; }
-  .wl-pill { border: 1px solid rgba(255,255,255,0.16); border-radius: 9999px; padding: 0.25rem 0.7rem; color: #9db0d0; }
+  .wl-band { background: #eef4ff; color: #0b1b3b; }
+  .dark .wl-band { background: #08101f; color: #eef4ff; }
+  .wl-card { border: 1px solid rgba(37,99,235,0.14); background: #fff; border-radius: 20px; padding: 1.6rem; display: flex; flex-direction: column; gap: 1.1rem;
+    box-shadow: 0 18px 40px -30px rgba(30,64,160,0.45); }
+  .dark .wl-card { border-color: rgba(255,255,255,0.1); background: rgba(255,255,255,0.035); box-shadow: none; }
+  .wl-card p { color: #5b6b86; line-height: 1.6; } .dark .wl-card p { color: #9db0d0; }
+  .wl-mock { margin-top: auto; border: 1px solid rgba(37,99,235,0.12); background: #f6f9ff; border-radius: 14px; padding: 1rem; font-size: 0.82rem; }
+  .dark .wl-mock { border-color: rgba(255,255,255,0.1); background: rgba(5,10,20,0.6); }
+  .wl-tag { font-size: 0.66rem; letter-spacing: 0.12em; text-transform: uppercase; color: #7488aa; } .dark .wl-tag { color: #6f84a8; }
+  .wl-ink { color: #0b1b3b; } .dark .wl-ink { color: #dbe7ff; }
+  .wl-soft { color: #5b6b86; } .dark .wl-soft { color: #9db0d0; }
+  .wl-track { background: rgba(37,99,235,0.1); } .dark .wl-track { background: rgba(255,255,255,0.08); }
+  .wl-pill { border: 1px solid rgba(37,99,235,0.22); border-radius: 9999px; padding: 0.25rem 0.7rem; color: #5b6b86; }
+  .dark .wl-pill { border-color: rgba(255,255,255,0.16); color: #9db0d0; }
   .wl-pill-on { background: linear-gradient(90deg, #1d4ed8, #3b82f6); border-color: transparent; color: #fff; }
-  .wl-code-dark { background: #08101f; border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; color: #dbe7ff; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem; line-height: 1.75; padding: 1.4rem 1.5rem; overflow-x: auto; box-shadow: 0 30px 70px -40px rgba(30,64,160,0.6); }
+  .dark .wl-pill-on { color: #fff; }
+  .wl-side { background: #f6f9ff; border-right: 1px solid rgba(37,99,235,0.12); } .dark .wl-side { background: #08101f; border-right-color: rgba(255,255,255,0.1); }
+  .wl-nav { border-radius: 8px; padding: 0.5rem 0.75rem; color: #5b6b86; } .dark .wl-nav { color: #9db0d0; }
+  .wl-nav-on { background: rgba(37,99,235,0.1); color: #1d4ed8; font-weight: 600; } .dark .wl-nav-on { background: rgba(96,165,250,0.16); color: #93c5fd; }
+  .wl-wave { width: 3px; border-radius: 2px; background: #93b4f5; flex: none; } .dark .wl-wave { background: #3b6fd8; }
+  .wl-code-dark { display: none; }
   .wl-num { font-family: var(--font-sw-serif), Georgia, serif; font-size: 2rem; line-height: 1; color: #2563eb; }
   .dark .wl-num { color: #60a5fa; }
 `
@@ -108,14 +176,12 @@ export default function LandingPage() {
         </section>
 
         <section className="mx-auto max-w-5xl px-6 pb-20">
-          <div className="wl-frame">
-            <Image src="/hero-banner-whispey.png" alt="A call in Whispey with its recording, conversation turns and latency per turn" width={2436} height={1420} priority className="h-auto w-full" />
-          </div>
+          <HeroMock />
         </section>
 
         <section id="features" className="wl-band scroll-mt-16">
           <div className="mx-auto max-w-6xl px-6 py-24">
-            <p className="wl-eyebrow" style={{ color: '#60a5fa' }}>What you can follow</p>
+            <p className="wl-eyebrow">What you can follow</p>
             <h2 className="wl-title wl-h2 mt-3 max-w-2xl">Every call, from the first word to the follow-up</h2>
             <div className="mt-12 grid gap-5 lg:grid-cols-6">
               <article className="wl-card lg:col-span-4">
@@ -129,7 +195,7 @@ export default function LandingPage() {
                     {TURNS.map((t) => (
                       <li key={t.text} className="flex gap-3">
                         <span className="wl-tag w-14 shrink-0 pt-0.5">{t.who}</span>
-                        <span style={{ color: '#dbe7ff' }}>{t.text}</span>
+                        <span className="wl-ink">{t.text}</span>
                       </li>
                     ))}
                   </ul>
@@ -146,8 +212,8 @@ export default function LandingPage() {
                   <ul className="space-y-3">
                     {LATENCY.map((l) => (
                       <li key={l.label}>
-                        <span style={{ color: '#9db0d0' }}>{l.label}</span>
-                        <span className="mt-1.5 block h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                        <span className="wl-soft">{l.label}</span>
+                        <span className="wl-track mt-1.5 block h-1.5 rounded-full">
                           <span className="block h-1.5 rounded-full" style={{ width: l.w, background: 'linear-gradient(90deg, #1d4ed8, #60a5fa)' }} />
                         </span>
                       </li>
@@ -178,8 +244,8 @@ export default function LandingPage() {
                 </div>
                 <div className="wl-mock" aria-hidden="true">
                   <p className="wl-tag mb-3">Example</p>
-                  <p style={{ color: '#dbe7ff' }}>&ldquo;The agent repeated the question twice.&rdquo;</p>
-                  <p className="mt-2" style={{ color: '#6f84a8' }}>Attached to turn 4 of this call</p>
+                  <p className="wl-ink">&ldquo;The agent repeated the question twice.&rdquo;</p>
+                  <p className="wl-soft mt-2">Attached to turn 4 of this call</p>
                 </div>
               </article>
             </div>
@@ -203,19 +269,19 @@ export default function LandingPage() {
                 ))}
               </ol>
             </div>
-            <pre className="wl-code-dark"><code>{CODE}</code></pre>
+            <pre className="wl-code" style={{ fontSize: '0.9rem', lineHeight: 1.8, padding: '1.4rem 1.5rem' }}><code>{CODE}</code></pre>
           </div>
         </section>
 
         <section className="mx-auto max-w-6xl px-6 pb-24">
           <div className="wl-band rounded-3xl px-8 py-14 text-center sm:px-14">
             <h2 className="wl-title wl-h2 mx-auto max-w-2xl">See how your agents perform on real calls</h2>
-            <p className="mx-auto mt-4 max-w-xl" style={{ color: '#9db0d0' }}>
+            <p className="wl-soft mx-auto mt-4 max-w-xl">
               Sign in to Whispey, or talk to the Pype team about voice agents for your hospital or clinic.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Link href="/sign-in" className="wl-btn">Get started</Link>
-              <a href="https://pypeai.com/contact" target="_blank" rel="noopener noreferrer" className="wl-btn wl-btn-ghost" style={{ color: '#eef4ff', borderColor: 'rgba(255,255,255,0.25)' }}>Talk to Pype</a>
+              <a href="https://pypeai.com/contact" target="_blank" rel="noopener noreferrer" className="wl-btn wl-btn-ghost">Talk to Pype</a>
             </div>
           </div>
         </section>
