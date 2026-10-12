@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { SignedIn, UserButton } from '@clerk/nextjs'
+import { SignedIn } from '@clerk/nextjs'
 import { BookOpen, ChevronRight, HelpCircle } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import NotificationBell from './NotificationBell'
@@ -110,9 +110,6 @@ export default function AppTopBar() {
           </DropdownMenuContent>
         </DropdownMenu>
         <ThemeToggle />
-        <SignedIn>
-          <UserButton appearance={{ elements: { avatarBox: 'h-8 w-8' } }} />
-        </SignedIn>
       </div>
     </header>
   )
