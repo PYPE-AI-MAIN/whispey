@@ -64,43 +64,20 @@ const PypeAgentUsage: React.FC<PypeAgentUsageProps> = ({ projectId }) => {
       <Tooltip open={showDetails} onOpenChange={setShowDetails}>
         <TooltipTrigger asChild>
           <button
-            className={`
-              flex items-center gap-2 px-3 py-1.5 rounded-lg
-              ${hasReachedLimit 
-                ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800' 
-                : 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
-              }
-              hover:shadow-sm transition-all cursor-pointer
-              ${isMobile ? 'text-xs' : 'text-sm'}
-            `}
+            className={`flex cursor-pointer items-center gap-2.5 rounded-lg border bg-card px-3 py-2 transition-colors hover:bg-accent ${
+              hasReachedLimit ? 'border-destructive/50' : 'border-border'
+            } ${isMobile ? 'text-xs' : 'text-sm'}`}
           >
-            {/* Usage Text */}
-            <span className={`font-medium ${
-              hasReachedLimit 
-                ? 'text-red-700 dark:text-red-300' 
-                : 'text-blue-700 dark:text-blue-300'
-            }`}>
-              {activeCount}/{maxAgents} Pype Agents
+            <span className={`font-medium ${hasReachedLimit ? 'text-destructive' : 'text-foreground'}`}>
+              {activeCount}/{maxAgents} Pype agents
             </span>
-
-            {/* Progress Bar */}
-            <div className="w-16 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div 
-                className={`h-full transition-all duration-300 ${
-                  hasReachedLimit 
-                    ? 'bg-red-500 dark:bg-red-400' 
-                    : 'bg-blue-500 dark:bg-blue-400'
-                }`}
+            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+              <div
+                className={`h-full transition-all duration-300 ${hasReachedLimit ? 'bg-destructive' : 'bg-primary'}`}
                 style={{ width: `${Math.min(100, usagePercentage)}%` }}
               />
             </div>
-
-            {/* Info Icon */}
-            <Info className={`w-3.5 h-3.5 ${
-              hasReachedLimit 
-                ? 'text-red-600 dark:text-red-400' 
-                : 'text-blue-600 dark:text-blue-400'
-            }`} />
+            <Info className="h-3.5 w-3.5 text-muted-foreground" />
           </button>
         </TooltipTrigger>
 

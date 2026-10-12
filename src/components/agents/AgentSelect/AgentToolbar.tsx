@@ -208,173 +208,80 @@ const AgentToolbar: React.FC<AgentToolbarProps> = ({
       )
     }
 
-    // Desktop version (UX optimized)
+    const segment = 'flex items-center rounded-lg border border-border bg-muted/60 p-0.5'
+    const segBtn = (on: boolean) =>
+      `rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${on ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`
     return (
-    <div className="space-y-3 mb-6">
-      {/* Primary Actions Row */}
-      <div className="flex items-center justify-between">
-        {/* Left: Search + Quick Filters */}
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
-            <input
-              type="search"
-              placeholder="Search agents..."
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="w-80 pl-10 pr-4 py-2.5 text-sm bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 focus:outline-none transition-all text-gray-900 dark:text-gray-100"
-            />
-          </div>
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <div className="relative w-full sm:w-72">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="search"
+            placeholder="Search agents"
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="w-full rounded-lg border border-input bg-card py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/25"
+          />
         </div>
 
-        {/* Right: Primary Action + Secondary Controls */}
-        <div className="flex items-center gap-3">
-          {/* Usage Info */}
+        <div className={segment} role="group" aria-label="Filter by status">
+          {(['all', 'active', 'inactive'] as const).map((f) => (
+            <button key={f} onClick={() => onStatusFilterChange(f)} className={segBtn(statusFilter === f)}>
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
+
+        <div className={segment} role="group" aria-label="View and sort">
+          <button
+            onClick={onSortToggle}
+            className={`flex items-center gap-1.5 ${segBtn(false)}`}
+            title={`Sort by date ${sortOrder === 'desc' ? '(newest first)' : '(oldest first)'}`}
+          >
+            <ArrowUpDown className="h-3.5 w-3.5" />
+            {sortOrder === 'desc' ? 'Newest' : 'Oldest'}
+          </button>
+          <button onClick={() => onViewModeChange('list')} className={segBtn(viewMode === 'list')} title="List view" aria-label="List view">
+            <List className="h-3.5 w-3.5" />
+          </button>
+          <button onClick={() => onViewModeChange('grid')} className={segBtn(viewMode === 'grid')} title="Grid view" aria-label="Grid view">
+            <Grid3X3 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        <div className="ml-auto flex flex-wrap items-center gap-3">
           <PypeAgentUsage projectId={projectid as string} />
-          
-          {/* Primary Action - Simple conditional buttons */}
-          <div className="flex items-center gap-2">
-            {/* Create Agent - Show only for new users or if they have permission */}
-            {showCreateButton && (
-              <Button 
-                onClick={handleCreateAgentClick}
-                disabled={hasReachedLimit}
-                className={`px-4 py-2.5 text-sm font-medium shadow-sm ${
-                  isCreateButtonDisabled
-                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                    : 'bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 text-white'
-                }`}
-                title={isCreateButtonDisabled ? (hasReachedLimit ? 'Agent limit reached' : 'Beta feature - click to request access') : 'Create a new agent'}
-              >
-                {isCreateButtonDisabled ? (
-                  <Lock className="w-4 h-4 mr-2" />
-                ) : (
-                  <Plus className="w-4 h-4 mr-2" />
-                )}
-                Create Agent
-                {!canCreatePypeAgent && (
-                  <span className="ml-1 text-xs px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded border border-blue-200 dark:border-blue-800">
-                    Beta
-                  </span>
-                )}
-              </Button>
-            )}
-            
-            {/* Connect Agent - Always show */}
-            {showConnectButton && (
-              <Button 
-                onClick={onConnectAgent}
-                variant="outline"
-                className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 px-4 py-2.5 text-sm font-medium"
-              >
-                <Eye className="w-4 h-4 mr-2" />
-                Connect Agent
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Secondary Controls Row */}
-      <div className="flex items-center justify-between">
-        {/* Left: Sort + View Controls */}
-        <div className="flex items-center gap-3">
-          {/* Sort Control */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Sort:</span>
-            <button
-              onClick={onSortToggle}
-              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors border ${
-                sortOrder === 'desc' 
-                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' 
-                  : 'text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 border-gray-200 dark:border-gray-700'
-              }`}
-              title={`Sort by date ${sortOrder === 'desc' ? '(newest first)' : '(oldest first)'}`}
+          {showConnectButton && (
+            <Button onClick={onConnectAgent} variant="outline" className="px-4 py-2.5 text-sm font-medium">
+              <Eye className="mr-2 h-4 w-4" />
+              Connect Agent
+            </Button>
+          )}
+          {showCreateButton && (
+            <Button
+              onClick={handleCreateAgentClick}
+              disabled={hasReachedLimit}
+              className={`px-4 py-2.5 text-sm font-medium ${isCreateButtonDisabled ? 'cursor-not-allowed bg-muted text-muted-foreground hover:bg-muted' : ''}`}
+              title={isCreateButtonDisabled ? (hasReachedLimit ? 'Agent limit reached' : 'Beta feature - click to request access') : 'Create a new agent'}
             >
-              <ArrowUpDown className="w-3.5 h-3.5" />
-              {sortOrder === 'desc' ? 'DESC' : 'ASC'}
-            </button>
-          </div>
-
-          {/* View Toggle */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">View:</span>
-            <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
-              <button
-                onClick={() => onViewModeChange('list')}
-                className={`p-2 rounded-md transition-all ${
-                  viewMode === 'list' 
-                    ? 'bg-white dark:bg-gray-900 shadow-sm text-gray-900 dark:text-gray-100' 
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                }`}
-                title="List view"
-              >
-                <List className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => onViewModeChange('grid')}
-                className={`p-2 rounded-md transition-all ${
-                  viewMode === 'grid' 
-                    ? 'bg-white dark:bg-gray-900 shadow-sm text-gray-900 dark:text-gray-100' 
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                }`}
-                title="Grid view"
-              >
-                <Grid3X3 className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: Status Filter + Help */}
-        <div className="flex items-center gap-3">
-          {/* Status Filter */}
-          <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
-            <button
-              onClick={() => onStatusFilterChange('all')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                statusFilter === 'all' 
-                  ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm' 
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => onStatusFilterChange('active')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                statusFilter === 'active' 
-                  ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm' 
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
-            >
-              Active
-            </button>
-            <button
-              onClick={() => onStatusFilterChange('inactive')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                statusFilter === 'inactive' 
-                  ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 shadow-sm' 
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-              }`}
-            >
-              Inactive
-            </button>
-          </div>
-
-          {/* Help */}
+              {isCreateButtonDisabled ? <Lock className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
+              Create Agent
+              {!canCreatePypeAgent && (
+                <span className="ml-2 rounded border border-border px-1.5 py-0.5 text-xs text-muted-foreground">Beta</span>
+              )}
+            </Button>
+          )}
           {onShowHelp && (
             <button
               onClick={onShowHelp}
-              className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20"
+              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
-              <HelpCircle className="w-4 h-4" />
+              <HelpCircle className="h-4 w-4" />
               Help
             </button>
           )}
         </div>
       </div>
-    </div>
     )
   }
 
