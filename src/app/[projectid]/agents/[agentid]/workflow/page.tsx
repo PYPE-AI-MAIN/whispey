@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ReactFlowProvider } from '@xyflow/react'
 import toast from 'react-hot-toast'
-import { ArrowLeft, BookOpen, Braces, ClipboardPaste, Copy, Loader2, PhoneIcon, Rocket, Settings2, ShieldCheck, Sparkles } from 'lucide-react'
+import { ArrowLeft, BookOpen, Braces, Globe, ClipboardPaste, Copy, Loader2, PhoneIcon, Rocket, Settings2, ShieldCheck, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -18,6 +18,7 @@ import { WORKFLOW_TEMPLATES, type WorkflowTemplate } from '@/lib/workflow/templa
 import { WorkflowPalette } from '@/components/workflow/WorkflowPalette'
 import { WorkflowCanvas } from '@/components/workflow/WorkflowCanvas'
 import { Inspector } from '@/components/workflow/Inspector'
+import { GlobalRulesPanel } from '@/components/workflow/GlobalRulesPanel'
 import { VariablesPanel } from '@/components/workflow/VariablesPanel'
 import { AgentSettingsPanel } from '@/components/workflow/AgentSettingsPanel'
 import { TemplatePicker } from '@/components/workflow/TemplatePicker'
@@ -144,6 +145,7 @@ function WorkflowPageInner() {
   }
 
   const [variablesOpen, setVariablesOpen] = useState(false)
+  const [rulesOpen, setRulesOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -336,6 +338,9 @@ function WorkflowPageInner() {
         <Button variant="outline" size="sm" onClick={() => setVariablesOpen(true)}>
           <Braces className="h-3.5 w-3.5 mr-1.5" /> Variables
         </Button>
+        <Button variant="outline" size="sm" onClick={() => setRulesOpen(true)} title="Rules that apply from any step">
+          <Globe className="h-3.5 w-3.5 mr-1.5" /> Global rules{workflow?.globalRules?.length ? ` (${workflow.globalRules.length})` : ''}
+        </Button>
         <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
           <Settings2 className="h-3.5 w-3.5 mr-1.5" /> Agent
         </Button>
@@ -384,6 +389,7 @@ function WorkflowPageInner() {
 
       <Inspector />
       <VariablesPanel open={variablesOpen} onOpenChange={setVariablesOpen} />
+      <GlobalRulesPanel open={rulesOpen} onOpenChange={setRulesOpen} />
       <ImportJsonSheet open={importOpen} onOpenChange={setImportOpen} />
       <AgentSettingsPanel open={settingsOpen} onOpenChange={setSettingsOpen} />
 

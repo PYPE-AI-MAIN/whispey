@@ -249,6 +249,16 @@ export const edge = z.object({
   label: z.string().nullish(),
 })
 
+// A condition that applies from many steps at once ("they ask for a human" -> transfer),
+// written once instead of as an edge from every step. Empty `sources` = every listening step.
+export const globalRule = z.object({
+  id: z.string(),
+  target: z.string(),
+  condition: z.string(),
+  label: z.string().nullish(),
+  sources: z.array(z.string()).default([]),
+})
+
 // ── top-level workflow ─────────────────────────────────────────────────────
 export const metadata = z.object({ name: z.string().default(''), description: z.string().nullish() })
 
@@ -261,6 +271,7 @@ export const workflow = z.object({
   start: z.string(),
   nodes: z.array(anyNode).default([]),
   edges: z.array(edge).default([]),
+  globalRules: z.array(globalRule).default([]),
 })
 
 // ── inferred types ─────────────────────────────────────────────────────────
@@ -268,6 +279,7 @@ export type Workflow = z.infer<typeof workflow>
 export type WorkflowNode = z.infer<typeof anyNode>
 export type NodeType = WorkflowNode['type']
 export type Edge = z.infer<typeof edge>
+export type GlobalRule = z.infer<typeof globalRule>
 export type EdgeKind = Edge['kind']
 export type VariableDef = z.infer<typeof variableDef>
 export type VarType = z.infer<typeof varType>

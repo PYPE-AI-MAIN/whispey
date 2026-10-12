@@ -121,6 +121,9 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         ...s.workflow,
         nodes: remaining,
         edges: s.workflow.edges.filter((e) => e.source !== nodeId && e.target !== nodeId),
+        globalRules: (s.workflow.globalRules ?? [])
+          .filter((r) => r.target !== nodeId)
+          .map((r) => ({ ...r, sources: r.sources.filter((id) => id !== nodeId) })),
         start: s.workflow.start === nodeId ? (remaining[0]?.id ?? '') : s.workflow.start,
       }
       return { ...undo, workflow, isDirty: true, lintIssues: relint(workflow), selectedNodeId: s.selectedNodeId === nodeId ? null : s.selectedNodeId }
