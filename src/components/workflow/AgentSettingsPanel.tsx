@@ -48,6 +48,7 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
   const [editingLSIndex, setEditingLSIndex] = useState<number | null>(null)
   const params = useParams()
   const projectId = Array.isArray(params.projectid) ? params.projectid[0] : params.projectid || ''
+  const agentIdFromPath = Array.isArray(params.agentid) ? params.agentid[0] : params.agentid || ''
   const [phoneNumbers, setPhoneNumbers] = useState<OutboundPhoneNumber[]>([])
   const [loadingPhoneNumbers, setLoadingPhoneNumbers] = useState(false)
 
@@ -89,12 +90,15 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
         </SheetHeader>
         <div className="px-4 space-y-4">
           <div className="space-y-1">
-            <Label className="text-xs">Global prompt</Label>
+            <Label className="text-xs">How your agent behaves</Label>
+            <p className="text-xs text-muted-foreground">
+              Who the agent is, how it sounds, and rules it must never break. It applies to every step. What to say or ask on one step goes in that step instead.
+            </p>
             <Textarea
               className="min-h-[140px]"
               value={agent.globalPrompt}
               onChange={(e) => updateAgentConfig({ globalPrompt: e.target.value })}
-              placeholder="Persona and rules that apply across every node."
+              placeholder="e.g. You are Maya, a calm receptionist for City Clinic. Keep sentences short. Never give medical advice."
             />
           </div>
 
@@ -102,7 +106,7 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
             <div className="space-y-0.5">
               <Label className="text-xs">Answer from the knowledge base</Label>
               <p className="text-xs text-muted-foreground">
-                On any step the agent can look things up in the documents you uploaded, so you do not need Knowledge nodes in the flow.
+                Upload your documents once. The whole agent can look things up in them on any step, so you do not need to add a step for it.
               </p>
             </div>
             <Switch
@@ -111,6 +115,16 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
               aria-label="Answer from the knowledge base"
             />
           </div>
+          {agent.knowledge?.enabled && (
+            <a
+              href={`/${projectId}/agents/${agentIdFromPath}/knowledge`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="-mt-2 block text-xs font-medium text-foreground underline underline-offset-2"
+            >
+              Upload documents (opens in a new tab)
+            </a>
+          )}
 
           {/* LLM */}
           <div className="space-y-1">

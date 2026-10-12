@@ -161,10 +161,16 @@ export function WorkflowCanvas() {
 
   const onConnect = useCallback(
     (conn: Connection) => {
-      if (!conn.source || !conn.target) return
-      addEdge({ id: `edge-${crypto.randomUUID()}`, source: conn.source, target: conn.target, kind: 'always' })
+      if (!conn.source || !conn.target || !workflow) return
+      // A second way out of a step that listens needs a "when": make it one and open it so it gets filled in.
+      const source = workflow.nodes.find((n) => n.id === conn.source)
+      const hasOther = workflow.edges.some((e) => e.source === conn.source)
+      const asking = hasOther && !!source && ['conversation', 'extract_variable', 'subagent'].includes(source.type)
+      const id = `edge-${crypto.randomUUID()}`
+      addEdge({ id, source: conn.source, target: conn.target, kind: asking ? 'condition' : 'always' })
+      if (asking) setSelectedEdge(id)
     },
-    [addEdge]
+    [addEdge, workflow, setSelectedEdge]
   )
 
   const onDrop = useCallback(

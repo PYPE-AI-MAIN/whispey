@@ -35,6 +35,9 @@ function OutboundTrunkHint({ workflow }: Readonly<{ workflow: Workflow | null }>
 /** Caller turns a speaking node may take without finding a way forward before it moves to its catch-all edge. */
 function MaxTurnsField({ value, onChange }: Readonly<{ value?: number | null; onChange: (v: number | undefined) => void }>) {
   return (
+    <details>
+      <summary className="cursor-pointer text-xs text-gray-500 dark:text-gray-400">Advanced</summary>
+      <div className="pt-2">
     <Field label="Give up after this many replies (default 8)" hint="If the caller never gives an answer that moves the call on, the agent takes the default next step.">
       <Input
         type="number"
@@ -48,6 +51,8 @@ function MaxTurnsField({ value, onChange }: Readonly<{ value?: number | null; on
         className="h-7 text-xs"
       />
     </Field>
+      </div>
+    </details>
   )
 }
 
@@ -410,7 +415,7 @@ const EDGE_KINDS: Record<EdgeKind, { label: string; help: string }> = {
   always: { label: 'Next step', help: 'Go here as soon as this step is done.' },
   condition: { label: 'When the caller says something', help: 'Go here when what the caller says matches the description below.' },
   logic: { label: 'When a saved value matches', help: 'Go here when a variable matches a rule, like age > 18. No AI involved.' },
-  fallback: { label: 'Otherwise', help: 'Go here when none of the other connections from this step apply.' },
+  fallback: { label: 'Otherwise (automatic)', help: 'Used when none of the other connections apply. The system handles this for you, so you rarely need to touch it.' },
 }
 
 function EdgeFields({ edge, workflow, patch }: Readonly<{ edge: Edge; workflow: Workflow; patch: (p: Partial<Edge>) => void }>) {
@@ -424,7 +429,7 @@ function EdgeFields({ edge, workflow, patch }: Readonly<{ edge: Edge; workflow: 
         <Select value={edge.kind} onValueChange={(v) => patch({ kind: v as EdgeKind })}>
           <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
-            {(Object.keys(EDGE_KINDS) as EdgeKind[]).map((k) => (
+            {(Object.keys(EDGE_KINDS) as EdgeKind[]).filter((k) => k !== 'fallback' || edge.kind === 'fallback').map((k) => (
               <SelectItem key={k} value={k}>{EDGE_KINDS[k].label}</SelectItem>
             ))}
           </SelectContent>

@@ -34,7 +34,9 @@ type HeaderProps = Readonly<{
 
 /** Problems with the flow, one click away from the step they are about. */
 function Issues({ open, onOpenChange }: Readonly<{ open: boolean; onOpenChange: (open: boolean) => void }>) {
-  const issues = useWorkflowStore((s) => s.lintIssues)
+  const all = useWorkflowStore((s) => s.lintIssues)
+  // Stall and dead-end warnings are about how the call recovers; the system handles that, so people building a flow do not see them.
+  const issues = all.filter((i) => i.severity === 'error' || !/can stall|dead-end|catch-all|fallback/i.test(i.message))
   const setSelectedNode = useWorkflowStore((s) => s.setSelectedNode)
   const setStart = useWorkflowStore((s) => s.setStart)
   const nodes = useWorkflowStore((s) => s.workflow?.nodes)
