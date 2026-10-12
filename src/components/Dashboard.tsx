@@ -785,12 +785,13 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                     
                     {/* Field Extractor & Metrics - skeleton while agent loading; visibility-controlled */}
                     <div className="flex gap-2">
-                      {agentLoading ? (
+                      {agentLoading && (
                         <>
                           <Skeleton className="h-9 w-32 rounded-lg" />
                           <Skeleton className="h-9 w-24 rounded-lg" />
                         </>
-                      ) : agent && (canSeeFieldExtractor || canSeeMetrics) ? (
+                      )}
+                      {!agentLoading && agent && (canSeeFieldExtractor || canSeeMetrics) && (
                         <>
                           {canSeeFieldExtractor && (
                           <FieldExtractorDialog
@@ -839,7 +840,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                           />
                           )}
                         </>
-                      ) : null}
+                      )}
                     </div>
                   </>
                 )}
