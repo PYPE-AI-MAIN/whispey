@@ -251,7 +251,6 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
 
         {/* Conversation Preview */}
         {(conversationSummary.hasInput || conversationSummary.hasOutput) && (
-          <>
             <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border">
               <h5 className="text-sm font-semibold text-gray-900 mb-2 dark:text-gray-100">Conversation</h5>
               <div className="space-y-2">
@@ -273,7 +272,6 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
                 )}
               </div>
             </div>
-          </>
         )}
 
         {/* Timeline Scale */}

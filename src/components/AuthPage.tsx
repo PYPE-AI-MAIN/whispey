@@ -107,7 +107,7 @@ function FormSkeleton() {
   );
 }
 
-export default function AuthPage({ redirectUrl }: AuthPageProps) {
+export default function AuthPage({ redirectUrl }: Readonly<AuthPageProps>) {
   const { resolvedTheme } = useTheme();
   const mode = resolvedTheme === 'dark' ? 'dark' : 'light';
   const field = FIELD[mode];

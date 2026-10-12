@@ -29,6 +29,45 @@ interface ProjectSelectionProps {
   isAuthLoaded?: boolean
 }
 
+const getOrganisationInitials = (name: string) => {
+  return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)
+}
+
+const getEnvironmentColor = (environment: string) => {
+  switch (environment.toLowerCase()) {
+    case 'production':
+    case 'prod':
+      return 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'
+    case 'development':
+    case 'dev':
+      return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800'
+    default:
+      return 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
+  }
+}
+
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric', 
+    year: 'numeric' 
+  })
+}
+
+
+const filterProjects = (projects: Project[] | undefined, query: string): Project[] => {
+  const q = query.toLowerCase()
+  return (projects ?? []).filter((project) => `${project.name} ${project.description ?? ''}`.toLowerCase().includes(q))
+}
+
+const errorText = (error: unknown, fallback: string): string => (error instanceof Error ? error.message : fallback)
+
+function readStored<T extends string>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback
+  return (localStorage.getItem(key) as T) || fallback
+}
+
 const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = false}) => {
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -50,29 +89,17 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
   const { isMobile } = useMobile(768)
   
   // Initialize viewMode from localStorage
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('organization-view-mode') as 'grid' | 'list') || 'grid'
-    }
-    return 'grid'
-  })
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => readStored('organization-view-mode', 'grid'))
   
   // Initialize density from localStorage
-  const [density, setDensity] = useState<'comfortable' | 'compact'>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('organization-card-density') as 'comfortable' | 'compact') || 'comfortable'
-    }
-    return 'comfortable'
-  })
+  const [density, setDensity] = useState<'comfortable' | 'compact'>(() => readStored('organization-card-density', 'comfortable'))
   
   const router = useRouter()
 
   // Save preferences to localStorage
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('organization-view-mode', viewMode)
-      localStorage.setItem('organization-card-density', density)
-    }
+    localStorage.setItem('organization-view-mode', viewMode)
+    localStorage.setItem('organization-card-density', density)
   }, [viewMode, density])
 
   const fetchProjects = async () => {
@@ -84,7 +111,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
       const data = await res.json()
       setProjects(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
+      setError(errorText(err, 'Unknown error'))
     } finally {
       setLoading(false)
     }
@@ -131,7 +158,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
       setShowDeleteConfirm(null)
     } catch (error: unknown) {
       console.error('Error deleting organization:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to delete organization'
+      const errorMessage = errorText(error, 'Failed to delete organization')
       alert(`Failed to delete organization: ${errorMessage}`)
     } finally {
       setDeletingProject(null)
@@ -157,7 +184,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
       refetch()
     } catch (error: unknown) {
       console.error('Error regenerating token:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to regenerate token'
+      const errorMessage = errorText(error, 'Failed to regenerate token')
       alert(`Failed to regenerate token: ${errorMessage}`)
     } finally {
       setRegeneratingToken(null)
@@ -183,36 +210,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
     setTokenCopied(false)
   }
 
-  const getOrganisationInitials = (name: string) => {
-    return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)
-  }
-
-  const getEnvironmentColor = (environment: string) => {
-    switch (environment.toLowerCase()) {
-      case 'production':
-      case 'prod':
-        return 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'
-      case 'development':
-      case 'dev':
-        return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800'
-      default:
-        return 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
-    }
-  }
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric' 
-    })
-  }
-
-  const filteredProjects = projects?.filter(project =>
-    project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (project.description && project.description.toLowerCase().includes(searchQuery.toLowerCase()))
-  ) || []
+  const filteredProjects = filterProjects(projects, searchQuery)
 
   // Comfortable Card Component (Original Style)
   const ComfortableCard = ({ project }: { project: Project }) => (

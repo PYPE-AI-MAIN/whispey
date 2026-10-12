@@ -593,7 +593,7 @@ const ListAgentRow: React.FC<AgentViewWithMobileProps> = ({
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <div className="flex items-center gap-3">
                 {agent.agent_type !== 'pype_agent' && (
-                  <span className="text-xs capitalize">{agent.agent_type.replace(/_/g, ' ')}</span>
+                  <span className="text-xs capitalize">{agent.agent_type.replaceAll('_', ' ')}</span>
                 )}
                 <span className="group/id flex items-center gap-1 font-mono text-xs">
                   {agent.id.slice(0, 8)}...{agent.id.slice(-4)}

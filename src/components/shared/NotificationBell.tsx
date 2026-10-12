@@ -8,7 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 
 type Item = { id: string; title: string; body: string | null; link: string; read_at: string | null; created_at: string };
 
-export default function NotificationBell({ side = 'bottom', align = 'end' }: { side?: 'top' | 'bottom' | 'right'; align?: 'start' | 'end' }) {
+export default function NotificationBell({ side = 'bottom', align = 'end' }: Readonly<{ side?: 'top' | 'bottom' | 'right'; align?: 'start' | 'end' }>) {
   const qc = useQueryClient();
   const { data } = useQuery<{ notifications: Item[]; unread: number }>({
     queryKey: ["qa-audit", "notifications"],

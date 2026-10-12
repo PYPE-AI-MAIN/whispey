@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Moon, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
 
-export function ThemeToggle({ plain = false }: { plain?: boolean }) {
+export function ThemeToggle({ plain = false }: Readonly<{ plain?: boolean }>) {
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])

@@ -265,7 +265,7 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                       {step.integrationSteps && (
                         <div className="space-y-4 mb-6">
                           {step.integrationSteps.map((integrationStep, stepIndex) => (
-                            <div key={stepIndex} className="border border-gray-100 rounded-lg p-4 dark:border-gray-800">
+                            <div key={integrationStep.title} className="border border-gray-100 rounded-lg p-4 dark:border-gray-800">
                               <h4 className="text-sm font-medium text-gray-900 mb-3 dark:text-gray-100">{integrationStep.title}</h4>
                               <div className="relative">
                                 <div className="bg-gray-900 rounded-lg p-4">

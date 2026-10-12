@@ -51,6 +51,11 @@ const fetchOrganizations = async (): Promise<Organization[]> => {
   return res.json()
 }
 
+function orgButtonLabel(loading: boolean, name?: string): string {
+  if (loading) return 'Loading...'
+  return name ?? 'Select Organization'
+}
+
 export default function OrganizationSwitcher({ 
   isCollapsed = false, 
   isMobile = false,
@@ -208,7 +213,7 @@ export default function OrganizationSwitcher({
               {buttonContent}
             </TooltipTrigger>
             <TooltipContent side="right">
-              <p>{loading ? 'Loading...' : (displayOrg ? displayOrg.name : 'Select Organization')}</p>
+              <p>{orgButtonLabel(loading, displayOrg?.name)}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
