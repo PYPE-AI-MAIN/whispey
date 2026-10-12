@@ -1,478 +1,138 @@
-"use client"
+'use client'
 
-import Link from "next/link"
-import { ArrowRight, Play, BarChart3, Zap, Shield, Clock, Code, Mic, Activity, Users } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-// import { CompanyMarquee } from "@/components/landing/company-marquee"
-// import { PricingSection } from "@/components/landing/pricing-section"
-import { ContainerScroll } from "@/components/ui/container-scroll-animation"
-import { HoverBorderGradient } from "@/components/ui/hover-border-gradient"
-import { FlipWords } from "@/components/ui/flip-words"
+import Image from 'next/image'
+import Link from 'next/link'
+import { Instrument_Serif, Plus_Jakarta_Sans } from 'next/font/google'
+import Header, { Brand } from './landing-header'
 
-import { cn } from "@/lib/utils"
-import Image from "next/image"
-import { motion } from "motion/react"
-import React from "react"
-import { useState, useEffect } from "react"
-import Header from "./landing-header"
+const serif = Instrument_Serif({ weight: '400', style: ['normal', 'italic'], subsets: ['latin'], variable: '--font-sw-serif', display: 'swap' })
+const sans = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-sw-sans', display: 'swap' })
+
+const FEATURES = [
+  { title: 'Call logs and recordings', body: 'Open any call to read the transcript, hear the recording and follow each turn of the conversation.' },
+  { title: 'Latency and cost', body: 'See how long the agent took to respond on every turn, and what each call cost.' },
+  { title: 'QA Audit', body: 'Flag a call that went wrong. The Pype QA team reviews it and updates the status. You can also ask for a weekly review of an agent.' },
+  { title: 'Bug reports', body: 'Report a problem by voice during a test call, then find it later alongside that call in the logs.' },
+]
+
+const STEPS = [
+  { title: 'Install the SDK', body: 'Add Whispey to your agent project.', code: 'pip install whispey' },
+  { title: 'Connect your agent', body: 'Create the observer with your agent ID and API key. Whispey works with LiveKit agents.', code: 'whispey = LivekitObserve(\n  agent_id="your-agent-id",\n  apikey=os.getenv("WHISPEY_API_KEY")\n)' },
+  { title: 'Start a session', body: 'Start tracking when the call begins. Calls then appear in your dashboard.', code: 'session_id = whispey.start_session(\n  session=session\n)' },
+]
+
+const PAGE_CSS = `
+  .wl-page { background:
+      radial-gradient(60% 40% at 6% 0%, #d3e2ff 0%, rgba(211,226,255,0) 70%),
+      radial-gradient(46% 36% at 96% 22%, #d9ecff 0%, rgba(217,236,255,0) 70%),
+      #f8fbff;
+    color: #0b1b3b; font-family: var(--font-sw-sans), system-ui, sans-serif; }
+  .dark .wl-page { background:
+      radial-gradient(60% 40% at 6% 0%, rgba(59,130,246,0.26) 0%, rgba(59,130,246,0) 70%),
+      radial-gradient(46% 36% at 96% 22%, rgba(14,165,233,0.14) 0%, rgba(14,165,233,0) 70%),
+      #050a14;
+    color: #eef4ff; }
+  .wl-header { background: rgba(248,251,255,0.82); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(37,99,235,0.1); }
+  .dark .wl-header { background: rgba(5,10,20,0.78); border-bottom-color: rgba(255,255,255,0.08); }
+  .wl-title { font-family: var(--font-sw-serif), Georgia, serif; font-weight: 400; letter-spacing: -0.02em; line-height: 1.04; }
+  .wl-h1 { font-size: clamp(2.5rem, 6vw, 4.6rem); }
+  .wl-h2 { font-size: clamp(1.9rem, 3.6vw, 2.8rem); }
+  .wl-em { font-style: italic; padding-right: 0.06em; color: transparent;
+    background-image: linear-gradient(90deg, #1d4ed8, #3b82f6); -webkit-background-clip: text; background-clip: text; }
+  .dark .wl-em { background-image: linear-gradient(90deg, #60a5fa, #7dd3fc); }
+  .wl-muted { color: #5b6b86; } .dark .wl-muted { color: #9db0d0; }
+  .wl-link { color: #0b1b3b; text-decoration: none; } .wl-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+  .dark .wl-link { color: #eef4ff; }
+  .wl-btn { display: inline-flex; align-items: center; justify-content: center; border-radius: 9999px; color: #fff; font-weight: 600;
+    background: linear-gradient(90deg, #1d4ed8, #3b82f6); padding: 0.8rem 1.6rem; font-size: 0.95rem;
+    box-shadow: 0 10px 24px -12px rgba(29,78,216,0.75); transition: transform .15s ease, box-shadow .15s ease; }
+  .wl-btn:hover { transform: translateY(-1px); } .wl-btn:disabled { opacity: .6; }
+  .wl-btn-sm { padding: 0.5rem 1.1rem; font-size: 0.85rem; }
+  .wl-btn-ghost { background: transparent; color: #0b1b3b; box-shadow: none; border: 1px solid rgba(37,99,235,0.25); }
+  .dark .wl-btn-ghost { color: #eef4ff; border-color: rgba(255,255,255,0.22); }
+  .wl-rule { border-top: 1px solid rgba(37,99,235,0.14); } .dark .wl-rule { border-top-color: rgba(255,255,255,0.1); }
+  .wl-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82rem; line-height: 1.6; overflow-x: auto;
+    background: rgba(255,255,255,0.75); border: 1px solid rgba(37,99,235,0.14); border-radius: 12px; padding: 0.9rem 1rem; }
+  .dark .wl-code { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.12); }
+  .wl-frame { border-radius: 18px; border: 1px solid rgba(37,99,235,0.18); box-shadow: 0 30px 70px -34px rgba(30,64,160,0.55); overflow: hidden; background: #0b1424; }
+  .dark .wl-frame { border-color: rgba(255,255,255,0.14); }
+  .wl-num { font-family: var(--font-sw-serif), Georgia, serif; font-size: 2rem; line-height: 1; color: #2563eb; }
+  .dark .wl-num { color: #60a5fa; }
+`
 
 export default function LandingPage() {
-  // FlipWords for the hero heading  
-  const words = [
-    { text: "precision", className: "text-purple-500 dark:text-purple-400" },
-    { text: "confidence", className: "text-emerald-500 dark:text-emerald-400" },
-    { text: "clarity", className: "text-orange-500 dark:text-orange-400" },
-    { text: "intelligence", className: "text-cyan-500 dark:text-cyan-400" },
-    { text: "Whispey", className: "text-blue-500 dark:text-blue-400" }
-  ];
-
   return (
-    <>
-      {/* Page-specific font loading - Cabinet Grotesk */}
-      <style jsx global>{`
-        @import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@400,500,600,700,800&display=swap');
-        
-        .whispey-landing-font {
-          font-family: 'Cabinet Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        }
-      `}</style>
+    <div className={`${serif.variable} ${sans.variable} wl-page min-h-screen`}>
+      <style>{PAGE_CSS}</style>
+      <Header />
 
-      <div className="min-h-screen bg-background whispey-landing-font">
-
-        {/* Enhanced Header */}
-        <Header />
-
-        {/* Hero Section with Grid Background */}
-        <section className="relative flex flex-col overflow-hidden">
-          {/* Grid Background */}
-          <div className="absolute inset-0">
-            <div
-              className={cn(
-                "absolute inset-0",
-                "[background-size:40px_40px]",
-                "[background-image:linear-gradient(to_right,#e4e4e7_1px,transparent_1px),linear-gradient(to_bottom,#e4e4e7_1px,transparent_1px)]",
-                "dark:[background-image:linear-gradient(to_right,#262626_1px,transparent_1px),linear-gradient(to_bottom,#262626_1px,transparent_1px)]",
-              )}
-            />
-            {/* Radial gradient for faded look */}
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white [mask-image:radial-gradient(ellipse_at_center,transparent_20%,black)] dark:bg-black"></div>
+      <main>
+        <section className="mx-auto max-w-4xl px-6 pb-10 pt-16 text-center sm:pt-24">
+          <h1 className="wl-title wl-h1">
+            Create voice agents and see how patients <span className="wl-em">engage.</span>
+          </h1>
+          <p className="wl-muted mx-auto mt-6 max-w-2xl text-lg leading-relaxed">
+            Whispey is the observability platform from Pype AI. Follow every call: what was said, how the patient responded, and what to fix.
+          </p>
+          <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+            <Link href="/sign-in" className="wl-btn">Get started</Link>
+            <a href="https://docs.whispey.pypeai.com" target="_blank" rel="noopener noreferrer" className="wl-btn wl-btn-ghost">Read the docs</a>
           </div>
+        </section>
 
-          <div className="relative z-10">
-            <ContainerScroll
-              titleComponent={
-                <div className="text-center">
-                  {/* Badge with Light Effect */}
-                  <div className="relative mb-8 flex justify-center">
-                    {/* Light effects */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        whileInView={{ opacity: 0.6, scale: 1 }}
-                        transition={{
-                          delay: 0.3,
-                          duration: 0.8,
-                          ease: "easeInOut",
-                        }}
-                        className="absolute h-32 w-64 bg-cyan-500/20 rounded-full blur-3xl"
-                      />
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        whileInView={{ opacity: 0.8, scale: 1 }}
-                        transition={{
-                          delay: 0.4,
-                          duration: 0.8,
-                          ease: "easeInOut",
-                        }}
-                        className="absolute h-16 w-32 bg-cyan-400/30 rounded-full blur-2xl"
-                      />
-                    </div>
-                    
-                    {/* The actual badge */}
-                    <motion.div
-                      initial={{ opacity: 0.5, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      transition={{
-                        delay: 0.3,
-                        duration: 0.8,
-                        ease: "easeInOut",
-                      }}
-                      className="relative z-10 inline-flex items-center space-x-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium backdrop-blur-sm border border-primary/20"
-                    >
-                      <Activity className="w-4 h-4" />
-                      <span>Voice AI Observability Platform</span>
-                    </motion.div>
-                  </div>
+        <section className="mx-auto max-w-5xl px-6 pb-20">
+          <div className="wl-frame">
+            <Image src="/hero-banner-whispey.png" alt="A call in Whispey with its recording, conversation turns and latency per turn" width={2436} height={1420} priority className="h-auto w-full" />
+          </div>
+        </section>
 
-                  {/* Hero Heading with FlipWords Effect - Enhanced with new font */}
-                  <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-balance mb-8 leading-tight tracking-tight">
-                    Monitor your <span className="gradient-text">LiveKit Voice AI</span> agents with
-                    <span className="inline-block min-w-[280px] text-left">
-                      <FlipWords words={words} className="text-blue-500 dark:text-blue-400" />
-                    </span>
-                  </h1>
-
-                  <p className="text-xl text-muted-foreground text-balance max-w-3xl mx-auto mb-12 leading-relaxed">
-                    Get complete observability into your Voice AI applications. Track performance, debug issues, and optimize
-                    your conversational AI with real-time insights and analytics.
-                  </p>
-
-                  <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
-                    <Link href="/sign-in">
-                      <Button size="lg" className="text-lg px-8 py-6 group font-medium">
-                        Start Monitoring Free
-                        <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                      </Button>
-                    </Link>
-                    <Button 
-                      variant="outline" 
-                      size="lg" 
-                      className="text-lg px-8 py-6 group bg-transparent font-medium"
-                      onClick={() => window.open('https://youtu.be/1POj8h99xnE', '_blank', 'noopener,noreferrer')}
-                    >
-                      <Play className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />
-                      Watch Demo
-                    </Button>
-                  </div>
+        <section id="features" className="wl-rule scroll-mt-16">
+          <div className="mx-auto max-w-6xl px-6 py-20">
+            <h2 className="wl-title wl-h2 max-w-2xl">What you can follow in every call</h2>
+            <dl className="mt-12 grid gap-x-16 gap-y-10 sm:grid-cols-2">
+              {FEATURES.map((f) => (
+                <div key={f.title} className="wl-rule pt-5">
+                  <dt className="text-lg font-semibold">{f.title}</dt>
+                  <dd className="wl-muted mt-2 leading-relaxed">{f.body}</dd>
                 </div>
-              }
-            >
-              <Image
-                src="/hero-banner-whispey.png"
-                alt="Whispey Dashboard - Voice AI Observability Platform"
-                height={720}
-                width={1400}
-                className="mx-auto rounded-2xl object-cover h-full object-top shadow-2xl"
-                draggable={false}
-              />
-            </ContainerScroll>
-          </div>
-        </section>
-
-        {/* Company Marquee */}
-        {/* <CompanyMarquee /> */}
-
-        {/* Features Section */}
-        <section id="features" className="py-24 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-balance mb-4 tracking-tight">Everything you need for Voice AI observability</h2>
-              <p className="text-xl text-muted-foreground text-balance max-w-2xl mx-auto">
-                Comprehensive monitoring, debugging, and optimization tools for your LiveKit voice agents
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {[
-                {
-                  icon: BarChart3,
-                  title: "Real-time Analytics",
-                  description:
-                    "Monitor latency, TTFT, and pipeline performance with detailed metrics and visualizations.",
-                },
-                {
-                  icon: Activity,
-                  title: "Session Tracking",
-                  description: "Track every voice session with complete conversation flows and interaction patterns.",
-                },
-                {
-                  icon: Shield,
-                  title: "Bug Report",
-                  description: "Seamlessly report bugs with your voice, using custom commands when you test your agents.",
-                },
-                {
-                  icon: Clock,
-                  title: "Performance Insights",
-                  description: "Deep insights into response times, processing delays, and optimization opportunities.",
-                },
-                {
-                  icon: Code,
-                  title: "Easy Integration", 
-                  description: "Simple 3-line integration with your existing LiveKit agents. No complex setup required.",
-                },
-                {
-                  icon: Zap,
-                  title: "Lightning Fast",
-                  description: "Minimal overhead monitoring that won't slow down your voice AI applications.",
-                },
-              ].map((feature, index) => {
-                const Icon = feature.icon
-                return (
-                  <motion.div
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: index * 0.1 }}
-                    viewport={{ once: true }}
-                  >
-                    <HoverBorderGradient
-                      containerClassName="rounded-2xl w-full"
-                      as="div"
-                      className="bg-background border-border/50 hover:border-primary/50 transition-colors group p-0"
-                    >
-                      <Card className="border-0 shadow-none bg-transparent">
-                        <CardHeader>
-                          <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                            <Icon className="w-6 h-6 text-primary" />
-                          </div>
-                          <CardTitle className="text-xl font-semibold">{feature.title}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <CardDescription className="text-base leading-relaxed">{feature.description}</CardDescription>
-                        </CardContent>
-                      </Card>
-                    </HoverBorderGradient>
-                  </motion.div>
-                )
-              })}
-            </div>
-          </div>
-        </section>
-
-        {/* How It Works Section */}
-        <section id="how-it-works" className="py-24 px-4 sm:px-6 lg:px-8 bg-muted/30">
-          <div className="max-w-7xl mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-balance mb-4 tracking-tight">Get started in 3 simple steps</h2>
-              <p className="text-xl text-muted-foreground text-balance max-w-2xl mx-auto">
-                Start monitoring your voice AI agents in minutes, not hours
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-8">
-              {[
-                {
-                  step: "01",
-                  title: "Install Whispey",
-                  description: "Add our lightweight SDK to your project with a single pip install command.",
-                  code: "pip install whispey",
-                },
-                {
-                  step: "02",
-                  title: "Initialize Monitoring",
-                  description: "Create a Whispey instance with your API key and agent ID.",
-                  code: `whispey = LivekitObserve(
-  agent_id="your-agent-id",
-  apikey=os.getenv("WHISPEY_API_KEY")
-)`,
-                },
-                {
-                  step: "03",
-                  title: "Start Tracking",
-                  description: "Begin monitoring your LiveKit sessions with one line of code.",
-                  code: `session_id = whispey.start_session(
-  session=session
-)`,
-                },
-              ].map((step, index) => (
-                <Card key={index} className="relative overflow-hidden group hover:shadow-lg transition-shadow">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-purple-500" />
-                  <CardHeader>
-                    <div className="flex items-center space-x-4 mb-4">
-                      <div className="relative w-12 h-12 rounded-xl group/step cursor-pointer">
-                        {/* Animated gradient border on hover */}
-                        <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-primary via-purple-500 to-pink-500 opacity-0 group-hover/step:opacity-100 blur-md transition-all duration-500"></div>
-                        <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-primary via-purple-500 to-pink-500 opacity-0 group-hover/step:opacity-30 transition-opacity duration-500"></div>
-                        {/* Step number */}
-                        <div className="relative w-full h-full bg-primary text-primary-foreground font-bold text-lg flex items-center justify-center rounded-xl transition-all duration-300 group-hover/step:scale-110">
-                          {step.step}
-                        </div>
-                      </div>
-                      <CardTitle className="text-xl font-semibold">{step.title}</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <CardDescription className="text-base mb-6 leading-relaxed">{step.description}</CardDescription>
-                    <div className="bg-muted rounded-lg p-4">
-                      <code className="text-sm font-mono text-foreground">{step.code}</code>
-                    </div>
-                  </CardContent>
-                </Card>
               ))}
-            </div>
-
-            <div className="text-center mt-12">
-              <Link href="/sign-in">
-                <Button size="lg" className="text-lg px-8 py-6 font-medium">
-                  Start Your Free Trial
-                </Button>
-              </Link>
-            </div>
+            </dl>
           </div>
         </section>
 
-        {/* Pricing Section */}
-        {/* <section id="pricing">
-          <PricingSection />
-        </section> */}
-
-        {/* CTA Section */}
-        {/* <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-primary/10 via-transparent to-purple-500/10">
-          <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-4xl font-bold text-balance mb-6 tracking-tight">Ready to optimize your Voice AI?</h2>
-            <p className="text-xl text-muted-foreground text-balance mb-8 max-w-2xl mx-auto">
-              Join hundreds of developers who trust Whispey to monitor and optimize their LiveKit voice agents.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/sign-in">
-                <Button size="lg" className="text-lg px-8 py-6 group font-medium">
-                  Start Free Trial
-                  <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </Link>
-              <Button variant="outline" size="lg" className="text-lg px-8 py-6 bg-transparent font-medium">
-                Schedule Demo
-              </Button>
-            </div>
-          </div>
-        </section> */}
-
-        <section className="py-16 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-gradient-to-r from-purple-50 via-blue-50 to-cyan-50 dark:from-purple-950/20 dark:via-blue-950/20 dark:to-cyan-950/20 rounded-2xl p-8 border border-purple-100 dark:border-purple-800/50">
-              <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
-                <div className="flex-1 text-center lg:text-left">
-                  <div className="flex items-center justify-center lg:justify-start gap-2 mb-3">
-                    <Users className="w-5 h-5 text-purple-600" />
-                    <span className="text-sm font-medium text-purple-600 dark:text-purple-400">New</span>
-                  </div>
-                  <h3 className="text-2xl font-bold mb-2 tracking-tight">Get Real Expert Feedback</h3>
-                  <p className="text-muted-foreground">
-                    Have seasoned call center professionals test your agents like real customers would. 
-                    Get unbiased feedback on clarity, flow, and customer experience.
-                  </p>
-                </div>
-                <div className="flex-shrink-0">
-                  <Button 
-                    size="lg" 
-                    className="bg-purple-600 hover:bg-purple-700 text-white font-medium"
-                    onClick={() => window.open('https://forms.gle/HKtNVwasVnAh3uJ5A', '_blank', 'noopener,noreferrer')}
-                  >
-                    Request Testing
-                  </Button>
-                </div>
-              </div>
+        <section id="how-it-works" className="wl-rule scroll-mt-16">
+          <div className="mx-auto max-w-6xl px-6 py-20">
+            <h2 className="wl-title wl-h2 max-w-2xl">Start in three steps</h2>
+            <ol className="mt-12 grid gap-10 md:grid-cols-3">
+              {STEPS.map((s, n) => (
+                <li key={s.title}>
+                  <span className="wl-num">{n + 1}</span>
+                  <h3 className="mt-3 text-lg font-semibold">{s.title}</h3>
+                  <p className="wl-muted mt-2 leading-relaxed">{s.body}</p>
+                  <pre className="wl-code mt-4"><code>{s.code}</code></pre>
+                </li>
+              ))}
+            </ol>
+            <div className="mt-14">
+              <Link href="/sign-in" className="wl-btn">Get started</Link>
             </div>
           </div>
         </section>
+      </main>
 
-        {/* Footer */}
-        <footer className="border-t border-border/50 py-12 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-7xl mx-auto">
-            <div className="grid md:grid-cols-4 gap-8">
-              <div className="col-span-1">
-                <div className="flex items-center space-x-3 mb-4">
-                  <a href="https://pypeai.com/" target="_blank" rel="noopener noreferrer" style={{ width: '30px', height: '30px' }} className="flex items-center justify-center">
-                    <Image src="/logo-light.png" alt="Pype Logo" width={30} height={30} style={{ objectFit: 'contain' }} className="dark:hidden" />
-                    <Image src="/logo-dark.png" alt="Pype Logo" width={30} height={30} style={{ objectFit: 'contain' }} className="hidden dark:block" />
-                  </a>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', height: '32px', justifyContent: 'space-between' }}>
-                    <span
-                      className="text-[#111827] dark:text-[#F3F4F6]"
-                      style={{ fontSize: '17px', fontWeight: 600, lineHeight: 1, fontFamily: '-apple-system, "Segoe UI", sans-serif', alignSelf: 'flex-start' }}
-                    >
-                      Whispey
-                    </span>
-                    <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '5px' }}>
-                      <span
-                        className="text-[#6D28D9] dark:text-[#8B7BC9]"
-                        style={{ fontSize: '10px', fontWeight: 600, fontFamily: '-apple-system, "Segoe UI", sans-serif' }}
-                      >
-                        by
-                      </span>
-                      <img src="/pype-wordmark.png" alt="Pype" style={{ height: '9px', width: 'auto', objectFit: 'contain' }} />
-                    </div>
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground">Voice AI observability platform for LiveKit agents.</p>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-4">Product</h3>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>
-                    <Link href="#features" className="hover:text-foreground transition-colors">
-                      Features
-                    </Link>
-                  </li>
-                  {/* <li>
-                    <Link href="#pricing" className="hover:text-foreground transition-colors">
-                      Pricing
-                    </Link>
-                  </li> */}
-                  <li>
-                    <Link 
-                      href="https://docs.whispey.pypeai.com" 
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:text-foreground transition-colors"
-                    >
-                      Documentation
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/api" className="hover:text-foreground transition-colors">
-                      API Reference
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-4">Company</h3>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>
-                    <Link href="/about" className="hover:text-foreground transition-colors">
-                      About
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="https://pypeai.com/blog" target="_blank" className="hover:text-foreground transition-colors">
-                      Blog
-                    </Link>
-                  </li>
-                  {/* <li>
-                    <Link href="https://pypeai.com/contact" target="_blank" className="hover:text-foreground transition-colors">
-                      Contact
-                    </Link>
-                  </li> */}
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-4">Support</h3>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>
-                    <Link href="/help" className="hover:text-foreground transition-colors">
-                      Help Center
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/community" className="hover:text-foreground transition-colors">
-                      Community
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/status" className="hover:text-foreground transition-colors">
-                      Status
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/privacy" className="hover:text-foreground transition-colors">
-                      Privacy
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="border-t border-border/50 mt-12 pt-8 text-center text-sm text-muted-foreground">
-              <p>&copy; 2025 Whispey. All rights reserved.</p>
-            </div>
-          </div>
-        </footer>
-      </div>
-    </>
+      <footer className="wl-rule">
+        <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 px-6 py-10 sm:flex-row sm:items-center">
+          <Brand />
+          <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+            <a href="https://docs.whispey.pypeai.com" target="_blank" rel="noopener noreferrer" className="wl-link">Docs</a>
+            <Link href="/privacy-policy" className="wl-link">Privacy policy</Link>
+            <Link href="/terms-of-service" className="wl-link">Terms of service</Link>
+            <a href="https://pypeai.com" target="_blank" rel="noopener noreferrer" className="wl-link">Pype AI</a>
+            <a href="https://pypeai.com/contact" target="_blank" rel="noopener noreferrer" className="wl-link">Contact</a>
+          </nav>
+          <p className="wl-muted text-sm">&copy; {new Date().getFullYear()} Pype</p>
+        </div>
+      </footer>
+    </div>
   )
 }
