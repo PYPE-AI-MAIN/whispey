@@ -154,11 +154,10 @@ const matchRoute = (pathname: string, pattern: string): RouteParams | null => {
 
 // sidebarRoutes array
 const sidebarRoutes: SidebarRoute[] = [
-  // Hide sidebar for auth and docs pages ONLY
+  // Hide sidebar for auth pages ONLY
   {
     patterns: [
-      { pattern: '/sign*' },
-      { pattern: '/docs*' }
+      { pattern: '/sign*' }
     ],
     getSidebarConfig: () => null,
     priority: 100

@@ -403,7 +403,7 @@ export default function LandingPage() {
                   </li> */}
                   <li>
                     <Link 
-                      href="/docs" 
+                      href="https://docs.pypeai.com" 
                       target="_blank"
                       rel="noopener noreferrer"
                       className="hover:text-foreground transition-colors"

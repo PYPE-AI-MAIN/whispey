@@ -150,7 +150,7 @@ function Header() {
                 <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-gradient-to-r from-blue-400 to-blue-600 group-hover:w-full transition-all duration-300" />
               </Link>
               <Link 
-                href="/docs" 
+                href="https://docs.pypeai.com" 
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors relative group"
