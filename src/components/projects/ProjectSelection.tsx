@@ -85,9 +85,10 @@ function TokenDialog({
       </DialogHeader>
       <div className="space-y-3">
         <div>
-          <label className="block text-xs font-medium text-gray-900 dark:text-gray-100 mb-1">API Token</label>
+          <label htmlFor="api-token" className="block text-xs font-medium text-gray-900 dark:text-gray-100 mb-1">API Token</label>
           <div className="relative">
             <input
+              id="api-token"
               type={visible ? 'text' : 'password'}
               value={token ?? ''}
               readOnly
@@ -198,7 +199,7 @@ async function copyText(text: string | null): Promise<boolean> {
 }
 
 function readStored<T extends string>(key: string, fallback: T): T {
-  if (typeof window === 'undefined') return fallback
+  if (globalThis.window === undefined) return fallback
   return (localStorage.getItem(key) as T) || fallback
 }
 
