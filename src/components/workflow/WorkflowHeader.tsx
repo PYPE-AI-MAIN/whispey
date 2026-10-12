@@ -6,13 +6,16 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import type { LintIssue } from '@/lib/workflow/linter'
 import { useWorkflowStore } from '@/stores/workflowStore'
+import { explainIssue } from '@/lib/workflow/plainIssues'
 
 type HeaderProps = Readonly<{
   name: string
   onBack: () => void
   paletteOpen: boolean
   onTogglePalette: () => void
+  serverIssues: LintIssue[]
   issuesOpen: boolean
   onIssuesOpenChange: (open: boolean) => void
   isDirty: boolean
@@ -35,10 +38,11 @@ type HeaderProps = Readonly<{
 }>
 
 /** Problems with the flow, one click away from the step they are about. */
-function Issues({ open, onOpenChange }: Readonly<{ open: boolean; onOpenChange: (open: boolean) => void }>) {
+function Issues({ open, onOpenChange, serverIssues }: Readonly<{ open: boolean; onOpenChange: (open: boolean) => void; serverIssues: LintIssue[] }>) {
   const all = useWorkflowStore((s) => s.lintIssues)
   // Stall and dead-end warnings are about how the call recovers; the system handles that, so people building a flow do not see them.
-  const issues = all.filter((i) => i.severity === 'error' || !/can stall|dead-end|catch-all|fallback/i.test(i.message))
+  const quiet = (i: LintIssue) => i.severity === 'error' || !/can stall|can dead-end|catch-all|no Fallback edge/i.test(i.message)
+  const issues = [...all, ...serverIssues.filter((x) => !all.some((a) => a.message === x.message && a.nodeId === x.nodeId))].filter(quiet)
   const setSelectedNode = useWorkflowStore((s) => s.setSelectedNode)
   const setStart = useWorkflowStore((s) => s.setStart)
   const nodes = useWorkflowStore((s) => s.workflow?.nodes)
@@ -62,7 +66,7 @@ function Issues({ open, onOpenChange }: Readonly<{ open: boolean; onOpenChange: 
         <p className="px-2 pb-1 text-xs text-muted-foreground">Click one to jump to the step.</p>
         <ul className="space-y-0.5">
           {issues.map((i) => (
-            <li key={`${i.nodeId ?? 'flow'}-${i.message}`}>
+            <li key={`${i.nodeId ?? i.edgeId ?? 'flow'}-${i.message}`}>
               <button
                 type="button"
                 disabled={!i.nodeId}
@@ -72,7 +76,7 @@ function Issues({ open, onOpenChange }: Readonly<{ open: boolean; onOpenChange: 
                 <span className={i.severity === 'error' ? 'font-semibold text-red-600 dark:text-red-400' : 'font-semibold text-amber-600 dark:text-amber-400'}>
                   {i.severity === 'error' ? 'Fix: ' : 'Check: '}
                 </span>
-                {i.message}
+                {explainIssue(i, { nodes: nodes ?? [] })}
               </button>
               {i.fixStartTo && (
                 <button
@@ -105,7 +109,7 @@ export function WorkflowHeader(p: HeaderProps) {
 
       <div className="flex-1" />
 
-      <Issues open={p.issuesOpen} onOpenChange={p.onIssuesOpenChange} />
+      <Issues open={p.issuesOpen} onOpenChange={p.onIssuesOpenChange} serverIssues={p.serverIssues} />
 
       <Button
         variant={p.chatOpen ? 'default' : 'outline'}

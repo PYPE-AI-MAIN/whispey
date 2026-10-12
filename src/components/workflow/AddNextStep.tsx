@@ -36,7 +36,6 @@ const LISTENING = new Set(['conversation', 'extract_variable', 'subagent'])
 export function AddNextStep({ id, x, y }: Readonly<{ id: string; x: number; y: number }>) {
   const addNode = useWorkflowStore((s) => s.addNode)
   const addEdge = useWorkflowStore((s) => s.addEdge)
-  const setSelectedEdge = useWorkflowStore((s) => s.setSelectedEdge)
   const setSelectedNode = useWorkflowStore((s) => s.setSelectedNode)
   const outgoing = useWorkflowStore((s) => s.workflow?.edges.filter((e) => e.source === id).length ?? 0)
   const sourceType = useWorkflowStore((s) => s.workflow?.nodes.find((n) => n.id === id)?.type)
@@ -55,13 +54,13 @@ export function AddNextStep({ id, x, y }: Readonly<{ id: string; x: number; y: n
     }
   }
 
-  const add = (type: NodeType, edge: { kind: 'always' | 'condition' | 'logic'; condition?: string }) => {
+  const add = (type: NodeType, edge: { kind: 'always' | 'condition' | 'logic' | 'fallback'; condition?: string }) => {
     const newId = `node-${crypto.randomUUID()}`
     const edgeId = `edge-${crypto.randomUUID()}`
     addNode(createDefaultNode(type, newId, { x: x + 320, y: y + outgoing * 140 }))
     addEdge({ id: edgeId, source: id, target: newId, ...edge })
-    // Whatever still needs details (a branch rule) opens on the connection; otherwise on the new step.
-    if (edge.kind === 'logic') setSelectedEdge(edgeId)
+    // A branch path still needs its rule, set on the Branch step; otherwise open the new step.
+    if (edge.kind === 'logic') setSelectedNode(id)
     else setSelectedNode(newId)
     // The new step can land off screen: bring it into view once the canvas has it.
     setTimeout(() => globalThis.dispatchEvent(new CustomEvent(FOCUS_NODE_EVENT, { detail: newId })), 80)
@@ -72,7 +71,8 @@ export function AddNextStep({ id, x, y }: Readonly<{ id: string; x: number; y: n
   const choose = (type: NodeType) => {
     if (!canSayWhen) {
       // Branch, API and other non-listening steps cannot judge what the caller says: next step, or a rule to set on the connection.
-      add(type, { kind: outgoing === 0 ? 'always' : 'logic' })
+      // A Branch makes rule paths; another kind of step gets a second path for when it fails.
+      add(type, { kind: sourceType === 'logic_split' ? 'logic' : (outgoing === 0 ? 'always' : 'fallback') })
       return
     }
     setPicked(type)

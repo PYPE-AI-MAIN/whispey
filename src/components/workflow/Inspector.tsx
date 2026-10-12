@@ -15,6 +15,8 @@ import type { WorkflowNode, Edge, EdgeKind, Workflow } from '@/lib/workflow/sche
 import { lintWorkflow } from '@/lib/workflow/linter'
 import { NODE_REGISTRY } from './nodeRegistry'
 import { LogicConditionField } from './LogicConditionField'
+import { BranchEditor, StepGuide } from './StepGuide'
+import { explainIssue } from '@/lib/workflow/plainIssues'
 import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
 import SelectTTS from '@/components/agents/AgentConfig/SelectTTSDialog'
 
@@ -230,16 +232,12 @@ function NodeFields({
       )
     }
     case 'logic_split':
-      return (
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          This step decides silently, with no speech. Click a connection leaving it and choose &quot;When a saved value matches&quot; to set each branch, for example age &gt; 18.
-        </p>
-      )
+      return workflow ? <BranchEditor node={node} workflow={workflow} /> : null
     case 'function':
       return (
         <>
           <div className="grid grid-cols-3 gap-2">
-            <Field label="Method">
+            <Field label="Request type">
               <Select value={node.method} onValueChange={(v) => patch({ method: v as typeof node.method })}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -250,17 +248,17 @@ function NodeFields({
               </Select>
             </Field>
             <div className="col-span-2">
-              <Field label="URL">
+              <Field label="Web address (URL)">
                 <Input value={node.url} onChange={(e) => patch({ url: e.target.value } as any)} placeholder="https://... or ${ENV_NAME}" />
               </Field>
             </div>
           </div>
-          <JsonField label="Headers (JSON)" value={node.headers} onChange={(v) => patch({ headers: v } as any)} />
-          <JsonField label="Body (JSON)" value={node.body} onChange={(v) => patch({ body: v } as any)} />
-          <Field label="Wait message (spoken while the call runs)">
+          <JsonField label="Headers (advanced, JSON)" value={node.headers} onChange={(v) => patch({ headers: v } as any)} />
+          <JsonField label="Data to send (JSON)" value={node.body} onChange={(v) => patch({ body: v } as any)} />
+          <Field label="Say this while waiting (optional)">
             <Input value={node.waitMessage ?? ''} onChange={(e) => patch({ waitMessage: e.target.value } as any)} />
           </Field>
-          <Field label="Save result to variable">
+          <Field label="Remember the result as (optional)" hint="Give it a name, then use {{name}} in later steps.">
             <Input value={node.saveAs ?? ''} onChange={(e) => patch({ saveAs: e.target.value } as any)} />
           </Field>
         </>
@@ -272,47 +270,47 @@ function NodeFields({
           <Field label="What to search for" hint="Leave blank to search for what the caller just said."><Input value={node.query ?? ''} onChange={(e) => patch({ query: e.target.value } as any)} placeholder="{{var}} or blank = last user message" /></Field>
           <Field label="Use another agent's documents (leave blank for this agent)"><Input value={node.knowledgeBase ?? ''} onChange={(e) => patch({ knowledgeBase: e.target.value } as any)} placeholder="this agent" /></Field>
           <Field label="How many results to use"><Input type="number" value={node.topK} onChange={(e) => patch({ topK: Number(e.target.value) } as any)} /></Field>
-          <Field label="Save result to variable"><Input value={node.saveAs ?? ''} onChange={(e) => patch({ saveAs: e.target.value } as any)} /></Field>
+          <Field label="Remember the result as (optional)" hint="Give it a name, then use {{name}} in later steps."><Input value={node.saveAs ?? ''} onChange={(e) => patch({ saveAs: e.target.value } as any)} /></Field>
         </>
       )
     case 'call_transfer':
       return (
         <>
-          <Field label="Transfer to"><Input value={node.transferTo} onChange={(e) => patch({ transferTo: e.target.value } as any)} placeholder="+1..." /></Field>
-          <Field label="Mode">
+          <Field label="Phone number to hand the call to"><Input value={node.transferTo} onChange={(e) => patch({ transferTo: e.target.value } as any)} placeholder="e.g. +91 98765 43210" /></Field>
+          <Field label="How to hand over">
             <Select value={node.mode} onValueChange={(v) => patch({ mode: v as typeof node.mode })}>
               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="cold">Cold (ends call)</SelectItem>
-                <SelectItem value="warm">Warm (stays connected)</SelectItem>
+                <SelectItem value="cold">Hand over and leave the call</SelectItem>
+                <SelectItem value="warm">Stay on the line until they answer</SelectItem>
               </SelectContent>
             </Select>
           </Field>
-          <Field label="Message before transfer"><Textarea value={node.message ?? ''} onChange={(e) => patch({ message: e.target.value } as any)} /></Field>
+          <Field label="Say this before handing over"><Textarea value={node.message ?? ''} onChange={(e) => patch({ message: e.target.value } as any)} /></Field>
           <OutboundTrunkHint workflow={workflow} />
         </>
       )
     case 'press_digit':
       return (
         <>
-          <Field label="Mode">
+          <Field label="What to do">
             <Select value={node.mode} onValueChange={(v) => patch({ mode: v as typeof node.mode })}>
               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="send">Send digits</SelectItem>
-                <SelectItem value="collect">Collect digits</SelectItem>
+                <SelectItem value="send">Press keys for the caller</SelectItem>
+                <SelectItem value="collect">Collect keys the caller types</SelectItem>
               </SelectContent>
             </Select>
           </Field>
           {node.mode === 'send' ? (
-            <Field label="Digits to send"><Input value={node.digits ?? ''} onChange={(e) => patch({ digits: e.target.value } as any)} /></Field>
+            <Field label="Keys to press"><Input value={node.digits ?? ''} onChange={(e) => patch({ digits: e.target.value } as any)} /></Field>
           ) : (
             <>
-              <Field label="Number of digits to collect"><Input type="number" value={node.numDigits ?? ''} onChange={(e) => patch({ numDigits: Number(e.target.value) } as any)} /></Field>
+              <Field label="How many keys to collect"><Input type="number" value={node.numDigits ?? ''} onChange={(e) => patch({ numDigits: Number(e.target.value) } as any)} /></Field>
               <Field label="Timeout (seconds)"><Input type="number" value={node.timeout ?? 15} onChange={(e) => patch({ timeout: Number(e.target.value) } as any)} /></Field>
             </>
           )}
-          <Field label="Save result to variable"><Input value={node.saveAs ?? ''} onChange={(e) => patch({ saveAs: e.target.value } as any)} /></Field>
+          <Field label="Remember the result as (optional)" hint="Give it a name, then use {{name}} in later steps."><Input value={node.saveAs ?? ''} onChange={(e) => patch({ saveAs: e.target.value } as any)} /></Field>
         </>
       )
     case 'sms':
@@ -370,10 +368,10 @@ function NodeFields({
     case 'mcp':
       return (
         <>
-          <Field label="Server"><Input value={node.server} onChange={(e) => patch({ server: e.target.value } as any)} /></Field>
+          <Field label="Tool server"><Input value={node.server} onChange={(e) => patch({ server: e.target.value } as any)} /></Field>
           <Field label="Tool"><Input value={node.tool} onChange={(e) => patch({ tool: e.target.value } as any)} /></Field>
-          <JsonField label="Args (JSON)" value={node.args} onChange={(v) => patch({ args: v } as any)} />
-          <Field label="Save result to variable"><Input value={node.saveAs ?? ''} onChange={(e) => patch({ saveAs: e.target.value } as any)} /></Field>
+          <JsonField label="Inputs for the tool (JSON)" value={node.args} onChange={(v) => patch({ args: v } as any)} />
+          <Field label="Remember the result as (optional)" hint="Give it a name, then use {{name}} in later steps."><Input value={node.saveAs ?? ''} onChange={(e) => patch({ saveAs: e.target.value } as any)} /></Field>
         </>
       )
     case 'code':
@@ -388,10 +386,10 @@ function NodeFields({
               </SelectContent>
             </Select>
           </Field>
-          <Field label="Source">
+          <Field label="Code" hint="Collected details are available as variables.name.">
             <Textarea value={node.source} onChange={(e) => patch({ source: e.target.value } as any)} className="font-mono text-xs min-h-[160px]" />
           </Field>
-          <Field label="Save result to variable"><Input value={node.saveAs ?? ''} onChange={(e) => patch({ saveAs: e.target.value } as any)} /></Field>
+          <Field label="Remember the result as (optional)" hint="Give it a name, then use {{name}} in later steps."><Input value={node.saveAs ?? ''} onChange={(e) => patch({ saveAs: e.target.value } as any)} /></Field>
         </>
       )
     case 'ending':
@@ -402,7 +400,7 @@ function NodeFields({
       )
     case 'note':
       return (
-        <Field label="Note text">
+        <Field label="Note (only people editing see this)">
           <Textarea value={node.text} onChange={(e) => patch({ text: e.target.value } as any)} />
         </Field>
       )
@@ -495,6 +493,7 @@ export function Inspector() {
             </SheetHeader>
             <div className="p-4">
               <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/[0.03] p-4 space-y-4">
+                {workflow && <StepGuide node={node} workflow={workflow} />}
                 {nodeIssues.length > 0 && (
                   <div className="space-y-1">
                     {nodeIssues.map((iss) => (
@@ -506,8 +505,8 @@ export function Inspector() {
                             : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
                         }`}
                       >
-                        {iss.severity === 'error' ? 'Error: ' : 'Warning: '}
-                        {iss.message}
+                        {iss.severity === 'error' ? 'Fix: ' : 'Check: '}
+                        {explainIssue(iss, workflow)}
                       </p>
                     ))}
                   </div>

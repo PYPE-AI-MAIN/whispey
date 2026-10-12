@@ -17,6 +17,7 @@ import { WORKFLOW_TEMPLATES, type WorkflowTemplate } from '@/lib/workflow/templa
 import { WorkflowPalette } from '@/components/workflow/WorkflowPalette'
 import { WorkflowCanvas } from '@/components/workflow/WorkflowCanvas'
 import { Inspector } from '@/components/workflow/Inspector'
+import type { LintIssue } from '@/lib/workflow/linter'
 import { WorkflowHeader } from '@/components/workflow/WorkflowHeader'
 import { GlobalRulesPanel } from '@/components/workflow/GlobalRulesPanel'
 import { VariablesPanel } from '@/components/workflow/VariablesPanel'
@@ -141,6 +142,7 @@ function WorkflowPageInner() {
   const [variablesOpen, setVariablesOpen] = useState(false)
   const [rulesOpen, setRulesOpen] = useState(false)
   const [issuesOpen, setIssuesOpen] = useState(false)
+  const [serverIssues, setServerIssues] = useState<LintIssue[]>([])
   // Steps are added with the + on a step, so the side list stays out of the way until asked for.
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [voiceChecked, setVoiceChecked] = useState(false)
@@ -206,9 +208,15 @@ function WorkflowPageInner() {
       if (!res.ok) {
         toast.error(data?.message || 'Validation request failed')
       } else if (data?.valid === false) {
-        toast.error(`Backend found ${data.issues?.length ?? 'some'} issue(s)`)
+        const found = ((data.issues ?? []) as Array<{ severity: 'error' | 'warning'; message: string; node_id?: string; edge_id?: string }>).map(
+          (i) => ({ severity: i.severity, message: i.message, nodeId: i.node_id ?? undefined, edgeId: i.edge_id ?? undefined })
+        )
+        setServerIssues(found)
+        setIssuesOpen(true)
+        toast.error(`Found ${found.length || 'some'} ${found.length === 1 ? 'problem' : 'problems'} to fix`)
       } else {
-        toast.success('Workflow is valid')
+        setServerIssues([])
+        toast.success('No problems found')
       }
     } catch {
       toast.error('Could not reach the validation endpoint')
@@ -300,6 +308,7 @@ function WorkflowPageInner() {
         onBack={() => router.push(`/${projectId}/agents/${agentId}`)}
         paletteOpen={paletteOpen}
         onTogglePalette={() => setPaletteOpen((v) => !v)}
+        serverIssues={serverIssues}
         issuesOpen={issuesOpen}
         onIssuesOpenChange={setIssuesOpen}
         isDirty={isDirty}
