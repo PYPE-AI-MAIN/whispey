@@ -110,6 +110,40 @@ TruncatedText.displayName = "TruncatedText"
 // DYNAMIC JSON CELL
 // ============================================
 
+/** First readable text inside a JSON value: the first non-empty string, else a compact form. */
+function firstText(value: unknown, depth = 0): string {
+  if (value == null) return ''
+  if (typeof value === 'string') return value.trim()
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return String(value)
+  if (typeof value !== 'object') return ''
+  if (depth > 3) return ''
+  const items = Array.isArray(value) ? value : Object.values(value)
+  for (const item of items) {
+    const text = firstText(item, depth + 1)
+    if (text && !/^-?\d+(\.\d+)?$/.test(text)) return text
+  }
+  return ''
+}
+
+/** A one-line description of an object or array cell value. */
+function summarizeJson(value: object): { count: string | null; preview: string } {
+  if (Array.isArray(value)) {
+    if (value.length === 0) return { count: '0 items', preview: '' }
+    const allPrimitive = value.every((v) => v === null || typeof v !== 'object')
+    return {
+      count: `${value.length} item${value.length === 1 ? '' : 's'}`,
+      preview: allPrimitive ? value.join(', ') : firstText(value),
+    }
+  }
+  const entries = Object.entries(value)
+  if (entries.length === 0) return { count: null, preview: '' }
+  const preview = entries
+    .slice(0, 4)
+    .map(([k, v]) => `${k}: ${v !== null && typeof v === 'object' ? firstText(v) || '…' : String(v)}`)
+    .join(' · ')
+  return { count: null, preview }
+}
+
 interface DynamicJsonCellProps {
   data: any
   fieldKey: string
@@ -133,17 +167,21 @@ export const DynamicJsonCell = memo<DynamicJsonCellProps>(({
 
   if (typeof value === 'object') {
     const jsonString = JSON.stringify(value, null, 2)
-    const truncatedJson = jsonString.length > 80 ? jsonString.substring(0, 80) + '...' : jsonString
-    
+    const { count, preview } = summarizeJson(value)
+
+    // One line in the cell — a count and the first readable text — so a list of
+    // turns or a nested object never shows up as a box holding just "[".
     return (
-      <div className="w-full max-w-full overflow-hidden border rounded-md bg-muted/20" style={{ maxWidth }}>
-        <div className="p-1.5 w-full overflow-hidden">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <pre className="text-xs font-mono text-foreground whitespace-pre-wrap break-all overflow-hidden w-full">
-                {truncatedJson}
-              </pre>
-            </TooltipTrigger>
+      <div className="w-full overflow-hidden" style={{ maxWidth }}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="flex w-full min-w-0 items-center gap-1.5 text-xs">
+              {count && (
+                <span className="shrink-0 rounded bg-muted px-1.5 py-px font-medium text-muted-foreground">{count}</span>
+              )}
+              <span className="min-w-0 truncate text-foreground">{preview || <span className="text-muted-foreground">empty</span>}</span>
+            </span>
+          </TooltipTrigger>
             {/* pointer-events-auto so the value can be selected/copied — but that
                 also means a click here bubbles to the row's own onClick (React
                 replays it against the component tree, not the DOM tree a Radix
@@ -156,8 +194,7 @@ export const DynamicJsonCell = memo<DynamicJsonCellProps>(({
             >
               {jsonString}
             </TooltipContent>
-          </Tooltip>
-        </div>
+        </Tooltip>
       </div>
     )
   }
