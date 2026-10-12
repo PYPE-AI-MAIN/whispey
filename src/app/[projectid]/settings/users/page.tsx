@@ -426,7 +426,7 @@ export default function UsersSettingsPage() {
               <div className="h-7 w-7 rounded-lg bg-blue-100 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800/50 flex items-center justify-center">
                 <Users className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
               </div>
-              <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Whispey Admin Dashboard</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Users</h1>
             </div>
           </div>
 

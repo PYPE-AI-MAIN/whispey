@@ -165,7 +165,7 @@ function getUserDisplayName(user: ReturnType<typeof useUser>['user']): string {
 const GROUP_NAME_OVERRIDES: Record<string, string> = {
   'logs': 'LOGS',
   'batch calls': 'Batch Calls',
-  'project settings': 'Project Settings',
+  'organization settings': 'Organization settings',
 }
 
 function formatGroupDisplayName(groupId: string): string {

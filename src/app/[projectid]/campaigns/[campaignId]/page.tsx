@@ -641,7 +641,7 @@ function ViewCampaign() {
             >
               <ArrowLeft className="h-3.5 w-3.5" />
             </Button>
-            <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
               Campaign Details
             </h1>
           </div>
@@ -691,7 +691,7 @@ function ViewCampaign() {
             <ArrowLeft className="h-3.5 w-3.5" />
           </Button>
           <div>
-            <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
               {campaignDetails.campaignName}
             </h1>
             <p className="text-xs text-gray-500 dark:text-gray-400">

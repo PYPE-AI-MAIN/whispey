@@ -205,21 +205,21 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Org Overview',
           icon: 'BarChart3',
           path: `/${projectId}/analytics`,
-          group: 'Agents'
+          group: 'Organization'
         },
         {
           id: 'agent-list',
           name: 'Agent List',
           icon: 'Activity',
           path: `/${projectId}/agents`,
-          group: 'Agents'
+          group: 'Organization'
         },
         {
           id: 'ask-pi',
           name: 'Ask Pi',
           icon: 'Pi',
           path: `/${projectId}/pi`,
-          group: 'Agents',
+          group: 'Organization',
           ...(isOwnerOrAdmin ? {} : { disabled: true, badge: 'Beta' })
         }
       ]
@@ -255,10 +255,10 @@ const sidebarRoutes: SidebarRoute[] = [
       if (userCanViewApiKeys) {
         projectSettingItems.push({
           id: 'api-keys',
-          name: 'Project API Key',
+          name: 'API key',
           icon: 'Key',
           path: `/${projectId}/agents/api-keys`,
-          group: 'Project Settings'
+          group: 'Organization settings'
         })
       }
       if (showSettings) {
@@ -267,7 +267,7 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Settings',
           icon: 'Settings',
           path: `/${projectId}/settings`,
-          group: 'Project Settings'
+          group: 'Organization settings'
         })
       }
 

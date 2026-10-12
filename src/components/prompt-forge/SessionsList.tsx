@@ -95,7 +95,7 @@ export function SessionsList({ projectId, agentId }: Props) {
               <div className="h-8 w-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                 <FlaskConical className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </div>
-              <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Prompt Forge</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Prompt Forge</h1>
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-medium rounded-full">Beta</Badge>
             </div>
           </div>

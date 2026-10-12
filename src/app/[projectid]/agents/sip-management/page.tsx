@@ -183,7 +183,7 @@ export default function SimplifiedSipManagement() {
               <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">Phone Settings</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Phone Settings</h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 Manage phone numbers and assignments
               </p>

@@ -521,7 +521,7 @@ export default function PhoneNumbersPage() {
               <div className="h-7 w-7 rounded-lg bg-blue-900/40 border border-blue-800/50 flex items-center justify-center">
                 <Phone className="h-3.5 w-3.5 text-blue-400" />
               </div>
-              <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Phone Numbers</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Phone Numbers</h1>
             </div>
           </div>
 

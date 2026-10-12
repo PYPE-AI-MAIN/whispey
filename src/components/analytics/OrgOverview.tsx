@@ -177,7 +177,7 @@ export function OrgOverview({
           <div>
             {/* text-2xl/tracking-tight matches this app's real page-title convention
                 (e.g. api-keys/page.tsx's <h1>) — text-xl read undersized next to it */}
-            <h1 className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">Overview</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Overview</h1>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">All agents in this project, for the selected period.</p>
           </div>
           <div className="flex items-center gap-3">

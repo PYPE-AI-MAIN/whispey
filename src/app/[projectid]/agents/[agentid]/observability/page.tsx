@@ -95,7 +95,7 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
             </button>
             
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
                 Observability
               </h1>
             </div>

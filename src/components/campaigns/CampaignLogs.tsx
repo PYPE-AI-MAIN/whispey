@@ -1093,7 +1093,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
               <div>
-                <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Campaign Logs</h1>
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground">Campaign Logs</h1>
               </div>
             </div>
 

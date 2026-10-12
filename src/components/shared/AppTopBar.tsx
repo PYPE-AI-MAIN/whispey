@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { SignedIn } from '@clerk/nextjs'
+import { useQuery } from '@tanstack/react-query'
 import { BookOpen, ChevronRight, HelpCircle } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import NotificationBell from './NotificationBell'
@@ -58,7 +59,18 @@ function crumbsFor(pathname: string): Crumb[] {
 
 export default function AppTopBar() {
   const pathname = usePathname() ?? ''
-  const crumbs = crumbsFor(pathname)
+  const projectId = pathname.split('/').filter(Boolean)[0]
+  const { data: projects } = useQuery<{ id: string; name: string }[]>({
+    queryKey: ['projects'],
+    queryFn: async () => {
+      const response = await fetch('/api/projects')
+      if (!response.ok) throw new Error('Failed to fetch projects')
+      return response.json()
+    },
+    staleTime: 30000,
+  })
+  const orgName = projects?.find((p) => p.id === projectId)?.name
+  const crumbs = [...(orgName ? [{ label: orgName, href: `/${projectId}/agents` }] : []), ...crumbsFor(pathname)]
 
   return (
     <header className="sticky top-0 z-30 flex h-12 flex-none items-center justify-between gap-4 border-b border-border bg-background/85 px-4 backdrop-blur sm:px-6">

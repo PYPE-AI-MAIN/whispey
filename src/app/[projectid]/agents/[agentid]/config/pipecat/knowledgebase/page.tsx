@@ -60,7 +60,7 @@ export default function PipecatKnowledgeBasePage() {
                 <BookOpen className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground">
                   Knowledge Base
                 </h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400">

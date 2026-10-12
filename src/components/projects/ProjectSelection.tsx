@@ -522,7 +522,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
           <div className="flex items-center justify-between mb-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Organisations</h1>
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground">Organisations</h1>
                 <Badge variant="outline" className="text-xs text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700">
                   {projects.length}
                 </Badge>

@@ -196,7 +196,7 @@ const ApiKeys = () => {
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             API Keys
           </h1>
         </div>

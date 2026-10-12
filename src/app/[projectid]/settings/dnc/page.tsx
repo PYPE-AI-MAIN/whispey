@@ -345,7 +345,7 @@ export default function DncPage() {
               <ShieldBan className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <h1 className="text-sm font-semibold leading-tight text-gray-900 dark:text-gray-100">Do Not Call (DNC) List</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Do Not Call (DNC) List</h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">Listed numbers are never dialed — blocked at upload, single-call, and dispatch.</p>
             </div>
           </div>
