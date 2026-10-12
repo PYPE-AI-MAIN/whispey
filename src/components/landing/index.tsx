@@ -8,17 +8,34 @@ import Header, { Brand } from './landing-header'
 const serif = Instrument_Serif({ weight: '400', style: ['normal', 'italic'], subsets: ['latin'], variable: '--font-sw-serif', display: 'swap' })
 const sans = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-sw-sans', display: 'swap' })
 
-const FEATURES = [
-  { title: 'Call logs and recordings', body: 'Open any call to read the transcript, hear the recording and follow each turn of the conversation.' },
-  { title: 'Latency and cost', body: 'See how long the agent took to respond on every turn, and what each call cost.' },
-  { title: 'QA Audit', body: 'Flag a call that went wrong. The Pype QA team reviews it and updates the status. You can also ask for a weekly review of an agent.' },
-  { title: 'Bug reports', body: 'Report a problem by voice during a test call, then find it later alongside that call in the logs.' },
+const STEPS = [
+  { title: 'Install the SDK', body: 'Add Whispey to your agent project.' },
+  { title: 'Connect your agent', body: 'Create the observer with your agent ID and API key. Whispey works with LiveKit agents.' },
+  { title: 'Start a session', body: 'Start tracking when the call begins. Calls then appear in your dashboard.' },
 ]
 
-const STEPS = [
-  { title: 'Install the SDK', body: 'Add Whispey to your agent project.', code: 'pip install whispey' },
-  { title: 'Connect your agent', body: 'Create the observer with your agent ID and API key. Whispey works with LiveKit agents.', code: 'whispey = LivekitObserve(\n  agent_id="your-agent-id",\n  apikey=os.getenv("WHISPEY_API_KEY")\n)' },
-  { title: 'Start a session', body: 'Start tracking when the call begins. Calls then appear in your dashboard.', code: 'session_id = whispey.start_session(\n  session=session\n)' },
+const CODE = `pip install whispey
+
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    apikey=os.getenv("WHISPEY_API_KEY"),
+)
+
+session_id = whispey.start_session(
+    session=session,
+)`
+
+const TURNS = [
+  { who: 'Agent', text: 'Hello, you have reached the clinic. How can I help you today?' },
+  { who: 'Patient', text: 'I need to move my appointment to Tuesday.' },
+  { who: 'Agent', text: 'Sure. Let me check what is open on Tuesday.' },
+]
+
+const QA_STEPS = ['Flagged', 'In review', 'Resolved']
+const LATENCY = [
+  { label: 'Speech to text', w: '28%' },
+  { label: 'Language model', w: '62%' },
+  { label: 'Text to speech', w: '38%' },
 ]
 
 const PAGE_CSS = `
@@ -34,7 +51,7 @@ const PAGE_CSS = `
     color: #eef4ff; }
   .wl-header { background: rgba(248,251,255,0.82); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(37,99,235,0.1); }
   .dark .wl-header { background: rgba(5,10,20,0.78); border-bottom-color: rgba(255,255,255,0.08); }
-  .wl-title { font-family: var(--font-sw-serif), Georgia, serif; font-weight: 400; letter-spacing: -0.02em; line-height: 1.04; }
+  .wl-title { font-family: var(--font-sw-serif), Georgia, serif; font-weight: 400; letter-spacing: -0.012em; line-height: 1.08; }
   .wl-h1 { font-size: clamp(2.5rem, 6vw, 4.6rem); }
   .wl-h2 { font-size: clamp(1.9rem, 3.6vw, 2.8rem); }
   .wl-em { font-style: italic; padding-right: 0.06em; color: transparent;
@@ -56,6 +73,16 @@ const PAGE_CSS = `
   .dark .wl-code { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.12); }
   .wl-frame { border-radius: 18px; border: 1px solid rgba(37,99,235,0.18); box-shadow: 0 30px 70px -34px rgba(30,64,160,0.55); overflow: hidden; background: #0b1424; }
   .dark .wl-frame { border-color: rgba(255,255,255,0.14); }
+  .wl-eyebrow { font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 600; color: #2563eb; }
+  .dark .wl-eyebrow { color: #60a5fa; }
+  .wl-band { background: #08101f; color: #eef4ff; }
+  .wl-card { border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.035); border-radius: 20px; padding: 1.6rem; display: flex; flex-direction: column; gap: 1.1rem; }
+  .wl-card p { color: #9db0d0; line-height: 1.6; }
+  .wl-mock { margin-top: auto; border: 1px solid rgba(255,255,255,0.1); background: rgba(5,10,20,0.6); border-radius: 14px; padding: 1rem; font-size: 0.82rem; }
+  .wl-tag { font-size: 0.66rem; letter-spacing: 0.12em; text-transform: uppercase; color: #6f84a8; }
+  .wl-pill { border: 1px solid rgba(255,255,255,0.16); border-radius: 9999px; padding: 0.25rem 0.7rem; color: #9db0d0; }
+  .wl-pill-on { background: linear-gradient(90deg, #1d4ed8, #3b82f6); border-color: transparent; color: #fff; }
+  .wl-code-dark { background: #08101f; border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; color: #dbe7ff; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem; line-height: 1.75; padding: 1.4rem 1.5rem; overflow-x: auto; box-shadow: 0 30px 70px -40px rgba(30,64,160,0.6); }
   .wl-num { font-family: var(--font-sw-serif), Georgia, serif; font-size: 2rem; line-height: 1; color: #2563eb; }
   .dark .wl-num { color: #60a5fa; }
 `
@@ -86,35 +113,109 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section id="features" className="wl-rule scroll-mt-16">
-          <div className="mx-auto max-w-6xl px-6 py-20">
-            <h2 className="wl-title wl-h2 max-w-2xl">What you can follow in every call</h2>
-            <dl className="mt-12 grid gap-x-16 gap-y-10 sm:grid-cols-2">
-              {FEATURES.map((f) => (
-                <div key={f.title} className="wl-rule pt-5">
-                  <dt className="text-lg font-semibold">{f.title}</dt>
-                  <dd className="wl-muted mt-2 leading-relaxed">{f.body}</dd>
+        <section id="features" className="wl-band scroll-mt-16">
+          <div className="mx-auto max-w-6xl px-6 py-24">
+            <p className="wl-eyebrow" style={{ color: '#60a5fa' }}>What you can follow</p>
+            <h2 className="wl-title wl-h2 mt-3 max-w-2xl">Every call, from the first word to the follow-up</h2>
+            <div className="mt-12 grid gap-5 lg:grid-cols-6">
+              <article className="wl-card lg:col-span-4">
+                <div>
+                  <h3 className="text-xl font-semibold">Call logs and recordings</h3>
+                  <p className="mt-2">Open any call to read the transcript, hear the recording and follow each turn of the conversation.</p>
                 </div>
-              ))}
-            </dl>
+                <div className="wl-mock" aria-hidden="true">
+                  <p className="wl-tag mb-3">Example</p>
+                  <ul className="space-y-2.5">
+                    {TURNS.map((t) => (
+                      <li key={t.text} className="flex gap-3">
+                        <span className="wl-tag w-14 shrink-0 pt-0.5">{t.who}</span>
+                        <span style={{ color: '#dbe7ff' }}>{t.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </article>
+
+              <article className="wl-card lg:col-span-2">
+                <div>
+                  <h3 className="text-xl font-semibold">Latency and cost</h3>
+                  <p className="mt-2">See how long the agent took to respond on every turn, and what each call cost.</p>
+                </div>
+                <div className="wl-mock" aria-hidden="true">
+                  <p className="wl-tag mb-3">Example</p>
+                  <ul className="space-y-3">
+                    {LATENCY.map((l) => (
+                      <li key={l.label}>
+                        <span style={{ color: '#9db0d0' }}>{l.label}</span>
+                        <span className="mt-1.5 block h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                          <span className="block h-1.5 rounded-full" style={{ width: l.w, background: 'linear-gradient(90deg, #1d4ed8, #60a5fa)' }} />
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </article>
+
+              <article className="wl-card lg:col-span-3">
+                <div>
+                  <h3 className="text-xl font-semibold">QA Audit</h3>
+                  <p className="mt-2">Flag a call that went wrong. The Pype QA team reviews it and updates the status. You can also ask for a weekly review of an agent.</p>
+                </div>
+                <div className="wl-mock" aria-hidden="true">
+                  <p className="wl-tag mb-3">Example</p>
+                  <div className="flex flex-wrap gap-2">
+                    {QA_STEPS.map((q, n) => (
+                      <span key={q} className={n === 1 ? 'wl-pill wl-pill-on' : 'wl-pill'}>{q}</span>
+                    ))}
+                  </div>
+                </div>
+              </article>
+
+              <article className="wl-card lg:col-span-3">
+                <div>
+                  <h3 className="text-xl font-semibold">Bug reports</h3>
+                  <p className="mt-2">Report a problem by voice during a test call, then find it later alongside that call in the logs.</p>
+                </div>
+                <div className="wl-mock" aria-hidden="true">
+                  <p className="wl-tag mb-3">Example</p>
+                  <p style={{ color: '#dbe7ff' }}>&ldquo;The agent repeated the question twice.&rdquo;</p>
+                  <p className="mt-2" style={{ color: '#6f84a8' }}>Attached to turn 4 of this call</p>
+                </div>
+              </article>
+            </div>
           </div>
         </section>
 
-        <section id="how-it-works" className="wl-rule scroll-mt-16">
-          <div className="mx-auto max-w-6xl px-6 py-20">
-            <h2 className="wl-title wl-h2 max-w-2xl">Start in three steps</h2>
-            <ol className="mt-12 grid gap-10 md:grid-cols-3">
-              {STEPS.map((s, n) => (
-                <li key={s.title}>
-                  <span className="wl-num">{n + 1}</span>
-                  <h3 className="mt-3 text-lg font-semibold">{s.title}</h3>
-                  <p className="wl-muted mt-2 leading-relaxed">{s.body}</p>
-                  <pre className="wl-code mt-4"><code>{s.code}</code></pre>
-                </li>
-              ))}
-            </ol>
-            <div className="mt-14">
+        <section id="how-it-works" className="scroll-mt-16">
+          <div className="mx-auto grid max-w-6xl items-center gap-14 px-6 py-24 lg:grid-cols-2">
+            <div>
+              <p className="wl-eyebrow">How it works</p>
+              <h2 className="wl-title wl-h2 mt-3">Start in three steps</h2>
+              <ol className="mt-10 space-y-7">
+                {STEPS.map((s, n) => (
+                  <li key={s.title} className="flex gap-5">
+                    <span className="wl-num w-6 shrink-0">{n + 1}</span>
+                    <div>
+                      <h3 className="text-lg font-semibold">{s.title}</h3>
+                      <p className="wl-muted mt-1 leading-relaxed">{s.body}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+            <pre className="wl-code-dark"><code>{CODE}</code></pre>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-6xl px-6 pb-24">
+          <div className="wl-band rounded-3xl px-8 py-14 text-center sm:px-14">
+            <h2 className="wl-title wl-h2 mx-auto max-w-2xl">See how your agents perform on real calls</h2>
+            <p className="mx-auto mt-4 max-w-xl" style={{ color: '#9db0d0' }}>
+              Sign in to Whispey, or talk to the Pype team about voice agents for your hospital or clinic.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Link href="/sign-in" className="wl-btn">Get started</Link>
+              <a href="https://pypeai.com/contact" target="_blank" rel="noopener noreferrer" className="wl-btn wl-btn-ghost" style={{ color: '#eef4ff', borderColor: 'rgba(255,255,255,0.25)' }}>Talk to Pype</a>
             </div>
           </div>
         </section>
