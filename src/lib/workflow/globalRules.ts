@@ -5,7 +5,9 @@ const LISTENING = new Set(['conversation', 'extract_variable', 'subagent'])
 
 type Flow = Pick<Workflow, 'nodes' | 'edges' | 'globalRules'>
 
-const listeningIds = (wf: Pick<Workflow, 'nodes'>) => wf.nodes.filter((n) => LISTENING.has(n.type)).map((n) => n.id)
+// A step that speaks and moves on (skipUserResponse) never listens, so a condition could not fire from it.
+const listeningIds = (wf: Pick<Workflow, 'nodes'>) =>
+  wf.nodes.filter((n) => LISTENING.has(n.type) && !(n as { skipUserResponse?: boolean }).skipUserResponse).map((n) => n.id)
 
 /** Global rules as the plain edges the backend turns them into (same rule as the interpreter's load step). */
 export function expandGlobalRules<T extends Flow>(wf: T): T {
