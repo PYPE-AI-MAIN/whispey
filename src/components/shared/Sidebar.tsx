@@ -661,6 +661,41 @@ export default function Sidebar({
           {renderContextHeader(config, isCollapsed, isMobile, onMobileClose)}
         </div>
 
+        {/* Utilities: docs, help, notifications and theme, always at the top */}
+        <div className={`flex items-center gap-1 border-b border-border px-3 py-2 ${isCollapsed && !isMobile ? 'flex-col' : 'justify-between'}`}>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <a
+                  href="https://docs.whispey.pypeai.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Docs"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <BookOpen className="h-4 w-4" />
+                </a>
+              </TooltipTrigger>
+              <TooltipContent side="bottom"><p>Docs</p></TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setIsSupportOpen(true)}
+                  aria-label="Help Center"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom"><p>Help Center</p></TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <NotificationBell side="bottom" align="start" />
+          <ThemeToggle plain />
+        </div>
+
         {/* Navigation with Groups */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           <OrganizationSwitcher
@@ -702,41 +737,6 @@ export default function Sidebar({
           isMobile={isMobile}
           onMobileClose={onMobileClose}
         />
-
-        {/* Utilities: one row, so the account card stays the last thing in the sidebar */}
-        <div className={`flex items-center gap-1 border-t border-border px-3 py-2 ${isCollapsed && !isMobile ? 'flex-col' : 'justify-between'}`}>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <a
-                  href="https://docs.whispey.pypeai.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Docs"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <BookOpen className="h-4 w-4" />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent side="top"><p>Docs</p></TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => setIsSupportOpen(true)}
-                  aria-label="Help Center"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <HelpCircle className="h-4 w-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top"><p>Help Center</p></TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <NotificationBell side="top" align="start" />
-          <ThemeToggle plain />
-        </div>
 
         {/* User Section */}
         <SidebarUserMenu
