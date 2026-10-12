@@ -255,7 +255,7 @@ function WorkflowPageInner() {
   if (!agentId || !projectId) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-900">
-        <p className="text-sm text-gray-600 dark:text-gray-400">Invalid agent or project.</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400">Invalid agent or organization.</p>
       </div>
     )
   }

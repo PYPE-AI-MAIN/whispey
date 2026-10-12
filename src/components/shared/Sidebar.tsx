@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react'
 import { useUser, SignedIn, useClerk } from '@clerk/nextjs'
-import { useTheme } from 'next-themes'
 import { useHotkeys } from 'react-hotkeys-hook'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -19,8 +18,6 @@ import {
   Users,
   Crown,
   HelpCircle,
-  Sun,
-  Moon,
   LogOut,
   List,
   FileText,
@@ -445,7 +442,6 @@ export default function Sidebar({
   const { signOut } = useClerk()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [isSupportOpen, setIsSupportOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
@@ -745,8 +741,6 @@ export default function Sidebar({
           isCollapsed={isCollapsed}
           isMobile={isMobile}
           user={user}
-          resolvedTheme={resolvedTheme}
-          setTheme={setTheme}
           isSuperAdmin={isSuperAdmin}
           projectId={projectId}
           router={router}
@@ -827,8 +821,6 @@ function SidebarUserMenu({
   isCollapsed,
   isMobile,
   user,
-  resolvedTheme,
-  setTheme,
   isSuperAdmin,
   projectId,
   router,
@@ -840,8 +832,6 @@ function SidebarUserMenu({
   isCollapsed: boolean
   isMobile: boolean
   user: ReturnType<typeof useUser>['user']
-  resolvedTheme: ReturnType<typeof useTheme>['resolvedTheme']
-  setTheme: ReturnType<typeof useTheme>['setTheme']
   isSuperAdmin: boolean
   projectId?: string
   router: ReturnType<typeof useRouter>
@@ -877,7 +867,6 @@ function SidebarUserMenu({
                 </p>
               </div>
               <div className="py-1">
-                <ThemeToggleMenuItem mounted={mounted} resolvedTheme={resolvedTheme} setTheme={setTheme} />
                 <SuperAdminSettingsMenuItem isSuperAdmin={isSuperAdmin} projectId={projectId} router={router} />
               </div>
               <DropdownMenuSeparator />
@@ -926,29 +915,6 @@ function UserMenuNameEmail({
         {user?.emailAddresses?.[0]?.emailAddress}
       </p>
     </div>
-  )
-}
-
-function ThemeToggleMenuItem({
-  mounted,
-  resolvedTheme,
-  setTheme
-}: Readonly<{
-  mounted: boolean
-  resolvedTheme: ReturnType<typeof useTheme>['resolvedTheme']
-  setTheme: ReturnType<typeof useTheme>['setTheme']
-}>): React.ReactNode {
-  return (
-    <DropdownMenuItem
-      onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-      className="px-3 py-2 text-xs"
-    >
-      {mounted && resolvedTheme === 'dark' ? (
-        <><Sun className="w-4 h-4 mr-2" />Light Mode</>
-      ) : (
-        <><Moon className="w-4 h-4 mr-2" />Dark Mode</>
-      )}
-    </DropdownMenuItem>
   )
 }
 

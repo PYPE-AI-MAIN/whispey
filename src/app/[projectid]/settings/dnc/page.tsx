@@ -255,7 +255,7 @@ export default function DncPage() {
 
   let listScopeLabel = 'Global entries'
   if (scope === 'project') {
-    listScopeLabel = selectedProject ? `Entries for ${selectedProject.name}` : 'Select a project to view its entries'
+    listScopeLabel = selectedProject ? `Entries for ${selectedProject.name}` : 'Select an organization to view its entries'
   }
 
   // The list card body — if/else avoids a deeply nested render ternary.
@@ -278,7 +278,7 @@ export default function DncPage() {
       )
     }
     if (filteredEntries.length === 0) {
-      const emptyMsg = scope === 'project' && !selectedProject ? 'Select a project above.' : 'No numbers on the DNC list.'
+      const emptyMsg = scope === 'project' && !selectedProject ? 'Select an organization above.' : 'No numbers on the DNC list.'
       return <div className="p-10 text-center text-sm text-gray-500 dark:text-gray-400">{emptyMsg}</div>
     }
     return (
@@ -370,10 +370,10 @@ export default function DncPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="global">
-                        <span className="flex items-center gap-2"><Globe className="h-3.5 w-3.5" /> Global — all projects</span>
+                        <span className="flex items-center gap-2"><Globe className="h-3.5 w-3.5" /> Global — all organizations</span>
                       </SelectItem>
                       <SelectItem value="project">
-                        <span className="flex items-center gap-2"><Building2 className="h-3.5 w-3.5" /> Per project</span>
+                        <span className="flex items-center gap-2"><Building2 className="h-3.5 w-3.5" /> Per organization</span>
                       </SelectItem>
                     </SelectContent>
                   </Select>
@@ -381,7 +381,7 @@ export default function DncPage() {
 
                 {scope === 'project' && (
                   <div className="grid gap-1.5">
-                    <span className="block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Project</span>
+                    <span className="block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Organization</span>
                     <Popover open={projectOpen} onOpenChange={setProjectOpen}>
                       <PopoverTrigger asChild>
                         <Button
@@ -390,15 +390,15 @@ export default function DncPage() {
                           aria-expanded={projectOpen}
                           className="justify-between font-normal"
                         >
-                          {selectedProject ? selectedProject.name : 'Select project…'}
+                          {selectedProject ? selectedProject.name : 'Select organization…'}
                           <ChevronsUpDown className="h-4 w-4 opacity-50" />
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                         <Command>
-                          <CommandInput placeholder="Search project…" />
+                          <CommandInput placeholder="Search organization…" />
                           <CommandList>
-                            <CommandEmpty>No project found.</CommandEmpty>
+                            <CommandEmpty>No organization found.</CommandEmpty>
                             <CommandGroup>
                               {projects.map((p) => (
                                 <CommandItem
@@ -540,7 +540,7 @@ export default function DncPage() {
               </div>
 
               {needsProject && (
-                <p className="text-xs text-amber-600 dark:text-amber-500">Select a project first.</p>
+                <p className="text-xs text-amber-600 dark:text-amber-500">Select an organization first.</p>
               )}
               {feedback && (
                 <div className="flex items-center justify-between text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 px-3 py-2 text-gray-700 dark:text-gray-300">

@@ -591,7 +591,7 @@ function Campaigns() {
               <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 sm:p-6">
                 <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-4">Campaign Information</h4>
                 <InfoRow label="Campaign ID"  value={<span className="font-mono">{selectedCampaign.campaignId}</span>} />
-                <InfoRow label="Project ID"   value={<span className="font-mono">{selectedCampaign.projectId}</span>} />
+                <InfoRow label="Organization ID"   value={<span className="font-mono">{selectedCampaign.projectId}</span>} />
                 <InfoRow label="Provider"     value={selectedCampaign.callConfig.provider} />
               </div>
 

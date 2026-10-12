@@ -82,7 +82,7 @@ function Header() {
       if (organizations.length > 0) {
         return 'Go to Dashboard'
       }
-      return 'Go to Projects'
+      return 'Go to Organizations'
     }
 
   return (

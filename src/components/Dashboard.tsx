@@ -310,14 +310,14 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
     
     if (agent && !agent.project_id) {
       return {
-        project: 'No Project',
+        project: 'No Organization',
         item: agentDisplayName(agent)
       }
     }
     
     if (agent && !project) {
       return {
-        project: 'Unknown Project',
+        project: 'Unknown Organization',
         item: agentDisplayName(agent)
       }
     }

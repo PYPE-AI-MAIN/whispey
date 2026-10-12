@@ -368,7 +368,7 @@ export default function PhoneNumbersPage() {
       return (
         <tr>
           <td colSpan={6} className="py-16 text-center">
-            <div className="flex flex-col items-center gap-2 text-gray-600">
+            <div className="flex flex-col items-center gap-2 text-gray-600 dark:text-gray-400">
               <Phone className="h-6 w-6" />
               <span className="text-sm">No phone numbers yet</span>
               <button
@@ -430,7 +430,7 @@ export default function PhoneNumbersPage() {
               ? <span className="text-gray-900 dark:text-gray-200">
                   {agentDisplayName(agents.find(a => a.id === n.assigned_agent_id)) || n.assigned_agent_name}
                 </span>
-              : <span className="text-gray-600 text-xs italic">Unassigned</span>
+              : <span className="text-gray-600 text-xs italic dark:text-gray-400">Unassigned</span>
             }
           </td>
 
@@ -443,7 +443,7 @@ export default function PhoneNumbersPage() {
                 </span>
                 <button
                   onClick={() => toggleKeyReveal(n.id)}
-                  className="text-gray-600 hover:text-gray-400 transition-colors flex-shrink-0"
+                  className="text-gray-600 hover:text-gray-400 transition-colors flex-shrink-0 dark:text-gray-400"
                 >
                   {keyRevealed
                     ? <EyeOff className="h-3.5 w-3.5" />
@@ -452,7 +452,7 @@ export default function PhoneNumbersPage() {
                 </button>
               </div>
             ) : (
-              <span className="text-gray-700 text-xs">—</span>
+              <span className="text-gray-700 text-xs dark:text-gray-300">—</span>
             )}
           </td>
 

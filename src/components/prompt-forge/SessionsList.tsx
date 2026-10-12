@@ -140,7 +140,7 @@ export function SessionsList({ projectId, agentId }: Props) {
             <p className="text-sm font-medium text-gray-400 mb-1">
               {tab === 'persona' ? 'Persona' : 'Test Cases'}
             </p>
-            <p className="text-xs text-gray-600">Coming soon</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Coming soon</p>
           </div>
         </div>
       )}
