@@ -39,7 +39,12 @@ export async function POST(request: NextRequest) {
   if (!bucket) return NextResponse.json({ error: 'Image storage is not configured' }, { status: 500 })
 
   const key = `qa/${ticketId}/${randomUUID()}.${ext}`
-  await s3.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: Buffer.from(await file.arrayBuffer()), ContentType: file.type }))
+  try {
+    await s3.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: Buffer.from(await file.arrayBuffer()), ContentType: file.type }))
+  } catch (e) {
+    console.error('QA image upload failed:', e instanceof Error ? e.message : e)
+    return NextResponse.json({ error: 'Image storage rejected the upload (check the AWS credentials and bucket)' }, { status: 502 })
+  }
   return NextResponse.json({ key, name: file.name.slice(0, 120) })
 }
 
