@@ -1,0 +1,244 @@
+---
+title: Examples
+description: Real-world examples and use cases for Whispey
+---
+
+## Customer Support Agent
+
+Track and analyze customer support conversations to improve response quality and resolution rates.
+
+```python
+from whispey import LivekitObserve
+
+# Initialize Whispey
+whispey = LivekitObserve(
+    agent_id="support-agent-001",
+    apikey="your-api-key"
+)
+
+# Start session with customer info
+session_id = whispey.start_session(
+    session=your_livekit_session,
+    customer_name="Sarah Johnson",
+    conversation_type="customer_support",
+    metadata={
+        "department": "technical_support",
+        "priority": "medium",
+        "product": "mobile_app"
+    }
+)
+
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
+
+# Start your LiveKit session
+await session.start(...)
+```
+
+## Sales Assistant
+
+Monitor sales conversations to track conversion rates and optimize sales strategies.
+
+```python
+# Initialize for sales tracking
+whispey = LivekitObserve(
+    agent_id="sales-agent-002",
+    apikey="your-api-key"
+)
+
+session_id = whispey.start_session(
+    session=your_livekit_session,
+    customer_name="Mike Chen",
+    conversation_type="sales_call",
+    metadata={
+        "product": "enterprise_plan",
+        "lead_source": "website",
+        "budget_range": "5000-10000"
+    }
+)
+
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
+
+# Start your LiveKit session
+await session.start(...)
+```
+
+## Appointment Scheduler
+
+Optimize appointment booking conversations for better user experience.
+
+```python
+# Initialize for appointment tracking
+whispey = LivekitObserve(
+    agent_id="scheduler-003",
+    apikey="your-api-key"
+)
+
+session_id = whispey.start_session(
+    session=your_livekit_session,
+    conversation_type="appointment_booking",
+    metadata={
+        "service_type": "consultation",
+        "location": "downtown_office"
+    }
+)
+
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
+
+# Start your LiveKit session
+await session.start(...)
+```
+
+## Multi-Agent Analytics
+
+Compare performance across multiple agents and identify best practices.
+
+```python
+# Track multiple agents
+agents = {
+    "agent_1": LivekitObserve(agent_id="agent-001", apikey="your-api-key"),
+    "agent_2": LivekitObserve(agent_id="agent-002", apikey="your-api-key"),
+    "agent_3": LivekitObserve(agent_id="agent-003", apikey="your-api-key")
+}
+
+# Start sessions for comparison
+sessions = {}
+for name, agent in agents.items():
+    sessions[name] = agent.start_session(
+        session=your_livekit_session,
+        metadata={"agent_name": name, "test_scenario": "customer_inquiry"}
+    )
+
+# Track consistent metrics across agents
+for name, session_id in sessions.items():
+    async def whispey_shutdown():
+        await agents[name].export(session_id)
+    ctx.add_shutdown_callback(whispey_shutdown)
+    await your_livekit_session.start(...)
+
+# Export all sessions for comparison
+for name, session_id in sessions.items():
+    await agents[name].export(session_id)
+```
+
+## Bug Reporting Integration
+
+Enable automatic bug detection and reporting in your conversations.
+
+```python
+# Initialize with bug reporting
+whispey = LivekitObserve(
+    agent_id="bug-reporting-004",
+    apikey="your-api-key",
+    bug_reports_enable=True,
+    bug_reports_config={
+        "bug_start_command": ["report issue", "there's a problem", "bug report"],
+        "bug_end_command": ["issue resolved", "problem fixed", "bug resolved"],
+        "response": "Please describe the issue.",
+        "collection_prompt": "Got it, anything else?"
+    }
+)
+
+session_id = whispey.start_session(session=your_livekit_session)
+
+async def whispey_shutdown():
+    await whispey.export(session_id)
+ctx.add_shutdown_callback(whispey_shutdown)
+await session.start(...)
+```
+
+## OpenTelemetry Integration
+
+Enable detailed telemetry collection for advanced monitoring.
+
+```python
+# Initialize with OpenTelemetry
+whispey = LivekitObserve(
+    agent_id="otel-enabled-005",
+    apikey="your-api-key",
+    enable_otel=True
+)
+
+session_id = whispey.start_session(session=your_livekit_session)
+
+async def whispey_shutdown():
+    await whispey.export(session_id)
+ctx.add_shutdown_callback(whispey_shutdown)
+await session.start(...)
+```
+
+## Dashboard Integration
+
+Integrate Whispey analytics with your existing dashboard and reporting systems.
+
+```python
+# Initialize for dashboard integration
+whispey = LivekitObserve(
+    agent_id="dashboard-integration-006",
+    apikey="your-api-key"
+)
+
+session_id = whispey.start_session(
+    session=your_livekit_session,
+    metadata={
+        "dashboard_id": "main_dashboard",
+        "reporting_frequency": "real_time"
+    }
+)
+
+async def whispey_shutdown():
+    await whispey.export(session_id)
+ctx.add_shutdown_callback(whispey_shutdown)
+result = await session.start(...)
+
+# Send to dashboard API
+if result.get("success"):
+    dashboard_data = {
+        "session_id": session_id,
+        "metrics": result.get("data", {}),
+        "timestamp": datetime.now().isoformat()
+    }
+    # Send to your dashboard API
+    await send_to_dashboard(dashboard_data)
+```
+
+## Best Practices
+
+### Event Tracking
+- Use consistent event names across all agents
+- Include relevant metadata with each event
+- Track both user actions and system responses
+- Monitor error rates and failure points
+
+### Metrics Collection
+- Focus on actionable metrics that drive improvements
+- Track both quantitative (time, cost) and qualitative (satisfaction) metrics
+- Set up alerts for performance thresholds
+- Regular analysis of trends and patterns
+
+### Privacy and Compliance
+- Ensure customer data is handled according to privacy regulations
+- Implement data retention policies
+- Use anonymized data for analytics where possible
+- Regular security audits of data handling
+
+### Performance Optimization
+- Monitor response times and optimize slow operations
+- Track token usage to manage costs effectively
+- Analyze conversation patterns to improve agent responses
+- Regular review of analytics to identify improvement opportunities
+
+## More Examples
+
+For additional examples and advanced use cases, visit our [GitHub Examples Repository](https://github.com/PYPE-AI-MAIN/whispey-examples).
