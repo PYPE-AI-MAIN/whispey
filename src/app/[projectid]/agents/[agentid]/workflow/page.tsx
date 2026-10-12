@@ -140,6 +140,9 @@ function WorkflowPageInner() {
 
   const [variablesOpen, setVariablesOpen] = useState(false)
   const [rulesOpen, setRulesOpen] = useState(false)
+  const [issuesOpen, setIssuesOpen] = useState(false)
+  const [voiceChecked, setVoiceChecked] = useState(false)
+  const [tested, setTested] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -217,9 +220,9 @@ function WorkflowPageInner() {
   const handleDeploy = async (): Promise<boolean> => {
     if (!workflow || !backendAgentName) return false
     if (hasErrors(lintIssues)) {
-      const errors = lintIssues.filter((i) => i.severity === 'error')
-      const errorList = errors.map((e) => `• ${e.message}`).join('\n')
-      toast.error(`Fix ${errorCount} error(s):\n${errorList}`, { duration: 6000 })
+      // The list opens next to the button: a long multi-line toast ran its lines together.
+      setIssuesOpen(true)
+      toast.error(`Fix ${errorCount} ${errorCount === 1 ? 'problem' : 'problems'} before deploying`)
       return false
     }
     setDeploying(true)
@@ -293,6 +296,8 @@ function WorkflowPageInner() {
       <WorkflowHeader
         name={agentRow?.name || 'Workflow'}
         onBack={() => router.push(`/${projectId}/agents/${agentId}`)}
+        issuesOpen={issuesOpen}
+        onIssuesOpenChange={setIssuesOpen}
         isDirty={isDirty}
         chatOpen={chatOpen}
         onToggleChat={() => setChatOpen((v) => !v)}
@@ -302,7 +307,7 @@ function WorkflowPageInner() {
         rulesCount={workflow?.globalRules?.length ?? 0}
         knowledgeHref={`/${projectId}/agents/${agentId}/knowledge`}
         canTest={agentLifecycle.status.status === 'running'}
-        onTest={() => setTalkOpen(true)}
+        onTest={() => { setTalkOpen(true); setTested(true) }}
         onValidate={handleValidate}
         validating={saving}
         onPaste={() => setImportOpen(true)}
@@ -313,7 +318,20 @@ function WorkflowPageInner() {
       />
 
       <div className="flex-1 flex min-h-0 relative">
-        <CanvasHintBanner />
+        <CanvasHintBanner
+          onAskPi={() => setChatOpen(true)}
+          onShowIssues={() => setIssuesOpen(true)}
+          onOpenAgent={() => { setSettingsOpen(true); setVoiceChecked(true) }}
+          onOpenKnowledge={() => globalThis.open(`/${projectId}/agents/${agentId}/knowledge`, '_blank', 'noopener,noreferrer')}
+          onTest={() => {
+            if (agentLifecycle.status.status !== 'running') return toast('Deploy first, then you can test it')
+            setTalkOpen(true)
+            setTested(true)
+          }}
+          deployed={!isDirty && agentLifecycle.status.status === 'running'}
+          tested={tested}
+          voiceChecked={voiceChecked}
+        />
         <ReactFlowProvider>
           <WorkflowPalette />
           <WorkflowCanvas />

@@ -11,6 +11,8 @@ import { useWorkflowStore } from '@/stores/workflowStore'
 type HeaderProps = Readonly<{
   name: string
   onBack: () => void
+  issuesOpen: boolean
+  onIssuesOpenChange: (open: boolean) => void
   isDirty: boolean
   chatOpen: boolean
   onToggleChat: () => void
@@ -31,14 +33,14 @@ type HeaderProps = Readonly<{
 }>
 
 /** Problems with the flow, one click away from the step they are about. */
-function Issues() {
+function Issues({ open, onOpenChange }: Readonly<{ open: boolean; onOpenChange: (open: boolean) => void }>) {
   const issues = useWorkflowStore((s) => s.lintIssues)
   const setSelectedNode = useWorkflowStore((s) => s.setSelectedNode)
   if (!issues.length) return null
   const errors = issues.filter((i) => i.severity === 'error').length
   const label = errors ? `${errors} to fix` : `${issues.length} to check`
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
         <button
           type="button"
@@ -84,7 +86,7 @@ export function WorkflowHeader(p: HeaderProps) {
 
       <div className="flex-1" />
 
-      <Issues />
+      <Issues open={p.issuesOpen} onOpenChange={p.onIssuesOpenChange} />
 
       <Button
         variant={p.chatOpen ? 'default' : 'outline'}
