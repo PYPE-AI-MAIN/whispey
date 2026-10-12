@@ -476,21 +476,18 @@ function Campaigns() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex flex-col h-screen bg-background">
 
       {/* ── Header ── */}
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 flex-shrink-0">
+      <div className="px-6 pt-6 pb-4 bg-background flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
-              <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            </div>
             <div>
-              <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">Campaigns</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Campaigns</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
                 Manage and monitor your calling campaigns
                 {pagination && (
-                  <span className="ml-1 text-gray-400 dark:text-gray-500">
+                  <span className="ml-1">
                     · {pagination.total} total
                   </span>
                 )}
@@ -521,7 +518,7 @@ function Campaigns() {
       </div>
 
       {/* ── Search ── */}
-      <div className="px-4 py-2.5 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
+      <div className="px-6 pb-4 bg-background flex-shrink-0">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
           <Input
@@ -550,7 +547,7 @@ function Campaigns() {
       )}
 
       {/* ── Content ── */}
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-auto px-6 pb-6">
 
         {/* Initial loading skeletons / empty states / campaign list */}
         {renderCampaignsContent()}

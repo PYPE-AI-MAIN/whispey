@@ -4,6 +4,21 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Neutral greys tinted to the same navy as the theme tokens, so pages that use gray-* directly match. */
+@theme {
+  --color-gray-50: oklch(0.985 0.008 255);
+  --color-gray-100: oklch(0.965 0.015 258);
+  --color-gray-200: oklch(0.925 0.022 260);
+  --color-gray-300: oklch(0.86 0.03 260);
+  --color-gray-400: oklch(0.7 0.04 258);
+  --color-gray-500: oklch(0.56 0.045 258);
+  --color-gray-600: oklch(0.45 0.045 260);
+  --color-gray-700: oklch(0.31 0.045 262);
+  --color-gray-800: oklch(0.21 0.04 262);
+  --color-gray-900: oklch(0.16 0.033 262);
+  --color-gray-950: oklch(0.13 0.03 262);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
