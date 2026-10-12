@@ -38,7 +38,7 @@ export function CallList({ calls, openId, role, hasSummaryField, onOpen, onBack,
   }, [openId])
 
   return (
-    <section className="flex min-h-0 min-w-0 flex-col border-r border-[var(--cl-border)] bg-[var(--cl-panel)]">
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col border-r border-[var(--cl-border)] bg-[var(--cl-panel)]">
       <div className="flex flex-none items-center justify-between border-b border-[var(--cl-border)] px-2.5 py-[7px]">
         <button
           type="button"

@@ -81,7 +81,7 @@ export function CallInspector(props: Readonly<CallInspectorProps>) {
           <ChevronsRight className="h-4 w-4" />
         </button>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
         {tab === "data" ? <CallDataGroups {...props} showEmpty={showEmpty} /> : <ToolsList tools={tools} {...props} />}
       </div>
     </section>
@@ -248,6 +248,47 @@ function Group({
   )
 }
 
+const CLAMP_LINES = 4
+
+/** A value cut to a few lines, with "Show more" when it's longer than that. */
+function ClampedText({ text }: Readonly<{ text: string }>) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const [expanded, setExpanded] = useState(false)
+  const [overflows, setOverflows] = useState(false)
+
+  // re-measured when the pane is resized, since that changes where lines wrap
+  useEffect(() => {
+    const el = ref.current
+    if (!el || expanded) return
+    const measure = () => setOverflows(el.scrollHeight > el.clientHeight + 1)
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [text, expanded])
+
+  return (
+    <>
+      <span
+        ref={ref}
+        className="block whitespace-pre-wrap [overflow-wrap:anywhere]"
+        style={expanded ? undefined : { display: "-webkit-box", WebkitLineClamp: CLAMP_LINES, WebkitBoxOrient: "vertical", overflow: "hidden" }}
+      >
+        {text}
+      </span>
+      {(overflows || expanded) && (
+        <button
+          type="button"
+          onClick={() => setExpanded((e) => !e)}
+          className="mt-0.5 text-[12px] font-medium text-[var(--cl-accent)] hover:underline"
+        >
+          {expanded ? "Show less" : "Show more"}
+        </button>
+      )}
+    </>
+  )
+}
+
 function KeyValues({ rows, mask }: Readonly<{ rows: Array<[string, unknown]>; mask: (value: string) => string }>) {
   if (rows.length === 0) return <p className="py-1 text-[12.5px] italic text-[var(--cl-text3)]">Nothing here</p>
   return (
@@ -255,10 +296,12 @@ function KeyValues({ rows, mask }: Readonly<{ rows: Array<[string, unknown]>; ma
       {rows.map(([key, value]) => {
         const text = mask(formatValue(value))
         return (
-          <div key={key} className="group/kv grid grid-cols-[48%_1fr] gap-2.5 border-t border-dashed border-[var(--cl-border)] py-1.5 text-[13.5px] first:border-t-0">
+          // minmax(0, …): a long unbroken value (a phone number, JSON) wraps
+          // instead of widening the pane
+          <div key={key} className="group/kv grid grid-cols-[48%_minmax(0,1fr)] gap-2.5 border-t border-dashed border-[var(--cl-border)] py-1.5 text-[13.5px] first:border-t-0">
             <span className="truncate font-mono text-[12.5px] text-[var(--cl-text3)]" title={key}>{key}</span>
-            <span className={cn("relative break-words pr-6", text ? "text-[var(--cl-text)]" : "italic text-[var(--cl-text3)]")}>
-              {text || "empty"}
+            <span className={cn("relative min-w-0 pr-6", text ? "text-[var(--cl-text)]" : "italic text-[var(--cl-text3)]")}>
+              {text ? <ClampedText text={text} /> : "empty"}
               {text && (
                 <span className="absolute right-0 top-0 opacity-0 group-hover/kv:opacity-100">
                   <CopyButton text={text} label={`Copy ${key}`} />
