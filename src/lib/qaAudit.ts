@@ -65,6 +65,16 @@ export function sheetUrlError(url: unknown): string | null {
   return null
 }
 
+// Plain string checks, not a regex: no backtracking, so no ReDoS on long input.
+function looksLikeEmail(email: string): boolean {
+  const at = email.indexOf('@')
+  const domain = email.slice(at + 1)
+  return (
+    email.length <= 254 && at > 0 && at === email.lastIndexOf('@') && !/\s/.test(email) &&
+    domain.includes('.') && !domain.startsWith('.') && !domain.endsWith('.')
+  )
+}
+
 export type TeamMember = { name: string; email: string; role: 'qa' | 'prompt_engineer'; slack_id: string | null }
 
 /** A roster entry: name, email, role, and an optional Slack member ID (U0123ABCD). */
@@ -73,7 +83,7 @@ export function teamMemberError(body: Record<string, unknown>): { error: string 
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
   const slack = typeof body.slack_id === 'string' ? body.slack_id.trim() : ''
   if (!name) return { error: 'Name is required' }
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { error: 'Enter a valid email' }
+  if (!looksLikeEmail(email)) return { error: 'Enter a valid email' }
   if (body.role !== 'qa' && body.role !== 'prompt_engineer') return { error: 'Role must be QA or prompt engineer' }
   if (slack && !/^[UW][A-Z0-9]{6,}$/.test(slack)) return { error: 'Slack ID looks like U0123ABCD (profile > More > Copy member ID)' }
   return { member: { name, email, role: body.role, slack_id: slack || null } }
