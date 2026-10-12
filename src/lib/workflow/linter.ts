@@ -89,6 +89,8 @@ function lintStart(wf: Workflow, idSet: Set<string>, nodeMap: Map<string, Node>)
   if (NONRUNTIME_NODE_TYPES.has(nodeMap.get(wf.start)!.type))
     return [{ severity: 'error', message: `start '${wf.start}' cannot be a note node`, nodeId: wf.start }]
   const type = nodeMap.get(wf.start)!.type
+  if (type === 'knowledge')
+    return [{ severity: 'error', message: `start '${wf.start}' is a knowledge step — the call would open mid-answer. Set the greeting conversation step as the start.`, nodeId: wf.start }]
   if (!['conversation', 'extract_variable', 'subagent', 'logic_split'].includes(type))
     return [{ severity: 'warning', message: `the call starts at a ${type} step ('${wf.start}'), not a conversation — usually the greeting step should be the start`, nodeId: wf.start }]
   return []

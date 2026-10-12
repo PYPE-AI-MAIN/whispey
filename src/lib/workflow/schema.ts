@@ -84,6 +84,8 @@ export const agentConfig = z.object({
   vad: vadConfig.nullish(),
   turnDetection: turnDetectionConfig.nullish(),
   languages: z.array(languageSwitchTool).default([]),
+  // Answer from the knowledge base on any step, with no Knowledge node in the flow.
+  knowledge: z.object({ enabled: z.boolean().default(false), topK: z.number().int().default(4), knowledgeBase: z.string().nullish() }).default({}),
   advanced: z.record(z.any()).default({}),
 })
 
@@ -112,7 +114,8 @@ export const variableDef = z.object({
 
 // ── nodes ────────────────────────────────────────────────────────────────
 const position = z.object({ x: z.number().default(0), y: z.number().default(0) })
-const nodeBase = { id: z.string(), name: z.string().nullish(), position: position.nullish() }
+// `stage` groups steps by phase of the call (Greeting, Pitch, ...); it only organises the editor.
+const nodeBase = { id: z.string(), name: z.string().nullish(), stage: z.string().nullish(), position: position.nullish() }
 
 export const conversationNode = z.object({
   ...nodeBase,

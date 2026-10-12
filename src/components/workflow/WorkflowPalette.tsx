@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
+import { useWorkflowStore } from '@/stores/workflowStore'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { NodeType } from '@/lib/workflow/schema'
 import { NODE_REGISTRY, type NodeMeta } from './nodeRegistry'
@@ -41,24 +42,96 @@ function PaletteItem({ type, meta }: Readonly<{ type: NodeType; meta: NodeMeta }
   )
 }
 
+export const FOCUS_NODE_EVENT = 'whispey-workflow-focus-node'
+
+/** The flow as a list: steps grouped by stage, in call order, click to jump to one on the canvas. */
+function Outline() {
+  const workflow = useWorkflowStore((s) => s.workflow)
+  const selectedNodeId = useWorkflowStore((s) => s.selectedNodeId)
+  const setSelectedNode = useWorkflowStore((s) => s.setSelectedNode)
+  if (!workflow) return null
+
+  const steps = workflow.nodes
+    .filter((n) => n.type !== 'note')
+    .sort((a, b) => (a.position?.x ?? 0) - (b.position?.x ?? 0) || (a.position?.y ?? 0) - (b.position?.y ?? 0))
+  const groups = new Map<string, typeof steps>()
+  for (const n of steps) {
+    const key = n.stage?.trim() || (n.type === 'ending' ? 'Endings' : 'Steps')
+    groups.set(key, [...(groups.get(key) ?? []), n])
+  }
+
+  return (
+    <div className="space-y-4 p-3">
+      {[...groups.entries()].map(([stage, nodes]) => (
+        <div key={stage}>
+          <div className="mb-1 px-1 text-xs font-medium text-gray-500 dark:text-gray-400">{stage} ({nodes.length})</div>
+          <ul className="space-y-0.5">
+            {nodes.map((n) => {
+              const meta = NODE_REGISTRY[n.type]
+              return (
+                <li key={n.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedNode(n.id)
+                      globalThis.dispatchEvent(new CustomEvent(FOCUS_NODE_EVENT, { detail: n.id }))
+                    }}
+                    className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-accent ${
+                      selectedNodeId === n.id ? 'bg-accent text-foreground' : 'text-gray-700 dark:text-gray-300'
+                    }`}
+                  >
+                    <meta.icon className="h-3.5 w-3.5 shrink-0" style={{ color: meta.color }} />
+                    <span className="truncate">{n.name || meta.label}</span>
+                    {n.id === workflow.start && (
+                      <span className="ml-auto rounded-full bg-emerald-500 px-1.5 text-[10px] font-semibold uppercase text-white">Start</span>
+                    )}
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function WorkflowPalette() {
+  const [tab, setTab] = useState<'add' | 'outline'>('add')
   const [more, setMore] = useState(false)
+  const tabBtn = (id: 'add' | 'outline', label: string) => (
+    <button
+      type="button"
+      onClick={() => setTab(id)}
+      className={`flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${tab === id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+    >
+      {label}
+    </button>
+  )
   return (
     <div className="w-56 shrink-0 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-y-auto">
-      <div className="p-3 space-y-1">
-        <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 px-1">Drag onto the canvas</div>
-        {ALL.filter(([t]) => CORE.includes(t)).map(([t, m]) => <PaletteItem key={t} type={t} meta={m} />)}
-        <button
-          type="button"
-          onClick={() => setMore((v) => !v)}
-          aria-expanded={more}
-          className="flex w-full items-center justify-between px-1 pt-3 pb-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-foreground"
-        >
-          More nodes
-          <ChevronDown className={`h-3.5 w-3.5 transition-transform ${more ? 'rotate-180' : ''}`} />
-        </button>
-        {more && ALL.filter(([t]) => !CORE.includes(t)).map(([t, m]) => <PaletteItem key={t} type={t} meta={m} />)}
+      <div className="m-3 mb-0 flex rounded-lg border border-border bg-muted/60 p-0.5">
+        {tabBtn('add', 'Add')}
+        {tabBtn('outline', 'Outline')}
       </div>
+      {tab === 'outline' ? (
+        <Outline />
+      ) : (
+        <div className="p-3 space-y-1">
+          <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5 px-1">Drag onto the canvas</div>
+          {ALL.filter(([t]) => CORE.includes(t)).map(([t, m]) => <PaletteItem key={t} type={t} meta={m} />)}
+          <button
+            type="button"
+            onClick={() => setMore((v) => !v)}
+            aria-expanded={more}
+            className="flex w-full items-center justify-between px-1 pt-3 pb-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-foreground"
+          >
+            More nodes
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${more ? 'rotate-180' : ''}`} />
+          </button>
+          {more && ALL.filter(([t]) => !CORE.includes(t)).map(([t, m]) => <PaletteItem key={t} type={t} meta={m} />)}
+        </div>
+      )}
     </div>
   )
 }

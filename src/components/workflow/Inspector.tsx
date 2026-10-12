@@ -498,6 +498,9 @@ export function Inspector() {
                 <Field label="Name">
                   <Input value={node.name ?? ''} onChange={(e) => updateNode(node.id, { name: e.target.value })} placeholder={node.type} />
                 </Field>
+                <Field label="Stage (optional, groups steps in the Outline)">
+                  <Input value={node.stage ?? ''} onChange={(e) => updateNode(node.id, { stage: e.target.value })} placeholder="e.g. Greeting, Pitch, Close" />
+                </Field>
                 {/* key=node.id: JsonField's internal text state must reset when
                     switching selected nodes, or it shows the previous node's JSON. */}
                 <NodeFields key={node.id} node={node} patch={(p) => updateNode(node.id, p)} workflow={workflow} />

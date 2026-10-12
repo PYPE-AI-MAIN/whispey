@@ -22,6 +22,7 @@ import { LayoutGrid, Locate, Play, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import { createDefaultNode, type NodeType } from '@/lib/workflow/schema'
+import { FOCUS_NODE_EVENT } from './WorkflowPalette'
 import { computeAutoLayout } from '@/lib/workflow/autoLayout'
 import { LoaderFive } from '@/components/ui/loader-five'
 import { FlowNode } from './FlowNode'
@@ -205,6 +206,13 @@ export function WorkflowCanvas() {
     const t = setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50)
     return () => clearTimeout(t)
   }, [replaceCount, fitView])
+
+  // Outline clicks ask the canvas to bring that step into view.
+  React.useEffect(() => {
+    const onFocus = (e: Event) => fitView({ nodes: [{ id: (e as CustomEvent<string>).detail }], padding: 1.5, maxZoom: 1, duration: 300 })
+    globalThis.addEventListener(FOCUS_NODE_EVENT, onFocus)
+    return () => globalThis.removeEventListener(FOCUS_NODE_EVENT, onFocus)
+  }, [fitView])
 
   const handleAutoArrange = useCallback(() => {
     if (!workflow) return

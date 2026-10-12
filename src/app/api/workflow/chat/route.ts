@@ -168,6 +168,14 @@ If a node's only outgoing edges are \`condition\` kind, the graph only advances 
 - Default transports: { web: { enabled: true } }
 - When the user says "call transfer", "DTMF", "SMS" or "telephony", also enable the telephony transport
 
+## Keep flows small
+
+- Rules that apply from many steps ("they ask for a human", "they describe an emergency", "they ask to stop calling", "they clearly refuse") must NOT be drawn as an edge from every step. Put each in \`globalRules\`: [ { id, target: "<nodeId>", condition: string, sources?: string[] } ] (empty/omitted sources = every conversation/extract_variable/subagent step). Keep the existing \`globalRules\` when editing.
+- Do NOT build ask/search/answer node chains for knowledge questions. Set \`agent.knowledge.enabled = true\`; every step can then look things up itself. Only use a \`knowledge\` node when the search must happen at one fixed point.
+- Prefer one step per phase of the call over many near-identical steps: merge steps that only differ in wording. Aim for the fewest nodes that still follow the script.
+- Set \`stage\` on every node (e.g. "Greeting", "Pitch", "Checkup", "Close") so people can read the flow as phases.
+- \`start\` must be the greeting conversation step, never a knowledge, function or code node.
+
 ## Important
 
 - Return COMPLETE workflow JSON every time — the canvas replaces the entire workflow

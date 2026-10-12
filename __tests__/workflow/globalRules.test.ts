@@ -36,3 +36,23 @@ describe('global rules', () => {
     expect(out.edges.map((e) => e.source).sort()).toEqual(['a', 'b', 'c', 'd'])
   })
 })
+
+import { lintWorkflow } from '@/lib/workflow/linter'
+import { safeParseWorkflow } from '@/lib/workflow/schema'
+
+describe('start node lint', () => {
+  const wf = (startType: string) =>
+    safeParseWorkflow({
+      start: 'a',
+      transports: { web: { enabled: true } },
+      nodes: [{ id: 'a', type: startType }, { id: 'e', type: 'ending' }],
+      edges: [{ id: 'x', source: 'a', target: 'e', kind: 'always' }],
+    }).data!
+
+  it('errors when the call would start at a knowledge step', () => {
+    expect(lintWorkflow(wf('knowledge')).some((i) => i.severity === 'error' && i.message.includes('knowledge step'))).toBe(true)
+  })
+  it('does not error for a conversation start', () => {
+    expect(lintWorkflow(wf('conversation')).some((i) => i.message.includes('start'))).toBe(false)
+  })
+})

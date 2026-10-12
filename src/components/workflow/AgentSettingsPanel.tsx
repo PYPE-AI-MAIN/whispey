@@ -98,6 +98,20 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
             />
           </div>
 
+          <div className="flex items-start justify-between gap-3 rounded-lg border border-border p-3">
+            <div className="space-y-0.5">
+              <Label className="text-xs">Answer from the knowledge base</Label>
+              <p className="text-xs text-muted-foreground">
+                On any step the agent can look things up in the documents you uploaded, so you do not need Knowledge nodes in the flow.
+              </p>
+            </div>
+            <Switch
+              checked={agent.knowledge?.enabled ?? false}
+              onCheckedChange={(enabled) => updateAgentConfig({ knowledge: { ...(agent.knowledge ?? { topK: 4 }), enabled } })}
+              aria-label="Answer from the knowledge base"
+            />
+          </div>
+
           {/* LLM */}
           <div className="space-y-1">
             <Label className="text-xs">LLM</Label>
