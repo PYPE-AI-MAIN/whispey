@@ -36,6 +36,9 @@ type HeaderProps = Readonly<{
 function Issues({ open, onOpenChange }: Readonly<{ open: boolean; onOpenChange: (open: boolean) => void }>) {
   const issues = useWorkflowStore((s) => s.lintIssues)
   const setSelectedNode = useWorkflowStore((s) => s.setSelectedNode)
+  const setStart = useWorkflowStore((s) => s.setStart)
+  const nodes = useWorkflowStore((s) => s.workflow?.nodes)
+  const stepName = (id: string) => nodes?.find((n) => n.id === id)?.name || id
   if (!issues.length) return null
   const errors = issues.filter((i) => i.severity === 'error').length
   const label = errors ? `${errors} to fix` : `${issues.length} to check`
@@ -67,6 +70,15 @@ function Issues({ open, onOpenChange }: Readonly<{ open: boolean; onOpenChange: 
                 </span>
                 {i.message}
               </button>
+              {i.fixStartTo && (
+                <button
+                  type="button"
+                  onClick={() => setStart(i.fixStartTo!)}
+                  className="mx-2 mb-1 rounded-md border border-border bg-background px-2 py-1 text-xs font-medium text-foreground hover:bg-accent"
+                >
+                  Start with &ldquo;{stepName(i.fixStartTo)}&rdquo; instead
+                </button>
+              )}
             </li>
           ))}
         </ul>

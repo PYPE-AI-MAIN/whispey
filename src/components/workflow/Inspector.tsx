@@ -35,7 +35,7 @@ function OutboundTrunkHint({ workflow }: Readonly<{ workflow: Workflow | null }>
 /** Caller turns a speaking node may take without finding a way forward before it moves to its catch-all edge. */
 function MaxTurnsField({ value, onChange }: Readonly<{ value?: number | null; onChange: (v: number | undefined) => void }>) {
   return (
-    <Field label="Max caller turns before moving on (default 8)">
+    <Field label="Give up after this many replies (default 8)" hint="If the caller never gives an answer that moves the call on, the agent takes the default next step.">
       <Input
         type="number"
         min={1}
@@ -76,11 +76,12 @@ function JsonField({ label, value, onChange }: Readonly<{ label: string; value: 
   )
 }
 
-function Field({ label, children }: Readonly<{ label: string; children: React.ReactNode }>) {
+function Field({ label, hint, children }: Readonly<{ label: string; hint?: string; children: React.ReactNode }>) {
   return (
     <div className="space-y-1.5">
       <Label className="text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</Label>
       {children}
+      {hint && <p className="text-[11px] text-gray-500 dark:text-gray-400">{hint}</p>}
     </div>
   )
 }
@@ -92,10 +93,10 @@ function ToolsField({
 }: Readonly<{ workflow: Workflow | null; functions: string[]; onChange: (fns: string[]) => void }>) {
   const functionNodes = (workflow?.nodes ?? []).filter((n) => n.type === 'function')
   return (
-    <Field label="Tools this step can call">
+    <Field label="Actions the agent can take here">
       {functionNodes.length === 0 ? (
         <p className="text-[11px] text-gray-500 dark:text-gray-400">
-          No Function nodes in this workflow yet — add one, then check it here to make it callable.
+          No "Call an API" steps yet. Add one from More nodes, then tick it here so the agent can use it during this step.
         </p>
       ) : (
         <div className="space-y-1.5">
@@ -125,25 +126,25 @@ function NodeFields({
     case 'conversation':
       return (
         <>
-          <Field label="Prompt">
+          <Field label="What the agent should do here" hint="Write it like instructions to a new colleague: what to say, what to find out, when to move on.">
             <Textarea value={node.prompt ?? ''} onChange={(e) => patch({ prompt: e.target.value } as any)} className="min-h-[120px]" />
           </Field>
-          <Field label="Static text (optional — skips the LLM)">
+          <Field label="Exact words to say (optional)" hint="If you fill this in, the agent says exactly this and does not improvise.">
             <Textarea value={node.staticText ?? ''} onChange={(e) => patch({ staticText: e.target.value } as any)} />
           </Field>
-          <div className="flex items-center justify-between">
-            <Label className="text-xs">Skip user response</Label>
+          <div className="flex items-center justify-between gap-3">
+            <Label className="text-xs">Move on without waiting for a reply</Label>
             <Switch checked={!!node.skipUserResponse} onCheckedChange={(v) => patch({ skipUserResponse: v } as any)} />
           </div>
-          <div className="flex items-center justify-between">
-            <Label className="text-xs">Block interruptions</Label>
+          <div className="flex items-center justify-between gap-3">
+            <Label className="text-xs">Do not let the caller interrupt</Label>
             <Switch checked={!!node.blockInterruptions} onCheckedChange={(v) => patch({ blockInterruptions: v } as any)} />
           </div>
           <MaxTurnsField value={node.maxTurns} onChange={(v) => patch({ maxTurns: v } as any)} />
           <ToolsField workflow={workflow} functions={node.functions ?? []} onChange={(fns) => patch({ functions: fns } as any)} />
-          <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
-            <Label className="text-xs text-gray-500 dark:text-gray-400">Per-node overrides (optional)</Label>
-            <Field label="LLM override">
+          <details className="space-y-2 border-t border-gray-100 pt-2 dark:border-gray-800">
+            <summary className="cursor-pointer text-xs text-gray-500 dark:text-gray-400">Different voice or model for this step only (optional)</summary>
+            <Field label="Model">
               <ModelSelector
                 selectedProvider={node.model?.name ?? ''}
                 selectedModel={node.model?.model ?? ''}
@@ -153,7 +154,7 @@ function NodeFields({
                 onTemperatureChange={(temperature) => patch({ model: { ...node.model, name: node.model?.name || 'openai', temperature } } as any)}
               />
             </Field>
-            <Field label="Voice override">
+            <Field label="Voice">
               <SelectTTS
                 selectedVoice={node.voice?.voice_id ?? ''}
                 initialProvider={node.voice?.name ?? undefined}
@@ -164,32 +165,32 @@ function NodeFields({
                 }
               />
             </Field>
-          </div>
+          </details>
         </>
       )
     case 'extract_variable': {
       const extractions = node.extractions ?? []
       return (
         <>
-          <Field label="Prompt">
+          <Field label="What to ask" hint="The agent asks for these details, then moves on once it has all of them.">
             <Textarea value={node.prompt ?? ''} onChange={(e) => patch({ prompt: e.target.value } as any)} />
           </Field>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs">Extractions</Label>
+              <Label className="text-xs">Details to collect</Label>
               <Button
                 size="sm"
                 variant="outline"
                 className="h-7 text-[11px]"
                 onClick={() => patch({ extractions: [...extractions, { variable: '', type: 'string' }] } as any)}
               >
-                + Add
+                + Add detail
               </Button>
             </div>
             {extractions.map((ex, i) => (
               <div key={`${ex.variable}-${i}`} className="flex gap-1 items-start">
                 <Input
-                  placeholder="variable"
+                  placeholder="name, e.g. phone_number"
                   value={ex.variable}
                   onChange={(e) => {
                     const next = [...extractions]
@@ -199,7 +200,7 @@ function NodeFields({
                   className="h-7 text-xs"
                 />
                 <Input
-                  placeholder="description"
+                  placeholder="what to listen for"
                   value={ex.description ?? ''}
                   onChange={(e) => {
                     const next = [...extractions]
@@ -226,7 +227,7 @@ function NodeFields({
     case 'logic_split':
       return (
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          No fields here — add outgoing edges of kind &quot;condition&quot; or &quot;logic&quot; from the edge inspector to define branches.
+          This step decides silently, with no speech. Click a connection leaving it and choose &quot;When a saved value matches&quot; to set each branch, for example age &gt; 18.
         </p>
       )
     case 'function':
@@ -262,10 +263,10 @@ function NodeFields({
     case 'knowledge':
       return (
         <>
-          <p className="text-xs text-muted-foreground">Searches the documents uploaded under Knowledge base in the top bar.</p>
-          <Field label="Query"><Input value={node.query ?? ''} onChange={(e) => patch({ query: e.target.value } as any)} placeholder="{{var}} or blank = last user message" /></Field>
-          <Field label="Knowledge base agent ID (blank = this agent)"><Input value={node.knowledgeBase ?? ''} onChange={(e) => patch({ knowledgeBase: e.target.value } as any)} placeholder="this agent" /></Field>
-          <Field label="Top K"><Input type="number" value={node.topK} onChange={(e) => patch({ topK: Number(e.target.value) } as any)} /></Field>
+          <p className="text-xs text-muted-foreground">Looks things up in the documents you uploaded (Setup menu, Knowledge base). Most flows do not need this step: turn on &quot;Answer from the knowledge base&quot; in Voice, model and language instead.</p>
+          <Field label="What to search for" hint="Leave blank to search for what the caller just said."><Input value={node.query ?? ''} onChange={(e) => patch({ query: e.target.value } as any)} placeholder="{{var}} or blank = last user message" /></Field>
+          <Field label="Use another agent's documents (leave blank for this agent)"><Input value={node.knowledgeBase ?? ''} onChange={(e) => patch({ knowledgeBase: e.target.value } as any)} placeholder="this agent" /></Field>
+          <Field label="How many results to use"><Input type="number" value={node.topK} onChange={(e) => patch({ topK: Number(e.target.value) } as any)} /></Field>
           <Field label="Save result to variable"><Input value={node.saveAs ?? ''} onChange={(e) => patch({ saveAs: e.target.value } as any)} /></Field>
         </>
       )
@@ -330,14 +331,14 @@ function NodeFields({
     case 'subagent':
       return (
         <>
-          <Field label="Prompt">
+          <Field label="Who this is and what to do" hint="Same as a conversation step, but with its own personality, voice and instructions.">
             <Textarea value={node.prompt} onChange={(e) => patch({ prompt: e.target.value } as any)} className="min-h-[140px]" />
           </Field>
           <MaxTurnsField value={node.maxTurns} onChange={(v) => patch({ maxTurns: v } as any)} />
           <ToolsField workflow={workflow} functions={node.functions ?? []} onChange={(fns) => patch({ functions: fns } as any)} />
-          <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
-            <Label className="text-xs text-gray-500 dark:text-gray-400">Per-node overrides (optional)</Label>
-            <Field label="LLM override">
+          <details className="space-y-2 border-t border-gray-100 pt-2 dark:border-gray-800">
+            <summary className="cursor-pointer text-xs text-gray-500 dark:text-gray-400">Different voice or model for this step only (optional)</summary>
+            <Field label="Model">
               <ModelSelector
                 selectedProvider={node.model?.name ?? ''}
                 selectedModel={node.model?.model ?? ''}
@@ -347,7 +348,7 @@ function NodeFields({
                 onTemperatureChange={(temperature) => patch({ model: { ...node.model, name: node.model?.name || 'openai', temperature } } as any)}
               />
             </Field>
-            <Field label="Voice override">
+            <Field label="Voice">
               <SelectTTS
                 selectedVoice={node.voice?.voice_id ?? ''}
                 initialProvider={node.voice?.name ?? undefined}
@@ -358,7 +359,7 @@ function NodeFields({
                 }
               />
             </Field>
-          </div>
+          </details>
         </>
       )
     case 'mcp':
@@ -390,7 +391,7 @@ function NodeFields({
       )
     case 'ending':
       return (
-        <Field label="Farewell message">
+        <Field label="Last thing to say (optional)">
           <Textarea value={node.message ?? ''} onChange={(e) => patch({ message: e.target.value } as any)} />
         </Field>
       )
@@ -485,7 +486,7 @@ export function Inspector() {
                 {NODE_REGISTRY[node.type]?.label}
                 {node.id === workflow?.start && <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />}
               </SheetTitle>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Step settings</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{NODE_REGISTRY[node.type]?.useCase}</p>
             </SheetHeader>
             <div className="p-4">
               <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/[0.03] p-4 space-y-4">

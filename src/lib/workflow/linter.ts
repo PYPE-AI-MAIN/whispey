@@ -10,6 +10,8 @@ import { LLM_NODE_TYPES, NONRUNTIME_NODE_TYPES, TELEPHONY_NODE_TYPES } from './s
 
 export type Severity = 'error' | 'warning'
 export interface LintIssue {
+  /** One-click repair the editor can offer next to the message. */
+  fixStartTo?: string
   severity: Severity
   message: string
   nodeId?: string
@@ -84,15 +86,23 @@ function lintIds(nodes: readonly Node[]): LintIssue[] {
   return issues
 }
 
+/** The step a call most likely should open on: a speaking step nothing else leads to, leftmost first. */
+function greetingCandidate(wf: Workflow): string | undefined {
+  const targeted = new Set(wf.edges.map((e) => e.target))
+  return wf.nodes
+    .filter((n) => (n.type === 'conversation' || n.type === 'subagent') && !targeted.has(n.id))
+    .sort((a, b) => (a.position?.x ?? 0) - (b.position?.x ?? 0) || (a.position?.y ?? 0) - (b.position?.y ?? 0))[0]?.id
+}
+
 function lintStart(wf: Workflow, idSet: Set<string>, nodeMap: Map<string, Node>): LintIssue[] {
   if (!idSet.has(wf.start)) return [{ severity: 'error', message: `start '${wf.start}' is not a node id` }]
   if (NONRUNTIME_NODE_TYPES.has(nodeMap.get(wf.start)!.type))
     return [{ severity: 'error', message: `start '${wf.start}' cannot be a note node`, nodeId: wf.start }]
   const type = nodeMap.get(wf.start)!.type
   if (type === 'knowledge')
-    return [{ severity: 'error', message: `start '${wf.start}' is a knowledge step — the call would open mid-answer. Set the greeting conversation step as the start.`, nodeId: wf.start }]
+    return [{ severity: 'error', message: `start '${wf.start}' is a knowledge step — the call would open mid-answer. Set the greeting conversation step as the start.`, nodeId: wf.start, fixStartTo: greetingCandidate(wf) }]
   if (!['conversation', 'extract_variable', 'subagent', 'logic_split'].includes(type))
-    return [{ severity: 'warning', message: `the call starts at a ${type} step ('${wf.start}'), not a conversation — usually the greeting step should be the start`, nodeId: wf.start }]
+    return [{ severity: 'warning', message: `the call starts at a ${type} step ('${wf.start}'), not a conversation — usually the greeting step should be the start`, nodeId: wf.start, fixStartTo: greetingCandidate(wf) }]
   return []
 }
 

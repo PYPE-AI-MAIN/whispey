@@ -56,3 +56,24 @@ describe('start node lint', () => {
     expect(lintWorkflow(wf('conversation')).some((i) => i.message.includes('start'))).toBe(false)
   })
 })
+
+describe('start fix suggestion', () => {
+  it('offers the leftmost speaking step nothing leads to', () => {
+    const w = safeParseWorkflow({
+      start: 'kb',
+      transports: { web: { enabled: true } },
+      nodes: [
+        { id: 'kb', type: 'knowledge' },
+        { id: 'late', type: 'conversation', position: { x: 400, y: 0 } },
+        { id: 'hello', type: 'conversation', position: { x: 0, y: 0 } },
+        { id: 'e', type: 'ending' },
+      ],
+      edges: [
+        { id: 'a', source: 'kb', target: 'late', kind: 'always' },
+        { id: 'b', source: 'late', target: 'e', kind: 'always' },
+        { id: 'c', source: 'hello', target: 'e', kind: 'always' },
+      ],
+    }).data!
+    expect(lintWorkflow(w).find((i) => i.fixStartTo)?.fixStartTo).toBe('hello')
+  })
+})
