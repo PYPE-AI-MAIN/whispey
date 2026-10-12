@@ -29,6 +29,7 @@ function WorkflowEdgeComponent({
   label,
   selected,
   animated,
+  data,
 }: EdgeProps) {
   // Zoomed out, a big flow's labels pile up into noise: show them when close in or selected.
   const zoom = useStore((s) => s.transform[2])
@@ -46,7 +47,7 @@ function WorkflowEdgeComponent({
   return (
     <>
       <BaseEdge id={id} path={edgePath} style={style} markerEnd={markerEnd} className={animated ? 'react-flow__edge-path-animated' : undefined} />
-      {label != null && label !== '' && (selected || zoom >= 0.6) && (
+      {label != null && label !== '' && !data?.dim && (selected || data?.focus || zoom >= 0.6) && (
         <EdgeLabelRenderer>
           <button
             type="button"
