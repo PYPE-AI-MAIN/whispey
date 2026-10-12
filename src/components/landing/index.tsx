@@ -99,7 +99,7 @@ export default function LandingPage() {
             Create voice agents and see how patients <span className="wl-em">engage.</span>
           </h1>
           <p className="wl-muted mx-auto mt-6 max-w-2xl text-lg leading-relaxed">
-            Whispey is the observability platform from Pype AI. Follow every call: what was said, how the patient responded, and what to fix.
+            Whispey is Pype AI's workspace for voice agents. Build them, run them, and review every call: what was said, how the patient responded, and what to fix.
           </p>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
             <Link href="/sign-in" className="wl-btn">Get started</Link>
