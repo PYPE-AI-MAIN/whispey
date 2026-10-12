@@ -24,7 +24,7 @@ const config = {
   },
   skipTrailingSlashRedirect: true,
   async redirects() {
-    return [{ source: '/docs/:path*', destination: 'https://docs.pypeai.com/:path*', permanent: true }];
+    return [{ source: '/docs/:path*', destination: 'https://docs.whispey.pypeai.com/:path*', permanent: true }];
   },
 };
 

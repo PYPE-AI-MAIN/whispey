@@ -128,7 +128,7 @@ function Header({ breadcrumb, isLoading }: HeaderProps) {
           <div className="flex items-center gap-2">
             {/* Docs Button */}
             <Link
-              href="https://docs.pypeai.com"
+              href="https://docs.whispey.pypeai.com"
               target="_blank"
               rel="noopener noreferrer"
               className="group flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 rounded-lg hover:bg-blue-50/50 dark:hover:bg-blue-950/30 border border-transparent hover:border-blue-100 dark:hover:border-blue-900"

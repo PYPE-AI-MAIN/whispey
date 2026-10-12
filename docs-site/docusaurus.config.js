@@ -5,7 +5,7 @@ const config = {
   title: 'Whispey Docs',
   tagline: 'Observability for voice AI agents, by Pype',
   favicon: 'img/favicon.ico',
-  url: 'https://docs.pypeai.com',
+  url: 'https://docs.whispey.pypeai.com',
   baseUrl: '/',
   onBrokenLinks: 'throw',
   i18n: {defaultLocale: 'en', locales: ['en']},
