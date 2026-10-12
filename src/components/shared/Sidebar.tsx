@@ -202,6 +202,7 @@ function groupNavigationItems(navigation: NavigationItem[]): NavigationGroup[] {
   }
 
   const groupOrder = [
+    'monitor', 'build', 'calls', 'calling',
     'logs', 'agents', 'reports', 'analytics', 'integrations',
     'team', 'settings', 'configuration', 'call configuration', 'batch calls', 'resources',
     'project settings'
@@ -702,6 +703,41 @@ export default function Sidebar({
           onMobileClose={onMobileClose}
         />
 
+        {/* Utilities: one row, so the account card stays the last thing in the sidebar */}
+        <div className={`flex items-center gap-1 border-t border-border px-3 py-2 ${isCollapsed && !isMobile ? 'flex-col' : 'justify-between'}`}>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <a
+                  href="https://docs.whispey.pypeai.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Docs"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <BookOpen className="h-4 w-4" />
+                </a>
+              </TooltipTrigger>
+              <TooltipContent side="top"><p>Docs</p></TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setIsSupportOpen(true)}
+                  aria-label="Help Center"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top"><p>Help Center</p></TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <NotificationBell side="top" align="start" />
+          <ThemeToggle plain />
+        </div>
+
         {/* User Section */}
         <SidebarUserMenu
           mounted={mounted}
@@ -718,41 +754,6 @@ export default function Sidebar({
           onSignOut={handleSignOut}
         />
 
-        {/* Docs, help, notifications and theme: kept at the bottom, always in reach */}
-        <div className="space-y-1 border-t border-border p-3">
-          {[
-            { key: 'docs', label: 'Docs', icon: BookOpen, href: 'https://docs.whispey.pypeai.com' },
-            { key: 'help', label: 'Help Center', icon: HelpCircle, onClick: () => setIsSupportOpen(true) },
-          ].map(({ key, label, icon: Icon, href, onClick }) => {
-            const rowClass = `flex w-full items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground ${
-              isCollapsed && !isMobile ? 'justify-center' : ''
-            }`
-            const content = (
-              <>
-                <Icon className="h-4 w-4 flex-shrink-0" />
-                {(!isCollapsed || isMobile) && <span>{label}</span>}
-              </>
-            )
-            return (
-              <TooltipProvider key={key}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    {href ? (
-                      <a href={href} target="_blank" rel="noopener noreferrer" className={rowClass}>{content}</a>
-                    ) : (
-                      <button type="button" onClick={onClick} className={rowClass}>{content}</button>
-                    )}
-                  </TooltipTrigger>
-                  <TooltipContent side="right"><p>{label}</p></TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )
-          })}
-          <div className={`flex items-center gap-1 px-1 pt-1 ${isCollapsed && !isMobile ? 'flex-col' : ''}`}>
-            <NotificationBell side="top" align="start" />
-            <ThemeToggle plain />
-          </div>
-        </div>
       </aside>
 
       {/* Support Sheet */}

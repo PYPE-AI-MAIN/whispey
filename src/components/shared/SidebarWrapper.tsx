@@ -79,7 +79,7 @@ function agentStudioNavItems(
     name: 'Agent Studio',
     icon: 'Zap',
     path: `/${projectId}/agents/${agentId}/studio`,
-    group: 'configuration',
+    group: 'Build',
   }]
 }
 
@@ -201,24 +201,21 @@ const sidebarRoutes: SidebarRoute[] = [
       const baseNavigation = [
          {
           id: 'analytics',
-          name: 'Org Overview',
+          name: 'Overview',
           icon: 'BarChart3',
-          path: `/${projectId}/analytics`,
-          group: 'Organization'
+          path: `/${projectId}/analytics`
         },
         {
           id: 'agent-list',
-          name: 'Agent List',
+          name: 'Agents',
           icon: 'Activity',
-          path: `/${projectId}/agents`,
-          group: 'Organization'
+          path: `/${projectId}/agents`
         },
         {
           id: 'ask-pi',
           name: 'Ask Pi',
           icon: 'Pi',
           path: `/${projectId}/pi`,
-          group: 'Organization',
           ...(isOwnerOrAdmin ? {} : { disabled: true, badge: 'Beta' })
         }
       ]
@@ -234,7 +231,7 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Campaigns',
           icon: 'Calendar',
           path: `/${projectId}/campaigns`,
-          group: 'Batch Calls'
+          group: 'Calling'
         })
       }
 
@@ -245,7 +242,7 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Phone Settings',
           icon: 'Phone',
           path: `/${projectId}/agents/sip-management`,
-          group: 'configuration'
+          group: 'Calling'
         })
       }
 
@@ -257,7 +254,7 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'API key',
           icon: 'Key',
           path: `/${projectId}/agents/api-keys`,
-          group: 'Organization settings'
+          group: 'Settings'
         })
       }
       if (showSettings) {
@@ -266,7 +263,7 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Settings',
           icon: 'Settings',
           path: `/${projectId}/settings`,
-          group: 'Organization settings'
+          group: 'Settings'
         })
       }
 
@@ -320,14 +317,14 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Overview', 
           icon: 'Activity', 
           path: `/${projectId}/agents/${agentId}?tab=overview`,
-          group: 'LOGS' 
+          group: 'Monitor'
         },
         { 
           id: 'logs', 
           name: 'Call Logs', 
           icon: 'List', 
           path: `/${projectId}/agents/${agentId}?tab=logs`,
-          group: 'LOGS' 
+          group: 'Monitor'
         }
       ]
 
@@ -364,7 +361,7 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Workflow',
           icon: 'GitBranch',
           path: `/${projectId}/agents/${agentId}/workflow`,
-          group: 'configuration'
+          group: 'Build'
         })
       }
 
@@ -374,7 +371,7 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Agent Config', 
           icon: 'Settings', 
           path: `/${projectId}/agents/${agentId}/config`,
-          group: 'configuration' 
+          group: 'Build'
         })
       }
 
@@ -384,7 +381,7 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Agent Config',
           icon: 'Settings',
           path: `/${projectId}/agents/${agentId}/config/pipecat`,
-          group: 'configuration'
+          group: 'Build'
         })
       }
 
@@ -399,7 +396,7 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Knowledge Base', 
           icon: 'BookOpen', 
           path: kbPath,
-          group: 'configuration' 
+          group: 'Build'
         })
       }
 
@@ -410,20 +407,20 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Phone Calls',
           icon: 'Phone',
           path: `/${projectId}/agents/${agentId}/phone-call-config`,
-          group: 'call configuration'
+          group: 'Calls'
         })
       }
 
-      // Sits directly below Phone Calls. Not gated behind a visibility flag:
+      // Sits with the other call-review pages under Monitor. Not gated behind a visibility flag:
       // it only lists flags and reviews for calls this person can already see,
       // and the page itself re-checks access server-side.
-      callItems.push({
+      const qaItems = [{
         id: 'qa-audit',
         name: 'QA Audit',
         icon: 'ShieldCheck',
         path: `/${projectId}/agents/${agentId}/qa`,
-        group: 'call configuration'
-      })
+        group: 'Monitor'
+      }]
 
       const enhancedItems = []
       if (isEnhancedProject) {
@@ -432,7 +429,7 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Campaign Logs',
           icon: 'BarChart3',
           path: `/${projectId}/agents/${agentId}?tab=campaign-logs`,
-          group: 'Batch Calls'
+          group: 'Calls'
         })
       }
 
@@ -443,16 +440,17 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Prompt Forge',
           icon: 'FlaskConical',
           path: `/${projectId}/agents/${agentId}/prompt-forge`,
-          group: 'Dev Tools'
+          group: 'Build'
         })
       }
 
       const navigation = [
         ...baseNavigation,
+        ...qaItems,
         ...configItems,
+        ...superAdminItems,
         ...callItems,
-        ...enhancedItems,
-        ...superAdminItems
+        ...enhancedItems
       ]
 
       return {
