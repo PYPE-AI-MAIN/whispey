@@ -22,8 +22,11 @@ export function StepGuide({ node, workflow }: Readonly<{ node: WorkflowNode; wor
   const addEdge = useWorkflowStore((s) => s.addEdge)
   const addNode = useWorkflowStore((s) => s.addNode)
   const setSelectedEdge = useWorkflowStore((s) => s.setSelectedEdge)
+  const setSelectedNode = useWorkflowStore((s) => s.setSelectedNode)
 
   if (node.type === 'note') return null
+  // An API step ticked on a conversation step is something the agent calls, not a step in the flow.
+  if (node.type === 'function' && workflow.nodes.some((n) => (n as { functions?: string[] }).functions?.includes(node.id))) return null
   const isStart = workflow.start === node.id
   const incoming = workflow.edges.some((e) => e.target === node.id) || (workflow.globalRules ?? []).some((r) => r.target === node.id)
   const outgoing = workflow.edges.some((e) => e.source === node.id)
@@ -38,6 +41,12 @@ export function StepGuide({ node, workflow }: Readonly<{ node: WorkflowNode; wor
     const has = workflow.edges.some((e) => e.source === source.id)
     const asking = has && LISTENING.has(source.type)
     const id = `edge-${crypto.randomUUID()}`
+    if (source.type === 'logic_split') {
+      // A Branch path is a rule; the rule is set on the Branch step.
+      addEdge({ id, source: source.id, target: targetId, kind: 'logic' })
+      setSelectedNode(source.id)
+      return
+    }
     addEdge({ id, source: source.id, target: targetId, kind: asking ? 'condition' : 'always' })
     if (asking) setSelectedEdge(id)
   }

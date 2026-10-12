@@ -12,6 +12,7 @@ import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { useAgentLifecycle } from '@/hooks/useAgentLifecycle'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import { safeParseWorkflow } from '@/lib/workflow/schema'
+import { deployable, stripExpandedEdges } from '@/lib/workflow/globalRules'
 import { hasErrors } from '@/lib/workflow/linter'
 import { WORKFLOW_TEMPLATES, type WorkflowTemplate } from '@/lib/workflow/templates'
 import { WorkflowPalette } from '@/components/workflow/WorkflowPalette'
@@ -117,7 +118,7 @@ function WorkflowPageInner() {
     if (existing.success) {
       // This is already the deployed config (it came from the agent row we
       // just loaded), not new content waiting to be deployed.
-      setWorkflow(existing.data, { dirty: false })
+      setWorkflow(stripExpandedEdges(existing.data), { dirty: false })
     } else {
       setNeedsTemplate(true)
     }
@@ -145,6 +146,8 @@ function WorkflowPageInner() {
   const [issuesOpen, setIssuesOpen] = useState(false)
   const [knowledgeOpen, setKnowledgeOpen] = useState(false)
   const [serverIssues, setServerIssues] = useState<LintIssue[]>([])
+  // Results from a server check describe the flow as it was then; drop them once it changes.
+  useEffect(() => setServerIssues([]), [workflow])
   // Steps are added with the + on a step, so the side list stays out of the way until asked for.
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [voiceChecked, setVoiceChecked] = useState(false)
@@ -204,7 +207,7 @@ function WorkflowPageInner() {
       const res = await fetch('/api/workflow/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workflow }),
+        body: JSON.stringify({ workflow: deployable(workflow) }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -242,7 +245,7 @@ function WorkflowPageInner() {
       const res = await fetch(`/api/workflow/${encodeURIComponent(backendAgentName)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workflow }),
+        body: JSON.stringify({ workflow: deployable(workflow) }),
       })
       const data = await res.json().catch(() => ({}))
       if (res.ok) {
@@ -322,7 +325,12 @@ function WorkflowPageInner() {
         rulesCount={workflow?.globalRules?.length ?? 0}
         onOpenKnowledge={() => setKnowledgeOpen(true)}
         canTest={agentLifecycle.status.status === 'running'}
-        onTest={() => { setTalkOpen(true); setTested(true) }}
+        onTest={() => {
+          // The call runs the deployed version, so unsaved edits are not in it.
+          if (isDirty) toast('You have unsaved changes. This test uses the last deployed version. Deploy first to include them.', { duration: 6000 })
+          setTalkOpen(true)
+          setTested(true)
+        }}
         onValidate={handleValidate}
         validating={saving}
         onPaste={() => setImportOpen(true)}

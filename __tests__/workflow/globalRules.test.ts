@@ -77,3 +77,69 @@ describe('start fix suggestion', () => {
     expect(lintWorkflow(w).find((i) => i.fixStartTo)?.fixStartTo).toBe('hello')
   })
 })
+
+import { deployable, stripExpandedEdges } from '@/lib/workflow/globalRules'
+
+describe('deploy compatibility (older backends ignore globalRules)', () => {
+  const base = {
+    nodes: [node('a', 'conversation'), node('b', 'conversation'), node('human', 'ending')],
+    edges: [edge('e1', 'a', 'b')],
+    globalRules: [{ id: 'g1', target: 'human', condition: 'they ask for a human', sources: [] as string[] }],
+  }
+
+  it('sends the rules and the plain edges they stand for', () => {
+    const out = deployable(base as any)
+    expect(out.globalRules).toHaveLength(1)
+    expect(out.edges.map((e: any) => e.id).sort()).toEqual(['e1', 'g1@a', 'g1@b'])
+  })
+
+  it('loading it back shows the rules once, not the edges they made', () => {
+    const back = stripExpandedEdges(deployable(base as any))
+    expect(back.edges.map((e: any) => e.id)).toEqual(['e1'])
+    expect(back.globalRules).toHaveLength(1)
+  })
+
+  it('leaves a flow without rules untouched', () => {
+    const plain = { nodes: base.nodes, edges: base.edges, globalRules: [] }
+    expect(deployable(plain as any)).toBe(plain)
+    expect(stripExpandedEdges(plain as any)).toBe(plain)
+  })
+
+  it('merging again widens an existing rule instead of duplicating it', () => {
+    const wf = {
+      nodes: [node('a', 'conversation'), node('b', 'conversation'), node('c', 'conversation'), node('d', 'conversation'), node('human', 'ending')],
+      edges: ['a', 'b', 'c'].map((s, i) => edge(`h${i}`, s, 'human', 'they ask for a human')),
+      globalRules: [{ id: 'g1', target: 'human', condition: 'They ask for a human', sources: ['d'] }],
+    }
+    const out = extractGlobalRules(wf as any)
+    expect(out.globalRules).toHaveLength(1)
+    expect(out.globalRules[0].sources.sort()).toEqual(['a', 'b', 'c', 'd'])
+    expect(out.edges).toHaveLength(0)
+  })
+})
+
+describe('rule ids', () => {
+  it('a second merge never reuses an existing rule id', () => {
+    const nodes = ['a', 'b', 'c', 'd', 'e', 'f'].map((id) => node(id, 'conversation')).concat([node('h1', 'ending'), node('h2', 'ending')])
+    const wf = {
+      nodes,
+      edges: [
+        ...['a', 'b', 'c'].map((s, i) => edge(`x${i}`, s, 'h1', 'one')),
+        ...['d', 'e', 'f'].map((s, i) => edge(`y${i}`, s, 'h2', 'two')),
+      ],
+      globalRules: [{ id: 'global-1', target: 'h1', condition: 'something else', sources: [] as string[] }],
+    }
+    const ids = extractGlobalRules(wf as any).globalRules.map((r) => r.id)
+    expect(new Set(ids).size).toBe(ids.length)
+  })
+})
+
+import { readFileSync } from 'node:fs'
+
+describe('editor page sends the compatible form', () => {
+  it('both the check and the deploy request use deployable()', () => {
+    const src = readFileSync('src/app/[projectid]/agents/[agentid]/workflow/page.tsx', 'utf8')
+    expect(src.split('workflow: deployable(workflow)').length - 1).toBe(2)
+    expect(src).not.toContain('JSON.stringify({ workflow })')
+  })
+})

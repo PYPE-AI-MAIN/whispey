@@ -24,6 +24,31 @@ export function expandGlobalRules<T extends Flow>(wf: T): T {
   return { ...wf, edges: [...wf.edges, ...added], globalRules: [] }
 }
 
+/**
+ * What gets sent to the voice backend: the rules AND the plain edges they stand for. A backend that does not know
+ * about global rules yet (older deployment) then still follows them; a current one drops the duplicates itself.
+ */
+export function deployable<T extends Flow>(wf: T): T {
+  if (!wf.globalRules?.length) return wf
+  const expanded = expandGlobalRules(wf)
+  return { ...wf, edges: expanded.edges }
+}
+
+/** The reverse, for a workflow loaded back from the backend: rule-made edges are shown as the rules they came from. */
+export function stripExpandedEdges<T extends Flow>(wf: T): T {
+  const ruleIds = new Set((wf.globalRules ?? []).map((r) => r.id))
+  if (!ruleIds.size) return wf
+  return { ...wf, edges: wf.edges.filter((e) => !ruleIds.has(e.id.split('@')[0]) || !e.id.includes('@')) }
+}
+
+// An id no existing rule uses, so a second merge never reuses "global-1" (rule edge ids are built from it).
+function nextRuleId(existing: GlobalRule[], added: GlobalRule[]): string {
+  const taken = new Set([...existing, ...added].map((r) => r.id))
+  let n = taken.size + 1
+  while (taken.has(`global-${n}`)) n++
+  return `global-${n}`
+}
+
 const norm = (s: string) => s.trim().toLowerCase().replaceAll(/\s+/g, ' ')
 
 /**
@@ -41,12 +66,19 @@ export function extractGlobalRules(wf: Flow, minCopies = 3): { edges: Edge[]; gl
   const listening = listeningIds(wf)
   const drop = new Set<string>()
   const rules: GlobalRule[] = []
+  const existing = (wf.globalRules ?? []).map((r) => ({ ...r, sources: [...r.sources] }))
   for (const group of groups.values()) {
     if (group.length < minCopies) continue
     group.forEach((e) => drop.add(e.id))
     const sources = group.map((e) => e.source)
+    const same = existing.find((r) => r.target === group[0].target && norm(r.condition) === norm(group[0].condition!))
+    if (same) {
+      // Already a rule for this: widen it (an empty list already means every step).
+      if (same.sources.length) same.sources = [...new Set([...same.sources, ...sources])]
+      continue
+    }
     const covers = listening.filter((id) => id !== group[0].target).every((id) => sources.includes(id))
-    rules.push({ id: `global-${rules.length + 1}`, target: group[0].target, condition: group[0].condition!, label: group[0].label, sources: covers ? [] : sources })
+    rules.push({ id: nextRuleId(existing, rules), target: group[0].target, condition: group[0].condition!, label: group[0].label, sources: covers ? [] : sources })
   }
-  return { edges: wf.edges.filter((e) => !drop.has(e.id)), globalRules: [...(wf.globalRules ?? []), ...rules] }
+  return { edges: wf.edges.filter((e) => !drop.has(e.id)), globalRules: [...existing, ...rules] }
 }

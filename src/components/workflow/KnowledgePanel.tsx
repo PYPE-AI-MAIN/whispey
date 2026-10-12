@@ -55,7 +55,8 @@ export function KnowledgePanel({ open, onOpenChange, agentName }: Readonly<{ ope
             <Switch checked={enabled} onCheckedChange={setEnabled} aria-label="Let the agent use these documents" />
           </div>
 
-          <section className="space-y-2">
+          {!agentName && <p className="text-sm text-muted-foreground">Loading your agent…</p>}
+          <section className={`space-y-2 ${agentName ? '' : 'pointer-events-none opacity-50'}`}>
             <h3 className="text-sm font-medium text-foreground">1. Add content</h3>
             <KnowledgeBaseUploadZone agentId={agentName} onUploadSuccess={refresh} />
           </section>
