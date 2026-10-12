@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { Instrument_Serif, Plus_Jakarta_Sans } from 'next/font/google'
 import Header, { Brand } from './landing-header'
@@ -29,62 +30,6 @@ const TURNS = [
   { who: 'Patient', text: 'I need to move my appointment to Tuesday.' },
   { who: 'Agent', text: 'Sure. Let me check what is open on Tuesday.' },
 ]
-
-const WAVE = Array.from({ length: 44 }, (_, n) => ({ id: `w-${n}`, h: 18 + ((n * 37) % 62) }))
-const HERO_STATS = [['Turns', '6'], ['Duration', '1:42'], ['Bugs', '0']]
-const HERO_TURNS = [
-  { turn: 'Turn 1', who: 'Agent', text: 'Hello, you have reached the clinic. How can I help you today?' },
-  { turn: 'Turn 2', who: 'Patient', text: 'Can I come in on Tuesday morning instead?' },
-  { turn: 'Turn 3', who: 'Agent', text: 'Yes. I can book you for ten on Tuesday. Does that suit you?' },
-]
-
-function HeroMock() {
-  return (
-    <figure>
-      <div className="wl-frame" aria-hidden="true">
-        <div className="grid md:grid-cols-[190px_1fr]">
-          <aside className="wl-side hidden p-4 md:block">
-            <p className="wl-ink text-sm font-semibold">Whispey</p>
-            <ul className="mt-5 space-y-1 text-sm">
-              {['Overview', 'Call logs', 'QA Audit', 'Agent config'].map((l) => (
-                <li key={l} className={l === 'Call logs' ? 'wl-nav wl-nav-on' : 'wl-nav'}>{l}</li>
-              ))}
-            </ul>
-          </aside>
-          <div className="p-5 sm:p-6">
-            <p className="wl-tag">Call recording</p>
-            <div className="wl-track mt-2 flex items-center gap-3 rounded-xl p-3">
-              <span className="wl-pill-on flex h-8 w-8 flex-none items-center justify-center rounded-full text-[10px]">&#9654;</span>
-              <span className="flex h-8 flex-1 items-center gap-[3px] overflow-hidden">
-                {WAVE.map((w) => (
-                  <span key={w.id} className="wl-wave" style={{ height: `${w.h}%` }} />
-                ))}
-              </span>
-            </div>
-            <dl className="mt-5 flex flex-wrap gap-x-9 gap-y-2 text-sm">
-              {HERO_STATS.map(([k, v]) => (
-                <div key={k}>
-                  <dt className="wl-tag">{k}</dt>
-                  <dd className="wl-ink text-lg font-semibold">{v}</dd>
-                </div>
-              ))}
-            </dl>
-            <ul className="mt-5 divide-y text-sm" style={{ borderColor: 'rgba(37,99,235,0.12)' }}>
-              {HERO_TURNS.map((t) => (
-                <li key={t.turn} className="flex gap-4 py-3" style={{ borderColor: 'rgba(37,99,235,0.12)' }}>
-                  <span className="wl-tag w-14 flex-none pt-0.5">{t.turn}</span>
-                  <span className="wl-tag w-14 flex-none pt-0.5">{t.who}</span>
-                  <span className="wl-ink">{t.text}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </div>
-      <figcaption className="wl-soft mt-3 text-center text-xs">Sample call, for illustration</figcaption>
-    </figure>
-  )
-}
 
 const QA_STEPS = ['Flagged', 'In review', 'Resolved']
 const LATENCY = [
@@ -146,10 +91,6 @@ const PAGE_CSS = `
   .dark .wl-pill { border-color: rgba(255,255,255,0.16); color: #9db0d0; }
   .wl-pill-on { background: linear-gradient(90deg, #1d4ed8, #3b82f6); border-color: transparent; color: #fff; }
   .dark .wl-pill-on { color: #fff; }
-  .wl-side { background: #f6f9ff; border-right: 1px solid rgba(37,99,235,0.12); } .dark .wl-side { background: #08101f; border-right-color: rgba(255,255,255,0.1); }
-  .wl-nav { border-radius: 8px; padding: 0.5rem 0.75rem; color: #5b6b86; } .dark .wl-nav { color: #9db0d0; }
-  .wl-nav-on { background: rgba(37,99,235,0.1); color: #1d4ed8; font-weight: 600; } .dark .wl-nav-on { background: rgba(96,165,250,0.16); color: #93c5fd; }
-  .wl-wave { width: 3px; border-radius: 2px; background: #93b4f5; flex: none; } .dark .wl-wave { background: #3b6fd8; }
   .wl-code-dark { display: none; }
   .wl-num { font-family: var(--font-sw-serif), Georgia, serif; font-size: 2rem; line-height: 1; color: #2563eb; }
   .dark .wl-num { color: #60a5fa; }
@@ -176,7 +117,10 @@ export default function LandingPage() {
         </section>
 
         <section className="mx-auto max-w-5xl px-6 pb-20">
-          <HeroMock />
+          <div className="wl-frame">
+            <Image src="/call-logs-light.webp" alt="The call logs page in Whispey, listing each call with its status, duration and flag" width={2000} height={1146} priority className="h-auto w-full dark:hidden" />
+            <Image src="/call-logs-dark.webp" alt="" width={2000} height={1152} priority className="hidden h-auto w-full dark:block" />
+          </div>
         </section>
 
         <section id="features" className="wl-band scroll-mt-16">
