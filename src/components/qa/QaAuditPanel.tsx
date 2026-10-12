@@ -280,20 +280,7 @@ function FlaggedCalls({ agentId, projectId }: Readonly<{ agentId: string; projec
 }
 
 function TicketRow({ ticket, canManage, internal, engineers, agentId, projectId }: Readonly<{ ticket: Ticket; canManage: boolean; internal: boolean; engineers: { name: string; email: string }[]; agentId: string; projectId: string }>) {
-  const qc = useQueryClient()
   const [open, setOpen] = useState(false)
-  const [editing, setEditing] = useState(false)
-  const [status, setStatus] = useState<Ticket['status']>(ticket.status)
-  const [note, setNote] = useState(ticket.resolution_note ?? '')
-  const [sheet, setSheet] = useState(ticket.sheet_url ?? '')
-  const [assignee, setAssignee] = useState(ticket.assignee_email ?? '')
-  const save = useMutation({
-    mutationFn: () => send(`/api/qa-audit/flags/${ticket.id}`, 'PATCH', { status, resolution_note: note, sheet_url: sheet, assignee_email: assignee }),
-    onSuccess: () => {
-      setEditing(false)
-      return qc.invalidateQueries({ queryKey: ['qa-audit', 'flags', agentId] })
-    },
-  })
   const engineerName = (email: string | null) => engineers.find((e) => e.email === email)?.name ?? email
 
   return (
@@ -321,40 +308,12 @@ function TicketRow({ ticket, canManage, internal, engineers, agentId, projectId 
                   <FileSpreadsheet className="h-3 w-3" /> Internal sheet
                 </a>
               )}
-              {canManage && !editing && (
-                <button type="button" onClick={() => setEditing(true)} className="font-medium text-gray-700 hover:underline dark:text-gray-300">Update</button>
-              )}
             </div>
-            {ticket.status === 'resolved' && ticket.resolution_note && (
-              <p className="mt-3 border-l-2 border-emerald-500 pl-3 text-sm text-gray-700 dark:text-gray-300">
-                {ticket.resolution_note}
-                {ticket.resolved_at && <span className="ml-2 text-xs text-gray-400">{fmtDate(ticket.resolved_at)}</span>}
-              </p>
+            {ticket.status === 'resolved' && ticket.resolution_note && !ticket.comments.some((c) => c.body === ticket.resolution_note) && (
+              <p className="mt-3 border-l-2 border-emerald-500 pl-3 text-sm text-gray-700 dark:text-gray-300">{ticket.resolution_note}</p>
             )}
-            <Thread ticket={ticket} canManage={canManage} agentId={agentId} />
-            {canManage && editing && (
-              <Editor onSave={() => save.mutate()} saving={save.isPending} error={save.isError ? (save.error as Error).message : undefined}>
-                <Labelled label="Status">
-                  <select className={fieldClass} value={status} onChange={(e) => setStatus(e.target.value as Ticket['status'])}>
-                    <option value="pending">Pending</option>
-                    <option value="in_review">In review</option>
-                    <option value="resolved">Resolved</option>
-                  </select>
-                </Labelled>
-                <Labelled label="Resolution note (required to resolve)">
-                  <Textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
-                </Labelled>
-                <Labelled label="Prompt engineer (emailed and tagged on Slack when in review)">
-                  <select className={fieldClass} value={assignee} onChange={(e) => setAssignee(e.target.value)}>
-                    <option value="">Nobody</option>
-                    {engineers.map((e) => <option key={e.email} value={e.email}>{e.name}</option>)}
-                  </select>
-                </Labelled>
-                <Labelled label="Internal sheet link (only Pype staff see this)">
-                  <Input value={sheet} onChange={(e) => setSheet(e.target.value)} placeholder="https://docs.google.com/spreadsheets/…" />
-                </Labelled>
-              </Editor>
-            )}
+            <Thread ticket={ticket} />
+            {canManage && <Composer ticket={ticket} engineers={engineers} agentId={agentId} />}
           </td>
         </tr>
       )}
@@ -364,44 +323,8 @@ function TicketRow({ ticket, canManage, internal, engineers, agentId, projectId 
 
 const imageSrc = (key: string) => `/api/qa-audit/attachments?key=${encodeURIComponent(key)}`
 
-/** Comments from the QA team (visible to the customer too); the QA team gets a box to add one at any status. */
-function Thread({ ticket, canManage, agentId }: Readonly<{ ticket: Ticket; canManage: boolean; agentId: string }>) {
-  const qc = useQueryClient()
-  const [text, setText] = useState('')
-  const [images, setImages] = useState<{ key: string; name: string }[]>([])
-  const [uploading, setUploading] = useState(false)
-  const [err, setErr] = useState('')
-
-  const upload = async (files: FileList | null) => {
-    if (!files?.length) return
-    setUploading(true)
-    setErr('')
-    try {
-      for (const file of Array.from(files).slice(0, 5 - images.length)) {
-        const form = new FormData()
-        form.append('ticketId', ticket.id)
-        form.append('file', file)
-        const res = await fetch('/api/qa-audit/attachments', { method: 'POST', body: form })
-        const json = await res.json().catch(() => ({}))
-        if (!res.ok) throw new Error(json.error || 'Upload failed')
-        setImages((prev) => [...prev, json])
-      }
-    } catch (e) {
-      setErr((e as Error).message)
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  const post = useMutation({
-    mutationFn: () => send(`/api/qa-audit/flags/${ticket.id}/comments`, 'POST', { body: text, attachments: images }),
-    onSuccess: () => {
-      setText('')
-      setImages([])
-      return qc.invalidateQueries({ queryKey: ['qa-audit', 'flags', agentId] })
-    },
-  })
-
+/** What has happened to this flag so far: flagged, status changes, hand-offs and every comment, oldest first. */
+function Thread({ ticket }: Readonly<{ ticket: Ticket }>) {
   const journey: { at: string; event?: FlagEvent; comment?: Comment }[] = [
     ...ticket.events.map((e) => ({ at: e.created_at, event: e })),
     ...ticket.comments.map((c) => ({ at: c.created_at, comment: c })),
@@ -409,7 +332,7 @@ function Thread({ ticket, canManage, agentId }: Readonly<{ ticket: Ticket; canMa
   const eventText = (e: FlagEvent) =>
     e.kind === 'flagged' ? `Flagged: ${e.detail}` : e.kind === 'assigned' ? e.detail : `Status: ${e.detail.split(' -> ').map((s) => STATUS_LABEL[s] ?? s).join(' → ')}`
 
-  if (!canManage && journey.length === 0) return null
+  if (journey.length === 0) return null
   return (
     <div className="mt-3 space-y-3">
       {journey.map(({ event, comment: c }) => event ? (
@@ -433,22 +356,114 @@ function Thread({ ticket, canManage, agentId }: Readonly<{ ticket: Ticket; canMa
           <p className="mt-1 text-xs text-gray-400">QA team · {fmtDate(c.created_at)}</p>
         </div>
       ))}
-      {canManage && (
-        <div className="space-y-2">
-          <Textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} placeholder="Add a comment (the customer sees it)" />
-          {images.length > 0 && <p className="text-xs text-gray-500">{images.map((i) => i.name).join(', ')}</p>}
-          <div className="flex flex-wrap items-center gap-3">
-            <Button size="sm" onClick={() => post.mutate()} disabled={post.isPending || uploading || (!text.trim() && images.length === 0)}>
-              {post.isPending ? 'Posting…' : 'Comment'}
-            </Button>
-            <label className="inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-gray-600 hover:underline dark:text-gray-400">
-              <ImagePlus className="h-3.5 w-3.5" /> {uploading ? 'Uploading…' : 'Attach image'}
-              <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple className="hidden" onChange={(e) => { void upload(e.target.files); e.target.value = '' }} />
-            </label>
-            {(err || post.isError) && <span className="text-xs text-red-600">{err || (post.error as Error).message}</span>}
-          </div>
-        </div>
-      )}
+    </div>
+  )
+}
+
+const STATUS_HINT: Record<Ticket['status'], string> = {
+  pending: 'Not started. The customer sees nothing new until you comment or change the status.',
+  in_review: 'Passes it to the prompt engineer: they get an email and a Slack tag. Pick who, and attach the sheet if you have one.',
+  resolved: 'Write what was done. The customer sees it and gets an email.',
+}
+
+/** QA team only: the one place to reply, change the status, and hand off. One Send does it all. */
+function Composer({ ticket, engineers, agentId }: Readonly<{ ticket: Ticket; engineers: { name: string; email: string }[]; agentId: string }>) {
+  const qc = useQueryClient()
+  const [text, setText] = useState('')
+  const [images, setImages] = useState<{ key: string; name: string }[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [err, setErr] = useState('')
+  const [status, setStatus] = useState<Ticket['status']>(ticket.status)
+  const [assignee, setAssignee] = useState(ticket.assignee_email ?? '')
+  const [sheet, setSheet] = useState(ticket.sheet_url ?? '')
+
+  const upload = async (files: FileList | null) => {
+    if (!files?.length) return
+    setUploading(true)
+    setErr('')
+    try {
+      for (const file of Array.from(files).slice(0, 5 - images.length)) {
+        const form = new FormData()
+        form.append('ticketId', ticket.id)
+        form.append('file', file)
+        const res = await fetch('/api/qa-audit/attachments', { method: 'POST', body: form })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(json.error || 'Upload failed')
+        setImages((prev) => [...prev, json])
+      }
+    } catch (e) {
+      setErr((e as Error).message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const hasMessage = !!text.trim() || images.length > 0
+  const statusChanged = status !== ticket.status
+  const changed = statusChanged || assignee !== (ticket.assignee_email ?? '') || sheet.trim() !== (ticket.sheet_url ?? '')
+  const needsNote = status === 'resolved' && !text.trim() && !ticket.resolution_note
+  const submit = useMutation({
+    mutationFn: () =>
+      changed
+        ? send(`/api/qa-audit/flags/${ticket.id}`, 'PATCH', {
+            status,
+            resolution_note: status === 'resolved' ? text.trim() || ticket.resolution_note : ticket.resolution_note,
+            sheet_url: sheet,
+            assignee_email: assignee,
+            comment: { body: text, attachments: images },
+          })
+        : send(`/api/qa-audit/flags/${ticket.id}/comments`, 'POST', { body: text, attachments: images }),
+    onSuccess: () => {
+      setText('')
+      setImages([])
+      return qc.invalidateQueries({ queryKey: ['qa-audit', 'flags', agentId] })
+    },
+  })
+
+  let label = 'Send'
+  if (statusChanged) label = `Send and move to ${STATUS_LABEL[status]}`
+  else if (!hasMessage) label = 'Save changes'
+
+  return (
+    <div className="mt-4 space-y-3 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+      <Textarea
+        rows={3}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={status === 'resolved' ? 'What was done? (required, the customer sees this)' : 'Write a comment (the customer sees it)'}
+      />
+      {images.length > 0 && <p className="text-xs text-gray-500">Attached: {images.map((i) => i.name).join(', ')}</p>}
+      <label className="inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-gray-600 hover:underline dark:text-gray-400">
+        <ImagePlus className="h-3.5 w-3.5" /> {uploading ? 'Uploading…' : 'Attach image'}
+        <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple className="hidden" onChange={(e) => { void upload(e.target.files); e.target.value = '' }} />
+      </label>
+      <div className="flex flex-wrap items-end gap-3">
+        <Labelled label="Status">
+          <select className={`${fieldClass} w-40`} value={status} onChange={(e) => setStatus(e.target.value as Ticket['status'])}>
+            <option value="pending">Pending</option>
+            <option value="in_review">In review</option>
+            <option value="resolved">Resolved</option>
+          </select>
+        </Labelled>
+        {status === 'in_review' && (
+          <>
+            <Labelled label="Prompt engineer">
+              <select className={`${fieldClass} w-44`} value={assignee} onChange={(e) => setAssignee(e.target.value)}>
+                <option value="">Choose…</option>
+                {engineers.map((e) => <option key={e.email} value={e.email}>{e.name}</option>)}
+              </select>
+            </Labelled>
+            <Labelled label="Internal sheet (Pype staff only)">
+              <Input className="w-64" value={sheet} onChange={(e) => setSheet(e.target.value)} placeholder="https://docs.google.com/…" />
+            </Labelled>
+          </>
+        )}
+        <Button size="sm" onClick={() => submit.mutate()} disabled={submit.isPending || uploading || needsNote || (!hasMessage && !changed)}>
+          {submit.isPending ? 'Sending…' : label}
+        </Button>
+      </div>
+      <p className="text-xs text-gray-500 dark:text-gray-400">{STATUS_HINT[status]}</p>
+      {(err || submit.isError) && <p className="text-xs text-red-600">{err || (submit.error as Error).message}</p>}
     </div>
   )
 }

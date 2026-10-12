@@ -26,6 +26,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     : { data: null }
   if (assignee && !engineer) return NextResponse.json({ error: 'Pick a prompt engineer from the list' }, { status: 400 })
 
+  const c = (body.comment ?? {}) as { body?: unknown; attachments?: unknown }
+  const commentText = typeof c.body === 'string' ? c.body.trim().slice(0, 4000) : ''
+  const commentFiles = (Array.isArray(c.attachments) ? c.attachments : [])
+    .filter((a): a is { key: string; name: string } => typeof a?.key === 'string' && a.key.startsWith(`qa/${id}/`))
+    .slice(0, 5)
+    .map((a) => ({ key: a.key, name: String(a.name ?? 'image').slice(0, 120) }))
+
+  const said = commentText || check.patch.resolution_note
   const done = check.patch.status === 'resolved'
   const { data, error } = await qaDb
     .from('qa_flag_tickets')
@@ -52,10 +60,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       byEmail: access.email,
       callLogId: ticket.call_log_id,
       detail: `Flagged call ${ticket.status} -> ${check.patch.status}`,
-      note: check.patch.resolution_note,
+      note: said,
     })
   }
 
+  if (commentText || commentFiles.length) {
+    await qaDb.from('qa_flag_comments').insert({ ticket_id: id, author_email: access.email, body: commentText, attachments: commentFiles })
+  }
   // The prompt engineer is told when a ticket in review is theirs (new assignee, or it just moved to review).
   if (assignee && check.patch.status === 'in_review' && (assignee !== ticket.assignee_email || ticket.status !== 'in_review')) {
     await logQaEvent(id, 'assigned', access.email, `Passed to ${engineer?.name ?? assignee}`)
@@ -68,7 +79,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       byEmail: access.email,
       callLogId: ticket.call_log_id,
       detail: 'Flagged call assigned to you to fix',
-      note: [`Flag: ${ticket.reason}`, check.patch.resolution_note].filter(Boolean).join(' | '),
+      note: [`Flag: ${ticket.reason}`, said].filter(Boolean).join(' | '),
       sheetUrl: sheet || null,
       slack: true,
       slackId: engineer?.slack_id,
