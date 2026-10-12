@@ -13,6 +13,22 @@ import { FOCUS_NODE_EVENT } from './WorkflowPalette'
 // What most people add next; everything else is in the left panel under More nodes.
 const NEXT_STEPS: NodeType[] = ['conversation', 'extract_variable', 'logic_split', 'function', 'call_transfer', 'ending']
 const MORE_STEPS: NodeType[] = ['subagent', 'knowledge', 'code', 'mcp', 'press_digit', 'sms', 'note']
+// One short line per step type for this menu (the full description is in the step's own panel).
+const HINT: Record<string, string> = {
+  conversation: 'The agent talks with the caller',
+  extract_variable: 'Ask for details like a name or date',
+  logic_split: 'Pick a path from what you know, silently',
+  function: 'Call another system, like a booking tool',
+  call_transfer: 'Hand the call to a person',
+  ending: 'Say goodbye and hang up',
+  subagent: 'A different character with its own voice',
+  knowledge: 'Look something up in your documents',
+  code: 'Run a few lines of code',
+  mcp: 'Use a connected tool server',
+  press_digit: 'Press or collect phone keys',
+  sms: 'Text the caller',
+  note: 'A sticky note for editors',
+}
 // Steps that listen to the caller can be told "go there only when...".
 const LISTENING = new Set(['conversation', 'extract_variable', 'subagent'])
 
@@ -33,7 +49,10 @@ export function AddNextStep({ id, x, y }: Readonly<{ id: string; x: number; y: n
   const canSayWhen = !!sourceType && LISTENING.has(sourceType)
   const close = (v: boolean) => {
     setOpen(v)
-    if (!v) setPicked(null)
+    if (!v) {
+      setPicked(null)
+      setMore(false)
+    }
   }
 
   const add = (type: NodeType, edge: { kind: 'always' | 'condition' | 'logic'; condition?: string }) => {
@@ -81,7 +100,7 @@ export function AddNextStep({ id, x, y }: Readonly<{ id: string; x: number; y: n
         </button>
       </PopoverTrigger>
       {/* React events bubble out of a portal to the node, so a click here would also select the node and open its panel. */}
-      <PopoverContent side="right" align="start" className="nodrag nopan w-72 p-1.5" onClick={(e) => e.stopPropagation()}>
+      <PopoverContent side="right" align="start" className="nodrag nopan max-h-[min(70vh,26rem)] w-64 overflow-y-auto p-1.5" collisionPadding={12} onClick={(e) => e.stopPropagation()}>
         {picked ? (
           <div className="space-y-3 p-2">
             <button type="button" onClick={() => setPicked(null)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
@@ -127,7 +146,7 @@ export function AddNextStep({ id, x, y }: Readonly<{ id: string; x: number; y: n
                   <m.icon className="mt-0.5 h-4 w-4 shrink-0" style={{ color: m.color }} />
                   <span className="min-w-0">
                     <span className="block text-sm font-medium text-foreground">{m.label}</span>
-                    <span className="block text-xs text-muted-foreground">{m.useCase}</span>
+                    <span className="block text-xs text-muted-foreground">{HINT[t]}</span>
                   </span>
                 </button>
               )
