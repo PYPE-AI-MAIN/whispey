@@ -185,7 +185,11 @@ const TableRow = React.memo(function TableRow({
     <tr
       data-call-id={call.id}
       data-row-index={rowIndex}
-      onClick={() => onOpen(call)}
+      onClick={(e) => {
+        // the checkbox cell selects the row; it never opens the call
+        if ((e.target as HTMLElement).closest("[data-select-cell]")) return
+        onOpen(call)
+      }}
       onMouseEnter={onHover ? () => onHover(call) : undefined}
       className={cn("group cursor-pointer", navigating && "pointer-events-none")}
     >
@@ -194,6 +198,7 @@ const TableRow = React.memo(function TableRow({
         return (
           <td
             key={cell.id}
+            data-select-cell={cell.column.id === "select" || undefined}
             style={{
               left: left ?? undefined,
               maxWidth: columnMaxWidth(cell.column.columnDef),
@@ -210,9 +215,16 @@ const TableRow = React.memo(function TableRow({
           >
             {/* Every row is the same height: tall values (JSON metadata, long notes)
                 are clipped here and stay readable through the cell's hover tooltip. */}
-            <div className={cn("overflow-hidden leading-[1.5]", compact ? "max-h-7" : "max-h-8")}>
-              {flexRender(cell.column.columnDef.cell, cell.getContext())}
-            </div>
+            {cell.column.id === "select" ? (
+              // the whole cell is the checkbox's hit area: a click just beside the box ticks it
+              <label className={cn("flex cursor-pointer items-center", compact ? "-mx-3.5 -my-[9px] px-3.5 py-[9px]" : "-mx-4 -my-[15px] px-4 py-[15px]")}>
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              </label>
+            ) : (
+              <div className={cn("overflow-hidden leading-[1.5]", compact ? "max-h-7" : "max-h-8")}>
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+              </div>
+            )}
           </td>
         )
       })}
@@ -220,3 +232,4 @@ const TableRow = React.memo(function TableRow({
     </tr>
   )
 })
+

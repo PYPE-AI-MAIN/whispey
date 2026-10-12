@@ -224,7 +224,7 @@ function SummarySpark({ summary }: Readonly<{ summary: string }>) {
         </span>
       </TooltipTrigger>
       <TooltipContent side="bottom" align="start" className="max-w-[360px] p-3 text-[13px] leading-relaxed">
-        <p className="mb-1 font-semibold text-violet-400">✦ Summary</p>
+        <p className="mb-1 font-semibold text-violet-400">Summary</p>
         {summary}
       </TooltipContent>
     </Tooltip>

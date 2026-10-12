@@ -38,7 +38,7 @@ export function CallList({ calls, openId, role, hasSummaryField, onOpen, onBack,
   }, [openId])
 
   return (
-    <section className="flex min-h-0 min-w-0 flex-col border-r border-[var(--cl-border)] bg-[var(--cl-panel)]">
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col border-r border-[var(--cl-border)] bg-[var(--cl-panel)]">
       <div className="flex flex-none items-center justify-between border-b border-[var(--cl-border)] px-2.5 py-[7px]">
         <button
           type="button"
@@ -173,7 +173,7 @@ function QuickDetails({ call, role, hasSummaryField }: Readonly<{ call: CallLog;
         <p className="text-xs opacity-70">
           {call.call_started_at ? formatToIndianDateTime(call.call_started_at) : ""} · {formatDuration(callDurationSeconds(call) ?? 0)}
         </p>
-        {summary && <p className="mt-2 leading-relaxed opacity-90"><span className="text-violet-400">✦</span> {summary}</p>}
+        {summary && <p className="mt-2 leading-relaxed opacity-90">{summary}</p>}
         {(shown.length > 0 || tags.length > 0 || flags.length > 0) && (
           <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
             {shown.map(([k, v]) => (

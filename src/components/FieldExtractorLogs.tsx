@@ -11,6 +11,8 @@ import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import MagicButton from "@/components/buttons/MagicButton"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { DEFAULT_FIELD_EXTRACTOR_MODEL, FIELD_EXTRACTOR_MODELS, isFieldExtractorModel } from "@/config/fieldExtractorModels"
 
 interface FieldExtractorItem {
   key: string
@@ -25,17 +27,24 @@ interface FieldExtractorVariable {
 interface FieldExtractorDialogProps {
   initialData?: FieldExtractorItem[]
   initialVariables?: Record<string, string>
-  onSave: (data: FieldExtractorItem[], enabled: boolean, variables: Record<string, string>) => void
+  /** `model` is the Azure deployment picked in the dialog (see config/fieldExtractorModels). */
+  onSave: (data: FieldExtractorItem[], enabled: boolean, variables: Record<string, string>, model: string) => void
   isEnabled?: boolean
+  /** The agent's saved field_extractor_model; empty means the default. */
+  initialModel?: string | null
   /** What to call these in the UI. Studio says "Dispositions"; the config page keeps "Field Extractor". */
   terminology?: 'field_extractor' | 'dispositions'
 }
+
+/** Has both a label and a description (saved configs can be partial JSON). */
+const isCompleteField = (f: Partial<FieldExtractorItem>) => !!(f.key?.trim() && f.description?.trim())
 
 const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({ 
   initialData = [], 
   initialVariables = {},
   onSave, 
   isEnabled = false,
+  initialModel = null,
   terminology = 'field_extractor',
 }) => {
   const isDisp = terminology === 'dispositions'
@@ -50,6 +59,9 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
     }))
   )
   const [enabled, setEnabled] = useState(isEnabled)
+  // Set once the switch is flipped by hand — from then on it's left exactly as chosen.
+  const [enabledTouched, setEnabledTouched] = useState(false)
+  const [model, setModel] = useState(isFieldExtractorModel(initialModel) ? initialModel : DEFAULT_FIELD_EXTRACTOR_MODEL)
   const [isOpen, setIsOpen] = useState(false)
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
   // Stable per-row keys: keying on the field's text remounted the row on every
@@ -123,6 +135,17 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
     return detectedVariables.filter(v => !mappedNames.has(v))
   }, [detectedVariables, variables])
 
+  // Setting up an extractor for the first time turns it on once a field is
+  // filled in. One that already has fields keeps whatever it was (off stays
+  // off), and flipping the switch yourself always wins.
+  const isNewSetup = !initialData.some(isCompleteField)
+  const hasCompleteField = fields.some(isCompleteField)
+  const effectiveEnabled = enabledTouched ? enabled : enabled || (isNewSetup && hasCompleteField)
+  const changeEnabled = (on: boolean) => {
+    setEnabledTouched(true)
+    setEnabled(on)
+  }
+
   const addField = () => {
     setFields([...fields, { key: "", description: "" }])
   }
@@ -171,7 +194,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
     )
     // Turning it on with nothing to extract would run the extractor for no
     // result on every call, so an empty list saves as off.
-    onSave(validFields, enabled && validFields.length > 0, variablesObject)
+    onSave(validFields, effectiveEnabled && validFields.length > 0, variablesObject, model)
     setIsOpen(false)
   }
   
@@ -202,11 +225,30 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
 
         {/* Fixed section for the enable switch */}
         <div className="flex-shrink-0 p-6 pb-4">
-          <div className="flex items-center justify-between p-2 rounded-md bg-muted">
-            <Label htmlFor="enabled" className="text-base font-medium text-foreground">
-              {isDisp ? 'Enable Dispositions' : 'Enable Field Extraction'}
-            </Label>
-            <Switch id="enabled" checked={enabled} onCheckedChange={setEnabled} />
+          <div className="rounded-md bg-muted divide-y divide-border">
+            <div className="flex items-center justify-between p-2">
+              <Label htmlFor="enabled" className="text-base font-medium text-foreground">
+                {isDisp ? 'Enable Dispositions' : 'Enable Field Extraction'}
+              </Label>
+              <Switch id="enabled" checked={effectiveEnabled} onCheckedChange={changeEnabled} />
+            </div>
+            <div className="flex items-center justify-between gap-3 p-2">
+              <Label htmlFor="field-extractor-model" className="text-base font-medium text-foreground">Model</Label>
+              <Select value={model} onValueChange={setModel}>
+                <SelectTrigger id="field-extractor-model" size="sm" className="h-8 w-56 bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent align="end">
+                  {FIELD_EXTRACTOR_MODELS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
+                      {m.value === DEFAULT_FIELD_EXTRACTOR_MODEL && <span className="ml-1.5 text-xs text-muted-foreground">default</span>}
+                      {m.beta && <span className="ml-1.5 rounded border border-amber-300 px-1 text-[10px] font-medium uppercase text-amber-600 dark:border-amber-700 dark:text-amber-400">beta</span>}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
 

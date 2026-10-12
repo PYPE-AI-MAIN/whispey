@@ -54,8 +54,6 @@ export default defineConfig({
         'src/lib/getProjectRoleForApi.ts',
         'src/lib/calculateCost.ts',
         'src/lib/github-prompts.ts',
-        // Fumadocs framework loader (6 lines, no logic)
-        'src/lib/source.ts',
         // Constants files — no logic to test
         'src/utils/constants.ts',
         'src/utils/campaigns/**',

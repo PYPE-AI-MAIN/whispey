@@ -797,7 +797,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                     </div>
                     {!formData.enableAsTool && !formData.enableAsTag && (
                       <p className="text-xs text-amber-600 dark:text-amber-400 pt-1">
-                        ⚠️ Neither trigger is enabled — the transfer config will be saved but the LLM has no way to fire it.
+                        Neither trigger is enabled — the transfer config will be saved but the LLM has no way to fire it.
                       </p>
                     )}
                   </div>

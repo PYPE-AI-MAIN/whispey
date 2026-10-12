@@ -349,6 +349,23 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
     })
   }, [setColumnOrder, setVisibleColumns, filteredBasicColumns, dynamicColumns])
 
+  // A whole section at once: shown ones join the end of the order, hidden ones leave it.
+  const setColumns = useCallback((cols: PickerColumn[], visible: boolean) => {
+    const ids = new Set(cols.map((c) => c.id))
+    setVisibleColumns((prev) => {
+      const next = { ...prev }
+      for (const c of cols) {
+        const has = next[c.group].includes(c.key)
+        if (visible && !has) next[c.group] = [...next[c.group], c.key]
+        if (!visible && has) next[c.group] = next[c.group].filter((k) => k !== c.key)
+      }
+      return next
+    })
+    setColumnOrder(visible
+      ? [...shownIds, ...cols.map((c) => c.id).filter((id) => !shownIds.includes(id))]
+      : shownIds.filter((id) => !ids.has(id)))
+  }, [setVisibleColumns, setColumnOrder, shownIds])
+
   // Like reset, but keeps the user's column order.
   const showAllColumns = useCallback(() => {
     setVisibleColumns({
@@ -629,6 +646,7 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
             onReorder={setColumnOrder}
             onReset={resetColumns}
             onShowAll={showAllColumns}
+            onSetColumns={setColumns}
           />
         )}
 

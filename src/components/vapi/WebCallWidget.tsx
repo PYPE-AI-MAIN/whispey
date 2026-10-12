@@ -245,7 +245,7 @@ export const WebCallWidget: React.FC<WebCallWidgetProps> = ({
                     {currentPartialTranscript.role === 'user' ? 'You' : agentName}
                     <span className="ml-2 text-xs text-gray-400">(typing...)</span>
                   </div>
-                  <div className="text-sm text-gray-600 italic">
+                  <div className="text-sm text-gray-600 italic dark:text-gray-400">
                     {currentPartialTranscript.text}
                   </div>
 

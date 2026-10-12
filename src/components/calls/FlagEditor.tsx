@@ -195,7 +195,7 @@ function flaggedTriggerLook({ quiet, saving, flags }: FlagTriggerState): FlagTri
         {/* The quiet pill names what was flagged; the full list is in the tooltip. */}
         <span className={cn(quiet && 'truncate')}>{quiet ? (flags[0]?.text || 'Flagged') : 'Flagged'}</span>
         {flags.length > 1 && (
-          <span className="absolute -top-1.5 -right-1.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-white px-1 text-[9px] font-bold text-rose-600 shadow-sm ring-1 ring-rose-700/20">
+          <span className="absolute -top-1.5 -right-1.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-white px-1 text-[9px] font-bold text-rose-600 shadow-sm ring-1 ring-rose-700/20 dark:bg-gray-900">
             {flags.length}
           </span>
         )}
@@ -205,15 +205,14 @@ function flaggedTriggerLook({ quiet, saving, flags }: FlagTriggerState): FlagTri
 }
 
 // Unflagged — dashed pill, turns rose-red on hover
-function unflaggedTriggerLook({ quiet, open, saving }: FlagTriggerState): FlagTriggerLook {
+function unflaggedTriggerLook({ quiet, saving }: FlagTriggerState): FlagTriggerLook {
   return {
     label: 'Add flag',
     className: cn(
       quiet
         ? cn(
             'inline-flex items-center gap-1 rounded-full border border-dashed border-[var(--cl-border2)] px-2 py-px text-[12px] text-[var(--cl-text3)] select-none transition cursor-pointer',
-            'hover:border-[var(--cl-red-line)] hover:text-[var(--cl-red-text)]',
-            !open && 'opacity-0 group-hover:opacity-100'
+            'hover:border-[var(--cl-red-line)] hover:text-[var(--cl-red-text)]'
           )
         : cn(
             'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] font-medium select-none transition-all cursor-pointer',

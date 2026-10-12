@@ -1,7 +1,7 @@
 // src/components/agents/AgentSelect/AgentSelection.tsx
 'use client'
 
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { AlertCircle, X, ArrowUpDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,6 @@ import AgentToolbar from './AgentToolbar'
 import AgentList from '../AgentList'
 import AgentDeleteDialog from '../AgentDeleteDialog'
 import AdaptiveTutorialEmptyState from './EmptyStates/AdaptiveTutorialEmptyState'
-import Header from '../../shared/Header'
 import AgentCreationDialog from '../AgentCreation/AgentCreationDialog'
 import AgentSelectionSkeleton from './AgentSelectionSkeleton'
 import AgentEmptyStates from './EmptyStates/AgentEmptyStates'
@@ -53,13 +52,6 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
   }, [])
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
-  const [breadcrumb, setBreadcrumb] = useState<{
-    project?: string;
-    item?: string;
-  }>({
-    project: '',
-    item: ''
-  })
   // const router = useRouter()
 
   const invalidatePermissions = useInvalidateUserPermissions()
@@ -67,21 +59,10 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
   const { isMobile } = useMobile(768)
 
   // Fetch project data
-  const { data: projects, isLoading: projectLoading, error: projectError } = useSupabaseQuery('pype_voice_projects', {
+  const { isLoading: projectLoading, error: projectError } = useSupabaseQuery('pype_voice_projects', {
     select: 'id, name, description, environment, created_at, is_active, plans, agent',
     filters: [{ column: 'id', operator: 'eq', value: projectId }]
   })
-
-  const project = projects?.[0]
-
-  useEffect(() => {
-    if (projectId && project) {
-      setBreadcrumb({
-        project: project.name,
-        item: 'Monitoring'
-      })
-    }
-  }, [projectId, project])
 
   // Fetch agents data
   const { data: agents, isLoading: agentsLoading, error: agentsError, refetch } = useSupabaseQuery('pype_voice_agents', {
@@ -186,7 +167,6 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <Header breadcrumb={breadcrumb} />
         <div className="flex items-center justify-center py-32">
           <div className="text-center space-y-5 max-w-sm">
             <div className="w-14 h-14 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 flex items-center justify-center mx-auto">
@@ -209,8 +189,8 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <main className={`max-w-6xl mx-auto py-6 ${isMobile ? 'px-4' : 'px-8 py-8'}`}>
+    <div className="min-h-screen bg-background">
+      <div className={`max-w-7xl mx-auto py-6 ${isMobile ? 'px-4' : 'px-8 py-8'}`}>
         <AgentToolbar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -221,6 +201,7 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
           onCreateAgent={handleCreateAgent}
           onConnectAgent={handleConnectAgent}
           onShowHelp={filteredAgents.length > 0 ? handleShowHelp : undefined}
+          agentCount={filteredAgents.length}
           sortOrder={sortOrder}
           onSortToggle={handleSortToggle}
         />
@@ -246,7 +227,7 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
             }}
           />
         )}
-      </main>
+      </div>
 
       {/* Dialogs */}
       <AgentCreationDialog
