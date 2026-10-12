@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { ArrowLeft, Plus } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Plus } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -12,6 +12,7 @@ import { FOCUS_NODE_EVENT } from './WorkflowPalette'
 
 // What most people add next; everything else is in the left panel under More nodes.
 const NEXT_STEPS: NodeType[] = ['conversation', 'extract_variable', 'logic_split', 'function', 'call_transfer', 'ending']
+const MORE_STEPS: NodeType[] = ['subagent', 'knowledge', 'code', 'mcp', 'press_digit', 'sms', 'note']
 // Steps that listen to the caller can be told "go there only when...".
 const LISTENING = new Set(['conversation', 'extract_variable', 'subagent'])
 
@@ -27,6 +28,7 @@ export function AddNextStep({ id, x, y }: Readonly<{ id: string; x: number; y: n
   const [picked, setPicked] = useState<NodeType | null>(null)
   const [always, setAlways] = useState(true)
   const [when, setWhen] = useState('')
+  const [more, setMore] = useState(false)
 
   const canSayWhen = !!sourceType && LISTENING.has(sourceType)
   const close = (v: boolean) => {
@@ -118,7 +120,7 @@ export function AddNextStep({ id, x, y }: Readonly<{ id: string; x: number; y: n
         ) : (
           <>
             <p className="px-2 pb-1 pt-0.5 text-xs text-muted-foreground">What happens next?</p>
-            {NEXT_STEPS.map((t) => {
+            {[...NEXT_STEPS, ...(more ? MORE_STEPS : [])].map((t) => {
               const m = NODE_REGISTRY[t]
               return (
                 <button key={t} type="button" onClick={() => choose(t)} className="flex w-full items-start gap-2.5 rounded-lg px-2 py-2 text-left hover:bg-accent">
@@ -130,6 +132,11 @@ export function AddNextStep({ id, x, y }: Readonly<{ id: string; x: number; y: n
                 </button>
               )
             })}
+            {!more && (
+              <button type="button" onClick={() => setMore(true)} className="flex w-full items-center gap-1 px-2 py-2 text-xs text-muted-foreground hover:text-foreground">
+                More steps <ChevronDown className="h-3 w-3" />
+              </button>
+            )}
           </>
         )}
       </PopoverContent>

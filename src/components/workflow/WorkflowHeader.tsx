@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { AlertTriangle, ArrowLeft, BookOpen, Braces, ChevronDown, ClipboardPaste, Copy, Globe, Loader2, MoreHorizontal, PhoneIcon, Rocket, Settings2, ShieldCheck, Sparkles } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, PanelLeft, BookOpen, Braces, ChevronDown, ClipboardPaste, Copy, Globe, Loader2, MoreHorizontal, PhoneIcon, Rocket, Settings2, ShieldCheck, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -11,6 +11,8 @@ import { useWorkflowStore } from '@/stores/workflowStore'
 type HeaderProps = Readonly<{
   name: string
   onBack: () => void
+  paletteOpen: boolean
+  onTogglePalette: () => void
   issuesOpen: boolean
   onIssuesOpenChange: (open: boolean) => void
   isDirty: boolean
@@ -94,6 +96,9 @@ export function WorkflowHeader(p: HeaderProps) {
     <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-2 border-b border-gray-200 bg-white px-4 py-2.5 dark:border-gray-800 dark:bg-gray-900">
       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={p.onBack} aria-label="Back to the agent">
         <ArrowLeft className="h-4 w-4" />
+      </Button>
+      <Button variant={p.paletteOpen ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8" onClick={p.onTogglePalette} aria-label="Steps list" title="List of steps, and all step types">
+        <PanelLeft className="h-4 w-4" />
       </Button>
       <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{p.name}</h1>
       {p.isDirty && <Badge variant="secondary" className="text-[11px]">Unsaved</Badge>}

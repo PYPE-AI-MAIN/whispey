@@ -17,6 +17,7 @@ type Props = Readonly<{
   deployed: boolean
   tested: boolean
   voiceChecked: boolean
+  paletteOpen: boolean
 }>
 
 /** A short "how to get an agent live" list that ticks itself off, for people new to flows. */
@@ -57,7 +58,7 @@ export function CanvasHintBanner(p: Props) {
   }
 
   return (
-    <div className="absolute left-[15.5rem] top-3 z-10 w-72 rounded-xl border border-border bg-card text-xs shadow-md">
+    <div className={`absolute top-3 z-10 ${p.paletteOpen ? 'left-[15.5rem]' : 'left-3'} w-72 rounded-xl border border-border bg-card text-xs shadow-md`}>
       <div className="flex items-center gap-2 px-3 py-2.5">
         <button type="button" onClick={() => setCollapsed((v) => !v)} className="flex flex-1 items-center gap-2 text-left" aria-expanded={!collapsed}>
           <span className="font-semibold text-foreground">Get your agent live</span>

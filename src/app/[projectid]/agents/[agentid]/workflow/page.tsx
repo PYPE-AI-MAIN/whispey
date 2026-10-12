@@ -141,6 +141,8 @@ function WorkflowPageInner() {
   const [variablesOpen, setVariablesOpen] = useState(false)
   const [rulesOpen, setRulesOpen] = useState(false)
   const [issuesOpen, setIssuesOpen] = useState(false)
+  // Steps are added with the + on a step, so the side list stays out of the way until asked for.
+  const [paletteOpen, setPaletteOpen] = useState(false)
   const [voiceChecked, setVoiceChecked] = useState(false)
   const [tested, setTested] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -296,6 +298,8 @@ function WorkflowPageInner() {
       <WorkflowHeader
         name={agentRow?.name || 'Workflow'}
         onBack={() => router.push(`/${projectId}/agents/${agentId}`)}
+        paletteOpen={paletteOpen}
+        onTogglePalette={() => setPaletteOpen((v) => !v)}
         issuesOpen={issuesOpen}
         onIssuesOpenChange={setIssuesOpen}
         isDirty={isDirty}
@@ -331,9 +335,10 @@ function WorkflowPageInner() {
           deployed={!isDirty && agentLifecycle.status.status === 'running'}
           tested={tested}
           voiceChecked={voiceChecked}
+          paletteOpen={paletteOpen}
         />
         <ReactFlowProvider>
-          <WorkflowPalette />
+          {paletteOpen && <WorkflowPalette />}
           <WorkflowCanvas />
         </ReactFlowProvider>
         <WorkflowChat
