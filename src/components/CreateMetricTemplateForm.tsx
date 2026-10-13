@@ -87,7 +87,7 @@ export function CreateMetricTemplateForm({ onCreated }: Readonly<CreateMetricTem
         className="w-full flex items-center justify-between px-5 py-3.5 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
       >
         <span className="flex items-center gap-2">
-          <Plus className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          <Plus className="w-4 h-4 text-primary" />
           Create New Metric
         </span>
         <span className="text-muted-foreground text-xs">{open ? 'Cancel' : 'Expand'}</span>
@@ -95,7 +95,7 @@ export function CreateMetricTemplateForm({ onCreated }: Readonly<CreateMetricTem
 
       {open && (
         <div className="px-5 pb-5 pt-1 border-t border-border space-y-3 bg-muted/50">
-          {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+          {error && <p className="text-xs text-destructive">{error}</p>}
           <div>
             <div className="flex items-center justify-between">
               <Label className="text-xs font-medium text-muted-foreground">Name *</Label>

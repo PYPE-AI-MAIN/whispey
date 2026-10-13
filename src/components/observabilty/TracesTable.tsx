@@ -43,16 +43,16 @@ export { METRICS_LOGS_SELECT } from "@/hooks/useCallTranscript"
 // (keeps that callback's cognitive complexity down).
 function getLatencyColorClass(latency: number): string {
   if (latency === 0) return "text-muted-foreground"
-  if (latency > 5000) return "text-red-600 dark:text-red-400"
-  if (latency > 2000) return "text-amber-600 dark:text-amber-400"
-  return "text-emerald-600 dark:text-emerald-400"
+  if (latency > 5000) return "text-destructive"
+  if (latency > 2000) return "text-warning"
+  return "text-success"
 }
 
 function getStatusIcon(status: string) {
-  if (status === "bug_report") return <AlertTriangle className="w-4 h-4 text-red-500 dark:text-red-400" />
-  if (status === "error") return <XCircle className="w-4 h-4 text-red-500 dark:text-red-400" />
-  if (status === "warning") return <AlertTriangle className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-  return <CheckCircle className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+  if (status === "bug_report") return <AlertTriangle className="w-4 h-4 text-destructive" />
+  if (status === "error") return <XCircle className="w-4 h-4 text-destructive" />
+  if (status === "warning") return <AlertTriangle className="w-4 h-4 text-warning" />
+  return <CheckCircle className="w-4 h-4 text-success" />
 }
 
 // One tool-call line in the Conversation column — pulled out of the row map so its
@@ -68,12 +68,12 @@ function ToolCallLine({ tool, idx }: Readonly<{ tool: any; idx: number }>) {
     <div key={idx} className="flex items-start gap-1 text-xs">
       <Wrench className={cn(
         "w-3 h-3 mt-0.5 shrink-0",
-        isError ? "text-red-500 dark:text-red-400" : "text-amber-500 dark:text-amber-400"
+        isError ? "text-destructive" : "text-warning"
       )} />
       <div className="min-w-0">
         <span className={cn(
           "font-medium",
-          isError ? "text-red-700 dark:text-red-300" : "text-amber-700 dark:text-amber-400"
+          isError ? "text-destructive" : "text-warning"
         )}>
           {toolName}
         </span>
@@ -88,7 +88,7 @@ function ToolCallLine({ tool, idx }: Readonly<{ tool: any; idx: number }>) {
           </span>
         )}
         {isError && (
-          <span className="ml-1 text-red-500 dark:text-red-400 font-medium">✗ failed</span>
+          <span className="ml-1 text-destructive font-medium">✗ failed</span>
         )}
       </div>
     </div>
@@ -101,15 +101,15 @@ function FallbackEventLine({ fb, idx }: Readonly<{ fb: any; idx: number }>) {
   const isTotalFailure = !isRecovery && fb.all_providers_failed
   const eventKey = `${fb.provider_type}-${fb.event_type}-${fb.timestamp}-${idx}`
 
-  let icon = <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0 text-red-500 dark:text-red-400" />
-  let textClass = "text-red-700 dark:text-red-300"
+  let icon = <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0 text-destructive" />
+  let textClass = "text-destructive"
   let summary = `${fb.provider_type || 'Provider'} fallback: ${fb.provider_label || formatProviderLabel(fb.provider_name)} → ${fb.fallback_label || formatProviderLabel(fb.fallback_provider)}`
   if (isRecovery) {
-    icon = <CheckCircle className="w-3 h-3 mt-0.5 shrink-0 text-emerald-500 dark:text-emerald-400" />
-    textClass = "text-emerald-700 dark:text-emerald-300"
+    icon = <CheckCircle className="w-3 h-3 mt-0.5 shrink-0 text-success" />
+    textClass = "text-success"
     summary = `${fb.provider_type || 'Provider'} recovered: ${fb.provider_label || formatProviderLabel(fb.provider_name)}`
   } else if (isTotalFailure) {
-    icon = <XCircle className="w-3 h-3 mt-0.5 shrink-0 text-red-500 dark:text-red-400" />
+    icon = <XCircle className="w-3 h-3 mt-0.5 shrink-0 text-destructive" />
     summary = `${fb.provider_type || 'Provider'} failed, no fallback available: ${fb.provider_label || formatProviderLabel(fb.provider_name)}`
   }
 
@@ -363,7 +363,7 @@ const handleRowClick = (trace: TraceLog) => {
   if (error) {
     return (
       <div className="flex items-center justify-center h-full bg-card">
-        <div className="text-center text-red-600 dark:text-red-400 text-sm">
+        <div className="text-center text-destructive text-sm">
           Error loading traces: {error.message}
         </div>
       </div>
@@ -382,7 +382,7 @@ const handleRowClick = (trace: TraceLog) => {
                 className={cn(
                   "px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors",
                   activeTab === "turns" 
-                    ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800" 
+                    ? "bg-primary/15 text-primary border border-primary/30" 
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 )}
               >
@@ -395,7 +395,7 @@ const handleRowClick = (trace: TraceLog) => {
                 className={cn(
                   "px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors",
                   activeTab === "trace" 
-                    ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800" 
+                    ? "bg-primary/15 text-primary border border-primary/30" 
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 )}
               >
@@ -406,7 +406,7 @@ const handleRowClick = (trace: TraceLog) => {
                 className={cn(
                   "px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors",
                   activeTab === "waterfall" 
-                    ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800" 
+                    ? "bg-primary/15 text-primary border border-primary/30" 
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 )}
               >
@@ -420,7 +420,7 @@ const handleRowClick = (trace: TraceLog) => {
               className={cn(
                 "px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors",
                 activeTab === "config"
-                  ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+                  ? "bg-primary/15 text-primary border border-primary/30"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               )}
             >
@@ -479,7 +479,7 @@ const handleRowClick = (trace: TraceLog) => {
                     className="flex items-center gap-1 text-[11px] font-normal normal-case tracking-normal text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {copied
-                      ? <><Check className="w-3 h-3 text-emerald-500" /><span className="text-emerald-500">Copied</span></>
+                      ? <><Check className="w-3 h-3 text-success" /><span className="text-success">Copied</span></>
                       : <><Copy className="w-3 h-3" /><span>Copy</span></>
                     }
                   </button>
@@ -524,9 +524,9 @@ const handleRowClick = (trace: TraceLog) => {
                         key={trace.id}
                         onClick={() => handleRowClick(trace)}
                         className={cn(
-                          "w-full appearance-none bg-transparent text-left grid grid-cols-12 gap-3 px-4 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-900/10 cursor-pointer border-l-2 transition-all text-sm",
+                          "w-full appearance-none bg-transparent text-left grid grid-cols-12 gap-3 px-4 py-2.5 hover:bg-primary/10 cursor-pointer border-l-2 transition-all text-sm",
                           hasBugReport
-                            ? "border-l-red-500 bg-red-50 dark:bg-red-900/10 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            ? "border-l-red-500 bg-destructive/10 hover:bg-destructive/10"
                             : "border-l-transparent hover:border-l-blue-500 dark:hover:border-l-blue-400"
                         )}
                       >
@@ -540,12 +540,12 @@ const handleRowClick = (trace: TraceLog) => {
                             <div className="text-sm text-muted-foreground">
                               {getOperationIcon(mainOp)}
                             </div>
-                            <div className="font-mono text-xs text-blue-600 dark:text-blue-400 font-semibold">
+                            <div className="font-mono text-xs text-primary font-semibold">
                               {trace.trace_id ? `${trace.trace_id.slice(0, 8)}...` : `Turn-${trace.turn_id}`}
                             </div>
                             {hasBugReport && (
                               <div className="flex items-center gap-1">
-                                <AlertTriangle className="w-3 h-3 text-red-600 dark:text-red-400" />
+                                <AlertTriangle className="w-3 h-3 text-destructive" />
                                 <Badge variant="destructive" className="text-xs px-1 py-0">
                                   Bug
                                 </Badge>
@@ -564,7 +564,7 @@ const handleRowClick = (trace: TraceLog) => {
                         <div className="col-span-4 space-y-1">
                           {trace.user_transcript && (
                             <div className="text-xs">
-                              <span className="text-blue-600 dark:text-blue-400 font-medium">→</span>
+                              <span className="text-primary font-medium">→</span>
                               <span className="ml-1 text-foreground">
                                 {formatTranscript(trace.user_transcript)}
                               </span>
@@ -573,7 +573,7 @@ const handleRowClick = (trace: TraceLog) => {
 
                           {/* Tool calls — shown between user input and agent response */}
                           {trace.tool_calls && trace.tool_calls.length > 0 && (
-                            <div className="space-y-0.5 pl-1 border-l-2 border-amber-300 dark:border-amber-800/60 ml-1">
+                            <div className="space-y-0.5 pl-1 border-l-2 border-warning/40 ml-1">
                               {trace.tool_calls.map((tool: any, idx: number) => (
                                 <ToolCallLine key={`${tool.tool_name || tool.name || 'unknown'}-${idx}`} tool={tool} idx={idx} />
                               ))}
@@ -583,18 +583,18 @@ const handleRowClick = (trace: TraceLog) => {
                           {trace.agent_response && (
                             <div className={cn(
                               "text-xs",
-                              hasBugReport && "text-red-700 dark:text-red-300 font-medium"
+                              hasBugReport && "text-destructive font-medium"
                             )}>
                               <span className={cn(
                                 "font-medium",
-                                hasBugReport ? "text-red-600 dark:text-red-400" : "text-muted-foreground"
+                                hasBugReport ? "text-destructive" : "text-muted-foreground"
                               )}>←</span>
                               <span className={cn(
                                 "ml-1",
-                                hasBugReport ? "text-red-800 dark:text-red-300" : "text-muted-foreground"
+                                hasBugReport ? "text-destructive" : "text-muted-foreground"
                               )}>{formatTranscript(trace.agent_response)}</span>
                               {hasBugReport && (
-                                <span className="ml-2 text-red-600 dark:text-red-400 font-medium">[REPORTED]</span>
+                                <span className="ml-2 text-destructive font-medium">[REPORTED]</span>
                               )}
                             </div>
                           )}
@@ -602,7 +602,7 @@ const handleRowClick = (trace: TraceLog) => {
                               same pattern as tool_calls: full detail lives in the row's detail
                               sheet (click row → Fallback Events card), not duplicated here. */}
                           {fallbackEvents.length > 0 && (
-                            <div className="space-y-0.5 pl-1 border-l-2 border-red-200 dark:border-red-800 ml-1">
+                            <div className="space-y-0.5 pl-1 border-l-2 border-destructive/30 ml-1">
                               {fallbackEvents.map((fb: any, idx: number) => (
                                 <FallbackEventLine key={`${fb.provider_type}-${fb.event_type}-${fb.timestamp}-${idx}`} fb={fb} idx={idx} />
                               ))}
@@ -621,8 +621,8 @@ const handleRowClick = (trace: TraceLog) => {
                           <div className="flex items-center gap-2 flex-wrap">
                             {toolInfo.total > 0 && (
                               <div className="flex items-center gap-1 text-xs">
-                                <Wrench className="w-3 h-3 text-amber-500 dark:text-amber-400" />
-                                <span className="font-medium text-amber-700 dark:text-amber-400">{toolInfo.total}</span>
+                                <Wrench className="w-3 h-3 text-warning" />
+                                <span className="font-medium text-warning">{toolInfo.total}</span>
                                 <span className="text-muted-foreground">
                                   ({toolInfo.successful}✓)
                                 </span>
@@ -639,8 +639,8 @@ const handleRowClick = (trace: TraceLog) => {
                             )}
                             {fallbackFailureCount > 0 && (
                               <div className="flex items-center gap-1 text-xs">
-                                <AlertTriangle className="w-3 h-3 text-red-600 dark:text-red-400" />
-                                <span className="font-medium text-red-700 dark:text-red-300">{fallbackFailureCount}</span>
+                                <AlertTriangle className="w-3 h-3 text-destructive" />
+                                <span className="font-medium text-destructive">{fallbackFailureCount}</span>
                               </div>
                             )}
                           </div>

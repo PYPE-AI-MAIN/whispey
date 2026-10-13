@@ -211,12 +211,12 @@ function Campaigns() {
 
   const getStatusBadge = (status: string) => {
     const map: Record<string, string> = {
-      active:    'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800',
-      running:   'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800',
-      paused:    'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800',
-      completed: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+      active:    'bg-success/15 text-success border-success/30',
+      running:   'bg-success/15 text-success border-success/30',
+      paused:    'bg-warning/15 text-warning border-warning/30',
+      completed: 'bg-primary/15 text-primary border-primary/30',
       scheduled: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border-purple-200 dark:border-purple-800',
-      failed:    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800',
+      failed:    'bg-destructive/15 text-destructive border-destructive/30',
       draft:     'bg-muted text-foreground border-border',
       ready:     'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800',
     }
@@ -326,8 +326,8 @@ function Campaigns() {
       return (
         /* Empty states */
         <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
-          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-3">
-            <Phone className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          <div className="w-12 h-12 bg-primary/15 rounded-full flex items-center justify-center mb-3">
+            <Phone className="w-6 h-6 text-primary" />
           </div>
           {search ? (
             <>
@@ -370,7 +370,7 @@ function Campaigns() {
             tabIndex={0}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push(`/${projectId}/campaigns/${campaign.campaignId}`) } }}
             className={`relative bg-card  border border-border 
-              rounded-lg p-4 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm
+              rounded-lg p-4 hover:border-primary/40  hover:shadow-sm
               transition-all cursor-pointer group
               ${isFetching ? 'opacity-60 pointer-events-none' : ''}`}
           >
@@ -405,8 +405,8 @@ function Campaigns() {
                 {/* Stats row */}
                 <div className="flex items-center gap-4 mt-3 pt-2.5 border-t border-border/60">
                   <Stat label="Total"   value={campaign.callStats?.total     ?? campaign.totalContacts}  />
-                  <Stat label="Success" value={campaign.callStats?.completed ?? campaign.successCalls}   color="text-green-600 dark:text-green-400" />
-                  <Stat label="Failed"  value={campaign.callStats?.failed    ?? campaign.failedCalls}    color="text-red-600 dark:text-red-400" />
+                  <Stat label="Success" value={campaign.callStats?.completed ?? campaign.successCalls}   color="text-success" />
+                  <Stat label="Failed"  value={campaign.callStats?.failed    ?? campaign.failedCalls}    color="text-destructive" />
                   <Stat label="Pending" value={campaign.callStats?.pending   ?? 0}                       color="text-muted-foreground" />
                 </div>
               </div>
@@ -453,7 +453,7 @@ function Campaigns() {
 
                   {['paused', 'draft', 'completed', 'ready'].includes(campaign.status) && (
                     <DropdownMenuItem
-                      className="text-xs text-red-600 dark:text-red-400 cursor-pointer"
+                      className="text-xs text-destructive cursor-pointer"
                       disabled={actionLoading === campaign.campaignId}
                       onClick={e => handleDeleteCampaign(campaign.campaignId, e)}
                     >
@@ -537,7 +537,7 @@ function Campaigns() {
 
       {/* ── Error banner ── */}
       {isError && (
-        <div className="mx-4 mt-3 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20 px-3 py-2 text-xs text-red-700 dark:text-red-400">
+        <div className="mx-4 mt-3 flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
           <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
           Failed to load campaigns. Check your connection and try refreshing.
         </div>
@@ -607,8 +607,8 @@ function Campaigns() {
                 <h4 className="text-xs font-medium text-muted-foreground mb-5">Performance Metrics</h4>
                 <div className="space-y-4">
                   <MetricRow label="Total Contacts" value={selectedCampaign.callStats?.total   ?? selectedCampaign.totalContacts} />
-                  <MetricRow label="Successful"      value={selectedCampaign.callStats?.completed ?? selectedCampaign.successCalls} color="text-green-600 dark:text-green-400" />
-                  <MetricRow label="Failed"          value={selectedCampaign.callStats?.failed    ?? selectedCampaign.failedCalls}  color="text-red-600 dark:text-red-400" />
+                  <MetricRow label="Successful"      value={selectedCampaign.callStats?.completed ?? selectedCampaign.successCalls} color="text-success" />
+                  <MetricRow label="Failed"          value={selectedCampaign.callStats?.failed    ?? selectedCampaign.failedCalls}  color="text-destructive" />
                   <MetricRow label="Pending"         value={selectedCampaign.callStats?.pending   ?? 0}                             color="text-muted-foreground" />
                 </div>
 

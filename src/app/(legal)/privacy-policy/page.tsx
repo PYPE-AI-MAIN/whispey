@@ -33,7 +33,7 @@ export default function PrivacyPolicy() {
           <div className="flex items-center justify-between">
             <Link 
               href="/"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-blue-600 transition-colors group"
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors group"
             >
               <ArrowLeft weight="regular" className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
               Back to Dashboard
@@ -49,8 +49,8 @@ export default function PrivacyPolicy() {
       <div className="bg-card border-b border-border">
         <div className="max-w-4xl mx-auto px-6 py-12">
           <div className="flex items-start gap-4">
-            <div className="p-3 bg-green-50 rounded-xl border border-green-100">
-              <LockKey weight="regular" className="w-8 h-8 text-green-600" />
+            <div className="p-3 bg-success/10 rounded-xl border border-success/20">
+              <LockKey weight="regular" className="w-8 h-8 text-success" />
             </div>
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-foreground tracking-tight">Privacy Policy</h1>
@@ -58,7 +58,7 @@ export default function PrivacyPolicy() {
                 Your privacy is important to us. This policy explains how we handle your data.
               </p>
               <div className="flex items-center gap-2 mt-4">
-                <div className="px-3 py-1 bg-green-50 text-green-700 text-sm font-medium rounded-lg border border-green-200">
+                <div className="px-3 py-1 bg-success/10 text-success text-sm font-medium rounded-lg border border-success/30">
                   Effective: {effectiveDate}
                 </div>
               </div>
@@ -88,27 +88,27 @@ export default function PrivacyPolicy() {
                 collect when you use our voice AI agents observability platform, why we collect it, and 
                 how we protect it.
               </p>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
                 <p className="text-sm font-medium text-blue-900 mb-2">Key Principles:</p>
-                <ul className="space-y-1 text-sm text-blue-800">
+                <ul className="space-y-1 text-sm text-primary">
                   <li className="flex items-center gap-2">
-                    <CheckCircle weight="fill" className="w-4 h-4 text-blue-600" />
+                    <CheckCircle weight="fill" className="w-4 h-4 text-primary" />
                     We never sell your data
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle weight="fill" className="w-4 h-4 text-blue-600" />
+                    <CheckCircle weight="fill" className="w-4 h-4 text-primary" />
                     We collect only what's necessary to provide the service
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle weight="fill" className="w-4 h-4 text-blue-600" />
+                    <CheckCircle weight="fill" className="w-4 h-4 text-primary" />
                     You can request data deletion at any time
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle weight="fill" className="w-4 h-4 text-blue-600" />
+                    <CheckCircle weight="fill" className="w-4 h-4 text-primary" />
                     We use industry-standard security measures
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle weight="fill" className="w-4 h-4 text-blue-600" />
+                    <CheckCircle weight="fill" className="w-4 h-4 text-primary" />
                     Self-hosting option gives you complete data control
                   </li>
                 </ul>
@@ -120,8 +120,8 @@ export default function PrivacyPolicy() {
           <div className="bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-all duration-300">
             <div className="p-6 border-b border-border">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-50 rounded-lg border border-blue-100">
-                  <Eye weight="regular" className="w-5 h-5 text-blue-600" />
+                <div className="p-2 bg-primary/10 rounded-lg border border-primary/20">
+                  <Eye weight="regular" className="w-5 h-5 text-primary" />
                 </div>
                 <h2 className="text-xl font-semibold text-foreground">1. Information We Collect</h2>
               </div>
@@ -162,7 +162,7 @@ export default function PrivacyPolicy() {
                     <li>• Error logs and debugging information</li>
                     <li>• Custom metadata you choose to send</li>
                   </ul>
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mt-3">
+                  <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 mt-3">
                     <p className="text-xs font-medium text-yellow-900">
                       Note: Audio content is processed in real-time for analytics purposes and is not 
                       permanently stored unless you explicitly enable recording features.
@@ -174,7 +174,7 @@ export default function PrivacyPolicy() {
               {/* Technical Information */}
               <div>
                 <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <Globe weight="regular" className="w-5 h-5 text-green-600" />
+                  <Globe weight="regular" className="w-5 h-5 text-success" />
                   Technical Information
                 </h3>
                 <div className="ml-7 space-y-2 text-sm text-muted-foreground">
@@ -212,8 +212,8 @@ export default function PrivacyPolicy() {
           <div className="bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-all duration-300">
             <div className="p-6 border-b border-border">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-50 rounded-lg border border-green-100">
-                  <Shield weight="regular" className="w-5 h-5 text-green-600" />
+                <div className="p-2 bg-success/10 rounded-lg border border-success/20">
+                  <Shield weight="regular" className="w-5 h-5 text-success" />
                 </div>
                 <h2 className="text-xl font-semibold text-foreground">2. How We Use Your Information</h2>
               </div>
@@ -223,8 +223,8 @@ export default function PrivacyPolicy() {
               
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
-                  <div className="p-1.5 bg-green-100 rounded-lg mt-0.5">
-                    <CheckCircle weight="fill" className="w-4 h-4 text-green-600" />
+                  <div className="p-1.5 bg-success/15 rounded-lg mt-0.5">
+                    <CheckCircle weight="fill" className="w-4 h-4 text-success" />
                   </div>
                   <div>
                     <p className="font-medium text-foreground">Service Delivery</p>
@@ -236,8 +236,8 @@ export default function PrivacyPolicy() {
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <div className="p-1.5 bg-green-100 rounded-lg mt-0.5">
-                    <CheckCircle weight="fill" className="w-4 h-4 text-green-600" />
+                  <div className="p-1.5 bg-success/15 rounded-lg mt-0.5">
+                    <CheckCircle weight="fill" className="w-4 h-4 text-success" />
                   </div>
                   <div>
                     <p className="font-medium text-foreground">Campaign Management</p>
@@ -249,8 +249,8 @@ export default function PrivacyPolicy() {
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <div className="p-1.5 bg-green-100 rounded-lg mt-0.5">
-                    <CheckCircle weight="fill" className="w-4 h-4 text-green-600" />
+                  <div className="p-1.5 bg-success/15 rounded-lg mt-0.5">
+                    <CheckCircle weight="fill" className="w-4 h-4 text-success" />
                   </div>
                   <div>
                     <p className="font-medium text-foreground">Security & Reliability</p>
@@ -261,8 +261,8 @@ export default function PrivacyPolicy() {
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <div className="p-1.5 bg-green-100 rounded-lg mt-0.5">
-                    <CheckCircle weight="fill" className="w-4 h-4 text-green-600" />
+                  <div className="p-1.5 bg-success/15 rounded-lg mt-0.5">
+                    <CheckCircle weight="fill" className="w-4 h-4 text-success" />
                   </div>
                   <div>
                     <p className="font-medium text-foreground">Product Improvement</p>
@@ -273,8 +273,8 @@ export default function PrivacyPolicy() {
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <div className="p-1.5 bg-green-100 rounded-lg mt-0.5">
-                    <CheckCircle weight="fill" className="w-4 h-4 text-green-600" />
+                  <div className="p-1.5 bg-success/15 rounded-lg mt-0.5">
+                    <CheckCircle weight="fill" className="w-4 h-4 text-success" />
                   </div>
                   <div>
                     <p className="font-medium text-foreground">Communication</p>
@@ -285,8 +285,8 @@ export default function PrivacyPolicy() {
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <div className="p-1.5 bg-green-100 rounded-lg mt-0.5">
-                    <CheckCircle weight="fill" className="w-4 h-4 text-green-600" />
+                  <div className="p-1.5 bg-success/15 rounded-lg mt-0.5">
+                    <CheckCircle weight="fill" className="w-4 h-4 text-success" />
                   </div>
                   <div>
                     <p className="font-medium text-foreground">Legal Compliance</p>
@@ -303,8 +303,8 @@ export default function PrivacyPolicy() {
           <div className="bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-all duration-300">
             <div className="p-6 border-b border-border">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-orange-50 rounded-lg border border-orange-100">
-                  <Clock weight="regular" className="w-5 h-5 text-orange-600" />
+                <div className="p-2 bg-warning/10 rounded-lg border border-warning/20">
+                  <Clock weight="regular" className="w-5 h-5 text-warning" />
                 </div>
                 <h2 className="text-xl font-semibold text-foreground">3. Data Retention</h2>
               </div>
@@ -316,7 +316,7 @@ export default function PrivacyPolicy() {
                 <div className="bg-muted/50 border border-border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <p className="font-medium text-foreground">Real-time Audio Streams</p>
-                    <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded">Not stored</span>
+                    <span className="px-2 py-1 bg-success/15 text-success text-xs font-medium rounded">Not stored</span>
                   </div>
                   <p className="text-sm text-muted-foreground">Processed in memory only for real-time analytics, never persisted to disk</p>
                 </div>
@@ -324,7 +324,7 @@ export default function PrivacyPolicy() {
                 <div className="bg-muted/50 border border-border rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <p className="font-medium text-foreground">Call Transcriptions</p>
-                    <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">30 days</span>
+                    <span className="px-2 py-1 bg-primary/15 text-primary text-xs font-medium rounded">30 days</span>
                   </div>
                   <p className="text-sm text-muted-foreground">Automatically deleted after 30 days unless you request earlier deletion</p>
                 </div>
@@ -354,7 +354,7 @@ export default function PrivacyPolicy() {
                 </div>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
                 <p className="text-sm text-blue-900">
                   <strong>Data Deletion:</strong> You can request immediate deletion of your data at any time through 
                   your account settings or by contacting support. For self-hosted instances, you have complete 
@@ -375,7 +375,7 @@ export default function PrivacyPolicy() {
               </div>
             </div>
             <div className="p-6 space-y-4">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+              <div className="bg-success/10 border border-success/30 rounded-lg p-4 mb-4">
                 <p className="text-green-900 font-medium">
                    We NEVER sell, rent, or trade your personal data
                 </p>
@@ -424,8 +424,8 @@ export default function PrivacyPolicy() {
           <div className="bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-all duration-300">
             <div className="p-6 border-b border-border">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-red-50 rounded-lg border border-red-100">
-                  <Shield weight="regular" className="w-5 h-5 text-red-600" />
+                <div className="p-2 bg-destructive/10 rounded-lg border border-destructive/20">
+                  <Shield weight="regular" className="w-5 h-5 text-destructive" />
                 </div>
                 <h2 className="text-xl font-semibold text-foreground">5. Security Measures</h2>
               </div>
@@ -435,32 +435,32 @@ export default function PrivacyPolicy() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <CheckCircle weight="fill" className="w-4 h-4 text-green-500" />
+                  <CheckCircle weight="fill" className="w-4 h-4 text-success" />
                   <span>Encryption in transit (TLS 1.3)</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <CheckCircle weight="fill" className="w-4 h-4 text-green-500" />
+                  <CheckCircle weight="fill" className="w-4 h-4 text-success" />
                   <span>Encryption at rest (AES-256)</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <CheckCircle weight="fill" className="w-4 h-4 text-green-500" />
+                  <CheckCircle weight="fill" className="w-4 h-4 text-success" />
                   <span>Regular security audits</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <CheckCircle weight="fill" className="w-4 h-4 text-green-500" />
+                  <CheckCircle weight="fill" className="w-4 h-4 text-success" />
                   <span>Access controls & monitoring</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <CheckCircle weight="fill" className="w-4 h-4 text-green-500" />
+                  <CheckCircle weight="fill" className="w-4 h-4 text-success" />
                   <span>Regular backups</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <CheckCircle weight="fill" className="w-4 h-4 text-green-500" />
+                  <CheckCircle weight="fill" className="w-4 h-4 text-success" />
                   <span>Incident response procedures</span>
                 </div>
               </div>
 
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="bg-warning/10 border border-warning/30 rounded-lg p-4">
                 <p className="text-sm text-yellow-900">
                   <strong>Security Incidents:</strong> In the unlikely event of a data breach, we'll notify affected 
                   users within 72 hours and provide guidance on protective measures.
@@ -473,8 +473,8 @@ export default function PrivacyPolicy() {
           <div className="bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-all duration-300">
             <div className="p-6 border-b border-border">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-50 rounded-lg border border-blue-100">
-                  <Check weight="regular" className="w-5 h-5 text-blue-600" />
+                <div className="p-2 bg-primary/10 rounded-lg border border-primary/20">
+                  <Check weight="regular" className="w-5 h-5 text-primary" />
                 </div>
                 <h2 className="text-xl font-semibold text-foreground">6. Your Privacy Rights</h2>
               </div>
@@ -484,8 +484,8 @@ export default function PrivacyPolicy() {
               
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
-                  <div className="p-1.5 bg-blue-100 rounded-lg mt-0.5">
-                    <Eye weight="bold" className="w-4 h-4 text-blue-600" />
+                  <div className="p-1.5 bg-primary/15 rounded-lg mt-0.5">
+                    <Eye weight="bold" className="w-4 h-4 text-primary" />
                   </div>
                   <div>
                     <p className="font-medium text-foreground">Right to Access</p>
@@ -496,8 +496,8 @@ export default function PrivacyPolicy() {
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <div className="p-1.5 bg-blue-100 rounded-lg mt-0.5">
-                    <Shield weight="bold" className="w-4 h-4 text-blue-600" />
+                  <div className="p-1.5 bg-primary/15 rounded-lg mt-0.5">
+                    <Shield weight="bold" className="w-4 h-4 text-primary" />
                   </div>
                   <div>
                     <p className="font-medium text-foreground">Right to Correction</p>
@@ -508,8 +508,8 @@ export default function PrivacyPolicy() {
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <div className="p-1.5 bg-blue-100 rounded-lg mt-0.5">
-                    <Database weight="bold" className="w-4 h-4 text-blue-600" />
+                  <div className="p-1.5 bg-primary/15 rounded-lg mt-0.5">
+                    <Database weight="bold" className="w-4 h-4 text-primary" />
                   </div>
                   <div>
                     <p className="font-medium text-foreground">Right to Deletion</p>
@@ -520,8 +520,8 @@ export default function PrivacyPolicy() {
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <div className="p-1.5 bg-blue-100 rounded-lg mt-0.5">
-                    <Share weight="bold" className="w-4 h-4 text-blue-600" />
+                  <div className="p-1.5 bg-primary/15 rounded-lg mt-0.5">
+                    <Share weight="bold" className="w-4 h-4 text-primary" />
                   </div>
                   <div>
                     <p className="font-medium text-foreground">Right to Portability</p>
@@ -532,8 +532,8 @@ export default function PrivacyPolicy() {
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <div className="p-1.5 bg-blue-100 rounded-lg mt-0.5">
-                    <Globe weight="bold" className="w-4 h-4 text-blue-600" />
+                  <div className="p-1.5 bg-primary/15 rounded-lg mt-0.5">
+                    <Globe weight="bold" className="w-4 h-4 text-primary" />
                   </div>
                   <div>
                     <p className="font-medium text-foreground">Right to Object</p>
@@ -544,7 +544,7 @@ export default function PrivacyPolicy() {
                 </div>
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
                 <p className="text-sm text-blue-900">
                   <strong>Exercise Your Rights:</strong> Contact us at privacy@pypeai.com to exercise any of these 
                   rights. We'll respond within 30 days.
@@ -557,8 +557,8 @@ export default function PrivacyPolicy() {
           <div className="bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-all duration-300">
             <div className="p-6 border-b border-border">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-yellow-50 rounded-lg border border-yellow-100">
-                  <Cookie weight="regular" className="w-5 h-5 text-yellow-600" />
+                <div className="p-2 bg-warning/10 rounded-lg border border-warning/20">
+                  <Cookie weight="regular" className="w-5 h-5 text-warning" />
                 </div>
                 <h2 className="text-xl font-semibold text-foreground">7. Cookies & Tracking</h2>
               </div>
@@ -672,8 +672,8 @@ export default function PrivacyPolicy() {
           <div className="bg-card rounded-xl border border-border shadow-sm">
             <div className="p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-blue-50 rounded-lg border border-blue-100">
-                  <Envelope weight="regular" className="w-5 h-5 text-blue-600" />
+                <div className="p-2 bg-primary/10 rounded-lg border border-primary/20">
+                  <Envelope weight="regular" className="w-5 h-5 text-primary" />
                 </div>
                 <h2 className="text-xl font-semibold text-foreground">Contact Us</h2>
               </div>
@@ -689,7 +689,7 @@ export default function PrivacyPolicy() {
                   <p className="text-sm font-medium text-foreground mb-1">Privacy Team</p>
                   <a 
                     href="mailto:dhruv@pypeai.com" 
-                    className="text-blue-600 hover:text-blue-700 font-medium"
+                    className="text-primary hover:text-primary font-medium"
                   >
                     dhruv@pypeai.com
                   </a>
@@ -698,7 +698,7 @@ export default function PrivacyPolicy() {
                   <p className="text-sm font-medium text-foreground mb-1">Data Protection Officer</p>
                   <a 
                     href="mailto:ashish@pypeai.com" 
-                    className="text-blue-600 hover:text-blue-700 font-medium"
+                    className="text-primary hover:text-primary font-medium"
                   >
                     ashish@pypeai.com
                   </a>
@@ -715,7 +715,7 @@ export default function PrivacyPolicy() {
 
           {/* Footer Links */}
           <div className="flex items-center justify-center gap-6 py-8 text-sm">
-            <Link href="/terms" className="text-muted-foreground hover:text-blue-600 transition-colors">
+            <Link href="/terms" className="text-muted-foreground hover:text-primary transition-colors">
               Terms of Service
             </Link>
             <span className="text-muted-foreground">•</span>
@@ -723,12 +723,12 @@ export default function PrivacyPolicy() {
               href="https://github.com/PYPE-AI-MAIN/whispey"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-blue-600 transition-colors"
+              className="text-muted-foreground hover:text-primary transition-colors"
             >
               Open Source (GitHub)
             </a>
             <span className="text-muted-foreground">•</span>
-            <Link href="https://docs.whispey.pypeai.com" className="text-muted-foreground hover:text-blue-600 transition-colors">
+            <Link href="https://docs.whispey.pypeai.com" className="text-muted-foreground hover:text-primary transition-colors">
               Documentation
             </Link>
           </div>

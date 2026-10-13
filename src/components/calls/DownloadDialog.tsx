@@ -286,18 +286,18 @@ export default function DownloadDialog({
           <div
             className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 ${
               isLarge
-                ? 'border-amber-300 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-400/10'
+                ? 'border-amber-300 dark:border-amber-400/30 bg-warning/10 dark:bg-amber-400/10'
                 : 'border-border'
             }`}
           >
             <div className="flex items-start gap-2">
-              {isLarge && <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />}
+              {isLarge && <AlertTriangle className="h-3.5 w-3.5 text-warning flex-shrink-0 mt-0.5" />}
               <div>
                 <p className={`text-xs font-medium ${isLarge ? 'text-amber-800 dark:text-amber-300' : 'text-gray-600 dark:text-gray-400'}`}>
                   Estimated rows
                 </p>
                 {isLarge && (
-                  <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
+                  <p className="text-[11px] text-warning mt-0.5">
                     Large export — this may take a while or fail in-browser. Consider narrowing the date range.
                   </p>
                 )}
@@ -361,7 +361,7 @@ export default function DownloadDialog({
             </CollapsibleContent>
           </Collapsible>
 
-          {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+          {error && <p className="text-xs text-destructive">{error}</p>}
 
           <div className="space-y-1.5">
             <Button

@@ -102,7 +102,7 @@ function CallIdCell({ callId }: Readonly<{ callId: string }>) {
         className="flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:hover:bg-gray-700/60 transition-colors shrink-0 cursor-pointer"
         aria-label="Copy call ID"
       >
-        {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+        {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
       </button>
     </div>
   )
@@ -358,7 +358,7 @@ export const createTableColumns = (
         // Special rendering for voicemail-detection
         if (key === 'voicemail-detection' && call.metadata?.['voicemail-detection'] === 'true') {
           return (
-            <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+            <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5 bg-warning/15 text-warning">
               Voicemail
             </Badge>
           )

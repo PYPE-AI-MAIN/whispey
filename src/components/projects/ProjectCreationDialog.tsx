@@ -155,8 +155,8 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
 
                 {/* Error Message */}
                 {error && (
-                  <div className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
-                    <span className="text-sm text-red-700 dark:text-red-400 font-medium">{error}</span>
+                  <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30">
+                    <span className="text-sm text-destructive font-medium">{error}</span>
                   </div>
                 )}
 
@@ -190,8 +190,8 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
           <>
             {/* Success Header */}
             <DialogHeader className="px-6 pt-6 pb-4 text-center">
-              <div className="w-12 h-12 mx-auto mb-4 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
+              <div className="w-12 h-12 mx-auto mb-4 bg-success/15 rounded-full flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-success" />
               </div>
               <DialogTitle className="text-xl font-semibold text-foreground mb-1">
                 Organization Created Successfully!

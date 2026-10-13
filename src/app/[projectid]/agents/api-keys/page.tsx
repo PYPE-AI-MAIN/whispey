@@ -206,14 +206,14 @@ const ApiKeys = () => {
       </div>
 
       {/* Security Info */}
-      <div className="mb-6 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+      <div className="mb-6 p-3 bg-primary/10 border border-primary/30 rounded-lg">
         <div className="flex items-start gap-3">
-          <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+          <Shield className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
           <div>
             <p className="text-xs font-medium text-blue-900 dark:text-blue-200 mb-1">
               Security Notice
             </p>
-            <p className="text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
+            <p className="text-xs text-primary leading-relaxed">
               Keys are securely encrypted. Use "View" to decrypt and copy when needed.
             </p>
           </div>
@@ -224,8 +224,8 @@ const ApiKeys = () => {
       {apiKeys.length === 0 ? (
         <Card className="border-border bg-card">
           <CardContent className="py-12 px-8 text-center">
-            <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <Key className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <Key className="w-6 h-6 text-primary" />
             </div>
             <h3 className="text-sm font-medium text-foreground mb-2">
               No API keys yet
@@ -242,8 +242,8 @@ const ApiKeys = () => {
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Key className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Key className="w-4 h-4 text-primary" />
                     </div>
                     <div>
                     <div className="flex items-center gap-2 mb-1">
@@ -253,7 +253,7 @@ const ApiKeys = () => {
                         {apiKey.legacy && (
                           <Badge 
                             variant="outline"
-                            className="text-xs px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800"
+                            className="text-xs px-1.5 py-0 bg-warning/10 text-warning border-warning/30"
                           >
                             Legacy
                           </Badge>
@@ -261,7 +261,7 @@ const ApiKeys = () => {
                         <Badge 
                           variant="outline"
                           className={apiKey.is_active ? 
-                            "text-xs px-1.5 py-0 bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800" : 
+                            "text-xs px-1.5 py-0 bg-primary/10 text-primary border-primary/30" : 
                             "text-xs px-1.5 py-0 bg-muted/50 text-muted-foreground border-border"
                           }
                         >
@@ -302,7 +302,7 @@ const ApiKeys = () => {
                       )}
 
                       {copiedKey && (
-                        <p className="text-xs text-green-600 dark:text-green-400 mb-2">
+                        <p className="text-xs text-success mb-2">
                           Copied to clipboard
                         </p>
                       )}
@@ -333,7 +333,7 @@ const ApiKeys = () => {
                               size="sm"
                               onClick={() => handleViewFullKey(apiKey)}
                               disabled={viewingKey === apiKey.id}
-                              className="h-7 px-2 text-muted-foreground hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 dark:hover:text-green-400"
+                              className="h-7 px-2 text-muted-foreground hover:text-success hover:bg-success/10"
                             >
                               {viewingKey === apiKey.id ? (
                                 <Loader2 className="w-3 h-3 animate-spin" />
@@ -376,7 +376,7 @@ const ApiKeys = () => {
                             size="sm"
                             onClick={() => setShowRegenerateConfirm(apiKey)}
                             disabled={regeneratingKey === apiKey.id}
-                            className="h-7 px-2 text-muted-foreground hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
+                            className="h-7 px-2 text-muted-foreground hover:text-primary hover:bg-primary/10"
                           >
                             {regeneratingKey === apiKey.id ? (
                               <Loader2 className="w-3 h-3 animate-spin" />
@@ -405,8 +405,8 @@ const ApiKeys = () => {
         <DialogContent className="sm:max-w-lg bg-card border-border">
           <DialogHeader>
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 bg-green-50 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
-                <Eye className="w-4 h-4 text-green-600 dark:text-green-400" />
+              <div className="w-8 h-8 bg-success/10 rounded-lg flex items-center justify-center">
+                <Eye className="w-4 h-4 text-success" />
               </div>
               <div>
                 <DialogTitle className="text-base font-semibold text-foreground">API Key</DialogTitle>
@@ -446,7 +446,7 @@ const ApiKeys = () => {
                 </div>
               </div>
               {copiedKey && (
-                <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                <p className="text-xs text-success mt-2">
                   Copied to clipboard
                 </p>
               )}
@@ -473,8 +473,8 @@ const ApiKeys = () => {
         <DialogContent className="sm:max-w-lg bg-card border-border">
           <DialogHeader>
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
-                <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                <CheckCircle2 className="w-4 h-4 text-primary" />
               </div>
               <div>
                 <DialogTitle className="text-base font-semibold text-foreground">Key regenerated successfully</DialogTitle>
@@ -514,7 +514,7 @@ const ApiKeys = () => {
                 </div>
               </div>
               {copiedKey && (
-                <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                <p className="text-xs text-primary mt-2">
                   Copied to clipboard
                 </p>
               )}
@@ -542,8 +542,8 @@ const ApiKeys = () => {
         <DialogContent className="sm:max-w-md bg-card border-border">
           <DialogHeader>
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 bg-amber-50 dark:bg-amber-900/20 rounded-lg flex items-center justify-center">
-                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <div className="w-8 h-8 bg-warning/10 rounded-lg flex items-center justify-center">
+                <AlertTriangle className="w-4 h-4 text-warning" />
               </div>
               <div>
                 <DialogTitle className="text-base font-semibold text-foreground">Regenerate key</DialogTitle>

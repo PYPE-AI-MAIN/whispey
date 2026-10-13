@@ -27,8 +27,8 @@ function PaletteItem({ type, meta }: Readonly<{ type: NodeType; meta: NodeMeta }
           }}
           className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md border border-border bg-muted/50 cursor-grab active:cursor-grabbing hover:border-border transition-colors text-left"
         >
-          <div className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800">
-            <meta.icon className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+          <div className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0 bg-primary/10 border border-primary/30">
+            <meta.icon className="w-3.5 h-3.5 text-primary" />
           </div>
           <span className="text-xs font-medium text-foreground truncate">{meta.label}</span>
         </button>

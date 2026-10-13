@@ -350,8 +350,8 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({
           {/* Header */}
           <SheetHeader className="border-b border-border px-6 py-4">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                <Activity className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
+                <Activity className="w-4 h-4 text-primary" />
               </div>
               <div>
                 <SheetTitle className="text-lg font-semibold text-left">
@@ -386,10 +386,10 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({
                         "flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px",
                         selectedView === tab.id
                           ? tab.id === "bug-report"
-                            ? "border-red-500 dark:border-red-400 text-red-600 dark:text-red-400"
-                            : "border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400" 
+                            ? "border-red-500 dark:border-red-400 text-destructive"
+                            : "border-blue-500 dark:border-blue-400 text-primary" 
                           : "border-transparent hover:text-foreground", 
-                        tab.id === "bug-report" ? "text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300" : "text-muted-foreground"
+                        tab.id === "bug-report" ? "text-destructive hover:text-destructive" : "text-muted-foreground"
                       )}
                     >
                       {tab.icon}

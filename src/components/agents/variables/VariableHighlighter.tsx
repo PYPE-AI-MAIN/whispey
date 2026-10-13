@@ -87,8 +87,8 @@ export const variableStyles = `
 }
 
 .variable-valid {
-  background-color: rgb(219, 234, 254); /* bg-blue-100 */
-  color: rgb(29, 78, 216); /* text-blue-700 */
+  background-color: rgb(219, 234, 254); /* bg-primary/15 */
+  color: rgb(29, 78, 216); /* text-primary */
   padding: 1px 2px;
   border-radius: 2px;
 }
@@ -99,8 +99,8 @@ export const variableStyles = `
 }
 
 .variable-invalid {
-  background-color: rgb(254, 226, 226); /* bg-red-100 */
-  color: rgb(185, 28, 28); /* text-red-700 */
+  background-color: rgb(254, 226, 226); /* bg-destructive/15 */
+  color: rgb(185, 28, 28); /* text-destructive */
   padding: 1px 2px;
   border-radius: 2px;
   text-decoration: wavy underline;
@@ -116,8 +116,8 @@ export const variableStyles = `
 }
 
 .variable-unclosed {
-  background-color: rgb(254, 249, 195); /* bg-yellow-100 */
-  color: rgb(161, 98, 7); /* text-yellow-700 */
+  background-color: rgb(254, 249, 195); /* bg-warning/15 */
+  color: rgb(161, 98, 7); /* text-warning */
   padding: 1px 2px;
   border-radius: 2px;
 }

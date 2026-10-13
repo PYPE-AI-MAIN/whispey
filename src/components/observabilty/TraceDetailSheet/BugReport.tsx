@@ -107,10 +107,10 @@ function BugReport({ trace }: { trace: any }) {
     return (
     <div className="space-y-6">
         {/* Turn Context - Flagged Conversation */}
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl overflow-hidden shadow-sm">
-        <div className="px-6 py-4 border-b border-red-100 dark:border-red-800 bg-red-50 dark:bg-red-900/10">
+        <div className="bg-destructive/10 border border-destructive/30 rounded-xl overflow-hidden shadow-sm">
+        <div className="px-6 py-4 border-b border-destructive/20 bg-destructive/10">
             <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-800 text-red-700 dark:text-red-300 flex items-center justify-center text-lg font-semibold">
+            <div className="w-8 h-8 rounded-full bg-destructive/15 text-destructive flex items-center justify-center text-lg font-semibold">
                 !
             </div>
             <div>
@@ -118,11 +118,11 @@ function BugReport({ trace }: { trace: any }) {
                 <Badge variant="destructive" className="text-xs">
                     Flagged Turn
                 </Badge>
-                <span className="text-sm text-red-700 dark:text-red-300">
+                <span className="text-sm text-destructive">
                     Turn #{trace.turn_id} • {formatTimestamp(trace.unix_timestamp)}
                 </span>
                 </div>
-                <div className="text-xs text-red-600 dark:text-red-400 mt-1">
+                <div className="text-xs text-destructive mt-1">
                 This conversation turn was reported as problematic by the user
                 </div>
             </div>
@@ -132,9 +132,9 @@ function BugReport({ trace }: { trace: any }) {
         <div className="p-6 space-y-4">
             {/* User Input */}
             {trace.user_transcript && (
-            <div className="border-l-4 border-blue-200 dark:border-blue-700 pl-4">
+            <div className="border-l-4 border-primary/30 pl-4">
                 <div className="flex items-center gap-2 mb-2">
-                <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <User className="w-4 h-4 text-primary" />
                 <Badge variant="outline" className="text-xs">
                     User Input
                 </Badge>
@@ -148,13 +148,13 @@ function BugReport({ trace }: { trace: any }) {
 
             {/* Agent Response that was flagged */}
             {trace.agent_response && (
-            <div className="border-l-4 border-red-400 dark:border-red-600 pl-4 bg-red-50 dark:bg-red-900/10 rounded-r-lg py-3">
+            <div className="border-l-4 border-red-400 dark:border-red-600 pl-4 bg-destructive/10 rounded-r-lg py-3">
                 <div className="flex items-center gap-2 mb-2">
-                <Bot className="w-4 h-4 text-red-600 dark:text-red-400" />
+                <Bot className="w-4 h-4 text-destructive" />
                 <Badge variant="destructive" className="text-xs">
                     Reported Response
                 </Badge>
-                <span className="text-xs text-red-600 dark:text-red-400">{formatTimestamp(trace.unix_timestamp + 1)}</span>
+                <span className="text-xs text-destructive">{formatTimestamp(trace.unix_timestamp + 1)}</span>
                 </div>
                 <blockquote className="text-red-900 dark:text-red-100 leading-relaxed font-medium">
                 "{parseBugReportText(trace.agent_response)}"
@@ -162,15 +162,15 @@ function BugReport({ trace }: { trace: any }) {
 
                 {/* Show performance metrics for the flagged response */}
                 {(trace.llm_metrics || trace.tts_metrics) && (
-                <div className="flex gap-3 mt-3 pt-2 border-t border-red-200 dark:border-red-700">
+                <div className="flex gap-3 mt-3 pt-2 border-t border-destructive/30">
                     {trace.llm_metrics?.ttft && (
-                    <div className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
+                    <div className="flex items-center gap-1 text-xs text-destructive">
                         <Brain className="w-3 h-3" />
                         LLM: {formatDuration(trace.llm_metrics.ttft * 1000)}
                     </div>
                     )}
                     {trace.tts_metrics?.ttfb && (
-                    <div className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
+                    <div className="flex items-center gap-1 text-xs text-destructive">
                     <Volume2 className="w-3 h-3" />
                     TTS: {formatDuration(trace.tts_metrics.ttfb * 1000)}
                     </div>
@@ -186,7 +186,7 @@ function BugReport({ trace }: { trace: any }) {
     {currentTurnBugReports.length > 0 && (
         <div className="space-y-4">
         <h3 className="text-lg font-semibold flex items-center gap-2 text-foreground">
-            <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            <AlertTriangle className="w-5 h-5 text-warning" />
             User Bug Reports ({currentTurnBugReports.length})
         </h3>
 
@@ -199,15 +199,15 @@ function BugReport({ trace }: { trace: any }) {
             <div key={`${report.timestamp}-${index}`} className="space-y-4">
                 {/* Initial Bug Report */}
                 {initialReport && (
-                <div className="bg-card rounded-xl border border-amber-200 dark:border-amber-800 overflow-hidden shadow-sm">
-                    <div className="px-6 py-4 border-b border-amber-100 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20">
+                <div className="bg-card rounded-xl border border-warning/30 overflow-hidden shadow-sm">
+                    <div className="px-6 py-4 border-b border-warning/20 bg-warning/10">
                     <div className="flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-full bg-amber-100 dark:bg-amber-800 text-amber-700 dark:text-amber-300 flex items-center justify-center text-sm font-semibold">
+                        <div className="w-7 h-7 rounded-full bg-warning/15 text-warning flex items-center justify-center text-sm font-semibold">
                         {index + 1}
                         </div>
                         <div className="flex items-center gap-2">
                         <Badge className="text-xs bg-amber-600 text-white">Bug Report #{index + 1}</Badge>
-                        <span className="text-sm text-amber-700 dark:text-amber-300">
+                        <span className="text-sm text-warning">
                             {new Date(report.timestamp * 1000).toLocaleTimeString()}
                         </span>
                         </div>

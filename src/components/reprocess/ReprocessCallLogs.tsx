@@ -477,7 +477,7 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
 
             {/* Log Count Display */}
             {logCount !== null && !counting && (
-              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+              <div className="bg-primary/10 border border-primary/30 rounded-lg p-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full"></div>
@@ -485,7 +485,7 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
                       Call Logs to Process
                     </span>
                   </div>
-                  <span className="text-lg font-semibold text-blue-600 dark:text-blue-400">
+                  <span className="text-lg font-semibold text-primary">
                     {logCount.toLocaleString()}
                   </span>
                 </div>
@@ -525,9 +525,9 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
 
             {/* Success Display */}
             {success && (
-              <Alert className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
-                <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                <AlertDescription className="text-green-800 dark:text-green-200">
+              <Alert className="bg-success/10 border-success/30">
+                <CheckCircle className="h-4 w-4 text-success" />
+                <AlertDescription className="text-success">
                   <div className="font-medium mb-1">Analysis started successfully!</div>
                   <div className="text-sm mb-3">
                     The re-analysis process has been initiated. This may take a few minutes to complete. 

@@ -107,7 +107,7 @@ export function ScheduleSelector({
           onClick={() => onSendTypeChange('now')}
           className={`p-3 border-2 rounded-lg text-left transition-all ${
             sendType === 'now'
-              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10'
+              ? 'border-blue-500 bg-primary/10 dark:bg-blue-900/10'
               : 'border-border'
           }`}
         >
@@ -132,7 +132,7 @@ export function ScheduleSelector({
           onClick={() => onSendTypeChange('schedule')}
           className={`p-3 border-2 rounded-lg text-left transition-all ${
             sendType === 'schedule'
-              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10'
+              ? 'border-blue-500 bg-primary/10 dark:bg-blue-900/10'
               : 'border-border'
           }`}
         >
@@ -167,7 +167,7 @@ export function ScheduleSelector({
               name="scheduleDate"
               className="w-full h-8 text-xs"
             />
-            <ErrorMessage name="scheduleDate" component="p" className="text-xs text-red-600 dark:text-red-400 mt-1" />
+            <ErrorMessage name="scheduleDate" component="p" className="text-xs text-destructive mt-1" />
           </div>
 
           <div>
@@ -193,7 +193,7 @@ export function ScheduleSelector({
                 </Select>
               )}
             </Field>
-            <ErrorMessage name="timezone" component="p" className="text-xs text-red-600 dark:text-red-400 mt-1" />
+            <ErrorMessage name="timezone" component="p" className="text-xs text-destructive mt-1" />
           </div>
         </div>
       )}
@@ -228,7 +228,7 @@ export function ScheduleSelector({
                 <button
                   type="button"
                   onClick={selectAllWeekdays}
-                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                  className="text-xs text-primary hover:underline font-medium"
                 >
                   Weekdays
                 </button>
@@ -236,7 +236,7 @@ export function ScheduleSelector({
                 <button
                   type="button"
                   onClick={selectAllDays}
-                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                  className="text-xs text-primary hover:underline font-medium"
                 >
                   All Days
                 </button>
@@ -244,7 +244,7 @@ export function ScheduleSelector({
                 <button
                   type="button"
                   onClick={clearAll}
-                  className="text-xs text-red-600 dark:text-red-400 hover:underline font-medium"
+                  className="text-xs text-destructive hover:underline font-medium"
                 >
                   Clear
                 </button>
@@ -262,7 +262,7 @@ export function ScheduleSelector({
                     onClick={() => handleDayToggle(day.value)}
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all border ${
                       isSelected
-                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                        ? 'bg-blue-50 dark:bg-blue-900/20 border-primary/30 dark:border-blue-800'
                         : 'bg-card border-border hover:bg-muted/50'
                     }`}
                   >
@@ -311,7 +311,7 @@ export function ScheduleSelector({
         </Popover>
 
         {selectedDays.length === 0 && (
-          <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+          <p className="text-xs text-destructive mt-1">
             Please select at least one day
           </p>
         )}

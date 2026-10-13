@@ -200,15 +200,15 @@ export const WebCallWidget: React.FC<WebCallWidgetProps> = ({
                 className={cn(
                   "flex items-start gap-2 p-2 rounded",
                   message.role === 'user' 
-                    ? "bg-blue-100 dark:bg-blue-900/20" 
+                    ? "bg-primary/15" 
                     : "bg-muted"
                 )}
               >
                 <div className="flex-shrink-0 mt-1">
                   {message.role === 'user' ? (
-                    <User className="h-4 w-4 text-blue-600" />
+                    <User className="h-4 w-4 text-primary" />
                   ) : (
-                    <Bot className="h-4 w-4 text-green-600" />
+                    <Bot className="h-4 w-4 text-success" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -229,15 +229,15 @@ export const WebCallWidget: React.FC<WebCallWidgetProps> = ({
                 className={cn(
                   "flex items-start gap-2 p-2 rounded border-2 border-dashed",
                   currentPartialTranscript.role === 'user' 
-                    ? "bg-blue-50 dark:bg-blue-900/10 border-blue-200" 
+                    ? "bg-primary/10 border-primary/30" 
                     : "bg-muted/50 border-border"
                 )}
               >
                 <div className="flex-shrink-0 mt-1">
                   {currentPartialTranscript.role === 'user' ? (
-                    <User className="h-4 w-4 text-blue-600" />
+                    <User className="h-4 w-4 text-primary" />
                   ) : (
-                    <Bot className="h-4 w-4 text-green-600" />
+                    <Bot className="h-4 w-4 text-success" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -266,7 +266,7 @@ export const WebCallWidget: React.FC<WebCallWidgetProps> = ({
 
         {/* Call Info */}
         {isCallActive && callId && (
-          <div className="text-xs text-muted-foreground text-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+          <div className="text-xs text-muted-foreground text-center p-2 bg-primary/10 rounded-lg border border-primary/30">
             <p><strong>Call ID:</strong> {callId}</p>
             <p><strong>Status:</strong> {callStatus}</p>
             <p><strong>Messages:</strong> {messages.length}</p>

@@ -87,7 +87,7 @@ export default function DownloadSettingsDialog({
 
           <div className={`rounded-xl border border-border p-3 transition-opacity ${enabled ? '' : 'opacity-50'}`}>
             <div className="flex items-start gap-2 mb-2">
-              <ShieldAlert className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+              <ShieldAlert className="h-3.5 w-3.5 text-warning flex-shrink-0 mt-0.5" />
               <p className="text-[11px] text-muted-foreground">
                 {enabled
                   ? <>These columns are hidden from anyone who isn&apos;t a superadmin, both on-screen and in downloads. This is an access-control decision, not a display preference.</>
@@ -111,7 +111,7 @@ export default function DownloadSettingsDialog({
               {extraCols.length > 0 && (
                 <div className="space-y-1">
                   {basicCols.length > 0 && <div className="border-t border-border/60 pt-1.5" />}
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 px-1">Sensitive columns</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-warning px-1">Sensitive columns</p>
                   {extraCols.map(col => (
                     <CheckboxRow key={col.key} checked={restricted.has(col.key)} onToggle={() => toggle(col.key)} label={col.label} />
                   ))}

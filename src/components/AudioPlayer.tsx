@@ -573,10 +573,10 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
 
   if (error) {
     return (
-      <Card className={cn("p-3 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20", className)}>
+      <Card className={cn("p-3 border-destructive/30 bg-destructive/10", className)}>
         <div className="flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
-          <span className="text-sm text-red-600 dark:text-red-400">Audio unavailable</span>
+          <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
+          <span className="text-sm text-destructive">Audio unavailable</span>
         </div>
       </Card>
     )
@@ -659,11 +659,11 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
               )}
 
               {/* Download Instructions */}
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
-                <p className="text-xs text-blue-800 dark:text-blue-200">
+              <div className="p-3 bg-primary/10 border border-primary/30 rounded-md">
+                <p className="text-xs text-primary">
                   <strong>Download Instructions:</strong>
                 </p>
-                <ul className="text-xs text-blue-700 dark:text-blue-300 mt-1 space-y-1">
+                <ul className="text-xs text-primary mt-1 space-y-1">
                   <li>• Click "Download" to download the audio file</li>
                   <li>• The .mp3 extension will be added automatically if not provided</li>
                   <li>• File will be saved to your Downloads folder</li>
@@ -672,8 +672,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
 
               {/* Error Display */}
               {error && (
-                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
-                  <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-md">
+                  <p className="text-sm text-destructive">{error}</p>
                 </div>
               )}
 
@@ -728,7 +728,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
                 onClick={() => handleSpeedChange(speed)}
                 className={cn(
                   "cursor-pointer text-foreground hover:bg-muted",
-                  playbackSpeed === speed && "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400"
+                  playbackSpeed === speed && "bg-success/10 text-success"
                 )}
               >
                 {speed}x {speed === 1 && "(Normal)"}

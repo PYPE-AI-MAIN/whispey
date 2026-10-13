@@ -262,7 +262,7 @@ export default function DncPage() {
   const renderListBody = () => {
     if (listError) {
       return (
-        <div className="m-4 rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+        <div className="m-4 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           Couldn’t load the DNC list: {(listError as Error).message}.
           <span className="block text-xs text-red-600/80 dark:text-red-400/80 mt-1">
             If this is the first run, make sure the <code className="font-mono">pype_voice_dnc_list</code> table exists in Supabase.
@@ -307,7 +307,7 @@ export default function DncPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-red-500/10"
                       onClick={() => deleteMutation.mutate(e.id)}
                       disabled={deleteMutation.isPending}
                       aria-label="Remove"
@@ -498,9 +498,9 @@ export default function DncPage() {
                     />
 
                     {csvFileName ? (
-                      <div className="flex items-center justify-between rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-3 py-2.5">
+                      <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/10 px-3 py-2.5">
                         <div className="flex items-center gap-2 min-w-0">
-                          <FileSpreadsheet className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                          <FileSpreadsheet className="h-4 w-4 text-primary shrink-0" />
                           <span className="text-sm text-foreground truncate">{csvFileName}</span>
                           <Badge variant="secondary" className="shrink-0">{csvNumbers.length} numbers</Badge>
                         </div>
@@ -522,7 +522,7 @@ export default function DncPage() {
                       </button>
                     )}
 
-                    {csvError && <p className="text-xs text-red-600 dark:text-red-400">{csvError}</p>}
+                    {csvError && <p className="text-xs text-destructive">{csvError}</p>}
                   </TabsContent>
                 </Tabs>
               </div>
@@ -540,7 +540,7 @@ export default function DncPage() {
               </div>
 
               {needsProject && (
-                <p className="text-xs text-amber-600 dark:text-amber-500">Select an organization first.</p>
+                <p className="text-xs text-warning">Select an organization first.</p>
               )}
               {feedback && (
                 <div className="flex items-center justify-between text-sm rounded-lg border border-border bg-muted/50 px-3 py-2 text-foreground">

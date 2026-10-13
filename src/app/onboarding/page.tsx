@@ -118,7 +118,7 @@ export default function OnboardingPage() {
 
         {/* Main Card */}
         <div className="max-w-2xl mx-auto">
-          <Card className="border-2 border-blue-100 dark:border-blue-900/30 shadow-xl bg-card">
+          <Card className="border-2 border-primary/20 shadow-xl bg-card">
             <CardHeader className="space-y-4 pb-8">
               <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto">
                 <Building2 className="w-8 h-8 text-white" />
@@ -199,14 +199,14 @@ export default function OnboardingPage() {
                 </div>
 
                 {/* Info Box */}
-                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <div className="p-4 bg-primary/10 border border-primary/30 rounded-lg">
                   <div className="flex items-start gap-3">
-                    <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                    <Sparkles className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                     <div className="space-y-2">
                       <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
                         What you'll get:
                       </p>
-                      <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
+                      <ul className="text-sm text-primary space-y-1">
                         <li className="flex items-center gap-2">
                           <div className="w-1.5 h-1.5 bg-blue-600 dark:bg-blue-400 rounded-full" />
                           Voice agent management dashboard

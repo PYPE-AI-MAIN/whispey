@@ -237,8 +237,8 @@ const SessionTraceView = ({
 
   const getTurnIcon = (type: ConversationTurn['type']) => {
     switch (type) {
-      case 'user_turn': return <User className="w-3 h-3 text-blue-600 dark:text-blue-400" />;
-      case 'assistant_turn': return <Bot className="w-3 h-3 text-green-600 dark:text-green-400" />;
+      case 'user_turn': return <User className="w-3 h-3 text-primary" />;
+      case 'assistant_turn': return <Bot className="w-3 h-3 text-success" />;
       case 'session_management': return <Settings className="w-3 h-3 text-muted-foreground" />;
       default: return <Activity className="w-3 h-3 text-muted-foreground" />;
     }
@@ -247,10 +247,10 @@ const SessionTraceView = ({
   const getOperationColor = (operationType: string) => {
     switch (operationType?.toLowerCase()) {
       case 'llm': return 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300';
-      case 'tts': return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300';
-      case 'user_interaction': return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300';
-      case 'assistant_interaction': return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300';
-      case 'tool': return 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300';
+      case 'tts': return 'bg-success/15 text-success';
+      case 'user_interaction': return 'bg-primary/15 text-primary';
+      case 'assistant_interaction': return 'bg-success/15 text-success';
+      case 'tool': return 'bg-warning/15 text-warning';
       default: return 'bg-muted text-foreground';
     }
   };

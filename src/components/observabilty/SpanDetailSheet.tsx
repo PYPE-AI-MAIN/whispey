@@ -111,12 +111,12 @@ const RawDataView = ({ span }: { span: any }) => {
     };
 
     const categoryLabels = {
-      identifiers: { title: 'Identifiers', icon: <Hash className="w-4 h-4" />, color: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800' },
-      timing: { title: 'Timing', icon: <Clock className="w-4 h-4" />, color: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' },
+      identifiers: { title: 'Identifiers', icon: <Hash className="w-4 h-4" />, color: 'bg-primary/10 border-primary/30' },
+      timing: { title: 'Timing', icon: <Clock className="w-4 h-4" />, color: 'bg-success/10 border-success/30' },
       metrics: { title: 'Metrics', icon: <Activity className="w-4 h-4" />, color: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800' },
-      content: { title: 'Content', icon: <MessageSquare className="w-4 h-4" />, color: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800' },
+      content: { title: 'Content', icon: <MessageSquare className="w-4 h-4" />, color: 'bg-warning/10 border-warning/30' },
       status: { title: 'Status', icon: <CheckCircle2 className="w-4 h-4" />, color: 'bg-muted/50 border-border' },
-      config: { title: 'Configuration', icon: <Zap className="w-4 h-4" />, color: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800' },
+      config: { title: 'Configuration', icon: <Zap className="w-4 h-4" />, color: 'bg-warning/10 border-warning/30' },
       other: { title: 'Other', icon: <Code className="w-4 h-4" />, color: 'bg-muted/50 border-border' },
     };
 
@@ -301,12 +301,12 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
     const operationType = displaySpan.operation_type?.toLowerCase() || '';
     
     if (operationType === 'llm') return <Brain className="w-5 h-5 text-purple-600 dark:text-purple-400" />;
-    if (operationType === 'tts') return <Volume2 className="w-5 h-5 text-green-600 dark:text-green-400" />;
-    if (operationType === 'stt') return <Mic className="w-5 h-5 text-blue-600 dark:text-blue-400" />;
+    if (operationType === 'tts') return <Volume2 className="w-5 h-5 text-success" />;
+    if (operationType === 'stt') return <Mic className="w-5 h-5 text-primary" />;
     if (operationType === 'user_interaction') return <User className="w-5 h-5 text-purple-600 dark:text-purple-400" />;
-    if (operationType === 'assistant_interaction') return <Bot className="w-5 h-5 text-blue-600 dark:text-blue-400" />;
-    if (operationType === 'tool') return <Zap className="w-5 h-5 text-orange-600 dark:text-orange-400" />;
-    if (operationType === 'database') return <Database className="w-5 h-5 text-orange-600 dark:text-orange-400" />;
+    if (operationType === 'assistant_interaction') return <Bot className="w-5 h-5 text-primary" />;
+    if (operationType === 'tool') return <Zap className="w-5 h-5 text-warning" />;
+    if (operationType === 'database') return <Database className="w-5 h-5 text-warning" />;
     return <Activity className="w-5 h-5 text-muted-foreground" />;
   };
 
@@ -315,13 +315,13 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
       return {
         icon: <XCircle className="w-4 h-4" />,
         text: 'ERROR',
-        color: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+        color: 'text-destructive bg-destructive/10 border-destructive/30'
       };
     }
     return {
       icon: <CheckCircle2 className="w-4 h-4" />,
       text: 'SUCCESS',
-      color: 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+      color: 'text-success bg-success/10 border-success/30'
     };
   };
 
@@ -425,7 +425,7 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
               onClick={() => setActiveTab(tab.key as any)}
               className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.key
-                  ? 'border-blue-600 dark:border-blue-500 text-blue-600 dark:text-blue-400 bg-card'
+                  ? 'border-blue-600 dark:border-blue-500 text-primary  bg-card'
                   : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-muted'
               }`}
             >
@@ -441,8 +441,8 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
         {activeTab === 'overview' && (
           <div className="space-y-6">
             {/* What Happened */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
-              <h3 className="font-semibold mb-3 flex items-center gap-2 text-blue-800 dark:text-blue-300">
+            <div className="bg-primary/10 rounded-xl p-4 border border-primary/30">
+              <h3 className="font-semibold mb-3 flex items-center gap-2 text-primary">
                 <MessageSquare className="w-4 h-4" />
                 What Happened
               </h3>
@@ -493,7 +493,7 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
             {/* Timeline */}
             <div>
               <h3 className="font-semibold mb-3 flex items-center gap-2 text-foreground">
-                <Clock className="w-4 h-4 text-green-600 dark:text-green-400" />
+                <Clock className="w-4 h-4 text-success" />
                 Timeline
               </h3>
               <div className="rounded-xl border border-border bg-muted/50 shadow-sm p-4">

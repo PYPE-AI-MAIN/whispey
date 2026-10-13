@@ -497,12 +497,12 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
           size="sm"
           className={`justify-start text-xs font-normal w-full text-ellipsis overflow-hidden ${
             isVoiceInputError
-              ? 'border-amber-400 dark:border-amber-600 text-amber-600 dark:text-amber-400 hover:border-amber-500'
+              ? 'border-amber-400 dark:border-amber-600 text-warning  hover:border-amber-500'
               : ''
           }`}
         >
           {isVoiceInputError
-            ? <AlertTriangle className="w-3.5 h-3.5 mr-2 text-amber-500 flex-shrink-0" />
+            ? <AlertTriangle className="w-3.5 h-3.5 mr-2 text-warning flex-shrink-0" />
             : <Volume2 className="w-3.5 h-3.5 mr-2 flex-shrink-0" />
           }
           {triggerLabel.kind === 'loading' ? <LabelSkeleton /> : triggerLabel.text}
@@ -517,7 +517,7 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
           <div className="flex items-center justify-between gap-3 pr-5">
             <div>
               <DialogTitle className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-blue-500" />
+                <Sparkles className="w-5 h-5 text-primary" />
                 Configure TTS Voice & Settings
               </DialogTitle>
               <p className="text-sm text-muted-foreground">Choose voice and configure speech synthesis settings</p>

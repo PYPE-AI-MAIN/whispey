@@ -27,7 +27,7 @@ export default function SettingsPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-muted/50">
-        <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400" />
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
       </div>
     )
   }
@@ -36,10 +36,10 @@ export default function SettingsPage() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-muted/50">
         <div className="text-center">
-          <p className="text-red-600 dark:text-red-400 mb-2">Failed to load organization</p>
+          <p className="text-destructive mb-2">Failed to load organization</p>
           <button 
             onClick={() => window.location.reload()} 
-            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            className="text-sm text-primary hover:underline"
           >
             Try again
           </button>
@@ -55,7 +55,7 @@ export default function SettingsPage() {
           <p className="text-muted-foreground mb-2">Organization not found</p>
           <Link
             href="/projects"
-            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            className="text-sm text-primary hover:underline"
           >
             Back to organizations
           </Link>

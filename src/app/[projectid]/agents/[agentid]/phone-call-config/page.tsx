@@ -95,25 +95,25 @@ function getAgentStatusInfo(
   const isRunning = isPypeAgent ? runningStatus.isRunning : agent.is_active
   if (isRunning) {
     return {
-      containerClass: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
+      containerClass: 'bg-success/10 border-success/30',
       dotClass: 'bg-green-500 rounded-full animate-pulse',
       label: isPypeAgent ? 'Live' : 'Active',
-      labelClass: 'text-xs font-semibold text-green-700 dark:text-green-400',
+      labelClass: 'text-xs font-semibold text-success',
     }
   }
   if (isPypeAgent) {
     return {
-      containerClass: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
+      containerClass: 'bg-destructive/10 border-destructive/30',
       dotClass: 'bg-red-500 rounded-full',
       label: 'Not found',
-      labelClass: 'text-xs font-semibold text-red-700 dark:text-red-400',
+      labelClass: 'text-xs font-semibold text-destructive',
     }
   }
   return {
-    containerClass: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800',
+    containerClass: 'bg-warning/10 border-warning/30',
     dotClass: 'bg-yellow-500 rounded-full',
     label: 'Inactive',
-    labelClass: 'text-xs font-semibold text-yellow-700 dark:text-yellow-400',
+    labelClass: 'text-xs font-semibold text-warning',
   }
 }
 
@@ -147,16 +147,16 @@ function DialerPad({ buttons, phoneNumber, onDigit, onBackspace }: Readonly<{
     <div className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-800/50 dark:to-gray-900/50 rounded-xl p-3 border border-border shadow-inner">
       <div className="grid grid-cols-3 gap-2">
         {buttons.map(({ digit, letters }) => (
-          <button key={digit} onClick={() => onDigit(digit)} className="group relative h-11 bg-card hover:bg-gradient-to-br hover:from-blue-50 hover:to-blue-100 dark:hover:from-blue-900/30 dark:hover:to-blue-800/30 rounded-lg border border-border hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-200 shadow-sm hover:shadow-md active:scale-95">
+          <button key={digit} onClick={() => onDigit(digit)} className="group relative h-11 bg-card hover:bg-gradient-to-br hover:from-blue-50 hover:to-blue-100 dark:hover:from-blue-900/30 dark:hover:to-blue-800/30 rounded-lg border border-border hover:border-primary/40 transition-all duration-200 shadow-sm hover:shadow-md active:scale-95">
             <div className="flex flex-col items-center justify-center h-full">
-              <span className="text-lg font-bold text-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{digit}</span>
-              {letters && <span className="text-[8px] font-medium text-muted-foreground group-hover:text-blue-500 dark:group-hover:text-blue-400 tracking-wide">{letters}</span>}
+              <span className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">{digit}</span>
+              {letters && <span className="text-[8px] font-medium text-muted-foreground group-hover:text-primary tracking-wide">{letters}</span>}
             </div>
           </button>
         ))}
       </div>
-      <button onClick={onBackspace} disabled={!phoneNumber} className="mt-2 w-full h-10 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 hover:from-red-100 hover:to-red-200 dark:hover:from-red-900/30 dark:hover:to-red-800/30 rounded-lg border border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center justify-center gap-2 shadow-sm hover:shadow-md">
-        <Delete className="w-4 h-4 text-red-600 dark:text-red-400" /><span className="text-xs font-semibold text-red-700 dark:text-red-400">Backspace</span>
+      <button onClick={onBackspace} disabled={!phoneNumber} className="mt-2 w-full h-10 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 hover:from-red-100 hover:to-red-200 dark:hover:from-red-900/30 dark:hover:to-red-800/30 rounded-lg border border-destructive/30 hover:border-destructive/40 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center justify-center gap-2 shadow-sm hover:shadow-md">
+        <Delete className="w-4 h-4 text-destructive" /><span className="text-xs font-semibold text-destructive">Backspace</span>
       </button>
     </div>
   )
@@ -177,7 +177,7 @@ function CallHistoryItem({ call, isSelected, isEditing, editingName, setEditingN
   onDelete: (callId: string, e: React.MouseEvent) => void
 }>) {
   return (
-    <div className={`group relative p-5 rounded-xl border transition-all ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 shadow-md' : 'bg-white dark:bg-gray-800 border-border hover:border-border hover:shadow-md'}`}>
+    <div className={`group relative p-5 rounded-xl border transition-all ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border-primary/40 shadow-md' : 'bg-white dark:bg-gray-800 border-border hover:border-border hover:shadow-md'}`}>
       {/* Real button covering the whole card for "click anywhere to redial". A <button> can't
           legally contain the delete/edit buttons below it (nested buttons get mangled by the
           HTML parser on SSR), so instead it sits as a plain sibling and the visible content on
@@ -190,8 +190,8 @@ function CallHistoryItem({ call, isSelected, isEditing, editingName, setEditingN
         aria-label={`Select call to ${call.formatted_number}`}
         className="absolute inset-0 w-full h-full rounded-xl cursor-pointer bg-transparent border-0 p-0"
       />
-      <button onClick={(e) => onDelete(call.id, e)} className={`absolute top-4 right-4 transition-opacity p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg z-10 ${isEditing ? 'opacity-0 pointer-events-none' : 'opacity-0 group-hover:opacity-100'}`}>
-        <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
+      <button onClick={(e) => onDelete(call.id, e)} className={`absolute top-4 right-4 transition-opacity p-1.5 hover:bg-destructive/15 rounded-lg z-10 ${isEditing ? 'opacity-0 pointer-events-none' : 'opacity-0 group-hover:opacity-100'}`}>
+        <Trash2 className="w-4 h-4 text-destructive" />
       </button>
       <div className="relative flex items-start gap-4 pointer-events-none">
         <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-blue-100 dark:bg-blue-800/30' : 'bg-gray-100 dark:bg-gray-700'}`}>
@@ -201,14 +201,14 @@ function CallHistoryItem({ call, isSelected, isEditing, editingName, setEditingN
           <div className="flex items-center gap-2 mb-2 pr-8">
             {isEditing ? (
               <div className="flex items-center gap-1 flex-1 pointer-events-auto">
-                <Input value={editingName || ''} onChange={(e) => setEditingName(e.target.value)} onKeyDown={(e) => onNameKeyDown(call.id, e)} className="h-7 text-sm font-semibold bg-card border-blue-300 dark:border-blue-600" placeholder="Enter name" autoFocus />
-                <button onClick={(e) => onSaveEdit(call.id, e)} className="p-1 hover:bg-green-100 dark:hover:bg-green-900/30 rounded"><Check className="w-4 h-4 text-green-600 dark:text-green-400" /></button>
-                <button onClick={(e) => onCancelEdit(e)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"><X className="w-4 h-4 text-red-600 dark:text-red-400" /></button>
+                <Input value={editingName || ''} onChange={(e) => setEditingName(e.target.value)} onKeyDown={(e) => onNameKeyDown(call.id, e)} className="h-7 text-sm font-semibold bg-card border-primary/40" placeholder="Enter name" autoFocus />
+                <button onClick={(e) => onSaveEdit(call.id, e)} className="p-1 hover:bg-success/15 rounded"><Check className="w-4 h-4 text-success" /></button>
+                <button onClick={(e) => onCancelEdit(e)} className="p-1 hover:bg-destructive/15 rounded"><X className="w-4 h-4 text-destructive" /></button>
               </div>
             ) : (
               <>
                 <span className="text-base font-semibold text-foreground">{call.name}{call.call_count && call.call_count > 1 && <span className="ml-2 text-sm text-muted-foreground">({call.call_count})</span>}</span>
-                <button onClick={(e) => onStartEdit(call.id, call.name, e)} className="p-1 opacity-0 group-hover:opacity-100 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-opacity pointer-events-auto"><Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /></button>
+                <button onClick={(e) => onStartEdit(call.id, call.name, e)} className="p-1 opacity-0 group-hover:opacity-100 hover:bg-primary/15 rounded transition-opacity pointer-events-auto"><Pencil className="w-3.5 h-3.5 text-primary" /></button>
               </>
             )}
           </div>
@@ -221,7 +221,7 @@ function CallHistoryItem({ call, isSelected, isEditing, editingName, setEditingN
           </div>
           <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
             <Clock className="w-3.5 h-3.5" /><span>{formatRelativeTime(call.timestamp)}</span>
-            <span className="px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium">{call.status}</span>
+            <span className="px-2 py-0.5 rounded-full bg-success/15 text-success font-medium">{call.status}</span>
           </div>
         </div>
         {isSelected && (
@@ -520,7 +520,7 @@ export default function PhoneCallConfig() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900 flex items-center justify-center">
         <div className="flex items-center gap-3">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
           <span className="text-lg font-medium text-foreground">Loading...</span>
         </div>
       </div>
@@ -531,7 +531,7 @@ export default function PhoneCallConfig() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <AlertCircle className="h-16 w-16 text-destructive mx-auto mb-4" />
           <h2 className="text-2xl font-semibold text-foreground mb-2">Agent Not Found</h2>
           <p className="text-muted-foreground">The requested agent could not be loaded.</p>
         </div>
@@ -569,7 +569,7 @@ export default function PhoneCallConfig() {
 
             <div className="space-y-5 flex-1 w-full">
               <div className='w-full'>
-                <label className="block text-sm font-semibold text-foreground mb-2">Calling From <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-semibold text-foreground mb-2">Calling From <span className="text-destructive">*</span></label>
                 {loadingPhoneNumbers ? (
                   <div className="h-12 w-full flex items-center justify-center border border-border rounded-xl bg-card"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
                 ) : phoneNumbers.length === 0 ? (
@@ -591,8 +591,8 @@ export default function PhoneCallConfig() {
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-2">
                   <div className="flex gap-4 items-center">
-                    Calling To <span className="text-red-500">*</span>
-                    <button onClick={() => setShowDialer(!showDialer)} className={`h-7 w-7 flex items-center justify-center rounded-md border transition-all duration-200 active:scale-95 ${showDialer ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30' : 'bg-white dark:bg-gray-800 border-border text-muted-foreground hover:border-blue-300 dark:hover:border-blue-600 hover:text-blue-600 dark:hover:text-blue-400'}`} title={showDialer ? 'Hide dialer' : 'Show dialer'}>
+                    Calling To <span className="text-destructive">*</span>
+                    <button onClick={() => setShowDialer(!showDialer)} className={`h-7 w-7 flex items-center justify-center rounded-md border transition-all duration-200 active:scale-95 ${showDialer ? 'bg-blue-50 dark:bg-blue-900/20 border-primary/30 text-primary hover:bg-primary/15 dark:hover:bg-blue-900/30' : 'bg-white dark:bg-gray-800 border-border text-muted-foreground hover:border-primary/40 hover:text-primary dark:hover:text-blue-400'}`} title={showDialer ? 'Hide dialer' : 'Show dialer'}>
                       {showDialer ? <PhoneOff className="w-4 h-4" /> : <PhoneCall className="w-4 h-4" />}
                     </button>
                   </div>
@@ -622,7 +622,7 @@ export default function PhoneCallConfig() {
               <DispatchVariablesEditor variables={variables} setVariables={setVariables} />
 
               {message && (
-                <div className={`p-4 rounded-xl border backdrop-blur-sm transition-all ${messageType === 'success' ? 'bg-green-50/80 dark:bg-green-900/20 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800' : 'bg-red-50/80 dark:bg-red-900/20 text-red-800 dark:text-red-400 border-red-200 dark:border-red-800'}`}>
+                <div className={`p-4 rounded-xl border backdrop-blur-sm transition-all ${messageType === 'success' ? 'bg-green-50/80 dark:bg-green-900/20 text-success border-success/30 dark:border-green-800' : 'bg-red-50/80 dark:bg-red-900/20 text-destructive border-destructive/30 dark:border-red-800'}`}>
                   <div className="flex items-center gap-3">
                     {messageType === 'success' ? <CheckCircle className="w-5 h-5 flex-shrink-0" /> : <AlertCircle className="w-5 h-5 flex-shrink-0" />}
                     <span className="text-sm font-medium">{message}</span>
@@ -631,7 +631,7 @@ export default function PhoneCallConfig() {
               )}
 
               {shouldShowNotRunningWarning(agent, runningStatus, isCheckingRunning) && (
-                <div className="p-4 rounded-xl border bg-yellow-50/80 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800 backdrop-blur-sm">
+                <div className="p-4 rounded-xl border bg-yellow-50/80 dark:bg-yellow-900/20 text-warning border-warning/30 backdrop-blur-sm">
                   <div className="flex items-center gap-3"><AlertCircle className="w-5 h-5 flex-shrink-0" /><span className="text-sm font-medium">Start the agent to dispatch calls</span></div>
                 </div>
               )}
@@ -654,7 +654,7 @@ export default function PhoneCallConfig() {
                 <h2 className="text-xl font-bold text-foreground">Call History</h2>
               </div>
               {callHistory.length > 0 && (
-                <Button onClick={clearAllHistory} variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20">
+                <Button onClick={clearAllHistory} variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10">
                   <Trash2 className="w-4 h-4 mr-1.5" />Clear All
                 </Button>
               )}

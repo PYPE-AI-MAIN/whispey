@@ -164,7 +164,7 @@ export default function RayaSettings({ config, setConfig }: Readonly<RayaSetting
               {RAYA_PROMPT_SNIPPET}
             </code>
             <Button variant="outline" size="sm" className="h-8 flex-shrink-0" onClick={copySnippet}>
-              {copied ? <Check className="w-3.5 h-3.5 mr-1.5 text-green-600" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
+              {copied ? <Check className="w-3.5 h-3.5 mr-1.5 text-success" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
               {copied ? 'Copied' : 'Copy'}
             </Button>
           </div>

@@ -91,7 +91,7 @@ export function TextBlockCard({
             type="button"
             aria-label="Remove text block"
             onClick={onRemove}
-            className="pointer-events-auto rounded p-1 text-muted-foreground hover:bg-muted hover:text-red-600"
+            className="pointer-events-auto rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>

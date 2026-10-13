@@ -114,7 +114,7 @@ function ChartTypeTile({
       onClick={onAdd}
       className={cn(
         'flex flex-col items-center gap-1.5 rounded-lg border border-border px-3 py-4 text-xs text-muted-foreground transition',
-        'hover:border-blue-400 hover:bg-blue-50/50 hover:text-blue-700 active:cursor-grabbing',
+        'hover:border-blue-400 hover:bg-blue-50/50 hover:text-primary active:cursor-grabbing',
         'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:bg-transparent',
         'dark:border-gray-800 dark:text-gray-400 dark:hover:border-blue-500 dark:hover:bg-blue-950/30',
         !disabled && 'cursor-grab'
@@ -160,7 +160,7 @@ function SidePanelContent({
             variant="outline"
             size="sm"
             onClick={onOpenAi}
-            className="mb-3 w-full justify-center gap-1.5 border-dashed border-blue-300 text-blue-700 hover:border-blue-400 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950/30"
+            className="mb-3 w-full justify-center gap-1.5 border-dashed border-primary/40 text-primary hover:border-blue-400 hover:bg-primary/10"
           >
             <Sparkles className="h-3.5 w-3.5" /> Generate with Pi
           </Button>
@@ -353,7 +353,7 @@ function FormulaSettings({
               className={cn(
                 'rounded-md border px-2 py-1 text-xs transition disabled:opacity-50',
                 spec.op === o.op
-                  ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
+                  ? 'border-blue-500 bg-primary/10 text-primary'
                   : 'border-border text-muted-foreground hover:border-border'
               )}
             >
@@ -545,7 +545,7 @@ function ChartSettings({
               className={cn(
                 'rounded-md border px-2 py-1 text-xs transition disabled:opacity-50',
                 widget.kind === t.kind
-                  ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
+                  ? 'border-blue-500 bg-primary/10 text-primary'
                   : 'border-border text-muted-foreground hover:border-border'
               )}
             >
@@ -629,7 +629,7 @@ function ChartSettings({
                 className={cn(
                   'rounded-md border px-2 py-1 text-xs transition disabled:opacity-50',
                   (spec.display?.unit === 'm') === (opt.unit === 'm')
-                    ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
+                    ? 'border-blue-500 bg-primary/10 text-primary'
                     : 'border-border text-muted-foreground hover:border-border'
                 )}
               >
@@ -668,7 +668,7 @@ function ChartSettings({
             — but a near-unique field is still a bad chart split on its own
             terms: 50-odd nearly-meaningless lines beat 30,000, not "legible" */}
         {chosenDimensionField?.is_identity_candidate && (
-          <p className="mt-1 text-[11px] leading-snug text-amber-600 dark:text-amber-500">
+          <p className="mt-1 text-[11px] leading-snug text-warning">
             {chosenDimensionField.label} looks close to one-value-per-call — splitting by it
             usually produces a chart with too many categories to read.
           </p>

@@ -337,13 +337,13 @@ function renderContextHeader(config: SidebarConfig, isCollapsed: boolean, isMobi
 
 function navItemTone(disabled: boolean | undefined, isActive: boolean): string {
   if (disabled) return 'cursor-not-allowed text-muted-foreground'
-  if (isActive) return 'cursor-pointer bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+  if (isActive) return 'cursor-pointer bg-primary/10 text-primary border border-primary/30'
   return 'cursor-pointer text-foreground hover:bg-muted/50 hover:text-foreground'
 }
 
 function navIconTone(disabled: boolean | undefined, isActive: boolean): string {
   if (disabled) return 'text-muted-foreground'
-  return isActive ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground'
+  return isActive ? 'text-primary' : 'text-muted-foreground'
 }
 
 function renderNavigationItem(
@@ -828,15 +828,15 @@ function PricingBox({
   }
 
   return (
-    <div className="mx-3 mb-4 p-3 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+    <div className="mx-3 mb-4 p-3 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 border border-primary/30 rounded-lg">
       <div className="flex items-center gap-2 mb-2">
-        <Crown className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+        <Crown className="w-4 h-4 text-primary" />
         <span className="text-xs font-semibold text-blue-900 dark:text-blue-100">{pricingConfig.plan}</span>
       </div>
       {pricingConfig.features && pricingConfig.features.length > 0 && (
         <ul className="space-y-1 mb-3">
           {pricingConfig.features.map((feature: string) => (
-            <li key={feature} className="text-xs text-blue-700 dark:text-blue-300 flex items-center gap-1">
+            <li key={feature} className="text-xs text-primary flex items-center gap-1">
               <div className="w-1 h-1 bg-blue-400 rounded-full flex-shrink-0" />
               {feature}
             </li>
@@ -995,7 +995,7 @@ function SignOutMenuItem({
   return (
     <DropdownMenuItem
       onClick={onSignOut}
-      className="px-3 py-2 text-xs text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
+      className="px-3 py-2 text-xs text-destructive focus:text-destructive"
       disabled={isSigningOut}
     >
       <LogOut className={`w-4 h-4 mr-2 ${isSigningOut ? 'animate-spin' : ''}`} />

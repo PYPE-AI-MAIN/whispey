@@ -272,7 +272,7 @@ function TabBar({
         ))}
       </div>
       {isConnected && (
-        <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium tabular-nums text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
+        <span className="flex items-center gap-1.5 rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-medium tabular-nums text-success">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
           Live · {formatTimer(connectionTime)}
         </span>
@@ -305,7 +305,7 @@ function VoiceStage({
           <Waveform state={agentState} active={isConnected} />
           <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             {(isConnecting || agentState === 'initializing') && (
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
             )}
             {isConnecting ? 'Connecting…' : STATE_LABEL[agentState]}
           </p>
@@ -540,7 +540,7 @@ function PrimaryAction({
           className={cn(
             'flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg border transition disabled:cursor-not-allowed disabled:opacity-50',
             isMuted
-              ? 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-400'
+              ? 'border-warning/40 bg-warning/10 text-warning'
               : 'border-border text-muted-foreground hover:bg-muted/50'
           )}
         >

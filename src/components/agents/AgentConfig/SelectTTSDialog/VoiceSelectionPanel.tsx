@@ -105,7 +105,7 @@ const CopyButton = ({ text, className = '' }: { text: string; className?: string
   return (
     <Button variant="ghost" size="sm" onClick={handleCopy} className={`w-7 h-7 p-0 ${className}`}>
       {copied
-        ? <Check className="w-3.5 h-3.5 text-green-600" />
+        ? <Check className="w-3.5 h-3.5 text-success" />
         : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
     </Button>
   )
@@ -133,8 +133,8 @@ const SarvamVoiceCard = ({
     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
     className={`group cursor-pointer p-2 rounded-md border transition-all hover:shadow-sm ${
       isSelected
-        ? 'border-orange-300 dark:border-orange-600 bg-orange-50 dark:bg-orange-900/10'
-        : 'border-border hover:border-orange-200 dark:hover:border-orange-700 hover:bg-orange-50/50 dark:hover:bg-orange-900/5'
+        ? 'border-orange-300 dark:border-orange-600 bg-warning/10 dark:bg-orange-900/10'
+        : 'border-border hover:border-warning/30  hover:bg-orange-50/50 dark:hover:bg-orange-900/5'
     }`}
   >
     <div className="flex items-center gap-2">
@@ -144,7 +144,7 @@ const SarvamVoiceCard = ({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <h3 className="font-medium text-xs text-foreground truncate">{voice.name}</h3>
-          {isSelected && <CheckCircle className="w-3 h-3 text-green-600 flex-shrink-0" />}
+          {isSelected && <CheckCircle className="w-3 h-3 text-success flex-shrink-0" />}
           <code className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
             {voice.id}
           </code>
@@ -216,7 +216,7 @@ const ElevenLabsVoiceCard = ({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <h3 className="font-medium text-xs text-foreground truncate">{voice.name}</h3>
-          {isSelected && <CheckCircle className="w-3 h-3 text-green-600 flex-shrink-0" />}
+          {isSelected && <CheckCircle className="w-3 h-3 text-success flex-shrink-0" />}
           <code className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
             {voice.voice_id}
           </code>
@@ -276,8 +276,8 @@ const GoogleTTSVoiceCard = ({
     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
     className={`group cursor-pointer p-2 rounded-md border transition-all hover:shadow-sm ${
       isSelected
-        ? 'border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/10'
-        : 'border-border hover:border-blue-200 dark:hover:border-blue-700 hover:bg-blue-50/50 dark:hover:bg-blue-900/5'
+        ? 'border-blue-300 dark:border-blue-600 bg-primary/10 dark:bg-blue-900/10'
+        : 'border-border hover:border-primary/30  hover:bg-blue-50/50 dark:hover:bg-blue-900/5'
     }`}
   >
     <div className="flex items-center gap-2">
@@ -287,7 +287,7 @@ const GoogleTTSVoiceCard = ({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <h3 className="font-medium text-xs text-foreground truncate">{voice.displayName}</h3>
-          {isSelected && <CheckCircle className="w-3 h-3 text-green-600 flex-shrink-0" />}
+          {isSelected && <CheckCircle className="w-3 h-3 text-success flex-shrink-0" />}
           <code className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
             {voice.name}
           </code>

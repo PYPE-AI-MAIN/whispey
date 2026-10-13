@@ -390,7 +390,7 @@ function filterFieldLabel(f: FilterProposal["filters"][number]): string {
 
 function FilterCardActions({ state, onApply, onDismiss }: Readonly<{ state?: "applied" | "dismissed"; onApply: () => void; onDismiss: () => void }>) {
   if (state === "applied") {
-    return <span className="inline-flex items-center gap-1 text-[13px] text-emerald-600 dark:text-emerald-400"><Check className="h-3.5 w-3.5" /> Applied</span>
+    return <span className="inline-flex items-center gap-1 text-[13px] text-success"><Check className="h-3.5 w-3.5" /> Applied</span>
   }
   if (state === "dismissed") return <span className="text-[13px] text-[var(--cl-text3)]">Not applied</span>
   return (

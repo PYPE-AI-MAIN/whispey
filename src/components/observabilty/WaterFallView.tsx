@@ -190,11 +190,11 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
   const getOperationIcon = (opType: string) => {
     switch (opType) {
       case 'llm': return <Brain className="w-4 h-4 text-purple-600 dark:text-purple-400" />;
-      case 'tts': return <Volume2 className="w-4 h-4 text-green-600 dark:text-green-400" />;
-      case 'stt': return <Mic className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
-      case 'user_interaction': return <User className="w-4 h-4 text-blue-500 dark:text-blue-300" />;
+      case 'tts': return <Volume2 className="w-4 h-4 text-success" />;
+      case 'stt': return <Mic className="w-4 h-4 text-primary" />;
+      case 'user_interaction': return <User className="w-4 h-4 text-primary" />;
       case 'assistant_interaction': return <Bot className="w-4 h-4 text-indigo-500 dark:text-indigo-300" />;
-      case 'tool': return <Zap className="w-4 h-4 text-orange-600 dark:text-orange-400" />;
+      case 'tool': return <Zap className="w-4 h-4 text-warning" />;
       default: return <Activity className="w-4 h-4 text-muted-foreground" />;
     }
   };
@@ -243,7 +243,7 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
               <div className="text-xs text-muted-foreground">Traces</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{totalSpans}</div>
+              <div className="text-lg font-bold text-primary">{totalSpans}</div>
               <div className="text-xs text-muted-foreground">Total Spans</div>
             </div>
             <div className="text-center">
@@ -274,8 +274,8 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
                     <ChevronDown className="w-4 h-4 text-muted-foreground" /> : 
                     <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   }
-                  <div className="p-1.5 rounded-full bg-blue-100 dark:bg-blue-900/30">
-                    <Database className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                  <div className="p-1.5 rounded-full bg-primary/15">
+                    <Database className="w-3 h-3 text-primary" />
                   </div>
                   <div>
                     <span className="font-medium text-sm text-foreground">
@@ -294,7 +294,7 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
                     {traceGroup.span_count} spans
                   </span>
                   {traceGroup.error_count > 0 && (
-                    <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded">
+                    <span className="px-2 py-1 bg-destructive/15 text-destructive rounded">
                       {traceGroup.error_count} errors
                     </span>
                   )}

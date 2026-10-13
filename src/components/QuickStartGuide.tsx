@@ -250,7 +250,7 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                                   className="p-1 hover:bg-muted rounded"
                                 >
                                   {copiedStep === `${step.id}-${itemIndex}` ? (
-                                    <Check className="w-3 h-3 text-green-500" />
+                                    <Check className="w-3 h-3 text-success" />
                                   ) : (
                                     <Copy className="w-3 h-3 text-muted-foreground" />
                                   )}
@@ -299,7 +299,7 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                           <div className="mt-6 border-t border-border/60 pt-6">
                             <button
                               onClick={() => setExpandedExample(!expandedExample)}
-                              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium mb-4"
+                              className="flex items-center gap-2 text-primary hover:text-primary text-sm font-medium mb-4"
                             >
                               {expandedExample ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                               {expandedExample ? 'Hide' : 'Show'} Complete Example

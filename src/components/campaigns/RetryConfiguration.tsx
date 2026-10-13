@@ -112,7 +112,7 @@ function ChipInput({
           Add
         </Button>
       </div>
-      {error && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{error}</p>}
+      {error && <p className="text-xs text-destructive mt-1">{error}</p>}
     </div>
   )
 }
@@ -230,7 +230,7 @@ function SipCodeGroup({
             type="button"
             disabled={addable.length === 0}
             onClick={() => onSelectAll(addable)}
-            className="text-xs text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed"
+            className="text-xs text-primary hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed"
           >
             select all
           </button>
@@ -601,9 +601,9 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
         </Button>
       </div>
 
-      <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-        <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-        <AlertDescription className="text-xs text-blue-700 dark:text-blue-300">
+      <Alert className="bg-primary/10 border-primary/30">
+        <Info className="h-4 w-4 text-primary" />
+        <AlertDescription className="text-xs text-primary">
           Configure retry behavior for different error codes. Each error code can have its own retry settings. You can also add metric or field extractor based retries.
         </AlertDescription>
       </Alert>
@@ -1030,7 +1030,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                           // Inline by default, hence block.
                           return (
                             <output
-                              className="block text-xs mt-2 rounded-md px-2 py-1.5 bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-900"
+                              className="block text-xs mt-2 rounded-md px-2 py-1.5 bg-warning/10 text-warning border border-warning/30"
                             >
                               {warning}
                             </output>

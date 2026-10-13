@@ -160,7 +160,7 @@ function NodeDetails({
       // If duration becomes 0 after validation, show error
       if (durationInSeconds === 0) {
         return (
-          <div className="text-sm text-red-500 dark:text-red-400 italic">
+          <div className="text-sm text-destructive italic">
             Invalid audio duration: {duration}s
           </div>
         )
@@ -349,7 +349,7 @@ function NodeDetails({
                 <div className="w-2 h-2 rounded-full bg-amber-500"></div>
                 <span className="text-xs font-medium text-muted-foreground">System Instructions</span>
               </div>
-              <div className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-400 dark:border-amber-600 rounded-r-lg p-3 max-h-64 overflow-y-auto">
+              <div className="bg-warning/10 border-l-4 border-amber-400 dark:border-amber-600 rounded-r-lg p-3 max-h-64 overflow-y-auto">
                 <pre className="text-xs text-foreground whitespace-pre-wrap font-mono leading-relaxed">
                   {trace.enhanced_data.prompt_data.system_instructions || "No system instructions"}
                 </pre>
@@ -368,10 +368,10 @@ function NodeDetails({
                 </div>
                 <div className="grid grid-cols-1 gap-2">
                   {trace.enhanced_data.prompt_data.available_tools.map((tool: any, idx: number) => (
-                    <div key={idx} className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                    <div key={idx} className="bg-primary/10 border border-primary/30 rounded-lg p-3">
                       <div className="flex items-center justify-between mb-1">
-                        <code className="text-sm font-semibold text-blue-800 dark:text-blue-200">{tool.name}</code>
-                        <span className="text-xs text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-800 px-2 py-1 rounded">{tool.tool_type}</span>
+                        <code className="text-sm font-semibold text-primary">{tool.name}</code>
+                        <span className="text-xs text-primary bg-primary/15 px-2 py-1 rounded">{tool.tool_type}</span>
                       </div>
                       <p className="text-xs text-muted-foreground leading-relaxed">{tool.description}</p>
                     </div>
@@ -417,9 +417,9 @@ function NodeDetails({
                     }
 
                     const roleColors = {
-                      system: "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200",
-                      user: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200",
-                      assistant: "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200",
+                      system: "bg-warning/10 border-warning/30 text-warning",
+                      user: "bg-primary/10 border-primary/30 text-primary",
+                      assistant: "bg-success/10 border-success/30 text-success",
                       unknown: "bg-muted/50 border-border text-muted-foreground",
                     }
 
@@ -541,14 +541,14 @@ function NodeDetails({
             // Red panel only for a real failure — a clean recovery is neutral
             // with just a green checkmark, not a whole colored block of its own.
             selectedStage.fallbackFailureCount > 0
-              ? "bg-red-50 dark:bg-red-900/20 border-red-500 dark:border-red-400"
+              ? "bg-destructive/10 border-red-500 dark:border-red-400"
               : "bg-muted/50 border-border"
           )}>
             <h4 className="font-medium text-sm mb-3 flex items-center gap-2 text-foreground">
               {selectedStage.fallbackFailureCount > 0 ? (
-                <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
+                <AlertTriangle className="w-4 h-4 text-destructive" />
               ) : (
-                <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <CheckCircle className="w-4 h-4 text-success" />
               )}
               Fallback Events ({selectedStage.fallbackEvents.length})
             </h4>
@@ -562,7 +562,7 @@ function NodeDetails({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div className="w-6 h-6 rounded bg-muted flex items-center justify-center">
-                            <CheckCircle className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                            <CheckCircle className="w-3 h-3 text-success" />
                           </div>
                           <span className="font-mono text-sm font-medium text-foreground">
                             Recovered: {fb.provider_label || formatProviderLabel(fb.provider_name)}
@@ -580,11 +580,11 @@ function NodeDetails({
                   <div key={eventKey} className="rounded-xl border border-border bg-card shadow-sm p-3">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
+                        <div className="w-6 h-6 rounded bg-destructive/15 flex items-center justify-center">
                           {isTotalFailure ? (
-                            <XCircle className="w-3 h-3 text-red-600 dark:text-red-400" />
+                            <XCircle className="w-3 h-3 text-destructive" />
                           ) : (
-                            <AlertTriangle className="w-3 h-3 text-red-600 dark:text-red-400" />
+                            <AlertTriangle className="w-3 h-3 text-destructive" />
                           )}
                         </div>
                         <span className="font-mono text-sm font-medium text-foreground">
@@ -624,7 +624,7 @@ function NodeDetails({
                       {fb.error_reason ? (
                         <div className="flex items-start gap-2">
                           <span className="text-xs text-muted-foreground font-medium min-w-[6rem]">Reason:</span>
-                          <code className="text-xs bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-2 py-1 rounded flex-1 max-h-24 overflow-y-auto break-all">
+                          <code className="text-xs bg-destructive/10 border border-destructive/30 text-destructive px-2 py-1 rounded flex-1 max-h-24 overflow-y-auto break-all">
                             {fb.error_reason}
                           </code>
                         </div>

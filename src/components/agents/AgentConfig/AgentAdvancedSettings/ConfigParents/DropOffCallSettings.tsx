@@ -347,10 +347,10 @@ export default function DropOffCallSettings({
           <p className="text-xs text-muted-foreground">
             Define the prompt for the <code className="px-1 py-0.5 bg-muted rounded text-xs">call_retry_required</code> metric. This prompt will be used to evaluate whether a call requires a retry. The metric will be automatically enabled when you save this configuration.
           </p>
-          <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-            <AlertCircle className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
-            <AlertDescription className="text-xs text-blue-700 dark:text-blue-300">
-              The <code className="px-1 py-0.5 bg-blue-100 dark:bg-blue-900/50 rounded text-xs">call_retry_required</code> metric will be automatically enabled when you save this configuration.
+          <Alert className="bg-primary/10 border-primary/30">
+            <AlertCircle className="h-3.5 w-3.5 text-primary" />
+            <AlertDescription className="text-xs text-primary">
+              The <code className="px-1 py-0.5 bg-primary/15 rounded text-xs">call_retry_required</code> metric will be automatically enabled when you save this configuration.
             </AlertDescription>
           </Alert>
         </div>

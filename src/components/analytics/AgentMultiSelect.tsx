@@ -55,7 +55,7 @@ export function AgentMultiSelect({
         <div className="flex items-center justify-between px-1 pb-2">
           <span className="text-xs font-medium text-muted-foreground">Agents</span>
           <button
-            className="text-xs text-blue-600 hover:underline dark:text-blue-400"
+            className="text-xs text-primary hover:underline"
             onClick={() => onChange(null)}
           >
             Select all

@@ -141,7 +141,7 @@ function FillerWordsSettings({
               disabled={questionKeywords.length === 0}
             />
             {questionKeywords.length === 0 && (
-              <div className="text-xs text-amber-600 dark:text-amber-400">
+              <div className="text-xs text-warning">
                 Add at least one trigger word to enable question filler phrases
               </div>
             )}
@@ -174,7 +174,7 @@ function FillerWordsSettings({
               disabled={ambiguousKeywords.length === 0}
             />
             {ambiguousKeywords.length === 0 && (
-              <div className="text-xs text-amber-600 dark:text-amber-400">
+              <div className="text-xs text-warning">
                 Add at least one trigger word to enable ambiguous filler phrases
               </div>
             )}

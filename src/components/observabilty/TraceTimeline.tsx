@@ -140,27 +140,27 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
   }
 
   const getOperationLightColor = (operation: string, status?: string, type?: string) => {
-    if (status === 'error') return 'bg-red-100 border-red-200'
-    if (status === 'warning') return 'bg-amber-100 border-amber-200'
+    if (status === 'error') return 'bg-destructive/15 border-destructive/30'
+    if (status === 'warning') return 'bg-warning/15 border-warning/30'
     
-    if (type === 'tool') return 'bg-orange-100 border-orange-200'
-    if (operation.includes('stt')) return 'bg-blue-100 border-blue-200'
+    if (type === 'tool') return 'bg-warning/15 border-warning/30'
+    if (operation.includes('stt')) return 'bg-primary/15 border-primary/30'
     if (operation.includes('llm')) return 'bg-purple-100 border-purple-200'
-    if (operation.includes('tts')) return 'bg-green-100 border-green-200'
-    if (operation.includes('eou')) return 'bg-amber-100 border-amber-200'
+    if (operation.includes('tts')) return 'bg-success/15 border-success/30'
+    if (operation.includes('eou')) return 'bg-warning/15 border-warning/30'
     if (operation.includes('call')) return 'bg-indigo-100 border-indigo-200'
     return 'bg-muted border-border'
   }
 
   const getOperationTextColor = (operation: string, status?: string, type?: string) => {
-    if (status === 'error') return 'text-red-700'
-    if (status === 'warning') return 'text-amber-700'
+    if (status === 'error') return 'text-destructive'
+    if (status === 'warning') return 'text-warning'
     
-    if (type === 'tool') return 'text-orange-700'
-    if (operation.includes('stt')) return 'text-blue-700'
+    if (type === 'tool') return 'text-warning'
+    if (operation.includes('stt')) return 'text-primary'
     if (operation.includes('llm')) return 'text-purple-700'
-    if (operation.includes('tts')) return 'text-green-700'
-    if (operation.includes('eou')) return 'text-amber-700'
+    if (operation.includes('tts')) return 'text-success'
+    if (operation.includes('eou')) return 'text-warning'
     if (operation.includes('call')) return 'text-indigo-700'
     return 'text-foreground'
   }
@@ -256,7 +256,7 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
               <div className="space-y-2">
                 {conversationSummary.hasInput && (
                   <div className="text-sm">
-                    <span className="font-medium text-blue-600">User:</span>
+                    <span className="font-medium text-primary">User:</span>
                     <span className="ml-2 text-foreground">
                       {trace.user_transcript}
                     </span>
@@ -420,20 +420,20 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
             {/* Basic trace info */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
               {trace?.trace_duration_ms && (
-                <div className="text-center p-3 bg-blue-50 rounded-lg border">
-                  <div className="text-lg font-semibold text-blue-600">
+                <div className="text-center p-3 bg-primary/10 rounded-lg border">
+                  <div className="text-lg font-semibold text-primary">
                     {formatDuration(trace.trace_duration_ms)}
                   </div>
-                  <div className="text-xs text-blue-600">Total Duration</div>
+                  <div className="text-xs text-primary">Total Duration</div>
                 </div>
               )}
               
               {trace?.tool_calls?.length > 0 && (
-                <div className="text-center p-3 bg-orange-50 rounded-lg border">
-                  <div className="text-lg font-semibold text-orange-600">
+                <div className="text-center p-3 bg-warning/10 rounded-lg border">
+                  <div className="text-lg font-semibold text-warning">
                     {trace.tool_calls.length}
                   </div>
-                  <div className="text-xs text-orange-600">Tool Calls</div>
+                  <div className="text-xs text-warning">Tool Calls</div>
                 </div>
               )}
               
@@ -447,16 +447,16 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
               )}
               
               {trace?.call_success !== undefined && (
-                <div className="text-center p-3 bg-green-50 rounded-lg border">
+                <div className="text-center p-3 bg-success/10 rounded-lg border">
                   <div className={cn(
                     "text-lg font-semibold",
-                    trace.call_success ? "text-green-600" : "text-red-600"
+                    trace.call_success ? "text-success" : "text-destructive"
                   )}>
                     {trace.call_success ? "✓" : "✗"}
                   </div>
                   <div className={cn(
                     "text-xs",
-                    trace.call_success ? "text-green-600" : "text-red-600"
+                    trace.call_success ? "text-success" : "text-destructive"
                   )}>
                     Call Status
                   </div>

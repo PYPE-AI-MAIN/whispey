@@ -51,7 +51,7 @@ export function QaTeamAdmin() {
         <Input placeholder="Slack ID (U0123ABCD)" value={form.slack_id} onChange={set('slack_id')} />
         <Button onClick={() => add.mutate()} disabled={add.isPending}>Add</Button>
       </div>
-      {add.isError && <p className="text-xs text-red-600">{(add.error as Error).message}</p>}
+      {add.isError && <p className="text-xs text-destructive">{(add.error as Error).message}</p>}
       <ul className="divide-y divide-border rounded-xl border border-border bg-card">
         {isLoading && <li className="px-4 py-3 text-sm text-muted-foreground">Loading…</li>}
         {data?.members.length === 0 && <li className="px-4 py-3 text-sm text-muted-foreground">No one added yet.</li>}
@@ -61,7 +61,7 @@ export function QaTeamAdmin() {
               <p className="font-medium text-foreground">{m.name} <span className="ml-2 text-xs font-normal text-muted-foreground">{ROLE_LABEL[m.role]}</span></p>
               <p className="truncate text-xs text-muted-foreground">{m.email} · {m.slack_id ?? 'no Slack ID'}</p>
             </div>
-            <button type="button" aria-label={`Remove ${m.name}`} onClick={() => remove.mutate(m.id)} className="text-muted-foreground hover:text-red-600">
+            <button type="button" aria-label={`Remove ${m.name}`} onClick={() => remove.mutate(m.id)} className="text-muted-foreground hover:text-destructive">
               <Trash2 className="h-4 w-4" />
             </button>
           </li>

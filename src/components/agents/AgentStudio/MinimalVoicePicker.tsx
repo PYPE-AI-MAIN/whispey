@@ -314,7 +314,7 @@ export default function MinimalVoicePicker({
       >
         <div style={{ maxHeight: 360 }} className="overflow-y-auto">
           {preview.error && (
-            <p className="mx-1.5 mb-1 rounded-md bg-rose-50 px-2 py-1 text-[11px] text-rose-600 dark:bg-rose-500/10 dark:text-rose-400">
+            <p className="mx-1.5 mb-1 rounded-md bg-destructive/10 px-2 py-1 text-[11px] text-destructive">
               {preview.error}
             </p>
           )}
@@ -347,7 +347,7 @@ export default function MinimalVoicePicker({
                     }}
                     className={cn(
                       'flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-blue-500/40',
-                      isSelected ? 'bg-blue-50 dark:bg-blue-500/10' : 'hover:bg-muted/50'
+                      isSelected ? 'bg-primary/10' : 'hover:bg-muted/50'
                     )}
                   >
                     <PlayOrb
@@ -374,7 +374,7 @@ export default function MinimalVoicePicker({
                         </div>
                       )}
                     </div>
-                    {isSelected && <Check className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />}
+                    {isSelected && <Check className="h-4 w-4 shrink-0 text-primary" />}
                   </div>
                 )
               })}

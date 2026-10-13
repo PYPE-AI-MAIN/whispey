@@ -106,8 +106,8 @@ const PhoneRequestDialog: React.FC<PhoneRequestDialogProps> = ({
         {/* Header */}
         <DialogHeader className={`${isMobile ? 'px-4 pt-4 pb-3' : 'px-6 pt-6 pb-4'} border-b border-border`}>
           <div className="flex items-center gap-3">
-            <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-blue-100 dark:bg-blue-900/20 rounded-xl flex items-center justify-center`}>
-              <Phone className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} text-blue-600 dark:text-blue-400`} />
+            <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-primary/15 rounded-xl flex items-center justify-center`}>
+              <Phone className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} text-primary`} />
             </div>
             <div>
               <DialogTitle className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-foreground`}>
@@ -124,8 +124,8 @@ const PhoneRequestDialog: React.FC<PhoneRequestDialogProps> = ({
         <div className={`${isMobile ? 'px-4 py-4' : 'px-6 py-6'} space-y-4`}>
           {success ? (
             <div className="py-8 text-center">
-              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Send className="w-6 h-6 text-green-600 dark:text-green-400" />
+              <div className="w-12 h-12 bg-success/15 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Send className="w-6 h-6 text-success" />
               </div>
               <h3 className="text-base font-medium text-foreground mb-1">
                 Request Sent Successfully!
@@ -149,18 +149,18 @@ const PhoneRequestDialog: React.FC<PhoneRequestDialogProps> = ({
                   disabled={loading}
                 />
                 {error && (
-                  <div className="flex items-start gap-2 text-sm text-red-600 dark:text-red-400 mt-2">
+                  <div className="flex items-start gap-2 text-sm text-destructive mt-2">
                     <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                     <span>{error}</span>
                   </div>
                 )}
               </div>
 
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+              <div className="bg-primary/10 border border-primary/30 rounded-lg p-3">
                 <h4 className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-1.5">
                   What happens next?
                 </h4>
-                <ul className="space-y-0.5 text-xs text-blue-700 dark:text-blue-300">
+                <ul className="space-y-0.5 text-xs text-primary">
                   <li>• We'll review your request within 24 hours</li>
                   <li>• Once approved, a phone number will be assigned</li>
                   <li>• You'll be able to configure it with your agent</li>

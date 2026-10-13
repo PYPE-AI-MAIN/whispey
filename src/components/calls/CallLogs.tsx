@@ -220,7 +220,7 @@ function getCellClassName(rowIndex: number, isSelected: boolean): string {
     // Cells already carry their own color (score badges, status pills) —
     // tinting the cell background too just fights with that. The header tint
     // alone is enough to tell which section a column belongs to.
-    isSelected && "bg-blue-100 dark:bg-blue-900/40",
+    isSelected && "bg-primary/15",
   )
 }
 
@@ -806,14 +806,14 @@ const CallLogs: React.FC<CallLogsProps> = ({
     return (
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <div className="flex-none p-4 border-b bg-background/95 dark:bg-gray-900/95">
-          <div className="h-8 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-4 rounded-lg flex items-center w-fit">
+          <div className="h-8 bg-destructive/15 text-destructive px-4 rounded-lg flex items-center w-fit">
             <AlertCircle className="w-4 h-4 mr-2" />
             Unable to load calls
           </div>
         </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
+            <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
             <h3 className="text-lg font-semibold">{error}</h3>
             {activeFilters.length > 0 && (
               <Button variant="outline" size="sm" onClick={handleClearFilters}>

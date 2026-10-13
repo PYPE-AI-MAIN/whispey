@@ -30,7 +30,7 @@ function PiLink({ children, href }: Readonly<{ children?: React.ReactNode; href?
   if (!target) return <>{children}</>
   // new tab for a link Pi drops inline (e.g. naming an agent) — clicking
   // it shouldn't navigate away from the chat you're in the middle of
-  return <Link href={target} target="_blank" rel="noreferrer" className="text-blue-600 underline underline-offset-2 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">{children}</Link>
+  return <Link href={target} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2 hover:text-primary">{children}</Link>
 }
 
 const MARKDOWN_COMPONENTS = {
@@ -342,7 +342,7 @@ function PiVoiceCall({ agentName, label }: Readonly<{ agentName: string; label: 
           </button>
         )}
       </div>
-      {state.connectionError && <p className="mt-2 text-[12px] text-red-600 dark:text-red-400">{state.connectionError}</p>}
+      {state.connectionError && <p className="mt-2 text-[12px] text-destructive">{state.connectionError}</p>}
     </div>
   )
 }
@@ -396,7 +396,7 @@ function ToolCallLine({ tc }: Readonly<{ tc: ToolCall }>) {
     return <span className="text-[12px] text-muted-foreground">{label}…</span>
   }
   if (tc.success === false) {
-    return <span className="text-[12px] text-red-600 dark:text-red-400">{label} failed</span>
+    return <span className="text-[12px] text-destructive">{label} failed</span>
   }
   return <span className="text-[12px] text-muted-foreground">{label}</span>
 }
@@ -462,10 +462,10 @@ function PhoneActionOutcome({ tc, cancelled }: Readonly<{ tc: ToolCall; cancelle
   const isPhoneAction = tc.name === 'buy_plivo_number' || tc.name === 'attach_inbound_number'
   if (!isPhoneAction || !tc.result || tc.result.__pending || cancelled) return null
   if (tc.success === false || tc.result.error) {
-    return <p className="mt-2 max-w-md rounded-lg bg-red-50 px-3 py-2 text-[13px] text-red-700 dark:bg-red-950/30 dark:text-red-300">Failed: {String(tc.result.error ?? 'Something went wrong')}</p>
+    return <p className="mt-2 max-w-md rounded-lg bg-destructive/10 px-3 py-2 text-[13px] text-destructive">Failed: {String(tc.result.error ?? 'Something went wrong')}</p>
   }
   return (
-    <p className="mt-2 max-w-md rounded-lg bg-emerald-50 px-3 py-2 text-[13px] text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
+    <p className="mt-2 max-w-md rounded-lg bg-success/10 px-3 py-2 text-[13px] text-success">
       {tc.name === 'buy_plivo_number'
         ? `Bought ${tc.result.bought} ($${Number(tc.result.monthly_rental_rate_usd).toFixed(2)}/month). Ask me to attach it to an agent.`
         : `Attached ${tc.result.attached} to ${tc.result.agent} for inbound calls (${tc.result.alias}).`}
@@ -509,7 +509,7 @@ function ToolCallBlock({
         </div>
       ) : null}
       {pending ? (
-        <div className="mt-3 max-w-md rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/60 dark:bg-amber-950/30">
+        <div className="mt-3 max-w-md rounded-xl border border-warning/30 bg-warning/10 px-4 py-3">
           <p className="text-[13px] text-amber-900 dark:text-amber-200">{pending.summary}</p>
           <div className="mt-2.5 flex gap-2">
             <button
@@ -524,14 +524,14 @@ function ToolCallBlock({
               type="button"
               disabled={resolving}
               onClick={() => onResolve(tc.id, 'cancel')}
-              className="rounded-lg border border-amber-300 px-3 py-1.5 text-[13px] font-medium text-amber-900 transition hover:bg-amber-100 disabled:cursor-wait disabled:opacity-50 dark:border-amber-800 dark:text-amber-200 dark:hover:bg-amber-900/40"
+              className="rounded-lg border border-warning/40 px-3 py-1.5 text-[13px] font-medium text-amber-900 transition hover:bg-warning/15 disabled:cursor-wait disabled:opacity-50 dark:text-amber-200"
             >
               Cancel
             </button>
           </div>
         </div>
       ) : null}
-      {pending && resolveError && <p role="alert" className="mt-2 max-w-md text-[12px] text-red-600 dark:text-red-400">{resolveError}</p>}
+      {pending && resolveError && <p role="alert" className="mt-2 max-w-md text-[12px] text-destructive">{resolveError}</p>}
       {cancelled && <p className="mt-2 text-[12px] text-muted-foreground">Cancelled.</p>}
       <PhoneActionOutcome tc={tc} cancelled={cancelled} />
     </div>
@@ -968,7 +968,7 @@ export default function PiChatView({
             <button
               type="button"
               onClick={() => { const t = lastTurnRef.current; if (t) sendMessage(t.text, t.history) }}
-              className="rounded-full border border-red-200 bg-card px-3 py-1 text-[12px] text-red-600 shadow-sm hover:bg-red-50 dark:border-red-900 dark:text-red-400"
+              className="rounded-full border border-destructive/30 bg-card px-3 py-1 text-[12px] text-destructive shadow-sm hover:bg-destructive/10"
             >
               Try again
             </button>

@@ -37,10 +37,10 @@ const getEnvironmentColor = (environment: string) => {
   switch (environment.toLowerCase()) {
     case 'production':
     case 'prod':
-      return 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'
+      return 'bg-destructive/10 text-destructive border-destructive/30'
     case 'development':
     case 'dev':
-      return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800'
+      return 'bg-primary/10 text-primary border-primary/30'
     default:
       return 'bg-muted/50 text-foreground border-border'
   }
@@ -116,11 +116,11 @@ function TokenDialog({
             </div>
           </div>
           {copied && (
-            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">Token copied to clipboard</p>
+            <p className="text-xs text-success mt-1">Token copied to clipboard</p>
           )}
         </div>
-        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded">
-          <p className="text-xs text-amber-800 dark:text-amber-200">
+        <div className="p-3 bg-warning/10 border border-warning/30 rounded">
+          <p className="text-xs text-warning">
             <strong>Important:</strong> Store this token securely. The previous token has been invalidated.
           </p>
         </div>
@@ -359,13 +359,13 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                   {project.environment}
                 </Badge>
                 {project.token_hash && (
-                  <Badge variant="outline" className="text-xs font-normal bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 px-1.5 py-0">
+                  <Badge variant="outline" className="text-xs font-normal bg-success/10 text-success border-success/30 px-1.5 py-0">
                     <Key className="h-2 w-2 mr-0.5" />
                     API
                   </Badge>
                 )}
                 {project.agent_count !== undefined && (
-                  <Badge variant="outline" className="text-xs font-normal bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 px-1.5 py-0">
+                  <Badge variant="outline" className="text-xs font-normal bg-primary/10 text-primary border-primary/30 px-1.5 py-0">
                     {project.agent_count}
                   </Badge>
                 )}
@@ -416,7 +416,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
               <DropdownMenuItem onClick={(e) => {
                 e.stopPropagation()
                 setShowDeleteConfirm(project)
-              }} className="text-xs text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400">
+              }} className="text-xs text-destructive focus:text-destructive">
                 <Trash2 className="h-3 w-3 mr-2" />
                 Delete organization
               </DropdownMenuItem>
@@ -437,7 +437,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
             <Clock className="w-3 h-3" />
             <span>{formatDate(project.created_at)}</span>
           </div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-primary transition-colors">
             <span>Open</span>
             <ChevronRight className="w-3 h-3" />
           </div>
@@ -470,7 +470,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                   {project.environment}
                 </Badge>
                 {project.token_hash && (
-                  <Badge variant="outline" className="text-xs font-normal bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 px-1.5 py-0 h-4">
+                  <Badge variant="outline" className="text-xs font-normal bg-success/10 text-success border-success/30 px-1.5 py-0 h-4">
                     <Key className="h-2 w-2 mr-0.5" />
                     API
                   </Badge>
@@ -526,13 +526,13 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                 <DropdownMenuItem onClick={(e) => {
                   e.stopPropagation()
                   setShowDeleteConfirm(project)
-                }} className="text-xs text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400">
+                }} className="text-xs text-destructive focus:text-destructive">
                   <Trash2 className="h-3 w-3 mr-2" />
                   Delete organization
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <ChevronRight className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-all" />
+            <ChevronRight className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-primary transition-all" />
           </div>
         </div>
       </CardContent>
@@ -611,8 +611,8 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
       <div className="h-full bg-card flex flex-col">
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4 max-w-sm">
-            <div className="w-10 h-10 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto">
-              <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+            <div className="w-10 h-10 bg-destructive/10 rounded-full flex items-center justify-center mx-auto">
+              <AlertCircle className="w-5 h-5 text-destructive" />
             </div>
             <div className="space-y-1">
               <h3 className="text-sm font-medium text-foreground">Failed to load organizations</h3>
@@ -724,7 +724,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                             <h3 className="font-medium text-foreground text-sm truncate">{project.name}</h3>
                             <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${project.is_active ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
                             {project.token_hash && (
-                              <Badge variant="outline" className="text-xs font-normal bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 px-1.5 py-0 h-4">
+                              <Badge variant="outline" className="text-xs font-normal bg-success/10 text-success border-success/30 px-1.5 py-0 h-4">
                                 <Key className="h-2 w-2 mr-0.5" />
                                 API
                               </Badge>
@@ -794,13 +794,13 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                             <DropdownMenuItem onClick={(e) => {
                               e.stopPropagation()
                               setShowDeleteConfirm(project)
-                            }} className="text-xs text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400">
+                            }} className="text-xs text-destructive focus:text-destructive">
                               <Trash2 className="h-3 w-3 mr-2" />
                               Delete organization
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                        <ChevronRight className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-all" />
+                        <ChevronRight className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-primary transition-all" />
                       </div>
                     </div>
                   </div>
@@ -844,8 +844,8 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
 
           {projects.length === 0 && !loading && !error && (
             <div className="text-center py-16">
-              <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <Building2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Building2 className="h-6 w-6 text-primary" />
               </div>
               <h3 className="text-sm font-medium text-foreground mb-1">Create your first organization</h3>
               <p className="text-xs text-muted-foreground mb-6 max-w-lg mx-auto">

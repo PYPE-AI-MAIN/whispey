@@ -33,7 +33,7 @@ export default function PipecatPhoneCallConfigPage() {
   if (!pipecatAgentId) {
     return (
       <div className="h-screen bg-muted/50 flex items-center justify-center p-6">
-        <p className="text-sm text-red-500">Pipecat agent ID not found in configuration.</p>
+        <p className="text-sm text-destructive">Pipecat agent ID not found in configuration.</p>
       </div>
     )
   }

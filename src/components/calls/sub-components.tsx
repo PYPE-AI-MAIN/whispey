@@ -261,7 +261,7 @@ export const ReanalyzeDialogWrapper = memo<ReanalyzeDialogWrapperProps>(({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
-            <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <Sparkles className="w-5 h-5 text-primary" />
             Re-analyze Call Logs
           </DialogTitle>
           <DialogDescription>

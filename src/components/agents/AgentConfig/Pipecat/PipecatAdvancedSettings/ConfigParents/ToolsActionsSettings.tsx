@@ -495,7 +495,7 @@ export default function ToolsActionsSettings({
 
               {/* Prompt hint */}
               {enabled && tool.prompt_hint && (
-                <div className="ml-5 mt-1 mb-2 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded text-xs text-amber-700 dark:text-amber-400">
+                <div className="ml-5 mt-1 mb-2 p-2 bg-warning/10 border border-warning/30 rounded text-xs text-warning">
                   <p className="font-medium mb-0.5">Prompt hint</p>
                   <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed">
                     {tool.prompt_hint}
@@ -559,7 +559,7 @@ export default function ToolsActionsSettings({
               <Button
                 variant="ghost" size="sm"
                 onClick={() => onCustomToolsChange(customTools.filter((_, j) => j !== i))}
-                className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                className="h-6 w-6 p-0 text-destructive hover:text-destructive"
               >
                 <Trash2 className="w-3 h-3" />
               </Button>
@@ -755,7 +755,7 @@ export default function ToolsActionsSettings({
                               filler_config: { ...p.filler_config!, messages: msgs },
                             }))
                           }}
-                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700 flex-shrink-0"
+                          className="h-6 w-6 p-0 text-destructive hover:text-destructive flex-shrink-0"
                         >
                           <Trash2 className="w-3 h-3" />
                         </Button>
@@ -806,7 +806,7 @@ export default function ToolsActionsSettings({
               )}
             </div>
 
-            {jsonError && <p className="text-xs text-red-500">{jsonError}</p>}
+            {jsonError && <p className="text-xs text-destructive">{jsonError}</p>}
           </div>
           <div className="flex gap-2 mt-4">
             <Button

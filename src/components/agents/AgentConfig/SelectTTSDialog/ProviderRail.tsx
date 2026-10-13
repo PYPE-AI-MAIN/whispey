@@ -87,7 +87,7 @@ export default function ProviderRail({ providers, counts, appliedProvider, activ
                 <span className="flex items-center gap-1.5">
                   <span className="truncate text-sm font-medium">{provider.label}</span>
                   {isNewProvider(provider.addedAt) && (
-                    <span className="rounded-full bg-green-100 dark:bg-green-900/40 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-green-700 dark:text-green-300">
+                    <span className="rounded-full bg-success/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-success">
                       New
                     </span>
                   )}
@@ -98,7 +98,7 @@ export default function ProviderRail({ providers, counts, appliedProvider, activ
               </span>
               <span className="flex items-center gap-1.5 flex-shrink-0">
                 {isApplied && (
-                  <Check className="w-3.5 h-3.5 text-green-600 dark:text-green-400" aria-label="Currently selected" />
+                  <Check className="w-3.5 h-3.5 text-success" aria-label="Currently selected" />
                 )}
                 {count !== undefined && (
                   <span className="rounded-md bg-muted/70 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">

@@ -57,7 +57,7 @@ export function RecipientsPreview({ csvData, dncBlocked }: Readonly<RecipientsPr
           Recipients ({csvData.length})
         </h3>
         {blockedCount > 0 ? (
-          <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
+          <p className="text-xs text-destructive mt-0.5">
             {blockedCount} number{blockedCount > 1 ? 's' : ''} on the DNC list — highlighted below, will not be called.
           </p>
         ) : (
@@ -92,8 +92,8 @@ export function RecipientsPreview({ csvData, dncBlocked }: Readonly<RecipientsPr
                   title={isBlocked ? 'On the Do Not Call (DNC) list — will not be called' : undefined}
                   className={
                     isBlocked
-                      ? 'bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors'
-                      : 'hover:bg-blue-50 dark:hover:bg-gray-700/50 transition-colors'
+                      ? 'bg-destructive/10 hover:bg-destructive/15 transition-colors'
+                      : 'hover:bg-primary/10 dark:hover:bg-gray-700/50 transition-colors'
                   }
                 >
                   {headers.map((header) => (
@@ -108,7 +108,7 @@ export function RecipientsPreview({ csvData, dncBlocked }: Readonly<RecipientsPr
                       <div className="truncate flex items-center gap-1" title={(row as any)[header] || '-'}>
                         {(row as any)[header] || '-'}
                         {isBlocked && header.toLowerCase().includes('phone') && (
-                          <span className="text-[11px] font-semibold uppercase text-red-600 dark:text-red-400">
+                          <span className="text-[11px] font-semibold uppercase text-destructive">
                             (DNC)
                           </span>
                         )}

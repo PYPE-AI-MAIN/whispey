@@ -92,7 +92,7 @@ function SessionRowItem({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => setRenaming(true)}><Pencil className="w-3.5 h-3.5 mr-2" />Rename</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => remove.mutate()} className="text-red-600 focus:text-red-600"><Trash2 className="w-3.5 h-3.5 mr-2" />Delete</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => remove.mutate()} className="text-destructive focus:text-destructive"><Trash2 className="w-3.5 h-3.5 mr-2" />Delete</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       )}

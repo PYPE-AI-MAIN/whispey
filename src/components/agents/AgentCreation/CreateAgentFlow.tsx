@@ -37,7 +37,7 @@ function getResultBadgeClass(creationMode: 'single' | 'flow', selectedPlatform: 
   if (creationMode === 'flow') return 'bg-muted/50 text-muted-foreground border-border'
   if (selectedPlatform === 'vapi') return 'bg-muted/50 text-muted-foreground border-border'
   if (selectedPlatform === 'pipecat') return 'bg-muted/50 text-muted-foreground border-border'
-  return 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800'
+  return 'bg-primary/10 text-primary border-primary/30'
 }
 
 function getResultBadgeLabel(creationMode: 'single' | 'flow', selectedPlatform: string): string {
@@ -291,7 +291,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
     return (
       <div className="px-6 py-8 text-center">
         <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 rounded-2xl flex items-center justify-center border border-border/60">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
         
         <h3 className="text-lg font-semibold text-foreground mb-2">
@@ -303,8 +303,8 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
         </p>
 
         <div className="space-y-3 max-w-xs mx-auto">
-          <div className="flex items-center gap-3 text-sm text-blue-600 dark:text-blue-400">
-            <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+          <div className="flex items-center gap-3 text-sm text-primary">
+            <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium bg-primary/15 text-primary">
               <Loader2 className="w-3 h-3 animate-spin" />
             </div>
             <span className="font-medium">Creating Infrastructure</span>
@@ -326,8 +326,8 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
       <>
         {/* Success Header */}
         <DialogHeader className="px-6 pt-6 pb-4 text-center border-b border-border/60">
-          <div className="w-12 h-12 mx-auto mb-3 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-            <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
+          <div className="w-12 h-12 mx-auto mb-3 bg-success/15 rounded-full flex items-center justify-center">
+            <CheckCircle className="w-6 h-6 text-success" />
           </div>
           <DialogTitle className="text-lg font-semibold text-foreground mb-1">
             Agent Created Successfully!
@@ -340,12 +340,12 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
         <div className="px-6 py-5 space-y-4">
           <div className="p-4 bg-muted/50 rounded-lg border border-border">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
                 {(() => {
                   if (creationMode === 'flow') return <GitBranch className="w-5 h-5 text-muted-foreground" />
                   if (selectedPlatform === 'vapi') return <Zap className="w-5 h-5 text-muted-foreground" />
                   if (selectedPlatform === 'pipecat') return <Radio className="w-5 h-5 text-muted-foreground" />
-                  return <Activity className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  return <Activity className="w-5 h-5 text-primary" />
                 })()}
               </div>
               <div className="flex-1 min-w-0">
@@ -380,7 +380,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
               </div>
             </div>
             {copiedId && (
-              <p className="text-xs text-green-600 dark:text-green-400 text-right mt-1">
+              <p className="text-xs text-success text-right mt-1">
                 Copied to clipboard
               </p>
             )}
@@ -445,7 +445,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
                 }`}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <Bot className="w-4 h-4 text-primary" />
                   <span className="text-sm font-medium text-foreground">Single Agent</span>
                 </div>
                 <p className="text-xs text-muted-foreground">One prompt, one persona.</p>
@@ -478,7 +478,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
             </label>
             {creationMode === 'flow' ? (
               <p className="h-10 flex items-center px-3 text-sm rounded-lg border border-border bg-muted/50 text-muted-foreground">
-                <Activity className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" /> LiveKit Agent (required for conversation flows)
+                <Activity className="w-4 h-4 mr-2 text-primary" /> LiveKit Agent (required for conversation flows)
               </p>
             ) : (
             <Select
@@ -582,7 +582,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
               />
 
               {nameError ? (
-                <p className="text-xs text-red-600 dark:text-red-400 mt-1">{nameError}</p>
+                <p className="text-xs text-destructive mt-1">{nameError}</p>
               ) : (
                 <p className="text-[11px] italic text-muted-foreground">{nameHint}</p>
               )}
@@ -605,9 +605,9 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
 
           {/* Error Message */}
           {error && (
-            <Alert variant="destructive" className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
-              <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-              <AlertDescription className="text-red-800 dark:text-red-200">{error}</AlertDescription>
+            <Alert variant="destructive" className="border-destructive/30 bg-destructive/10">
+              <AlertCircle className="h-4 w-4 text-destructive" />
+              <AlertDescription className="text-destructive">{error}</AlertDescription>
             </Alert>
           )}
         </div>

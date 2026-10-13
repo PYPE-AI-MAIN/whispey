@@ -109,7 +109,7 @@ export function FormulaCard({
             type="button"
             aria-label={`Remove ${widget.title}`}
             onClick={onRemove}
-            className="pointer-events-auto shrink-0 rounded p-1 text-muted-foreground opacity-0 transition hover:bg-muted hover:text-red-600 group-hover:opacity-100 focus:opacity-100"
+            className="pointer-events-auto shrink-0 rounded p-1 text-muted-foreground opacity-0 transition hover:bg-muted hover:text-destructive group-hover:opacity-100 focus:opacity-100"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
@@ -166,7 +166,7 @@ function FormulaValue({
 function State({ icon, text, tone }: Readonly<{ icon: React.ReactNode; text: string; tone: 'warn' | 'muted' }>) {
   return (
     <div className="flex h-full items-center gap-1.5 text-xs text-muted-foreground">
-      <span className={tone === 'warn' ? 'text-amber-500' : 'text-muted-foreground'}>{icon}</span>
+      <span className={tone === 'warn' ? 'text-warning' : 'text-muted-foreground'}>{icon}</span>
       <span className="line-clamp-2">{text}</span>
     </div>
   )

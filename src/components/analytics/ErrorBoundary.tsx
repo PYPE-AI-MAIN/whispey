@@ -48,7 +48,7 @@ export class ChartErrorBoundary extends React.Component<Props, State> {
         </p>
         <button
           onClick={() => this.setState({ error: null })}
-          className="text-xs text-blue-600 underline-offset-2 hover:underline dark:text-blue-400"
+          className="text-xs text-primary underline-offset-2 hover:underline"
         >
           Try again
         </button>

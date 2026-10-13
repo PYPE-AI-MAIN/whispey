@@ -151,7 +151,7 @@ function SessionRow({ session, renaming, onNavigate, onRename, onRenameStart, on
 
       <span className="relative z-10 pointer-events-none flex items-center gap-2 min-w-0" title={email ?? undefined}>
         <span className={cn('grid h-6 w-6 shrink-0 place-items-center rounded-full text-[10px] font-semibold uppercase',
-          session.is_mine ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-muted text-muted-foreground')}>
+          session.is_mine ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground')}>
           {email ? email[0] : '?'}
         </span>
         <span className="min-w-0 truncate text-xs text-muted-foreground">
@@ -175,7 +175,7 @@ function SessionRow({ session, renaming, onNavigate, onRename, onRenameStart, on
             <DropdownMenuContent align="end" className="w-36">
               <DropdownMenuItem onClick={() => onRenameStart(session.id)} className="text-xs gap-2 cursor-pointer"><Pencil className="w-3.5 h-3.5" />Rename</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onDeleteStart(session)} className="text-xs gap-2 cursor-pointer text-red-500 focus:text-red-500"><Trash2 className="w-3.5 h-3.5" />Delete</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onDeleteStart(session)} className="text-xs gap-2 cursor-pointer text-destructive focus:text-destructive"><Trash2 className="w-3.5 h-3.5" />Delete</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )}

@@ -121,7 +121,7 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
         <div className="px-4 py-2 border-b border-border bg-muted/50">
           <button
             onClick={openTelephonyRecording}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
           >
             <ExternalLink className="h-3.5 w-3.5" />
             Listen to telephony recording

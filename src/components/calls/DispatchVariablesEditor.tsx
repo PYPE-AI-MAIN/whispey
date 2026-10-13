@@ -32,7 +32,7 @@ export function DispatchVariablesEditor({ variables, setVariables }: Readonly<{
         <button
           type="button"
           onClick={() => setVariables(prev => [...prev, { id: crypto.randomUUID(), key: '', value: '' }])}
-          className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+          className="flex items-center gap-1 text-xs text-primary hover:text-primary font-medium"
         >
           <Plus className="w-3.5 h-3.5" /> Add Variable
         </button>
@@ -60,7 +60,7 @@ export function DispatchVariablesEditor({ variables, setVariables }: Readonly<{
               <button
                 type="button"
                 onClick={() => setVariables(prev => removeVariableAt(prev, i))}
-                className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                className="p-1.5 hover:bg-destructive/10 rounded text-red-400 hover:text-destructive transition-colors"
               >
                 <X className="w-3.5 h-3.5" />
               </button>

@@ -25,7 +25,7 @@ export default function StudioEmptyState({ onPreview }: Readonly<{ onPreview: ()
     <div className="flex h-full items-center justify-center overflow-y-auto p-8">
       <div className="w-full max-w-xl">
         <div className="rounded-xl border border-border bg-card p-8 shadow-sm">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <Sparkles className="h-5 w-5" />
           </div>
           <h2 className="mt-5 text-lg font-semibold text-foreground">Build this agent through the MCP</h2>

@@ -100,7 +100,7 @@ const periodPillClass = (active: boolean, locked: boolean) => {
 
 const periodCustomPillClass = (active: boolean, locked: boolean) => {
   if (locked) return 'text-muted-foreground'
-  if (active) return 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30'
+  if (active) return 'bg-primary/10 text-primary border-primary/30 hover:bg-primary/15'
   return 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
 }
 
@@ -502,7 +502,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
               <button onClick={handleBack} className={`${isMobile ? 'w-8 h-8' : 'w-9 h-9'} flex items-center justify-center text-muted-foreground hover:text-muted-foreground hover:bg-muted/50 rounded-xl transition-all duration-200`}>
                 <ChevronLeft className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
               </button>
-              <div className={`${isMobile ? 'h-7' : 'h-8'} bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-3 rounded-lg flex items-center`}>
+              <div className={`${isMobile ? 'h-7' : 'h-8'} bg-destructive/15 text-destructive px-3 rounded-lg flex items-center`}>
                 <AlertCircle className={`${isMobile ? 'w-3 h-3 mr-1.5' : 'w-4 h-4 mr-2'}`} />
                 <span className={isMobile ? 'text-xs' : 'text-sm'}>Agent not found</span>
               </div>
@@ -511,8 +511,8 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
         </div>
         <div className="flex-1 flex items-center justify-center">
           <div className={`bg-card rounded-2xl border border-border shadow-sm p-6 ${isMobile ? 'mx-4' : 'max-w-md'} text-center`}>
-            <div className="w-12 h-12 bg-red-50 dark:bg-red-900/20 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <AlertCircle className="w-6 h-6 text-red-500 dark:text-red-400" />
+            <div className="w-12 h-12 bg-destructive/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-6 h-6 text-destructive" />
             </div>
             <h2 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-foreground mb-2`}>Agent not found</h2>
             <p className="text-sm text-muted-foreground mb-4">{agentError.message}</p>
@@ -948,7 +948,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                         onClick={() => handleTabChange(tab.id)}
                         className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
                           activeTab === tab.id
-                            ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                            ? 'bg-blue-50 dark:bg-blue-900/20 text-primary dark:text-blue-400'
                             : 'text-foreground hover:bg-card'
                         }`}
                       >

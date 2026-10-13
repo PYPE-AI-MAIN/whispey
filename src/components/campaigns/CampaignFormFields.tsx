@@ -160,8 +160,8 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
                   variant="outline"
                   className={`text-xs ${
                     agent.status === 'active'
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                      : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                      ? 'bg-green-100 text-success dark:bg-green-900/30 dark:text-green-400'
+                      : 'bg-yellow-100 text-warning dark:bg-yellow-900/30 dark:text-yellow-400'
                   }`}
                 >
                   {agent.status}
@@ -188,7 +188,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
           placeholder="Enter campaign name"
           className="w-full h-8 text-sm"
         />
-        <ErrorMessage name="campaignName" component="p" className="text-xs text-red-600 dark:text-red-400 mt-1" />
+        <ErrorMessage name="campaignName" component="p" className="text-xs text-destructive mt-1" />
       </div>
 
       {/* Agent Runtime - FIRST */}
@@ -211,7 +211,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
             <SelectItem value="livekit">
               <div className="flex items-center gap-2">
                 <span>LiveKit</span>
-                <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                <Badge variant="outline" className="text-xs bg-primary/15 text-primary">
                   Default
                 </Badge>
               </div>
@@ -219,7 +219,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
             <SelectItem value="pipecat">Pipecat</SelectItem>
           </SelectContent>
         </Select>
-        <ErrorMessage name="agentRuntime" component="p" className="text-xs text-red-600 dark:text-red-400 mt-1" />
+        <ErrorMessage name="agentRuntime" component="p" className="text-xs text-destructive mt-1" />
       </div>
 
       {/* Select Agent - SECOND, changes based on runtime */}
@@ -236,7 +236,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
             {({ field }: any) => renderLivekitAgentSelect(field)}
           </Field>
         )}
-        <ErrorMessage name="agentId" component="p" className="text-xs text-red-600 dark:text-red-400 mt-1" />
+        <ErrorMessage name="agentId" component="p" className="text-xs text-destructive mt-1" />
       </div>
 
       {/* From Number - only for livekit */}
@@ -292,7 +292,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
               </>
             )}
           </Field>
-          <ErrorMessage name="fromNumber" component="p" className="text-xs text-red-600 dark:text-red-400 mt-1" />
+          <ErrorMessage name="fromNumber" component="p" className="text-xs text-destructive mt-1" />
         </div>
       )}
 
@@ -332,7 +332,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
             +
           </Button>
         </div>
-        <ErrorMessage name="reservedConcurrency" component="p" className="text-xs text-red-600 dark:text-red-400 mt-1" />
+        <ErrorMessage name="reservedConcurrency" component="p" className="text-xs text-destructive mt-1" />
       </div>
     </>
   )

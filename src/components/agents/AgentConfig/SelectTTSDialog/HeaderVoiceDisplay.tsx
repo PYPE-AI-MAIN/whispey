@@ -96,7 +96,7 @@ const HeaderVoiceDisplay: React.FC<HeaderVoiceDisplayProps> = ({
         variant="outline"
         size="sm"
         onClick={onToggleSettings}
-        className={`${showSettings ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-300 dark:border-blue-700' : ''}`}
+        className={`${showSettings ? 'bg-blue-50 dark:bg-blue-950/20 border-primary/40 dark:border-blue-700' : ''}`}
       >
         <Settings className="w-4 h-4" />
         Settings

@@ -67,16 +67,16 @@ export default function FeedbackPopup({ onDismiss, onSubmit, feedbackMessage }: 
             <div className="flex gap-2">
               <button
                 onClick={() => handleRatingSelect('positive')}
-                className="flex-1 flex items-center justify-center gap-2 p-3 rounded-md border border-border hover:bg-green-50 hover:border-green-300 dark:hover:bg-green-900/20 dark:hover:border-green-700 transition-colors"
+                className="flex-1 flex items-center justify-center gap-2 p-3 rounded-md border border-border hover:bg-success/10 hover:border-success/40 transition-colors"
               >
-                <ThumbsUp className="w-4 h-4 text-green-600 dark:text-green-400" />
+                <ThumbsUp className="w-4 h-4 text-success" />
                 <span className="text-sm text-foreground">Good</span>
               </button>
               <button
                 onClick={() => handleRatingSelect('negative')}
-                className="flex-1 flex items-center justify-center gap-2 p-3 rounded-md border border-border hover:bg-red-50 hover:border-red-300 dark:hover:bg-red-900/20 dark:hover:border-red-700 transition-colors"
+                className="flex-1 flex items-center justify-center gap-2 p-3 rounded-md border border-border hover:bg-destructive/10 hover:border-destructive/40 transition-colors"
               >
-                <ThumbsDown className="w-4 h-4 text-red-600 dark:text-red-400" />
+                <ThumbsDown className="w-4 h-4 text-destructive" />
                 <span className="text-sm text-foreground">Bad</span>
               </button>
             </div>
@@ -86,7 +86,7 @@ export default function FeedbackPopup({ onDismiss, onSubmit, feedbackMessage }: 
         {step === 'comment' && (
           <div className="space-y-3">
             <div className="flex items-center gap-2 mb-2">
-              <ThumbsDown className="w-4 h-4 text-red-600 dark:text-red-400" />
+              <ThumbsDown className="w-4 h-4 text-destructive" />
               <span className="text-sm font-medium text-foreground">
                 Sorry to hear that! Please tell us why
               </span>
@@ -102,7 +102,7 @@ export default function FeedbackPopup({ onDismiss, onSubmit, feedbackMessage }: 
             />
             
             {!comment.trim() && (
-              <p className="text-xs text-red-600 dark:text-red-400">
+              <p className="text-xs text-destructive">
                 Please tell us what went wrong so we can fix it
               </p>
             )}

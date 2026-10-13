@@ -92,8 +92,8 @@ export function SessionsList({ projectId, agentId }: Props) {
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-2.5">
-              <div className="h-8 w-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                <FlaskConical className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <div className="h-8 w-8 rounded-xl bg-primary/15 flex items-center justify-center">
+                <FlaskConical className="h-4 w-4 text-primary" />
               </div>
               <h1 className="text-2xl font-semibold tracking-tight text-foreground">Prompt Forge</h1>
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-medium rounded-full">Beta</Badge>
@@ -117,7 +117,7 @@ export function SessionsList({ projectId, agentId }: Props) {
               className={cn(
                 'flex items-center gap-1.5 px-3 h-9 text-xs font-medium border-b-2 transition-colors',
                 tab === t.key
-                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  ? 'border-blue-500 text-primary'
                   : 'border-transparent text-muted-foreground',
                 t.soon ? 'cursor-not-allowed opacity-50' : 'hover:text-foreground',
               )}

@@ -57,12 +57,12 @@ const STATUS_LABEL: Record<string, string> = {
 }
 // text colour + dot colour per status
 const STATUS_TONE: Record<string, { text: string; dot: string }> = {
-  pending: { text: 'text-amber-700 dark:text-amber-400', dot: 'bg-amber-500' },
-  requested: { text: 'text-amber-700 dark:text-amber-400', dot: 'bg-amber-500' },
-  in_review: { text: 'text-blue-700 dark:text-blue-400', dot: 'bg-blue-500' },
-  in_progress: { text: 'text-blue-700 dark:text-blue-400', dot: 'bg-blue-500' },
-  resolved: { text: 'text-emerald-700 dark:text-emerald-400', dot: 'bg-emerald-500' },
-  ready: { text: 'text-emerald-700 dark:text-emerald-400', dot: 'bg-emerald-500' },
+  pending: { text: 'text-warning', dot: 'bg-amber-500' },
+  requested: { text: 'text-warning', dot: 'bg-amber-500' },
+  in_review: { text: 'text-primary', dot: 'bg-blue-500' },
+  in_progress: { text: 'text-primary', dot: 'bg-blue-500' },
+  resolved: { text: 'text-success', dot: 'bg-emerald-500' },
+  ready: { text: 'text-success', dot: 'bg-emerald-500' },
 }
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
@@ -128,7 +128,7 @@ function Editor({ children, onSave, saving, error }: Readonly<{ children: ReactN
       {children}
       <div className="flex items-center gap-3">
         <Button size="sm" onClick={onSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
-        {error && <span className="text-xs text-red-600">{error}</span>}
+        {error && <span className="text-xs text-destructive">{error}</span>}
       </div>
     </div>
   )
@@ -216,7 +216,7 @@ function FlaggedCalls({ agentId, projectId }: Readonly<{ agentId: string; projec
 
   let body: ReactNode
   if (isLoading) body = <Skeleton className="h-40 w-full rounded-xl" />
-  else if (error) body = <p className="text-sm text-red-600">{(error as Error).message}</p>
+  else if (error) body = <p className="text-sm text-destructive">{(error as Error).message}</p>
   else if (tickets.length === 0) {
     body = (
       <Empty>
@@ -302,12 +302,12 @@ function TicketRow({ ticket, canManage, internal, engineers, agentId, projectId 
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <a
                 href={`/${projectId}/agents/${agentId}/observability?session_id=${ticket.call_log_id}`}
-                className="inline-flex items-center gap-1 font-medium text-blue-600 hover:underline dark:text-blue-400"
+                className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
               >
                 Open call <ExternalLink className="h-3 w-3" />
               </a>
               {internal && ticket.sheet_url && (
-                <a href={ticket.sheet_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-blue-600 hover:underline dark:text-blue-400">
+                <a href={ticket.sheet_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
                   <FileSpreadsheet className="h-3 w-3" /> Internal sheet
                 </a>
               )}
@@ -469,7 +469,7 @@ function Composer({ ticket, engineers, agentId }: Readonly<{ ticket: Ticket; eng
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">{STATUS_HINT[status]}</p>
-      {(err || submit.isError) && <p className="text-xs text-red-600">{err || (submit.error as Error).message}</p>}
+      {(err || submit.isError) && <p className="text-xs text-destructive">{err || (submit.error as Error).message}</p>}
     </div>
   )
 }
@@ -491,7 +491,7 @@ function WeeklyReview({ agentId }: Readonly<{ agentId: string }>) {
 
   let body: ReactNode
   if (isLoading) body = <Skeleton className="h-40 w-full rounded-xl" />
-  else if (error) body = <p className="text-sm text-red-600">{(error as Error).message}</p>
+  else if (error) body = <p className="text-sm text-destructive">{(error as Error).message}</p>
   else if (reviews.length === 0) body = <Empty>No weekly reviews yet. Request last week above, and the QA team will share the results here as a Google Sheet.</Empty>
   else body = <RowList>{reviews.map((r) => <ReviewRow key={r.id} review={r} canManage={!!data?.canManage} agentId={agentId} />)}</RowList>
 
@@ -504,7 +504,7 @@ function WeeklyReview({ agentId }: Readonly<{ agentId: string }>) {
           <Button onClick={() => request.mutate()} disabled={request.isPending || alreadyAsked || !week}>
             {alreadyAsked ? 'Requested for last week' : 'Request last week’s review'}
           </Button>
-          {request.isError && <span className="text-xs text-red-600">{(request.error as Error).message}</span>}
+          {request.isError && <span className="text-xs text-destructive">{(request.error as Error).message}</span>}
         </div>
       }
     >
@@ -540,7 +540,7 @@ function ReviewRow({ review, canManage, agentId }: Readonly<{ review: Review; ca
             href={review.sheet_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 font-medium text-blue-600 hover:underline dark:text-blue-400"
+            className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
           >
             <FileSpreadsheet className="h-3.5 w-3.5" /> Open sheet <ExternalLink className="h-3 w-3" />
           </a>

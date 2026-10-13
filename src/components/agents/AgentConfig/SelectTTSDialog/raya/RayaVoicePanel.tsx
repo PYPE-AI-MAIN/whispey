@@ -64,7 +64,7 @@ function CopyId({ id }: Readonly<{ id: string }>) {
         }
       }}
     >
-      {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+      {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
     </Button>
   )
 }
@@ -82,7 +82,7 @@ function Notice({
 }>) {
   const toneClass =
     tone === 'warn'
-      ? 'border-amber-300/70 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/20'
+      ? 'border-amber-300/70 dark:border-amber-700/60 bg-warning/10'
       : 'border-border bg-muted/50'
   return (
     <div className={`rounded-lg border p-4 ${toneClass}`}>
@@ -188,7 +188,7 @@ function VoiceCard({
         <span className="flex-1 min-w-0">
           <span className="flex items-center gap-2">
             <span className="font-medium text-xs text-foreground truncate">{voice.name}</span>
-            {isSelected && <CheckCircle className="w-3 h-3 text-green-600 flex-shrink-0" />}
+            {isSelected && <CheckCircle className="w-3 h-3 text-success flex-shrink-0" />}
           </span>
           <span className="flex items-center gap-1.5 mt-0.5">
             <span className="text-xs px-1.5 py-0.5 bg-muted rounded text-muted-foreground">
@@ -546,7 +546,7 @@ export default function RayaVoicePanel({
       </div>
 
       {status === 'error' && hasCatalogue && (
-        <p className="text-xs text-amber-600 dark:text-amber-400 flex-shrink-0">
+        <p className="text-xs text-warning flex-shrink-0">
           Couldn&apos;t refresh the list — showing the last one loaded.
         </p>
       )}

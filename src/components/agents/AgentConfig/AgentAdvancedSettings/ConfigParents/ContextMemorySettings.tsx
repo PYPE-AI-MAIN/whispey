@@ -32,8 +32,8 @@ function ContextMemorySettings({ enabled, onFieldChange }: ContextMemorySettings
       </div>
 
       {enabled && (
-        <div className="rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 px-3 py-2">
-          <p className="text-xs text-blue-700 dark:text-blue-300">
+        <div className="rounded-md bg-primary/10 border border-primary/30 px-3 py-2">
+          <p className="text-xs text-primary">
             A background LLM call (Azure GPT-4.1-mini) runs after each agent response to
             extract and store user-provided facts. This adds no latency to the voice
             pipeline and is isolated per active call.

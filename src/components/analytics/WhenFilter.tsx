@@ -62,7 +62,7 @@ export function WhenFilter({
           <Button
             variant="ghost"
             size="sm"
-            className={cn('h-6 px-2 text-xs', active ? 'text-blue-700 dark:text-blue-300' : 'text-muted-foreground')}
+            className={cn('h-6 px-2 text-xs', active ? 'text-primary' : 'text-muted-foreground')}
           >
             <Clock className="mr-1 h-3 w-3" />
             {active ? describe(timeOfDay, days, preset?.label) : 'When'}
@@ -78,7 +78,7 @@ export function WhenFilter({
                 className={cn(
                   'w-full rounded-md px-2 py-1.5 text-left text-xs transition',
                   (p.window?.from ?? null) === (timeOfDay?.from ?? null)
-                    ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300'
+                    ? 'bg-primary/10 text-primary'
                     : 'text-muted-foreground hover:bg-muted'
                 )}
               >
@@ -115,7 +115,7 @@ export function WhenFilter({
                   className={cn(
                     'h-7 w-7 rounded-md border text-xs transition',
                     on
-                      ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
+                      ? 'border-blue-500 bg-primary/10 text-primary'
                       : 'border-border text-muted-foreground'
                   )}
                 >

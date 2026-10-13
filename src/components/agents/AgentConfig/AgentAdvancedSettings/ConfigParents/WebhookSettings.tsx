@@ -152,7 +152,7 @@ function WebhookSettings({
               className="h-8 text-xs"
             />
             {webhookUrlError && (
-              <p className="text-xs text-red-500 mt-1">{webhookUrlError}</p>
+              <p className="text-xs text-destructive mt-1">{webhookUrlError}</p>
             )}
           </div>
 
@@ -207,7 +207,7 @@ function WebhookSettings({
                       onClick={() => removeHeaderEntry(index)}
                       className="h-8 w-8 p-0"
                     >
-                      <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>
                   )}
                 </div>

@@ -72,7 +72,7 @@ export function disambiguate(fields: CatalogField[]): Map<string, string> {
 function Coverage({ pct }: Readonly<{ pct: number | null | undefined }>) {
   if (pct === null || pct === undefined) return null
   return (
-    <span className={cn('shrink-0 text-[11px] tabular-nums', pct < 20 ? 'text-amber-600 dark:text-amber-500' : 'text-muted-foreground')}>
+    <span className={cn('shrink-0 text-[11px] tabular-nums', pct < 20 ? 'text-warning' : 'text-muted-foreground')}>
       {Math.round(pct)}%
     </span>
   )

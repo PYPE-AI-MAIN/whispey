@@ -60,8 +60,8 @@ function RequestAccessForm({ isMobile, reason, setReason, loading, success, erro
       <div className={`flex-1 ${isMobile ? 'px-4 py-4' : 'px-6 py-6'} space-y-4`}>
         {success ? (
           <div className="py-8 text-center">
-            <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Send className="w-6 h-6 text-green-600 dark:text-green-400" />
+            <div className="w-12 h-12 bg-success/15 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Send className="w-6 h-6 text-success" />
             </div>
             <h3 className="text-base font-medium text-foreground mb-1">
               Request Sent Successfully!
@@ -85,7 +85,7 @@ function RequestAccessForm({ isMobile, reason, setReason, loading, success, erro
                 disabled={loading}
               />
               {error && (
-                <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                <p className="text-sm text-destructive mt-1">
                   {error}
                 </p>
               )}
@@ -183,7 +183,7 @@ function CreateAgentOptionCopy({ isMobile, canCreatePypeAgent, hasReachedLimit }
   if (!canCreatePypeAgent) {
     return (
       <span className="font-medium">
-        Want access to create agents with Pype? <span className="text-blue-500 dark:text-blue-400">Get in touch →</span>
+        Want access to create agents with Pype? <span className="text-primary">Get in touch →</span>
       </span>
     )
   }
@@ -204,11 +204,11 @@ function CreateAgentIcon({ isMobile, isAvailable }: Readonly<{ isMobile: boolean
   return (
     <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} ${
       isAvailable
-        ? 'bg-blue-100 dark:bg-blue-900/30 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50'
+        ? 'bg-blue-100 dark:bg-blue-900/30 group-hover:bg-primary/20 dark:group-hover:bg-blue-900/50'
         : 'bg-muted'
     } rounded-xl flex items-center justify-center flex-shrink-0 transition-colors`}>
       {isAvailable ? (
-        <Plus className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} text-blue-600 dark:text-blue-400`} />
+        <Plus className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} text-primary`} />
       ) : (
         <Lock className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} text-muted-foreground`} />
       )}
@@ -226,7 +226,7 @@ function CreateAgentTitle({ isMobile, isAvailable, canCreatePypeAgent, hasReache
         {isMobile ? 'Create Pype Agent' : 'Create New Agent with Pype'}
       </h3>
       {(!canCreatePypeAgent || hasReachedLimit) && (
-        <span className="text-xs font-medium px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded border border-blue-200 dark:border-blue-800">
+        <span className="text-xs font-medium px-2 py-0.5 bg-primary/15 text-primary rounded border border-primary/30">
           {hasReachedLimit ? 'Limit Reached' : 'Beta'}
         </span>
       )}
@@ -256,7 +256,7 @@ function CreateAgentOption({ isMobile, canCreatePypeAgent, hasReachedLimit, onCr
       type="button"
       className={`group relative w-full text-left appearance-none bg-transparent ${isMobile ? 'p-4' : 'p-6'} rounded-xl border-2 ${
         isAvailable
-          ? 'border-border hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/20'
+          ? 'border-border hover:border-primary/40  hover:bg-blue-50/50 dark:hover:bg-blue-900/20'
           : 'border-border bg-muted/50 hover:bg-muted'
       } transition-all duration-200 cursor-pointer`}
       onClick={handleClick}

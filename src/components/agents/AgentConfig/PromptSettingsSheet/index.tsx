@@ -215,7 +215,7 @@ export default function PromptSettingsSheet({
           {/* Unmapped Variables Warning */}
           {unmappedVariables.length > 0 && (
             <div
-              className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+              className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 cursor-pointer hover:bg-destructive/15 transition-colors"
               onClick={addAllUnmapped}
               role="button"
               tabIndex={0}
@@ -223,12 +223,12 @@ export default function PromptSettingsSheet({
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-start gap-2 flex-1">
-                  <AlertCircleIcon className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                  <div className="text-xs text-red-800 dark:text-red-200">
+                  <AlertCircleIcon className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                  <div className="text-xs text-destructive">
                     <p className="font-medium mb-1">{unmappedVariables.length} unmapped variable{unmappedVariables.length > 1 ? 's' : ''} - click to configure</p>
                     <div className="flex flex-wrap gap-1 mb-2">
                       {unmappedVariables.map(name => (
-                        <code key={name} className="bg-red-100 dark:bg-red-900/40 px-1.5 py-0.5 rounded text-red-900 dark:text-red-200">
+                        <code key={name} className="bg-destructive/15 px-1.5 py-0.5 rounded text-red-900 dark:text-red-200">
                           {name}
                         </code>
                       ))}
@@ -242,7 +242,7 @@ export default function PromptSettingsSheet({
                     e.stopPropagation()
                     addAllUnmapped()
                   }}
-                  className="h-7 text-xs flex-shrink-0 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30"
+                  className="h-7 text-xs flex-shrink-0 border-destructive/40 text-destructive hover:bg-destructive/15"
                 >
                   Map All
                 </Button>
@@ -257,7 +257,7 @@ export default function PromptSettingsSheet({
                 <VariableIcon className="w-4 h-4" />
                 <span className="font-medium">Variables</span>
                 {variables.length > 0 && (
-                  <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs px-2 py-0.5 rounded-full">
+                  <span className="bg-primary/15 text-primary text-xs px-2 py-0.5 rounded-full">
                     {variables.length}
                   </span>
                 )}
@@ -276,10 +276,10 @@ export default function PromptSettingsSheet({
                   {PREDEFINED_VARIABLES.map((predefinedVar) => (
                     <div 
                       key={predefinedVar.name} 
-                      className="border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3"
+                      className="border border-primary/30 bg-primary/10 rounded-lg p-3"
                     >
                       <div className="flex items-center gap-2">
-                        <code className="text-xs font-mono bg-blue-100 dark:bg-blue-900/40 px-2 py-1 rounded text-blue-900 dark:text-blue-200">
+                        <code className="text-xs font-mono bg-primary/15 px-2 py-1 rounded text-blue-900 dark:text-blue-200">
                           {`{{${predefinedVar.name}}}`}
                         </code>
                         <span className="text-xs text-muted-foreground">
@@ -356,7 +356,7 @@ export default function PromptSettingsSheet({
                               }`}
                             />
                             {variable.name && /^\d/.test(variable.name) && (
-                              <p className="text-[10px] text-red-600 dark:text-red-400">
+                              <p className="text-[10px] text-destructive">
                                 Cannot start with a number
                               </p>
                             )}
@@ -373,7 +373,7 @@ export default function PromptSettingsSheet({
                             variant="ghost"
                             size="sm"
                             onClick={() => removeVariable(index)}
-                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 flex justify-center items-center"
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive flex justify-center items-center"
                           >
                             <TrashIcon className="w-3 h-3" />
                           </Button>

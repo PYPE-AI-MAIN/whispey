@@ -140,8 +140,8 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
           variant="outline"
           className="group relative overflow-hidden border-2 border-border hover:border-blue-400 dark:hover:border-blue-400 transition-all duration-300 hover:shadow-lg hover:shadow-blue-400/25 bg-transparent"
         >
-          <Activity className="w-4 h-4 mr-2 text-muted-foreground group-hover:text-blue-500 transition-colors duration-300" />
-          <span className="relative z-10 font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300">
+          <Activity className="w-4 h-4 mr-2 text-muted-foreground group-hover:text-primary transition-colors duration-300" />
+          <span className="relative z-10 font-medium group-hover:text-primary transition-colors duration-300">
             Metrics
           </span>
           {enabledCount > 0 && (
@@ -182,13 +182,13 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                       const template = metricsTemplates.find(t => t.metric_id === metricConfig.metric_id)
 
                       if (!template) return (
-                        <div key={metricConfig.metric_id} className="border rounded-lg p-4 dark:border-gray-700 border-yellow-200 dark:border-yellow-800/50 bg-yellow-50/30 dark:bg-yellow-900/5">
+                        <div key={metricConfig.metric_id} className="border rounded-lg p-4 dark:border-gray-700 border-warning/30 bg-yellow-50/30 dark:bg-yellow-900/5">
                           {/* Header */}
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <h4 className="font-medium text-foreground font-mono text-sm">{metricConfig.metric_id}</h4>
-                                <Badge className="text-xs bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700">
+                                <Badge className="text-xs bg-warning/15 text-warning border-warning/40">
                                   Template deleted
                                 </Badge>
                                 {!metricConfig.enabled && (
@@ -211,7 +211,7 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => setConfirmRemoveId(metricConfig.metric_id)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -219,7 +219,7 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                           </div>
 
                           {/* Warning notice */}
-                          <div className="text-xs text-yellow-700 dark:text-yellow-400 bg-yellow-100/60 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/50 rounded-md px-3 py-2 mb-3">
+                          <div className="text-xs text-warning bg-yellow-100/60 dark:bg-yellow-900/20 border border-warning/30 rounded-md px-3 py-2 mb-3">
                             This template no longer exists in the library. The metric is still being evaluated using the saved criteria below. You can edit or remove it.
                           </div>
 
@@ -280,7 +280,7 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                       return (
                         <div key={metricConfig.metric_id} className={`border rounded-lg p-4 dark:border-gray-700 transition-all ${
                           metricConfig.enabled 
-                            ? 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800' 
+                            ? 'bg-blue-50/50 dark:bg-blue-900/10 border-primary/30 dark:border-blue-800' 
                             : 'bg-muted/50 opacity-60'
                         }`}>
                           <div className="flex items-start justify-between mb-3">
@@ -313,7 +313,7 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => removeMetric(metricConfig.metric_id)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -403,7 +403,7 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                         </h4>
                         <div className="space-y-2">
                           {templates.map((template) => (
-                            <div key={template.metric_id} className="border rounded-lg p-3 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
+                            <div key={template.metric_id} className="border rounded-lg p-3 dark:border-gray-700 hover:border-primary/30 transition-colors">
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2">
@@ -485,7 +485,7 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
           <p className="text-sm text-muted-foreground">
             Removing it will permanently delete this configuration. If the template is never recreated, this metric cannot be recovered.
           </p>
-          <p className="text-sm font-medium text-red-600 dark:text-red-400">This cannot be undone.</p>
+          <p className="text-sm font-medium text-destructive">This cannot be undone.</p>
           <div className="flex gap-2 mt-2">
             <Button
               variant="outline"

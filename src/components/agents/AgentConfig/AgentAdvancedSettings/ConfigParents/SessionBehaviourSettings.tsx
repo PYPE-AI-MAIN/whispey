@@ -214,9 +214,9 @@ export default function SessionBehaviourSettings({
             </SelectContent>
           </Select>
           {turn_detection === 'disabled' && (
-            <div className="flex items-start gap-2 p-2.5 bg-red-50 dark:bg-red-900/20 rounded-md border border-red-200 dark:border-red-800">
-              <AlertTriangle className="w-3.5 h-3.5 text-red-600 mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-red-700 dark:text-red-300">
+            <div className="flex items-start gap-2 p-2.5 bg-destructive/10 rounded-md border border-destructive/30">
+              <AlertTriangle className="w-3.5 h-3.5 text-destructive mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-destructive">
                 Turn detection is disabled — the agent falls back to VAD-only silence detection with no semantic understanding of speech. Users may get interrupted mid-thought.
               </p>
             </div>

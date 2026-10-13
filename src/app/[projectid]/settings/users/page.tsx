@@ -53,7 +53,7 @@ const ROLES: { value: GlobalRole; label: string; icon: React.ReactNode; pillClas
     value: 'superadmin',
     label: 'Superadmin',
     icon: <Crown className="h-3 w-3" />,
-    pillClass: 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-400/10 border-amber-300 dark:border-amber-400/20',
+    pillClass: 'text-warning bg-warning/15 border-warning/40',
   },
   {
     value: 'prompter',
@@ -173,7 +173,7 @@ function MetricsTab() {
             </div>
             <button
               onClick={() => setConfirmDeleteId(t.metric_id)}
-              className="ml-4 flex-shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              className="ml-4 flex-shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -204,7 +204,7 @@ function MetricsTab() {
             This template may be in use by agents. Deleting it will not affect current evaluations,
             but any user who opens and saves that agent&apos;s metrics will lose this metric permanently.
           </p>
-          <p className="text-sm font-medium text-red-600 dark:text-red-400">This cannot be undone.</p>
+          <p className="text-sm font-medium text-destructive">This cannot be undone.</p>
           <div className="flex gap-2 mt-2">
             <Button variant="outline" className="flex-1 border-border text-foreground hover:bg-muted/50" onClick={() => setConfirmDeleteId(null)} disabled={deleting}>Cancel</Button>
             <Button variant="destructive" className="flex-1" onClick={handleDelete} disabled={deleting}>
@@ -388,7 +388,7 @@ export default function UsersSettingsPage() {
                         {r.icon}
                       </span>
                       <span className="flex-1 font-medium">{r.label}</span>
-                      {r.value === u.globalRole && <Check className="h-3 w-3 text-blue-600 dark:text-blue-400" />}
+                      {r.value === u.globalRole && <Check className="h-3 w-3 text-primary" />}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
@@ -442,7 +442,7 @@ export default function UsersSettingsPage() {
               onClick={() => setActiveTab(tab)}
               className={`px-4 py-2 text-xs font-medium capitalize rounded-t-lg transition-colors border-b-2 -mb-px ${
                 activeTab === tab
-                  ? 'text-blue-600 dark:text-blue-400 border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-500/5'
+                  ? 'text-blue-600 dark:text-blue-400 border-blue-500 dark:border-blue-400 bg-primary/10 dark:bg-blue-500/5'
                   : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/50'
               }`}
             >
@@ -473,7 +473,7 @@ export default function UsersSettingsPage() {
             {counts.total} total
           </span>
           {counts.superadmin > 0 && (
-            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400 border border-amber-300 dark:border-amber-400/20">
+            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-warning/15 text-warning border border-warning/40">
               {counts.superadmin} superadmin
             </span>
           )}

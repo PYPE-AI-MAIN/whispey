@@ -81,7 +81,7 @@ export default function AgentNameEditor({
             placeholder={agent.name ?? 'Agent name'}
             className={`${isMobile ? 'h-8 w-[180px] text-base' : 'h-9 w-[260px] text-lg'} font-semibold`}
           />
-          {error && <span className="text-xs text-red-600 dark:text-red-400">{error}</span>}
+          {error && <span className="text-xs text-destructive">{error}</span>}
         </div>
         <Button
           {...ICON_BUTTON}

@@ -54,13 +54,13 @@ function StudioShell({ children }: Readonly<{ children: ReactNode }>) {
                 aria-label="Copy agent ID"
                 className="flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground transition hover:bg-muted hover:text-foreground"
               >
-                {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+                {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
                 {copied ? 'Copied' : 'Copy ID'}
               </button>
             </div>
           </div>
           <p className="hidden items-center gap-1.5 text-xs text-muted-foreground md:flex">
-            <Sparkles className="h-3.5 w-3.5 text-blue-500" />
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
             Changes to this agent are made through the MCP
           </p>
         </div>

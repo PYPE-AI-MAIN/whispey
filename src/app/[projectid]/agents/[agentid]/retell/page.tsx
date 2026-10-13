@@ -13,7 +13,7 @@ function RetellDashboardContent() {
   const agentId = Array.isArray(params?.agentid) ? params.agentid[0] : params.agentid
 
   if (!agentId) {
-    return <div className="flex items-center justify-center h-screen text-red-500">Invalid agent ID</div>
+    return <div className="flex items-center justify-center h-screen text-destructive">Invalid agent ID</div>
   }
 
   return <RetellDashboard agentId={agentId} />

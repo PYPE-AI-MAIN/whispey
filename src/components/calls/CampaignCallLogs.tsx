@@ -34,8 +34,8 @@ const ContactCallsRows: React.FC<ContactCallsRowsProps> = ({
     getCoreRowModel: getCoreRowModel(),
   })
 
-  const subBgClass = 'bg-blue-50 dark:bg-blue-950/40'
-  const flaggedClass = 'bg-rose-50 dark:bg-rose-950/20'
+  const subBgClass = 'bg-primary/10'
+  const flaggedClass = 'bg-destructive/10'
 
   if (subRows.length === 0) {
     return (
@@ -52,9 +52,9 @@ const ContactCallsRows: React.FC<ContactCallsRowsProps> = ({
       <tr>
         <td
           colSpan={colCount}
-          className={cn(subBgClass, 'py-1 pl-4 pr-4 border-b border-blue-200 dark:border-blue-800 border-l-4 border-l-blue-500')}
+          className={cn(subBgClass, 'py-1 pl-4 pr-4 border-b border-primary/30 border-l-4 border-l-blue-500')}
         >
-          <span className="pl-10 text-[11px] font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">
+          <span className="pl-10 text-[11px] font-semibold uppercase tracking-wide text-primary">
             {subRows.length} previous attempt{subRows.length !== 1 ? 's' : ''}
           </span>
         </td>
@@ -107,7 +107,7 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
 }) => {
   const router = useRouter()
   const { user } = useUser()
-  const flaggedRowClass = 'bg-rose-50 dark:bg-rose-950/20'
+  const flaggedRowClass = 'bg-destructive/10'
 
   const [expandedNumbers, setExpandedNumbers] = useState<Set<string>>(new Set())
   const [navigatingCallId, setNavigatingCallId] = useState<string | null>(null)
@@ -254,12 +254,12 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
           className="appearance-none bg-transparent flex items-center justify-center gap-1 w-full h-full min-h-[80px] cursor-pointer select-none group"
         >
           {expanded
-            ? <ChevronDown className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+            ? <ChevronDown className="h-4 w-4 shrink-0 text-primary" />
             : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
           }
           <span className={cn(
             'text-[10px] font-semibold leading-none transition-colors',
-            expanded ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground group-hover:text-foreground'
+            expanded ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
           )}>
             ×{totalAttempts}
           </span>
@@ -298,7 +298,7 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center space-y-3">
-          <p className="text-red-500 text-sm">{error}</p>
+          <p className="text-destructive text-sm">{error}</p>
           <Button variant="outline" size="sm" onClick={() => refetch()}>Retry</Button>
         </div>
       </div>
@@ -351,7 +351,7 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
                         h.id.startsWith('transcription-')
                           ? "text-muted-foreground bg-muted/50"
                           : h.id.startsWith('metrics-')
-                            ? "text-blue-600 dark:text-blue-400 bg-blue-50/60 dark:bg-blue-900/10"
+                            ? "text-primary bg-blue-50/60 dark:bg-blue-900/10"
                             : "text-foreground dark:text-gray-100"
                       )}
                       style={{ minWidth: h.column.columnDef.minSize || 120, width: h.column.columnDef.size || 'auto' }}
@@ -379,7 +379,7 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
                   const isFlagged = isRowFlaggedForRole(row.original, role)
                   const isNavigating = navigatingCallId === row.original.id
                   const isExpanded = expandedNumbers.has(row.original.customer_number)
-                  const expandedBgClass = isExpanded ? 'bg-blue-50 dark:bg-blue-950/40' : undefined
+                  const expandedBgClass = isExpanded ? 'bg-primary/10' : undefined
 
                   return (
                     <React.Fragment key={row.id}>

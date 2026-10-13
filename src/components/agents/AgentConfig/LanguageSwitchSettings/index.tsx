@@ -296,7 +296,7 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
                 {/* Tool Name */}
                 <div className="space-y-1">
                   <Label className="text-xs font-medium text-foreground">
-                    Tool Name <span className="text-red-500">*</span>
+                    Tool Name <span className="text-destructive">*</span>
                   </Label>
                   <input
                     type="text"
@@ -308,7 +308,7 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
                     className="w-full px-3 py-2 text-sm border border-border rounded-md bg-card text-foreground font-mono placeholder:text-muted-foreground"
                   />
                   {errors.tool_name && (
-                    <p className="text-xs text-red-500">{errors.tool_name}</p>
+                    <p className="text-xs text-destructive">{errors.tool_name}</p>
                   )}
                   <p className="text-xs text-muted-foreground">Unique snake_case identifier, used as the LLM function name</p>
                 </div>
@@ -316,7 +316,7 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
                 {/* Description */}
                 <div className="space-y-1">
                   <Label className="text-xs font-medium text-foreground">
-                    Description (LLM trigger condition) <span className="text-red-500">*</span>
+                    Description (LLM trigger condition) <span className="text-destructive">*</span>
                   </Label>
                   <Textarea
                     value={draft.description}
@@ -325,13 +325,13 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
                     placeholder="e.g. Switch to Kannada when user speaks 3+ Kannada words"
                     className="min-h-[72px] text-sm resize-none bg-card text-foreground border-border"
                   />
-                  {errors.description && <p className="text-xs text-red-500">{errors.description}</p>}
+                  {errors.description && <p className="text-xs text-destructive">{errors.description}</p>}
                 </div>
 
                 {/* System Message */}
                 <div className="space-y-1">
                   <Label className="text-xs font-medium text-foreground">
-                    System Message <span className="text-red-500">*</span>
+                    System Message <span className="text-destructive">*</span>
                   </Label>
                   <Textarea
                     value={draft.system_message}
@@ -340,7 +340,7 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
                     placeholder="e.g. Language switched to Kannada. Respond ONLY in Kannada."
                     className="min-h-[64px] text-sm resize-none bg-card text-foreground border-border"
                   />
-                  {errors.system_message && <p className="text-xs text-red-500">{errors.system_message}</p>}
+                  {errors.system_message && <p className="text-xs text-destructive">{errors.system_message}</p>}
                   <p className="text-xs text-muted-foreground">Injected into LLM context after the switch fires</p>
                 </div>
               </div>
@@ -357,7 +357,7 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
                   onSTTSelect={handleSTTSelect}
                 />
               </div>
-              {errors.stt && <p className="text-xs text-red-500 mt-1">{errors.stt}</p>}
+              {errors.stt && <p className="text-xs text-destructive mt-1">{errors.stt}</p>}
               <div className="flex items-center justify-between pt-1">
                 <div>
                   <p className="text-sm font-medium text-foreground">Switch STT</p>
@@ -382,7 +382,7 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
                   onVoiceSelect={handleTTSSelect}
                 />
               </div>
-              {errors.tts && <p className="text-xs text-red-500 mt-1">{errors.tts}</p>}
+              {errors.tts && <p className="text-xs text-destructive mt-1">{errors.tts}</p>}
               {draft.tts?.name && (
                 <p className="text-xs text-muted-foreground mt-1">
                   {draft.tts.name === 'sarvam' && `Sarvam · ${draft.tts.model || ''} · ${draft.tts.speaker || ''}`}
@@ -438,25 +438,25 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
                     />
                   </div>
                 ) : (
-                  <div className="flex items-start gap-2 p-2.5 bg-amber-50 dark:bg-amber-900/20 rounded-md border border-amber-200 dark:border-amber-800">
-                    <Info className="w-3.5 h-3.5 text-amber-600 mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-amber-700 dark:text-amber-300">Agent cannot be interrupted after language switch</p>
+                  <div className="flex items-start gap-2 p-2.5 bg-warning/10 rounded-md border border-warning/30">
+                    <Info className="w-3.5 h-3.5 text-warning mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-warning">Agent cannot be interrupted after language switch</p>
                   </div>
                 )}
 
                 {showAdaptiveWarning && (
-                  <div className="flex items-start gap-2 p-2.5 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border border-yellow-200 dark:border-yellow-800">
-                    <AlertTriangle className="w-3.5 h-3.5 text-yellow-600 mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                  <div className="flex items-start gap-2 p-2.5 bg-warning/10 rounded-md border border-warning/30">
+                    <AlertTriangle className="w-3.5 h-3.5 text-warning mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-warning">
                       Adaptive interruption requires Sarvam AdaptiveSarvamSTT. Enable "Adaptive STT" below or the backend will fall back to VAD.
                     </p>
                   </div>
                 )}
 
                 {draft.allow_interruptions && (draft.interruption ?? true) && turnDetection !== 'multilingual' && (
-                  <div className="flex items-start gap-2 p-2.5 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border border-yellow-200 dark:border-yellow-800">
-                    <AlertTriangle className="w-3.5 h-3.5 text-yellow-600 mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                  <div className="flex items-start gap-2 p-2.5 bg-warning/10 rounded-md border border-warning/30">
+                    <AlertTriangle className="w-3.5 h-3.5 text-warning mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-warning">
                       Adaptive interruption works best with Turn Detection set to "Multilingual" (Session Behaviour section). Current setting may reduce accuracy.
                     </p>
                   </div>
@@ -515,7 +515,7 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <Languages className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                  <Languages className="w-3.5 h-3.5 text-primary flex-shrink-0" />
                   <span className="text-sm font-medium text-foreground font-mono">
                     {entry.tool_name}
                   </span>
@@ -532,7 +532,7 @@ const LanguageSwitchSettings: React.FC<Readonly<LanguageSwitchSettingsProps>> = 
                 </Button>
                 <Button
                   variant="ghost" size="sm" onClick={() => handleDelete(idx)}
-                  className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                  className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>

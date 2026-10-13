@@ -46,7 +46,7 @@ const isNew = (addedAt?: string): boolean => {
 }
 
 const NewBadge = () => (
-  <span className="ml-1 rounded-full bg-green-100 dark:bg-green-900/40 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-green-700 dark:text-green-300 flex-shrink-0">
+  <span className="ml-1 rounded-full bg-success/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-success flex-shrink-0">
     New
   </span>
 )
@@ -108,7 +108,7 @@ function ProviderModelItems({
   const itemClass = (modelValue: string, extra: string) =>
     `flex items-center justify-between ${extra} text-foreground  hover:bg-muted/50  focus:bg-muted/50  ${
       selectedProvider === providerKey && selectedModel === modelValue
-        ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
+        ? 'bg-blue-50 dark:bg-blue-950/30 text-primary dark:text-blue-300'
         : ''
     } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`
 
@@ -126,7 +126,7 @@ function ProviderModelItems({
               {isNew(model.addedAt) && <NewBadge />}
             </span>
             {selectedProvider === providerKey && selectedModel === model.value && (
-              <Check className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+              <Check className="h-3 w-3 sm:h-4 sm:w-4 text-primary flex-shrink-0" />
             )}
           </DropdownMenuItem>
         ))}
@@ -188,7 +188,7 @@ function GroupModelItems({
         >
           <span className="text-sm truncate pr-2">{model.label}</span>
           {selectedProvider === providerKey && selectedModel === model.value && (
-            <Check className="h-3 w-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+            <Check className="h-3 w-3 text-primary flex-shrink-0" />
           )}
         </DropdownMenuItem>
       ))}
@@ -219,13 +219,13 @@ function MobileGroupModelItems({
           onClick={() => onSelect(providerKey, model.value)}
           className={`flex items-center justify-between px-6 py-2 ${
             selectedProvider === providerKey && selectedModel === model.value
-              ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
+              ? 'bg-blue-50 dark:bg-blue-950/30 text-primary dark:text-blue-300'
               : 'hover:bg-muted/50'
           }`}
         >
           <span className="text-sm">{model.label}</span>
           {selectedProvider === providerKey && selectedModel === model.value && (
-            <Check className="h-3 w-3 text-blue-600" />
+            <Check className="h-3 w-3 text-primary" />
           )}
         </DropdownMenuItem>
       ))}
@@ -467,7 +467,7 @@ const getFlattenedMenuItems = () => {
                     <span className="font-medium text-sm">{provider.label}</span>
                     {isNew(provider.addedAt) && <NewBadge />}
                     {provider.type === 'config' && <ExternalLink className="h-3 w-3 text-muted-foreground" />}
-                    {selectedProvider === providerKey && <Check className="h-3 w-3 text-blue-600" />}
+                    {selectedProvider === providerKey && <Check className="h-3 w-3 text-primary" />}
                   </div>
                   {(provider.type === 'direct' || provider.type === 'grouped') && (
                     <ChevronDown className={`h-4 w-4 transition-transform ${
@@ -485,7 +485,7 @@ const getFlattenedMenuItems = () => {
                         onClick={() => handleModelSelect(providerKey, model.value)}
                         className={`flex items-center justify-between px-4 py-3 ${
                           selectedProvider === providerKey && selectedModel === model.value
-                            ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
+                            ? 'bg-blue-50 dark:bg-blue-950/30 text-primary dark:text-blue-300'
                             : 'hover:bg-muted/50'
                         }`}
                       >
@@ -494,7 +494,7 @@ const getFlattenedMenuItems = () => {
                           {isNew(model.addedAt) && <NewBadge />}
                         </span>
                         {selectedProvider === providerKey && selectedModel === model.value && (
-                          <Check className="h-3 w-3 text-blue-600" />
+                          <Check className="h-3 w-3 text-primary" />
                         )}
                       </DropdownMenuItem>
                     ))}
@@ -543,7 +543,7 @@ const getFlattenedMenuItems = () => {
                           <span className="font-medium text-sm truncate">{provider.label}</span>
                           {isNew(provider.addedAt) && <NewBadge />}
                           {selectedProvider === providerKey && (
-                            <Check className="h-3 w-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                            <Check className="h-3 w-3 text-primary flex-shrink-0" />
                           )}
                         </div>
                         {provider.description && (
@@ -587,7 +587,7 @@ const getFlattenedMenuItems = () => {
                         <span className="font-medium text-sm truncate">{provider.label}</span>
                         <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                         {selectedProvider === providerKey && (
-                          <Check className="h-3 w-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                          <Check className="h-3 w-3 text-primary flex-shrink-0" />
                         )}
                       </div>
                       {provider.description && (
@@ -705,12 +705,12 @@ const getFlattenedMenuItems = () => {
                     onClick={DISABLE_SETTINGS ? undefined : () => setTempAzureModel(model.value)}
                     className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs font-medium transition-colors text-left ${
                       tempAzureModel === model.value
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300'
+                        ? 'border-blue-500 bg-primary/10  text-primary dark:text-blue-300'
                         : 'border-border hover:bg-muted/50 text-foreground'
                     } ${DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                   >
                     {tempAzureModel === model.value && (
-                      <Check className="h-3 w-3 text-blue-600 dark:text-blue-400 shrink-0" />
+                      <Check className="h-3 w-3 text-primary shrink-0" />
                     )}
                     <span className="truncate">{model.label}</span>
                   </button>

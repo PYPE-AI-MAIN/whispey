@@ -36,10 +36,10 @@ const SENTIMENT_CONFIG = {
   positive: {
     label: 'Positive',
     icon: TrendingUp,
-    bg: 'bg-green-50 dark:bg-green-900/20',
-    border: 'border-green-200 dark:border-green-800',
-    text: 'text-green-700 dark:text-green-300',
-    badge: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300',
+    bg: 'bg-success/10',
+    border: 'border-success/30',
+    text: 'text-success',
+    badge: 'bg-success/15 text-success',
     dot: 'bg-green-500',
   },
   neutral: {
@@ -54,10 +54,10 @@ const SENTIMENT_CONFIG = {
   negative: {
     label: 'Negative',
     icon: TrendingDown,
-    bg: 'bg-red-50 dark:bg-red-900/20',
-    border: 'border-red-200 dark:border-red-800',
-    text: 'text-red-700 dark:text-red-300',
-    badge: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300',
+    bg: 'bg-destructive/10',
+    border: 'border-destructive/30',
+    text: 'text-destructive',
+    badge: 'bg-destructive/15 text-destructive',
     dot: 'bg-red-500',
   },
 } as const
@@ -132,12 +132,12 @@ export default function CallAnalytics({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-md bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-            <BarChart2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+          <div className="w-6 h-6 rounded-md bg-primary/15 flex items-center justify-center">
+            <BarChart2 className="w-3.5 h-3.5 text-primary" />
           </div>
           <span className="text-xs font-medium text-muted-foreground">Call Analytics</span>
           {isAnalyzing && (
-            <div className="flex items-center gap-1 text-xs text-blue-500">
+            <div className="flex items-center gap-1 text-xs text-primary">
               <Loader2 className="w-3 h-3 animate-spin" />
               <span>Analyzing…</span>
             </div>
@@ -153,9 +153,9 @@ export default function CallAnalytics({
 
       {/* Error */}
       {!isAnalyzing && error && (
-        <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-xs text-red-700 dark:text-red-300">{error}</p>
-          <Button variant="ghost" size="sm" onClick={onRetry} className="h-7 text-xs text-red-600 hover:text-red-700 gap-1">
+        <div className="flex items-center justify-between p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+          <p className="text-xs text-destructive">{error}</p>
+          <Button variant="ghost" size="sm" onClick={onRetry} className="h-7 text-xs text-destructive hover:text-destructive gap-1">
             <RefreshCw className="w-3 h-3" />
             Retry
           </Button>
@@ -219,7 +219,7 @@ export default function CallAnalytics({
                     key={turn.id}
                     className={`rounded-lg px-3 py-2 text-xs border ${
                       isUser
-                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800'
+                        ? 'bg-blue-50 dark:bg-blue-900/20 border-primary/20 dark:border-blue-800'
                         : 'bg-muted/50 border-border'
                     }`}
                   >

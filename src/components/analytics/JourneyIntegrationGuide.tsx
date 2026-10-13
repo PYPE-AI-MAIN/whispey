@@ -127,7 +127,7 @@ function Snippet({ lang, setLang, code }: Readonly<{ lang: Lang; setLang: (l: La
 function Step({ n, children }: Readonly<{ n: number; children: React.ReactNode }>) {
   return (
     <li className="flex gap-3">
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">{n}</span>
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary  dark:text-blue-300">{n}</span>
       <span className={cn('pt-0.5 text-sm', INK)}>{children}</span>
     </li>
   )
@@ -154,7 +154,7 @@ export function JourneyIntegrationGuide({ campaignKey, projectId, scroll }: Read
       <ol className="space-y-3">
         <Step n={1}>
           Copy your token from{' '}
-          <Link href={`/${projectId}/agents/api-keys`} className="font-medium text-blue-600 hover:underline dark:text-blue-400">API key</Link>
+          <Link href={`/${projectId}/agents/api-keys`} className="font-medium text-primary hover:underline">API key</Link>
           . It is the same key the SDK uses.
         </Step>
         <Step n={2}>Send a request like this one, with your token and your own values in the angle brackets.</Step>
@@ -176,7 +176,7 @@ export function JourneyIntegrationGuide({ campaignKey, projectId, scroll }: Read
             <div key={f.name} className="grid grid-cols-[7.5rem_1fr] gap-2 px-3 py-2">
               <dt>
                 <code className={CODE}>{f.name}</code>
-                <span className={cn('mt-0.5 block text-[10px] uppercase tracking-wide', f.required ? 'text-blue-600 dark:text-blue-400' : MUTED)}>{f.required ? 'Required' : 'Optional'}</span>
+                <span className={cn('mt-0.5 block text-[10px] uppercase tracking-wide', f.required ? 'text-primary' : MUTED)}>{f.required ? 'Required' : 'Optional'}</span>
               </dt>
               <dd className={MUTED}>{f.what}</dd>
             </div>
@@ -202,7 +202,7 @@ export function JourneyIntegrationGuide({ campaignKey, projectId, scroll }: Read
         <li>Limits: 8 KB per request and 600 requests a minute for each token.</li>
       </ul>
 
-      <a href={DOCS_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400">
+      <a href={DOCS_URL} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
         Read the full guide <ExternalLink className="h-3 w-3" />
       </a>
     </div>

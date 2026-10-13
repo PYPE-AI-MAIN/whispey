@@ -324,7 +324,7 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
             {/* Phone Number Selection */}
             <div className="space-y-3">
               <Label className="text-xs font-medium text-muted-foreground">
-                Call From (Your Numbers) <span className="text-red-500 dark:text-red-400">*</span>
+                Call From (Your Numbers) <span className="text-destructive">*</span>
               </Label>
               
               {loadingPhoneNumbers ? (
@@ -333,26 +333,26 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
                   <span className="text-sm text-muted-foreground">Loading phone numbers...</span>
                 </div>
               ) : phoneNumberError ? (
-                <Alert variant="destructive" className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
-                  <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                  <AlertDescription className="text-red-800 dark:text-red-200">{phoneNumberError}</AlertDescription>
+                <Alert variant="destructive" className="bg-destructive/10 border-destructive/30">
+                  <AlertCircle className="h-4 w-4 text-destructive" />
+                  <AlertDescription className="text-destructive">{phoneNumberError}</AlertDescription>
                 </Alert>
               ) : availablePhoneNumbers.length === 0 ? (
-                <Alert variant="destructive" className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
-                  <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                  <AlertDescription className="text-red-800 dark:text-red-200">
+                <Alert variant="destructive" className="bg-destructive/10 border-destructive/30">
+                  <AlertCircle className="h-4 w-4 text-destructive" />
+                  <AlertDescription className="text-destructive">
                     <div className="space-y-2">
                       <p className="font-medium">No phone numbers connected to this assistant.</p>
                       <p className="text-sm">
                         To make calls, you need to connect a phone number to assistant "{assistantName}" in your Vapi dashboard.
                       </p>
-                      <p className="text-xs text-red-700 dark:text-red-300">
+                      <p className="text-xs text-destructive">
                         Looking for Vapi assistant ID: {vapiAssistantId}
                       </p>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="mt-2 border-red-300 dark:border-red-700"
+                        className="mt-2 border-destructive/40"
                         onClick={() => window.open('https://dashboard.vapi.ai/phone-numbers', '_blank')}
                       >
                         Configure Phone Numbers
@@ -373,7 +373,7 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
                           <Badge variant="outline" className="text-xs border-border">
                             {selectedPhoneNum.provider}
                           </Badge>
-                          <Badge className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 text-xs">
+                          <Badge className="bg-success/15 text-success border-success/30 text-xs">
                             <User className="w-3 h-3 mr-1" />
                             Connected
                           </Badge>
@@ -395,7 +395,7 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
                             <Badge variant="outline" className="text-xs border-border">
                               {phoneNum.provider}
                             </Badge>
-                            <Badge className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 text-xs">
+                            <Badge className="bg-success/15 text-success border-success/30 text-xs">
                               <User className="w-3 h-3 mr-1" />
                               Connected
                             </Badge>
@@ -411,7 +411,7 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
             {/* Country Selection */}
             <div className="space-y-3">
               <Label htmlFor="country" className="text-xs font-medium text-muted-foreground">
-                Country <span className="text-red-500 dark:text-red-400">*</span>
+                Country <span className="text-destructive">*</span>
               </Label>
               <Select value={selectedCountry.code} onValueChange={handleCountryChange}>
                 <SelectTrigger className="w-full bg-card border-border">
@@ -440,7 +440,7 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
             {/* Phone Number Input */}
             <div>
               <Label htmlFor="phone" className="text-xs font-medium text-muted-foreground">
-                Call To (Customer Number) <span className="text-red-500 dark:text-red-400">*</span>
+                Call To (Customer Number) <span className="text-destructive">*</span>
               </Label>
               <div className="flex items-center gap-2 mt-1">
                 <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border border-border rounded-md text-sm">
@@ -482,19 +482,19 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
             </div>
 
             {error && (
-              <Alert variant="destructive" className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
-                <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                <AlertDescription className="text-red-800 dark:text-red-200">{error}</AlertDescription>
+              <Alert variant="destructive" className="bg-destructive/10 border-destructive/30">
+                <AlertCircle className="h-4 w-4 text-destructive" />
+                <AlertDescription className="text-destructive">{error}</AlertDescription>
               </Alert>
             )}
           </div>
         ) : callStatus === 'success' ? (
           <div className="text-center space-y-4">
-            <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto">
-              <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+            <div className="w-16 h-16 bg-success/15 rounded-full flex items-center justify-center mx-auto">
+              <CheckCircle className="w-8 h-8 text-success" />
             </div>
             <div>
-              <h3 className="font-semibold text-green-800 dark:text-green-200">Call Initiated Successfully!</h3>
+              <h3 className="font-semibold text-success">Call Initiated Successfully!</h3>
               <p className="text-sm text-muted-foreground mt-1">
                 Calling {selectedCountry.code} {phoneNumber}
               </p>
@@ -510,11 +510,11 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
           </div>
         ) : (
           <div className="text-center space-y-4">
-            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto">
-              <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
+            <div className="w-16 h-16 bg-destructive/15 rounded-full flex items-center justify-center mx-auto">
+              <AlertCircle className="w-8 h-8 text-destructive" />
             </div>
             <div>
-              <h3 className="font-semibold text-red-800 dark:text-red-200">Call Failed</h3>
+              <h3 className="font-semibold text-destructive">Call Failed</h3>
               <p className="text-sm text-muted-foreground mt-1">{error}</p>
             </div>
           </div>
@@ -524,10 +524,10 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
 
           <TabsContent value="web" className="space-y-4">
             <div className="text-center mb-4">
-              <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Globe className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+              <div className="w-16 h-16 bg-primary/15 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Globe className="w-8 h-8 text-primary" />
               </div>
-              <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Web Call</h3>
+              <h3 className="font-semibold text-primary mb-2">Web Call</h3>
               <p className="text-sm text-muted-foreground">
                 Start a browser-based voice conversation with {assistantName}
               </p>

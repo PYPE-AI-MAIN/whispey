@@ -59,7 +59,7 @@ export function InlineNameEditor({ name, onSave, forceEdit, onForceEditDone }: P
       type="button"
       onClick={startEdit}
       title="Click to rename"
-      className="text-left appearance-none bg-transparent border-0 p-0 max-w-full text-sm font-medium text-foreground cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors truncate"
+      className="text-left appearance-none bg-transparent border-0 p-0 max-w-full text-sm font-medium text-foreground cursor-pointer hover:text-primary transition-colors truncate"
     >
       {name || 'Untitled session'}
     </button>

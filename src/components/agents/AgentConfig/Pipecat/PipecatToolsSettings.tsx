@@ -138,7 +138,7 @@ export default function PipecatToolsSettings({
                 <div className="flex items-center gap-1">
                   <button
                     onClick={e => { e.stopPropagation(); removeCustomTool(index) }}
-                    className="p-1 text-red-400 hover:text-red-600 rounded"
+                    className="p-1 text-red-400 hover:text-destructive rounded"
                   >
                     <Trash2 className="w-3 h-3" />
                   </button>

@@ -232,7 +232,7 @@ export const FilterRow: React.FC<FilterRowProps> = ({
         className={cn(
           'shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded border select-none transition-colors',
           row.type === 'distinct'
-            ? 'border-blue-400 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400'
+            ? 'border-blue-400 bg-primary/10 text-primary'
             : 'border-border bg-muted/40 text-muted-foreground hover:text-foreground'
         )}
       >
@@ -366,7 +366,7 @@ export const FilterRow: React.FC<FilterRowProps> = ({
       <button
         type="button"
         onClick={onRemove}
-        className="shrink-0 text-muted-foreground hover:text-red-500 transition-colors p-0.5 rounded"
+        className="shrink-0 text-muted-foreground hover:text-destructive transition-colors p-0.5 rounded"
       >
         <X className="h-3.5 w-3.5" />
       </button>
@@ -462,7 +462,7 @@ const CallFilter: React.FC<CallFilterProps> = ({
           <span className="text-sm font-semibold">Filters</span>
           {rows.length > 0 && (
             <button type="button" onClick={handleClearAll}
-              className="text-xs text-muted-foreground hover:text-red-500 transition-colors"
+              className="text-xs text-muted-foreground hover:text-destructive transition-colors"
             >
               Clear all
             </button>

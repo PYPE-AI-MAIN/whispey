@@ -146,12 +146,12 @@ const RetellDashboard: React.FC<RetellDashboardProps> = ({ agentId }) => {
                     {retellAgent.agent_name || 'Unnamed Agent'}
                   </h1>
                   {isConnected ? (
-                    <Badge className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 text-xs">
+                    <Badge className="bg-success/15 text-success border-success/30 text-xs">
                       <CheckCircle className="w-2 h-2 mr-1" />
                       Connected
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
+                    <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30 text-xs">
                       <AlertCircle className="w-2 h-2 mr-1" />
                       Not Connected
                     </Badge>
@@ -298,7 +298,7 @@ const RetellDashboard: React.FC<RetellDashboardProps> = ({ agentId }) => {
                     onClick={() => copyToClipboard(retellAgent.agent_id, 'agentId')}
                   >
                     {copied === 'agentId'
-                      ? <CheckCircle className="w-3 h-3 text-green-500" />
+                      ? <CheckCircle className="w-3 h-3 text-success" />
                       : <Copy className="w-3 h-3 text-muted-foreground" />}
                   </Button>
                 </div>

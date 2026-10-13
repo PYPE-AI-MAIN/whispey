@@ -141,9 +141,9 @@ export default function PasteConfigDialog({
           {validationResult && !isValidating && (
             <>
               {validationResult.valid ? (
-                <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
-                  <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  <AlertDescription className="text-green-800 dark:text-green-300">
+                <Alert className="bg-success/10 border-success/30">
+                  <CheckCircle2 className="h-4 w-4 text-success" />
+                  <AlertDescription className="text-success">
                     Configuration is valid and ready to apply
                   </AlertDescription>
                 </Alert>

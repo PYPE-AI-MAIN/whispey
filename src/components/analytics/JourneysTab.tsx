@@ -198,7 +198,7 @@ function ActiveFilterChips({
     <div className="flex flex-wrap items-center gap-1.5">
       {keys.map((k) => (
         <button key={k} type="button" onClick={() => onChange({ ...filters, [k]: undefined })} title="Remove filter"
-          className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs text-blue-700 hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300">
+          className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs text-primary hover:bg-primary/15">
           {FILTER_LABELS[k]}: <span className="font-medium">{choices[k]?.find((c) => c.value === filters[k])?.label ?? filters[k]}</span>
           <X className="h-3 w-3" />
         </button>
@@ -229,7 +229,7 @@ function EmptyState({ projectId }: Readonly<{ projectId: string }>) {
   return (
     <div className="mx-auto flex min-h-full max-w-2xl flex-col items-center gap-6 px-6 py-10">
       <div className="text-center">
-        <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+        <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
           <Flag className="h-6 w-6" />
         </span>
         <h2 className={cn('text-lg font-semibold', INK)}>No workflows yet</h2>
@@ -630,14 +630,14 @@ function CustomChartBuilder({
 
   return (
     <div className="space-y-4">
-      {saved.error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">{saved.error}</p>}
+      {saved.error && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">{saved.error}</p>}
 
       {canEdit && (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             {presets.length > 0 && <span className={cn('text-xs', MUTED)}>Quick add</span>}
             {presets.map((p) => (
-              <button key={p.label} type="button" disabled={saved.adding} onClick={() => add(p)} className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground transition hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 dark:hover:border-blue-800 dark:hover:text-blue-400">
+              <button key={p.label} type="button" disabled={saved.adding} onClick={() => add(p)} className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-primary disabled:opacity-50">
                 + {p.label}
               </button>
             ))}
@@ -734,7 +734,7 @@ function callHref(projectId: string, e: JourneyEvent): string | null {
 /** How far a member got along the campaign's steps — one glance per row instead of a wall of chips. */
 function stepSegmentClass(isReached: boolean, isBeforeFurthest: boolean): string {
   if (isReached) return 'bg-blue-500'
-  return isBeforeFurthest ? 'bg-blue-200 dark:bg-blue-900/70' : 'bg-muted'
+  return isBeforeFurthest ? 'bg-primary/20' : 'bg-muted'
 }
 
 function StepProgress({ steps, events }: Readonly<{ steps: StepDef[]; events: JourneyEvent[] }>) {
@@ -820,14 +820,14 @@ function Timeline({ projectId, events, steps }: Readonly<{ projectId: string; ev
               const bad = e.action === 'call_not_connected' || e.action === 'message_failed'
               return (
                 <li key={key} className="flex gap-3">
-                  <span className={cn('mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full', bad ? 'bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400' : 'bg-muted text-muted-foreground')}>
+                  <span className={cn('mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full', bad ? 'bg-destructive/15 text-destructive' : 'bg-muted text-muted-foreground')}>
                     <EventIcon e={e} />
                   </span>
                   <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-baseline gap-x-2">
                     <span className={cn('text-sm font-medium', INK)}>{actionLabel(e.action)}</span>
                     <span className={cn('text-xs tabular-nums', MUTED)}>{new Date(e.occurred_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span>
-                    {href && <Link href={href} target="_blank" className="inline-flex items-center gap-0.5 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400">Open call <ExternalLink className="h-3 w-3" /></Link>}
+                    {href && <Link href={href} target="_blank" className="inline-flex items-center gap-0.5 text-xs font-medium text-primary hover:underline">Open call <ExternalLink className="h-3 w-3" /></Link>}
                   </div>
                   {e.step && e.action !== 'entered_campaign' && <p className={cn('mt-1 text-xs', MUTED)}>{stepLabel(e.step)}</p>}
                   {details.length > 0 && (

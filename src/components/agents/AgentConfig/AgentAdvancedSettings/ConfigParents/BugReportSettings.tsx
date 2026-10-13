@@ -105,7 +105,7 @@ function BugReportSettings({
                     variant="ghost"
                     size="sm"
                     onClick={() => removeCommand('start', index)}
-                    className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                    className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                   >
                     <XIcon className="w-3 h-3" />
                   </Button>
@@ -149,7 +149,7 @@ function BugReportSettings({
                     variant="ghost"
                     size="sm"
                     onClick={() => removeCommand('end', index)}
-                    className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                    className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                   >
                     <XIcon className="w-3 h-3" />
                   </Button>

@@ -157,7 +157,7 @@ export default function CallAgainDialog({ call, projectId, agent, phoneNumbers }
             className={cn(
               'flex items-start gap-1.5 text-sm',
               !isValidNumber || (!isCheckingRunning && !runningStatus.isRunning)
-                ? 'text-red-600 dark:text-red-400'
+                ? 'text-destructive'
                 : 'text-muted-foreground'
             )}
           >
@@ -200,7 +200,7 @@ export default function CallAgainDialog({ call, projectId, agent, phoneNumbers }
           {result && (
             <p className={cn(
               'flex items-center gap-1.5 text-sm',
-              result.type === 'success' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+              result.type === 'success' ? 'text-success' : 'text-destructive'
             )}>
               {result.type === 'success' ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertTriangle className="h-4 w-4 shrink-0" />}
               {result.text}

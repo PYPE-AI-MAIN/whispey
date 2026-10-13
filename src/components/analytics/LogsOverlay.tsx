@@ -172,13 +172,13 @@ export function LogsOverlay({
                 {csv.busy ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-2 h-3.5 w-3.5" />}
                 Export CSV
               </Button>
-              {csv.error && <span className="ml-2 text-xs text-red-600">{csv.error}</span>}
+              {csv.error && <span className="ml-2 text-xs text-destructive">{csv.error}</span>}
             </div>
           )}
         </DialogHeader>
 
         <div className="max-h-[60vh] overflow-auto px-5 py-3">
-          {error && <p className="py-6 text-center text-sm text-red-600">{error}</p>}
+          {error && <p className="py-6 text-center text-sm text-destructive">{error}</p>}
           {!error && loading && rows.length === 0 && <Skeleton className="h-40 w-full" />}
           {!error && !loading && rows.length === 0 && (
             <p className="py-10 text-center text-sm text-muted-foreground">No calls here.</p>

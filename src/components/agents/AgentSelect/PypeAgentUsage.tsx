@@ -73,7 +73,7 @@ function UsageDetails({
                       </div>
                       <span className={`text-xs px-1.5 py-0.5 rounded ${
                         agent.status === 'active' 
-                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                          ? 'bg-green-100 dark:bg-green-900/30 text-success dark:text-green-300'
                           : 'bg-muted text-muted-foreground'
                       }`}>
                         {agent.status}

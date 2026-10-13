@@ -200,8 +200,8 @@ function UploadDialogContent({
   return (
     <div className="space-y-4">
       <div className="text-center">
-        <div className="w-12 h-12 mx-auto mb-4 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
-          <Upload className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+        <div className="w-12 h-12 mx-auto mb-4 bg-primary/15 rounded-full flex items-center justify-center">
+          <Upload className="w-6 h-6 text-primary" />
         </div>
         <DialogTitle className="text-xs font-medium text-muted-foreground mb-2">Upload CSV File</DialogTitle>
         <p className="text-sm text-muted-foreground">Select a CSV file to upload to S3</p>
@@ -217,7 +217,7 @@ function UploadDialogContent({
             type="file"
             accept=".csv"
             onChange={(e) => onFileChange(e.target.files?.[0] || null)}
-            className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 dark:file:bg-blue-900/20 file:text-blue-700 dark:file:text-blue-400 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/30"
+            className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/15"
           />
         </div>
 
@@ -276,15 +276,15 @@ function DeleteDialogContent({
     return (
       <div className="space-y-4">
         <div className="text-center">
-          <div className="w-12 h-12 mx-auto mb-4 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
-            <Trash2 className="w-6 h-6 text-red-600 dark:text-red-400" />
+          <div className="w-12 h-12 mx-auto mb-4 bg-destructive/15 rounded-full flex items-center justify-center">
+            <Trash2 className="w-6 h-6 text-destructive" />
           </div>
-          <DialogTitle className="text-xs font-medium uppercase tracking-wide text-red-600 dark:text-red-400 mb-2">Delete All Campaign Logs</DialogTitle>
-          <p className="text-sm text-red-700 dark:text-red-300">This will permanently delete all campaign logs from DynamoDB</p>
+          <DialogTitle className="text-xs font-medium uppercase tracking-wide text-destructive mb-2">Delete All Campaign Logs</DialogTitle>
+          <p className="text-sm text-destructive">This will permanently delete all campaign logs from DynamoDB</p>
         </div>
 
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3">
-          <p className="text-sm text-red-800 dark:text-red-300 mb-2">
+        <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3">
+          <p className="text-sm text-destructive mb-2">
             <strong>Warning:</strong> This action cannot be undone!
           </p>
         </div>
@@ -351,9 +351,9 @@ function DeleteDialogContent({
           deleteResult.success ? 'bg-green-100 dark:bg-green-900/20' : 'bg-red-100 dark:bg-red-900/20'
         }`}>
           {deleteResult.success ? (
-            <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
+            <CheckCircle className="w-6 h-6 text-success" />
           ) : (
-            <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
+            <AlertCircle className="w-6 h-6 text-destructive" />
           )}
         </div>
         <DialogTitle className={`text-xs font-medium uppercase tracking-wide mb-2 ${
@@ -407,8 +407,8 @@ function ScheduleDialogContent({
   return (
     <div className="space-y-4">
       <div className="text-center">
-        <div className="w-12 h-12 mx-auto mb-4 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
-          <Calendar className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+        <div className="w-12 h-12 mx-auto mb-4 bg-primary/15 rounded-full flex items-center justify-center">
+          <Calendar className="w-6 h-6 text-primary" />
         </div>
         <DialogTitle className="text-xs font-medium text-muted-foreground mb-2">Schedule Campaign</DialogTitle>
         <p className="text-sm text-muted-foreground">Configure your campaign schedule settings</p>
@@ -707,13 +707,13 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'completed':
-        return 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800'
+        return 'bg-success/15 text-success border-success/30'
       case 'failed':
-        return 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800'
+        return 'bg-destructive/15 text-destructive border-destructive/30'
       case 'in_progress':
-        return 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+        return 'bg-primary/15 text-primary border-primary/30'
       case 'pending':
-        return 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800'
+        return 'bg-warning/15 text-warning border-warning/30'
       default:
         return 'bg-muted text-foreground border-border'
     }
@@ -752,8 +752,8 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
       return <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
     }
     return sortOrder === 'asc' 
-      ? <ArrowUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-      : <ArrowDown className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+      ? <ArrowUp className="h-4 w-4 text-primary" />
+      : <ArrowDown className="h-4 w-4 text-primary" />
   }
 
   const goToPage = (page: number) => {
@@ -1058,7 +1058,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
         <header className="px-6 py-4 border-b border-border/60 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center justify-between">
-              <div className="h-8 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-4 rounded-lg flex items-center">
+              <div className="h-8 bg-destructive/15 text-destructive px-4 rounded-lg flex items-center">
                 <AlertCircle className="w-4 h-4 mr-2" />
                 Unable to Load Campaign Logs
               </div>
@@ -1077,7 +1077,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
         </header>
         <div className="flex-1 flex items-center justify-center bg-muted/50">
           <div className="text-center space-y-4 max-w-md">
-            <AlertCircle className="w-12 h-12 text-red-500 dark:text-red-400 mx-auto" />
+            <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
             <h2 className="text-xl font-semibold text-foreground">{error}</h2>
           </div>
         </div>
@@ -1102,7 +1102,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                 variant="outline" 
                 size="sm" 
                 onClick={() => setShowUploadDialog(true)}
-                className="bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                className="bg-primary/10 hover:bg-primary/15 text-primary border-primary/30"
               >
                 <Upload className="h-4 w-4 mr-2" />
                 Upload CSV
@@ -1111,7 +1111,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                 variant="outline" 
                 size="sm" 
                 onClick={() => setShowScheduleDialog(true)}
-                className="bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800"
+                className="bg-success/10 hover:bg-success/15 text-success border-success/30"
               >
                 <Calendar className="h-4 w-4 mr-2" />
                 Schedule
@@ -1221,7 +1221,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
         {loading && logs.length === 0 ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
+              <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
               <p className="text-muted-foreground">Loading campaign logs...</p>
             </div>
           </div>
@@ -1350,7 +1350,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
 
                   {loading && logs.length > 0 && (
                     <div className="text-center py-4 bg-card">
-                      <Loader2 className="w-6 h-6 animate-spin text-blue-500 mx-auto" />
+                      <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto" />
                       <p className="text-sm text-muted-foreground mt-2">Loading more data...</p>
                     </div>
                   )}

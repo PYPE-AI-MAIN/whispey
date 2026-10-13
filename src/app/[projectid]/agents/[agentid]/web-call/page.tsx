@@ -123,7 +123,7 @@ export default function WebCallPage() {
     return (
       <div className="min-h-screen bg-muted/50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
           <p className="text-muted-foreground">Loading agent configuration...</p>
         </div>
       </div>
@@ -135,7 +135,7 @@ export default function WebCallPage() {
       <div className="min-h-screen bg-muted/50 flex items-center justify-center">
         <Card className="max-w-md mx-auto">
           <CardHeader>
-            <CardTitle className="text-red-600">Error Loading Agent</CardTitle>
+            <CardTitle className="text-destructive">Error Loading Agent</CardTitle>
             <CardDescription>
               {error || 'Failed to load agent data'}
             </CardDescription>
@@ -170,7 +170,7 @@ export default function WebCallPage() {
       <div className="min-h-screen bg-muted/50 flex items-center justify-center">
         <Card className="max-w-md mx-auto">
           <CardHeader>
-            <CardTitle className="text-amber-600">Configuration Missing</CardTitle>
+            <CardTitle className="text-warning">Configuration Missing</CardTitle>
             <CardDescription>
               This agent is not configured for Vapi web calls
             </CardDescription>
@@ -215,9 +215,9 @@ export default function WebCallPage() {
         </div>
 
         {/* Info Alert */}
-        <Alert className="border-green-200 bg-green-50 dark:bg-green-900/20">
-          <Info className="h-4 w-4 text-green-600" />
-          <AlertDescription className="text-green-800 dark:text-green-200">
+        <Alert className="border-success/30 bg-success/10">
+          <Info className="h-4 w-4 text-success" />
+          <AlertDescription className="text-success">
             <strong>Client-Side Web Calls:</strong> This implementation uses the Vapi web SDK with your public API key. 
             Voice conversations happen directly in your browser for the best user experience.
           </AlertDescription>
@@ -247,7 +247,7 @@ export default function WebCallPage() {
                   <Badge variant="outline" className="font-mono text-xs">
                     {vapiAssistantId}
                   </Badge>
-                  <Shield className="h-4 w-4 text-green-600" />
+                  <Shield className="h-4 w-4 text-success" />
                 </div>
               </div>
               <div>
@@ -255,7 +255,7 @@ export default function WebCallPage() {
                   API Key Type
                 </p>
                 <div className="flex items-center gap-2">
-                  <Badge className="bg-green-100 text-green-700 text-xs">
+                  <Badge className="bg-success/15 text-success text-xs">
                     Public Key
                   </Badge>
                   <span className="text-xs text-muted-foreground">

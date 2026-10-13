@@ -133,10 +133,10 @@ export default function OrganizationSwitcher({
     switch (environment.toLowerCase()) {
       case 'production':
       case 'prod':
-        return 'bg-red-500/10 text-red-600 dark:bg-red-500/10 dark:text-red-400'
+        return 'bg-red-500/10 text-destructive dark:bg-red-500/10'
       case 'development':
       case 'dev':
-        return 'bg-blue-500/10 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
+        return 'bg-blue-500/10 text-primary dark:bg-blue-500/10'
       default:
         return 'bg-muted-foreground/10 text-muted-foreground'
     }
@@ -262,7 +262,7 @@ export default function OrganizationSwitcher({
                           key={selectedOrg.id}
                           value={selectedOrg.name}
                           onSelect={() => handleSelect(selectedOrg.id)}
-                          className="cursor-pointer px-2 py-2 rounded-md transition-colors bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800"
+                          className="cursor-pointer px-2 py-2 rounded-md transition-colors bg-primary/10 border border-primary/30"
                         >
                           <div className="flex items-center gap-2 flex-1 min-w-0">
                             <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-[10px] flex-shrink-0">
@@ -273,7 +273,7 @@ export default function OrganizationSwitcher({
                                 <span className="font-medium text-xs truncate text-blue-900 dark:text-blue-100">
                                   {selectedOrg.name}
                                 </span>
-                                <Check className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                                <Check className="w-3.5 h-3.5 text-primary flex-shrink-0" />
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <Badge 

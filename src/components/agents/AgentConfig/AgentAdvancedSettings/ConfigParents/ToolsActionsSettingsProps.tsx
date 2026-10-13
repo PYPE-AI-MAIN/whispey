@@ -560,12 +560,12 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
       {/* Tools List */}
       <div className="space-y-2">
         {kbEnabled && (
-          <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-950/40 rounded border border-blue-200 dark:border-blue-700">
-            <BookOpen className="w-3 h-3 text-blue-500" />
-            <span className="text-xs font-medium text-blue-700 dark:text-blue-300 flex-1">
+          <div className="flex items-center gap-2 p-2 bg-primary/10 rounded border border-primary/30">
+            <BookOpen className="w-3 h-3 text-primary" />
+            <span className="text-xs font-medium text-primary flex-1">
               Knowledge Search
             </span>
-            <span className="text-xs text-blue-500 dark:text-blue-400 flex-shrink-0">Managed by RAG Settings</span>
+            <span className="text-xs text-primary flex-shrink-0">Managed by RAG Settings</span>
           </div>
         )}
         {tools.length === 0 && languageSwitchTools.length === 0 && !kbEnabled ? (
@@ -595,7 +595,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                     variant="ghost"
                     size="sm"
                     onClick={() => handleDeleteTool(tool.id)}
-                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                    className="h-6 w-6 p-0 text-destructive hover:text-destructive"
                   >
                     <TrashIcon className="w-3 h-3" />
                   </Button>
@@ -605,7 +605,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
             {languageSwitchTools.map((ls, idx) => (
               <div key={`ls-${ls.tool_name}`} className="flex items-center justify-between gap-2 p-2 bg-muted/50 rounded border border-border overflow-hidden">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <Languages className="w-3 h-3 text-blue-500" />
+                  <Languages className="w-3 h-3 text-primary" />
                   <span className="text-xs font-medium text-foreground truncate font-mono">
                     {ls.tool_name}
                   </span>
@@ -624,7 +624,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                     variant="ghost"
                     size="sm"
                     onClick={() => onFieldChange('advancedSettings.tools.languageSwitchTools', languageSwitchTools.filter((_, i) => i !== idx))}
-                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                    className="h-6 w-6 p-0 text-destructive hover:text-destructive"
                   >
                     <TrashIcon className="w-3 h-3" />
                   </Button>
@@ -680,7 +680,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                 className={`h-7 text-xs mt-1 bg-card border-border text-foreground ${toolNameError ? 'border-red-500' : ''}`}
                 placeholder={selectedToolType === 'ivr_navigator' ? 'Send DTMF' : 'Enter tool name...'}
               />
-              {toolNameError && <p className="text-xs text-red-500 mt-1">{toolNameError}</p>}
+              {toolNameError && <p className="text-xs text-destructive mt-1">{toolNameError}</p>}
             </div>
 
             {/* Description */}
@@ -796,7 +796,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                       </div>
                     </div>
                     {!formData.enableAsTool && !formData.enableAsTag && (
-                      <p className="text-xs text-amber-600 dark:text-amber-400 pt-1">
+                      <p className="text-xs text-warning pt-1">
                         Neither trigger is enabled — the transfer config will be saved but the LLM has no way to fire it.
                       </p>
                     )}
@@ -872,7 +872,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                     Select a phone number to use its SIP trunk for the transfer. The trunk ID will be automatically used.
                   </p>
                   {formData.sipTrunkId && (
-                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                    <p className="text-xs text-primary mt-1">
                       Selected SIP Trunk: <span className="font-mono">{formData.sipTrunkId}</span>
                     </p>
                   )}
@@ -1085,7 +1085,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                               variant="ghost"
                               size="sm"
                               onClick={() => handleRemoveParameter(param.id)}
-                              className="h-5 w-5 p-0 text-red-500 hover:text-red-700"
+                              className="h-5 w-5 p-0 text-destructive hover:text-destructive"
                             >
                               <TrashIcon className="w-3 h-3" />
                             </Button>
@@ -1274,7 +1274,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                                   filler_config: { ...prev.filler_config!, messages: msgs },
                                 }))
                               }}
-                              className="h-6 w-6 p-0 text-red-500 hover:text-red-700 flex-shrink-0"
+                              className="h-6 w-6 p-0 text-destructive hover:text-destructive flex-shrink-0"
                             >
                               <TrashIcon className="w-3 h-3" />
                             </Button>
@@ -1376,9 +1376,9 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
             {/* Voicemail Detection specific fields */}
             {selectedToolType === 'voicemail_detection' && (
               <>
-                <div className="flex items-start gap-2 p-2.5 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border border-yellow-200 dark:border-yellow-800">
-                  <Info className="w-3.5 h-3.5 text-yellow-600 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                <div className="flex items-start gap-2 p-2.5 bg-warning/10 rounded-md border border-warning/30">
+                  <Info className="w-3.5 h-3.5 text-warning mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-warning">
                     Powered by LiveKit's built-in Answering Machine Detection (AMD). It runs its own dedicated LLM (Azure OpenAI GPT-4.1-mini) and STT (Sarvam saaras:v3, language="unknown" (auto-detect) and mode="transcribe" ) for classification, independent of this agent's configured LLM and STT.
                   </p>
                 </div>

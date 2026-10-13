@@ -192,7 +192,7 @@ export default function PiCustomToolForm({
                 <input className={field} placeholder="description" value={p.description} onChange={(e) => updateParam(p.id, { description: e.target.value })} />
               </div>
             ))}
-            <button type="button" className="text-[12px] text-blue-600 dark:text-blue-400" onClick={() => setParams((rows) => [...rows, withId({ name: '', type: 'str', description: '', required: false })])}>
+            <button type="button" className="text-[12px] text-primary" onClick={() => setParams((rows) => [...rows, withId({ name: '', type: 'str', description: '', required: false })])}>
               Add parameter
             </button>
           </div>
@@ -209,7 +209,7 @@ export default function PiCustomToolForm({
       <button type="button" disabled={status === 'saving'} onClick={() => void submit()} className="rounded-lg bg-gray-900 px-3 py-1.5 text-[13px] text-white disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900">
         {status === 'saving' ? 'Adding…' : 'Add tool'}
       </button>
-      {error && <p role="alert" className="text-[12px] text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p role="alert" className="text-[12px] text-destructive">{error}</p>}
     </div>
   )
 }

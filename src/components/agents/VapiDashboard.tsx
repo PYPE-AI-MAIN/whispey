@@ -132,9 +132,9 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
               <h3 className="text-lg font-medium text-foreground">Assistant Error</h3>
               <p className="text-sm text-muted-foreground mt-2">{error}</p>
               
-              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-left">
-                <p className="text-sm text-blue-800 dark:text-blue-200 font-medium mb-1">Troubleshooting:</p>
-                <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+              <div className="mt-4 p-3 bg-primary/10 border border-primary/30 rounded-lg text-left">
+                <p className="text-sm text-primary font-medium mb-1">Troubleshooting:</p>
+                <ul className="text-xs text-primary space-y-1">
                   <li>• Make sure you used the correct Vapi API key format</li>
                   <li>• Check that the assistant exists in your Vapi dashboard</li>
                   <li>• Verify your Vapi API key has the correct permissions</li>
@@ -191,12 +191,12 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
                     {assistant.name || 'Unnamed Assistant'}
                   </h1>
                   {isConnected ? (
-                    <Badge className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 text-xs">
+                    <Badge className="bg-success/15 text-success border-success/30 text-xs">
                       <CheckCircle className="w-2 h-2 mr-1" />
                       Connected
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800 text-xs">
+                    <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30 text-xs">
                       <AlertCircle className="w-2 h-2 mr-1" />
                       Not Connected
                     </Badge>

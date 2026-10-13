@@ -111,9 +111,9 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({
       e2e: { good: 4, fair: 8 },
     }
     const threshold = thresholds[type]
-    if (value <= threshold.good) return "text-emerald-600 dark:text-emerald-400"
-    if (value <= threshold.fair) return "text-amber-600 dark:text-amber-400"
-    return "text-red-600 dark:text-red-400"
+    if (value <= threshold.good) return "text-success"
+    if (value <= threshold.fair) return "text-warning"
+    return "text-destructive"
   }
 
   const formatDuration = (seconds: number) => {
@@ -271,22 +271,22 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({
               {/* Bug Reports */}
               <div className={cn(
                 "flex items-center gap-2",
-                bugCount > 0 && "px-2 py-1 bg-amber-100 dark:bg-amber-900/20 rounded-md"
+                bugCount > 0 && "px-2 py-1 bg-warning/15 rounded-md"
               )}>
                 <AlertTriangle className={cn(
                   "w-4 h-4",
-                  bugCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
+                  bugCount > 0 ? "text-warning" : "text-muted-foreground"
                 )} />
                 <div className="flex items-baseline gap-1">
                   <span className={cn(
                     "text-lg font-bold",
-                    bugCount > 0 ? "text-amber-700 dark:text-amber-300" : "text-foreground"
+                    bugCount > 0 ? "text-warning" : "text-foreground"
                   )}>
                     {bugCount}
                   </span>
                   <span className={cn(
                     "text-xs",
-                    bugCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
+                    bugCount > 0 ? "text-warning" : "text-muted-foreground"
                   )}>
                     bugs
                   </span>

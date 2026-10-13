@@ -316,8 +316,8 @@ export function AiChartBuilderPanel({
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-100 dark:bg-blue-900/40">
-          <Sparkles className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/15">
+          <Sparkles className="h-3.5 w-3.5 text-primary" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-foreground">Generate with Pi</p>
@@ -341,7 +341,7 @@ export function AiChartBuilderPanel({
                 key={s}
                 type="button"
                 onClick={() => handleSend(s)}
-                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-left text-xs text-foreground transition hover:border-blue-300 hover:bg-blue-50/50 dark:hover:border-blue-700"
+                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-left text-xs text-foreground transition hover:border-primary/40 hover:bg-blue-50/50"
               >
                 {s}
               </button>
@@ -371,7 +371,7 @@ export function AiChartBuilderPanel({
                 <ChartProposal key={c.id} state={c} fields={fields} onAdd={() => addChart(i, j)} />
               ))}
               {!(isStreaming && isLast) && msg.errors?.map((err) => (
-                <div key={err} className="flex items-start gap-1.5 rounded-md bg-red-50 px-2 py-1.5 text-[11px] font-medium text-red-700 dark:bg-red-900/20 dark:text-red-400">
+                <div key={err} className="flex items-start gap-1.5 rounded-md bg-destructive/10 px-2 py-1.5 text-[11px] font-medium text-destructive">
                   <span>Couldn&apos;t build one of the charts: {err}</span>
                 </div>
               ))}
@@ -440,7 +440,7 @@ function ChartProposal({
   return (
     <div className="rounded-lg border border-border bg-card p-2.5">
       <div className="flex items-start gap-2">
-        <span className="mt-0.5 text-blue-500">{KIND_ICON[chart.kind]}</span>
+        <span className="mt-0.5 text-primary">{KIND_ICON[chart.kind]}</span>
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold text-foreground">{chart.title}</p>
           <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{safeExplain(chart, fields)}</p>
@@ -491,7 +491,7 @@ function AssistantText({ content, streaming }: Readonly<{ content: string; strea
     <div className="space-y-1.5 text-sm leading-relaxed text-foreground">
       {textOnly && <ReactMarkdown components={MARKDOWN_COMPONENTS}>{textOnly}</ReactMarkdown>}
       {streaming && hasOpenJsonBlock && (
-        <div className="flex items-center gap-1.5 rounded-md bg-blue-50 px-2 py-1 text-[11px] font-medium text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
+        <div className="flex items-center gap-1.5 rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">
           <Loader2 className="h-3 w-3 animate-spin" /> Building the chart…
         </div>
       )}

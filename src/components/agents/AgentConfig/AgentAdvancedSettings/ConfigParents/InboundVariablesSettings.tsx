@@ -192,7 +192,7 @@ function InboundVariablesSettings({
               <>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {promptVariables.map((name) => (
-                    <span key={name} className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300">
+                    <span key={name} className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-primary/10 text-primary">
                       {name}
                     </span>
                   ))}
@@ -238,18 +238,18 @@ function InboundVariablesSettings({
               </Button>
             </div>
             {!url.trim() && (
-              <p className="text-[11px] text-amber-600 dark:text-amber-400">Add the endpoint URL above to enable the test.</p>
+              <p className="text-[11px] text-warning">Add the endpoint URL above to enable the test.</p>
             )}
           </div>
 
           {result && (
-            <div className={`rounded border p-2 text-[11px] ${result.ok ? 'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-500/10' : 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-500/10'}`}>
+            <div className={`rounded border p-2 text-[11px] ${result.ok ? 'border-green-300 bg-success/10 dark:border-green-700 dark:bg-green-500/10' : 'border-amber-300 bg-warning/10 dark:border-amber-700 dark:bg-amber-500/10'}`}>
               <div className="flex items-center justify-between">
                 <span className="font-medium text-foreground">
                   {result.ok ? `${returned.length} variable(s) returned` : 'Nothing usable came back'}
                 </span>
                 {result.latency_ms !== undefined && (
-                  <span className={result.latency_ms > (timeoutMs || 1000) ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}>
+                  <span className={result.latency_ms > (timeoutMs || 1000) ? 'text-destructive' : 'text-muted-foreground'}>
                     {result.latency_ms} ms
                   </span>
                 )}
@@ -260,14 +260,14 @@ function InboundVariablesSettings({
                     <div key={name}>
                       {name}: {String(result.variables[name]).slice(0, 60)}
                       {promptVariables.length > 0 && !promptVariables.includes(name) && (
-                        <span className="ml-1 text-amber-600 dark:text-amber-400">(not used in the prompt)</span>
+                        <span className="ml-1 text-warning">(not used in the prompt)</span>
                       )}
                     </div>
                   ))}
                 </div>
               )}
               {missing.length > 0 && (
-                <p className="mt-1 text-amber-700 dark:text-amber-400">
+                <p className="mt-1 text-warning">
                   Not returned, will use the default: {missing.join(', ')}
                 </p>
               )}

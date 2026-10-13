@@ -74,7 +74,7 @@ export function ImportJsonSheet({ open, onOpenChange }: Readonly<{ open: boolean
             placeholder='{ "schemaVersion": "1.0", "start": "greeting", "nodes": [ ... ] }'
             className="min-h-[240px] w-full flex-1 resize-none rounded-lg border border-border bg-muted/50 p-3 font-mono text-xs outline-none focus:ring-2 focus:ring-violet-500"
           />
-          {error && <p className="text-xs whitespace-pre-wrap text-red-600 dark:text-red-400">{error}</p>}
+          {error && <p className="text-xs whitespace-pre-wrap text-destructive">{error}</p>}
           <div className="flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button size="sm" onClick={handleImport} disabled={!text.trim()}>Import to canvas</Button>

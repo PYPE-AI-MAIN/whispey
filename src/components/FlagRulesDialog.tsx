@@ -242,7 +242,7 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
             <Switch id="flagging-enabled" checked={enabled} onCheckedChange={setEnabled} />
           </div>
           {extractorKeys.length === 0 && (
-            <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+            <p className="text-xs text-warning mt-2">
               No field extractor fields configured yet — set those up first so there's something to flag on.
             </p>
           )}
@@ -281,7 +281,7 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
                       variant="ghost" size="icon"
                       onClick={() => removeRule(ruleIndex)}
                       aria-label={`Remove flag ${ruleIndex + 1}`}
-                      className="h-8 w-8 p-0 rounded-full text-muted-foreground hover:bg-muted hover:text-red-500 dark:hover:text-red-400 shrink-0"
+                      className="h-8 w-8 p-0 rounded-full text-muted-foreground hover:bg-muted hover:text-destructive shrink-0"
                     >
                       <X className="w-4 h-4" />
                     </Button>
@@ -318,7 +318,7 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
                   </Button>
 
                   {ruleSummary(rule) && (
-                    <div className="rounded-md bg-blue-50 dark:bg-blue-950/40 px-3 py-2 text-xs text-blue-700 dark:text-blue-300">
+                    <div className="rounded-md bg-primary/10 px-3 py-2 text-xs text-primary">
                       <span className="font-medium">Flags when</span> {ruleSummary(rule)}
                       <span className="text-blue-400 dark:text-blue-500"> → “{rule.reason.trim() || "reason defaults to the field name"}”</span>
                     </div>
@@ -330,7 +330,7 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
         </div>
 
         <div className="flex-shrink-0 p-6 pt-4 border-t dark:border-gray-700 space-y-2">
-          {error && <p className="text-xs text-red-500">{error}</p>}
+          {error && <p className="text-xs text-destructive">{error}</p>}
           <Button
             type="button" variant="outline"
             onClick={addRule}
@@ -514,7 +514,7 @@ function ConditionRow({
           <Button
             variant="ghost" size="icon" onClick={onRemove}
             aria-label="Remove condition"
-            className="h-8 w-8 p-0 rounded-full text-muted-foreground hover:bg-muted hover:text-red-500 dark:hover:text-red-400"
+            className="h-8 w-8 p-0 rounded-full text-muted-foreground hover:bg-muted hover:text-destructive"
           >
             <X className="w-4 h-4" />
           </Button>

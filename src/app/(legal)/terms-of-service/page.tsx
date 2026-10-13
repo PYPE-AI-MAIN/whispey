@@ -29,7 +29,7 @@ export default function TermsOfService() {
           <div className="flex items-center justify-between">
             <Link 
               href="/"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-blue-600 transition-colors group"
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors group"
             >
               <ArrowLeft weight="regular" className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
               Back to Dashboard
@@ -45,8 +45,8 @@ export default function TermsOfService() {
       <div className="bg-card border-b border-border">
         <div className="max-w-4xl mx-auto px-6 py-12">
           <div className="flex items-start gap-4">
-            <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
-              <Shield weight="regular" className="w-8 h-8 text-blue-600" />
+            <div className="p-3 bg-primary/10 rounded-xl border border-primary/20">
+              <Shield weight="regular" className="w-8 h-8 text-primary" />
             </div>
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-foreground tracking-tight">Terms of Service</h1>
@@ -54,7 +54,7 @@ export default function TermsOfService() {
                 Please read these terms carefully before using Whispey's hosted service
               </p>
               <div className="flex items-center gap-2 mt-4">
-                <div className="px-3 py-1 bg-green-50 text-green-700 text-sm font-medium rounded-lg border border-green-200">
+                <div className="px-3 py-1 bg-success/10 text-success text-sm font-medium rounded-lg border border-success/30">
                   Effective: {effectiveDate}
                 </div>
               </div>
@@ -98,8 +98,8 @@ export default function TermsOfService() {
           <div className="bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-all duration-300">
             <div className="p-6 border-b border-border">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-50 rounded-lg border border-blue-100">
-                  <Users weight="regular" className="w-5 h-5 text-blue-600" />
+                <div className="p-2 bg-primary/10 rounded-lg border border-primary/20">
+                  <Users weight="regular" className="w-5 h-5 text-primary" />
                 </div>
                 <h2 className="text-xl font-semibold text-foreground">1. Account & Access</h2>
               </div>
@@ -107,7 +107,7 @@ export default function TermsOfService() {
             <div className="p-6 space-y-4">
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
-                  <CheckCircle weight="fill" className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
+                  <CheckCircle weight="fill" className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="font-medium text-foreground mb-1">Account Responsibility</p>
                     <p className="text-muted-foreground text-sm">
@@ -117,7 +117,7 @@ export default function TermsOfService() {
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <CheckCircle weight="fill" className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
+                  <CheckCircle weight="fill" className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="font-medium text-foreground mb-1">Age Requirement</p>
                     <p className="text-muted-foreground text-sm">
@@ -127,7 +127,7 @@ export default function TermsOfService() {
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <CheckCircle weight="fill" className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
+                  <CheckCircle weight="fill" className="w-5 h-5 text-success mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="font-medium text-foreground mb-1">Accurate Information</p>
                     <p className="text-muted-foreground text-sm">
@@ -144,8 +144,8 @@ export default function TermsOfService() {
           <div className="bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-all duration-300">
             <div className="p-6 border-b border-border">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-50 rounded-lg border border-green-100">
-                  <CheckCircle weight="regular" className="w-5 h-5 text-green-600" />
+                <div className="p-2 bg-success/10 rounded-lg border border-success/20">
+                  <CheckCircle weight="regular" className="w-5 h-5 text-success" />
                 </div>
                 <h2 className="text-xl font-semibold text-foreground">2. Acceptable Use Policy</h2>
               </div>
@@ -155,31 +155,31 @@ export default function TermsOfService() {
                 You agree to use Whispey only for lawful purposes and in accordance with these Terms. 
                 Specifically, you agree NOT to:
               </p>
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 space-y-2">
+              <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 space-y-2">
                 <p className="font-medium text-red-900 mb-2">Prohibited Activities:</p>
-                <ul className="space-y-2 text-sm text-red-800">
+                <ul className="space-y-2 text-sm text-destructive">
                   <li className="flex items-start gap-2">
-                    <span className="text-red-500 mt-0.5">•</span>
+                    <span className="text-destructive mt-0.5">•</span>
                     Process or transmit any content that is illegal, harmful, threatening, abusive, or violates any laws
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-red-500 mt-0.5">•</span>
+                    <span className="text-destructive mt-0.5">•</span>
                     Violate privacy rights or process personal data without proper consent and legal basis
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-red-500 mt-0.5">•</span>
+                    <span className="text-destructive mt-0.5">•</span>
                     Attempt to gain unauthorized access to our systems or other users' accounts
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-red-500 mt-0.5">•</span>
+                    <span className="text-destructive mt-0.5">•</span>
                     Overload our infrastructure with excessive requests or automated abuse
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-red-500 mt-0.5">•</span>
+                    <span className="text-destructive mt-0.5">•</span>
                     Use the Service for cryptocurrency mining, botnets, or other resource-intensive unauthorized activities
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-red-500 mt-0.5">•</span>
+                    <span className="text-destructive mt-0.5">•</span>
                     Reverse engineer, decompile, or attempt to extract source code from our proprietary systems
                   </li>
                 </ul>
@@ -288,16 +288,16 @@ export default function TermsOfService() {
           <div className="bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-all duration-300">
             <div className="p-6 border-b border-border">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-orange-50 rounded-lg border border-orange-100">
-                  <Warning weight="regular" className="w-5 h-5 text-orange-600" />
+                <div className="p-2 bg-warning/10 rounded-lg border border-warning/20">
+                  <Warning weight="regular" className="w-5 h-5 text-warning" />
                 </div>
                 <h2 className="text-xl font-semibold text-foreground">5. Service Limitations & Disclaimers</h2>
               </div>
             </div>
             <div className="p-6 space-y-4">
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="bg-warning/10 border border-warning/30 rounded-lg p-4">
                 <p className="font-medium text-yellow-900 mb-2">Important Notice:</p>
-                <p className="text-yellow-800 text-sm">
+                <p className="text-warning text-sm">
                   The Service is provided "AS IS" without warranties of any kind, either express or implied. 
                   We do not guarantee uninterrupted, secure, or error-free operation of the Service.
                 </p>
@@ -327,8 +327,8 @@ export default function TermsOfService() {
           <div className="bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-all duration-300">
             <div className="p-6 border-b border-border">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-red-50 rounded-lg border border-red-100">
-                  <Scales weight="regular" className="w-5 h-5 text-red-600" />
+                <div className="p-2 bg-destructive/10 rounded-lg border border-destructive/20">
+                  <Scales weight="regular" className="w-5 h-5 text-destructive" />
                 </div>
                 <h2 className="text-xl font-semibold text-foreground">6. Limitation of Liability</h2>
               </div>
@@ -391,8 +391,8 @@ export default function TermsOfService() {
           <div className="bg-card rounded-xl border border-border shadow-sm">
             <div className="p-6">
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-blue-50 rounded-lg border border-blue-100">
-                  <Envelope weight="regular" className="w-5 h-5 text-blue-600" />
+                <div className="p-2 bg-primary/10 rounded-lg border border-primary/20">
+                  <Envelope weight="regular" className="w-5 h-5 text-primary" />
                 </div>
                 <h2 className="text-xl font-semibold text-foreground">Questions?</h2>
               </div>
@@ -403,7 +403,7 @@ export default function TermsOfService() {
                 <p className="text-sm font-medium text-foreground">Singularity Corp Pvt Ltd (Pype AI)</p>
                 <a 
                   href="mailto:dhruv@pypeai.com" 
-                  className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
+                  className="inline-flex items-center gap-2 text-primary hover:text-primary font-medium"
                 >
                   dhruv@pypeai.com
                 </a>
@@ -413,7 +413,7 @@ export default function TermsOfService() {
 
           {/* Footer Links */}
           <div className="flex items-center justify-center gap-6 py-8 text-sm">
-            <Link href="/privacy" className="text-muted-foreground hover:text-blue-600 transition-colors">
+            <Link href="/privacy" className="text-muted-foreground hover:text-primary transition-colors">
               Privacy Policy
             </Link>
             <span className="text-muted-foreground">•</span>
@@ -421,12 +421,12 @@ export default function TermsOfService() {
               href="https://github.com/PYPE-AI-MAIN/whispey"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-blue-600 transition-colors"
+              className="text-muted-foreground hover:text-primary transition-colors"
             >
               Open Source (GitHub)
             </a>
             <span className="text-muted-foreground">•</span>
-            <Link href="https://docs.whispey.pypeai.com" className="text-muted-foreground hover:text-blue-600 transition-colors">
+            <Link href="https://docs.whispey.pypeai.com" className="text-muted-foreground hover:text-primary transition-colors">
               Documentation
             </Link>
           </div>

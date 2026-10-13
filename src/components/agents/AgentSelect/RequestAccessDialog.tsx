@@ -88,8 +88,8 @@ export default function RequestAccessDialog({ open, onOpenChange, projectid, isM
         <div className={`flex-1 ${isMobile ? 'px-4 py-4' : 'px-6 py-6'} space-y-4`}>
           {success ? (
             <div className="py-8 text-center">
-              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Send className="w-6 h-6 text-green-600 dark:text-green-400" />
+              <div className="w-12 h-12 bg-success/15 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Send className="w-6 h-6 text-success" />
               </div>
               <h3 className="text-base font-medium text-foreground mb-1">
                 Request Sent Successfully!
@@ -113,7 +113,7 @@ export default function RequestAccessDialog({ open, onOpenChange, projectid, isM
                   disabled={loading}
                 />
                 {error && (
-                  <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                  <p className="text-sm text-destructive mt-1">
                     {error}
                   </p>
                 )}

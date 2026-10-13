@@ -192,7 +192,7 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-7 w-7 text-red-500 hover:text-red-700"
+                    className="h-7 w-7 text-destructive hover:text-destructive"
                     onClick={() => updateAgentConfig({ languages: languages.filter((_, i) => i !== idx) as typeof agent.languages })}
                   >
                     <Trash2 className="h-3 w-3" />

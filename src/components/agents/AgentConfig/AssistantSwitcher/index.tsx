@@ -133,7 +133,7 @@ export default function AssistantSwitcher({
               className={cn(
                 "w-full px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors",
                 "text-left group relative",
-                index === currentAssistantIndex && "bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                index === currentAssistantIndex && "bg-primary/10 hover:bg-primary/10"
               )}
             >
               {/* Active Indicator */}
@@ -148,7 +148,7 @@ export default function AssistantSwitcher({
               <div className={cn(
                 "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
                 index === currentAssistantIndex 
-                  ? "bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400" 
+                  ? "bg-primary/15 text-primary" 
                   : "bg-muted text-muted-foreground"
               )}>
                 <User className="w-4 h-4" />
@@ -166,7 +166,7 @@ export default function AssistantSwitcher({
                     {assistant.name}
                   </span>
                   {assistant.isPrimary && (
-                    <span className="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">
+                    <span className="text-xs bg-primary/15 text-primary px-1.5 py-0.5 rounded">
                       Primary
                     </span>
                   )}
@@ -175,7 +175,7 @@ export default function AssistantSwitcher({
                 {/* Status Indicators */}
                 <div className="flex items-center gap-2 mt-1">
                   {assistant.isConfigured ? (
-                    <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                    <span className="flex items-center gap-1 text-xs text-success">
                       <Check className="w-3 h-3" />
                       <span>Configured</span>
                     </span>

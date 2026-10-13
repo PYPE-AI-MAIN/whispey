@@ -25,11 +25,11 @@ import {
       if (name?.includes('llm') || attributes?.['llm.request.type']) 
         return { icon: <Brain className="w-4 h-4" />, color: 'text-purple-600', bg: 'bg-purple-100', category: 'LLM' };
       if (name?.includes('tts') || attributes?.['tts.provider']) 
-        return { icon: <Volume2 className="w-4 h-4" />, color: 'text-green-600', bg: 'bg-green-100', category: 'TTS' };
+        return { icon: <Volume2 className="w-4 h-4" />, color: 'text-success', bg: 'bg-success/15', category: 'TTS' };
       if (name?.includes('stt') || attributes?.['stt.provider']) 
-        return { icon: <Mic className="w-4 h-4" />, color: 'text-blue-600', bg: 'bg-blue-100', category: 'STT' };
+        return { icon: <Mic className="w-4 h-4" />, color: 'text-primary', bg: 'bg-primary/15', category: 'STT' };
       if (name?.includes('database') || attributes?.['db.system']) 
-        return { icon: <Database className="w-4 h-4" />, color: 'text-orange-600', bg: 'bg-orange-100', category: 'Database' };
+        return { icon: <Database className="w-4 h-4" />, color: 'text-warning', bg: 'bg-warning/15', category: 'Database' };
       if (name?.includes('http') || attributes?.['http.method']) 
         return { icon: <Network className="w-4 h-4" />, color: 'text-indigo-600', bg: 'bg-indigo-100', category: 'HTTP' };
       return { icon: <Activity className="w-4 h-4" />, color: 'text-muted-foreground', bg: 'bg-muted', category: 'Other' };
@@ -37,12 +37,12 @@ import {
   
     const getStatusInfo = (status: any) => {
       if (status?.code === 'ERROR' || status?.code === 2) {
-        return { icon: <XCircle className="w-4 h-4 text-red-500" />, text: 'Error', color: 'text-red-600' };
+        return { icon: <XCircle className="w-4 h-4 text-destructive" />, text: 'Error', color: 'text-destructive' };
       }
       if (status?.code === 'OK' || status?.code === 1 || !status) {
-        return { icon: <CheckCircle2 className="w-4 h-4 text-green-500" />, text: 'Success', color: 'text-green-600' };
+        return { icon: <CheckCircle2 className="w-4 h-4 text-success" />, text: 'Success', color: 'text-success' };
       }
-      return { icon: <AlertCircle className="w-4 h-4 text-yellow-500" />, text: 'Unknown', color: 'text-yellow-600' };
+      return { icon: <AlertCircle className="w-4 h-4 text-warning" />, text: 'Unknown', color: 'text-warning' };
     };
   
     const formatDuration = (durationNs: number) => {
@@ -103,7 +103,7 @@ import {
         </div>
         
         {span.attributes?.['error.message'] && (
-          <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+          <div className="mt-2 p-2 bg-destructive/10 border border-destructive/30 rounded text-sm text-destructive">
             {span.attributes['error.message']}
           </div>
         )}

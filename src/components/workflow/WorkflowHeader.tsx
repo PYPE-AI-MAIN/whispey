@@ -70,7 +70,7 @@ function Issues({ open, onOpenChange, serverIssues }: Readonly<{ open: boolean; 
         <button
           type="button"
           className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium ${
-            errors ? 'border-red-300 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300' : 'border-border bg-muted text-muted-foreground hover:text-foreground'
+            errors ? 'border-red-300 bg-destructive/10 text-destructive dark:border-red-900  dark:text-red-300' : 'border-border bg-muted text-muted-foreground hover:text-foreground'
           }`}
         >
           <AlertTriangle className="h-3.5 w-3.5" /> {label}
@@ -87,7 +87,7 @@ function Issues({ open, onOpenChange, serverIssues }: Readonly<{ open: boolean; 
                 onClick={() => i.nodeId && setSelectedNode(i.nodeId)}
                 className="w-full rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent"
               >
-                <span className={i.severity === 'error' ? 'font-semibold text-red-600 dark:text-red-400' : 'font-semibold text-amber-600 dark:text-amber-400'}>
+                <span className={i.severity === 'error' ? 'font-semibold text-destructive' : 'font-semibold text-warning'}>
                   {i.severity === 'error' ? 'Fix: ' : 'Check: '}
                 </span>
                 {explainIssue(i, { nodes: nodes ?? [] })}

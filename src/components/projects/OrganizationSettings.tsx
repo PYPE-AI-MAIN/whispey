@@ -76,7 +76,7 @@ function getRoleBadgeColor(role: string) {
     case 'owner':
       return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800'
     case 'admin':
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+      return 'bg-primary/15 text-primary border-primary/30'
     case 'member':
     case 'user':
     case 'viewer':
@@ -121,7 +121,7 @@ function MemberRowActions({
           variant="ghost"
           size="sm"
           onClick={onReactivate}
-          className="text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20 dark:text-green-400 dark:hover:text-green-300 h-7 px-2 text-xs"
+          className="text-success hover:text-success hover:bg-success/10 h-7 px-2 text-xs"
         >
           <RefreshCw className="w-3 h-3 mr-1" />
           Reactivate
@@ -130,7 +130,7 @@ function MemberRowActions({
           variant="ghost"
           size="sm"
           onClick={onRemoveHard}
-          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-red-400 dark:hover:text-red-300 h-7 w-7 p-0"
+          className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 w-7 p-0"
         >
           <Trash2 className="w-3 h-3" />
         </Button>
@@ -142,7 +142,7 @@ function MemberRowActions({
       variant="ghost"
       size="sm"
       onClick={onRemoveSoft}
-      className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-red-400 dark:hover:text-red-300 h-7 w-7 p-0"
+      className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 w-7 p-0"
     >
       <X className="w-4 h-4" />
     </Button>
@@ -231,7 +231,7 @@ function MemberRow({
         )}
         {member.status === 'active' && !isInactive && (
           <span className="text-xs text-muted-foreground flex items-center gap-1 whitespace-nowrap">
-            <CheckCircle2 className="w-3 h-3 text-green-500" />
+            <CheckCircle2 className="w-3 h-3 text-success" />
             Joined {formatDate(member.joinedAt)}
           </span>
         )}
@@ -272,7 +272,7 @@ function MembersTableBody({
   if (loadingMembers) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400" />
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
         <span className="ml-2 text-sm text-muted-foreground">Loading members...</span>
       </div>
     )
@@ -726,9 +726,9 @@ export default function OrganizationSettings({
 
         {/* Danger Zone */}
         {currentUserRole === 'owner' && (
-          <Card className="border-red-200 dark:border-red-900 bg-card">
+          <Card className="border-destructive/30 bg-card">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+              <CardTitle className="flex items-center gap-2 text-destructive">
                 <AlertTriangle className="w-5 h-5" />
                 Danger Zone
               </CardTitle>
@@ -738,16 +738,16 @@ export default function OrganizationSettings({
             </CardHeader>
             <CardContent>
               {organizations.length === 0 ? (
-                <Alert className="mb-4 bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800">
-                  <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-                  <AlertDescription className="text-yellow-800 dark:text-yellow-300">
+                <Alert className="mb-4 bg-warning/10 border-warning/30">
+                  <AlertTriangle className="h-4 w-4 text-warning" />
+                  <AlertDescription className="text-warning">
                     You cannot delete your only organization. Create another organization first before deleting this one.
                   </AlertDescription>
                 </Alert>
               ) : (
-                <Alert variant="destructive" className="mb-4 bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800">
-                  <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                  <AlertDescription className="text-red-800 dark:text-red-300">
+                <Alert variant="destructive" className="mb-4 bg-destructive/10 border-destructive/30">
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                  <AlertDescription className="text-destructive">
                     Deleting this organization will permanently remove all agents, call logs, 
                     configurations, and team member access. This action cannot be undone.
                   </AlertDescription>
@@ -896,7 +896,7 @@ export default function OrganizationSettings({
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent className="max-w-md bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+            <DialogTitle className="flex items-center gap-2 text-destructive">
               <AlertTriangle className="w-5 h-5" />
               Delete Organization
             </DialogTitle>
@@ -906,9 +906,9 @@ export default function OrganizationSettings({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <Alert variant="destructive" className="bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800">
-              <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
-              <AlertDescription className="text-red-800 dark:text-red-300">
+            <Alert variant="destructive" className="bg-destructive/10 border-destructive/30">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              <AlertDescription className="text-destructive">
                 All agents, call logs, and configurations will be permanently deleted.
               </AlertDescription>
             </Alert>

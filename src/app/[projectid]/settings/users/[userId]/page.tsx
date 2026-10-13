@@ -43,7 +43,7 @@ const ROLE_META: Record<GlobalRole, { label: string; icon: React.ReactNode; pill
   superadmin: {
     label: 'Superadmin',
     icon: <Crown className="h-3 w-3" />,
-    pillClass: 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-400/10 border-amber-300 dark:border-amber-400/20',
+    pillClass: 'text-warning bg-warning/15 border-warning/40',
   },
   prompter: {
     label: 'Prompter',
@@ -293,7 +293,7 @@ function AgentColumnChecklist({
   const downloadToggle = (
     <label className="flex items-center justify-between gap-2 text-xs text-foreground px-1 pb-2 mb-1 border-b border-border">
       <span className="flex items-center gap-1.5">
-        {downloadDisabled ? <ShieldOff className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" /> : <Download className="h-3.5 w-3.5 text-muted-foreground" />}
+        {downloadDisabled ? <ShieldOff className="h-3.5 w-3.5 text-warning" /> : <Download className="h-3.5 w-3.5 text-muted-foreground" />}
         Allow this user to download from this agent
       </span>
       <Switch
@@ -323,7 +323,7 @@ function AgentColumnChecklist({
         Always hidden for all non-superadmins — manage this in{' '}
         <Link
           href={`/${projectId}/agents/${agent.id}?tab=logs&openDownloadSettings=1`}
-          className="underline text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+          className="underline text-primary hover:text-primary"
         >
           {agent.name}&apos;s Download Settings
         </Link>
@@ -365,7 +365,7 @@ function AgentColumnChecklist({
             />
             <ColumnAccessGroup
               title="Sensitive columns"
-              titleClassName="text-amber-600 dark:text-amber-400"
+              titleClassName="text-warning"
               columns={sensitiveToggleable}
               hiddenView={hiddenView}
               hiddenDownload={hiddenDownload}
@@ -410,7 +410,7 @@ function AgentColumnChecklist({
         </>
       ) : (
         <div className="flex items-center justify-between gap-2 px-1 py-1">
-          <p className="text-[11px] text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+          <p className="text-[11px] text-success flex items-center gap-1.5">
             No column restrictions — user has full access to this agent&apos;s columns.
           </p>
           <Button size="sm" variant="outline" onClick={() => setEditingColumns(true)} className="h-7 text-[11px] gap-1 flex-shrink-0">
@@ -449,7 +449,7 @@ function AgentRow({
         <span className="flex items-center gap-2 min-w-0">
           <span className="text-xs font-medium text-foreground truncate">{agent.name}</span>
           {downloadDisabled && (
-            <Badge className="text-[11px] px-1.5 py-0 gap-1 bg-red-100 text-red-700 border-red-300 dark:bg-red-400/10 dark:text-red-400 dark:border-red-400/20 flex-shrink-0">
+            <Badge className="text-[11px] px-1.5 py-0 gap-1 bg-destructive/15 text-destructive border-destructive/40 flex-shrink-0">
               <ShieldOff className="h-2.5 w-2.5" />
               Downloads disabled
             </Badge>

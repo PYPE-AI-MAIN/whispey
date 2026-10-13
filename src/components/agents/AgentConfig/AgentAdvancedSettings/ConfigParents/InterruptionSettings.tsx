@@ -223,9 +223,9 @@ function InterruptionSettings({
           {isAdaptive && (
             <div className="space-y-3">
               {turn_detection !== 'multilingual' && (
-                <div className="flex items-start gap-2 p-2.5 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border border-yellow-200 dark:border-yellow-800">
-                  <AlertTriangle className="w-3.5 h-3.5 text-yellow-600 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                <div className="flex items-start gap-2 p-2.5 bg-warning/10 rounded-md border border-warning/30">
+                  <AlertTriangle className="w-3.5 h-3.5 text-warning mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-warning">
                     Adaptive interruption works best with Turn Detection set to "Multilingual" (Session Behaviour section). Current setting may reduce accuracy.
                   </p>
                 </div>
@@ -328,7 +328,7 @@ function InterruptionSettings({
 
               {/* Boundary validation hint */}
               {boundaryInvalid && (
-                <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                <div className="flex items-center gap-1.5 text-xs text-warning">
                   <AlertTriangle className="w-3 h-3 flex-shrink-0" />
                   <span>Boundary Start must be ≤ Boundary End</span>
                 </div>
@@ -364,7 +364,7 @@ function InterruptionSettings({
             <button
               type="button"
               onClick={restoreDefaults}
-              className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+              className="text-xs text-primary hover:underline"
             >
               Restore defaults
             </button>
@@ -385,7 +385,7 @@ function InterruptionSettings({
                 <button
                   type="button"
                   onClick={() => removeWord(word)}
-                  className="text-muted-foreground hover:text-red-500 transition-colors"
+                  className="text-muted-foreground hover:text-destructive transition-colors"
                   aria-label={`Remove ${word}`}
                 >
                   <X size={12} />

@@ -926,8 +926,8 @@ const inboundLookupVariables = useMemo(() => {
       <div className="h-screen bg-muted/50 flex items-center justify-center p-6">
         <div className="max-w-md w-full">
           <div className="bg-card border border-border rounded-xl p-8 text-center shadow-lg">
-            <div className="w-16 h-16 mx-auto mb-4 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-              <svg className="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
@@ -981,16 +981,16 @@ const inboundLookupVariables = useMemo(() => {
     <div className="h-screen bg-muted/50 flex flex-col">
       {isProdLocked && (
         <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 shrink-0">
-          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-          <p className="text-xs text-amber-700 dark:text-amber-400">
+          <AlertCircle className="w-4 h-4 text-warning shrink-0" />
+          <p className="text-xs text-warning">
             <span className="font-semibold">Production agent — read only.</span>{' '}
             Edit the dev agent and use Merge to Prod to update this prompt.
           </p>
         </div>
       )}
       {agentConfigData?.backendUnavailable && (
-        <Alert className="rounded-none border-x-0 border-t-0 shrink-0 border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
-          <AlertCircle className="text-amber-600 dark:text-amber-400" />
+        <Alert className="rounded-none border-x-0 border-t-0 shrink-0 border-warning/30 bg-warning/10 text-amber-950 dark:text-amber-100">
+          <AlertCircle className="text-warning" />
           <AlertTitle>Voice backend unreachable</AlertTitle>
           <AlertDescription>
             {agentConfigData.backendUnavailableMessage ??
@@ -1497,7 +1497,7 @@ const inboundLookupVariables = useMemo(() => {
                           onClick={() => setIsPromptSettingsOpen(true)}
                           className={`flex items-center gap-1 text-xs transition-colors ${
                             unmappedVariablesCount > 0
-                              ? 'text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300' 
+                              ? 'text-red-600 dark:text-red-400 hover:text-destructive dark:hover:text-red-300' 
                               : 'text-muted-foreground hover:text-foreground'
                           }`}
                         >
@@ -1526,8 +1526,8 @@ const inboundLookupVariables = useMemo(() => {
                   >
                     {isCopied ? (
                       <>
-                        <CheckIcon className="w-4 h-4 text-green-500" />
-                        <span className="text-green-500">Copied!</span>
+                        <CheckIcon className="w-4 h-4 text-success" />
+                        <span className="text-success">Copied!</span>
                       </>
                     ) : (
                       <>
@@ -1761,7 +1761,7 @@ const inboundLookupVariables = useMemo(() => {
           {/* Footer — pinned, always visible */}
           <div className="flex-shrink-0 flex items-center justify-between gap-2 px-6 py-4 border-t border-border">
             <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-              <AlertCircle className="w-3 h-3 text-amber-500" />
+              <AlertCircle className="w-3 h-3 text-warning" />
               Seeing changes you didn't make? Refresh and try again.
             </p>
             <div className="flex gap-2">

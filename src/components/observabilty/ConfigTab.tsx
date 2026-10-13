@@ -117,7 +117,7 @@ const ConfigTab: React.FC<ConfigTabProps> = ({ sessionId }) => {
       {llm && (
         <div className="rounded-xl border border-border bg-card shadow-sm p-3">
           <div className="flex items-center gap-2 mb-2">
-            <Brain className="w-4 h-4 text-blue-500" />
+            <Brain className="w-4 h-4 text-primary" />
             <h3 className="text-xs font-medium text-muted-foreground">LLM Configuration</h3>
           </div>
           <div className="grid grid-cols-2 gap-3 text-xs">
@@ -151,7 +151,7 @@ const ConfigTab: React.FC<ConfigTabProps> = ({ sessionId }) => {
       {stt && (
         <div className="rounded-xl border border-border bg-card shadow-sm p-3">
           <div className="flex items-center gap-2 mb-2">
-            <Mic className="w-4 h-4 text-green-500" />
+            <Mic className="w-4 h-4 text-success" />
             <h3 className="text-xs font-medium text-muted-foreground">STT Configuration</h3>
           </div>
           <div className="grid grid-cols-2 gap-3 text-xs">
@@ -213,7 +213,7 @@ const ConfigTab: React.FC<ConfigTabProps> = ({ sessionId }) => {
       {prompt && (
         <div className="rounded-xl border border-border bg-card shadow-sm p-3">
           <div className="flex items-center gap-2 mb-2">
-            <FileText className="w-4 h-4 text-orange-500" />
+            <FileText className="w-4 h-4 text-warning" />
             <h3 className="text-xs font-medium text-muted-foreground">Prompt</h3>
           </div>
           <div className="mt-1.5">

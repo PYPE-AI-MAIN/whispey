@@ -14,7 +14,7 @@ function NodeSelector({ pipelineStages, setSelectedNode, selectedNode }: any) {
             className={cn(
               "w-full p-3 rounded-lg border text-left transition-all hover:shadow-sm",
               selectedNode === stage.id
-                ? "border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 shadow-sm"
+                ? "border-blue-500 dark:border-blue-400 bg-primary/10 shadow-sm"
                 : "border-border bg-card hover:border-border",
             )}
           >
@@ -43,15 +43,15 @@ function NodeSelector({ pipelineStages, setSelectedNode, selectedNode }: any) {
                   )}
                   {stage.fallbackFailureCount > 0 && (
                     <div className="flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3 text-red-600 dark:text-red-400" />
-                      <span className="text-xs text-red-600 dark:text-red-400 font-medium">{stage.fallbackFailureCount}</span>
+                      <AlertTriangle className="w-3 h-3 text-destructive" />
+                      <span className="text-xs text-destructive font-medium">{stage.fallbackFailureCount}</span>
                     </div>
                   )}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  {stage.status === "success" && <span className="text-green-600 dark:text-green-400">✓ Completed</span>}
+                  {stage.status === "success" && <span className="text-success">✓ Completed</span>}
                   {stage.status === "missing" && <span className="text-muted-foreground">No data</span>}
-                  {stage.status === "active" && <span className="text-orange-600 dark:text-orange-400">● Active</span>}
+                  {stage.status === "active" && <span className="text-warning">● Active</span>}
                 </div>
               </div>
               {stage.metrics && (

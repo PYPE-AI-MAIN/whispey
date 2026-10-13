@@ -328,13 +328,13 @@ function DiffDialog({
 
               <div className="flex items-center gap-2 shrink-0">
                 {promptChanged && (
-                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] bg-amber-500/15 text-amber-600 border border-amber-500/30 px-2 py-0.5 rounded-full font-medium">
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] bg-amber-500/15 text-warning border border-amber-500/30 px-2 py-0.5 rounded-full font-medium">
                     <FileText className="w-2.5 h-2.5" />
                     Prompt
                   </span>
                 )}
                 {configChanged && (
-                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] bg-blue-500/15 text-blue-600 border border-blue-500/30 px-2 py-0.5 rounded-full font-medium">
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] bg-blue-500/15 text-primary border border-blue-500/30 px-2 py-0.5 rounded-full font-medium">
                     <Cpu className="w-2.5 h-2.5" />
                     Settings
                   </span>
@@ -452,7 +452,7 @@ function ConfigDetailView({
           <div className="flex items-center gap-2">
             <p className="text-xs font-semibold">Version #{entry.version_number}</p>
             {isPipecat && (
-              <span className="text-[10px] px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded font-medium">
+              <span className="text-[10px] px-1.5 py-0.5 bg-warning/15 text-warning rounded font-medium">
                 Pipecat
               </span>
             )}
@@ -460,7 +460,7 @@ function ConfigDetailView({
           <p className="text-[10px] text-muted-foreground">{format(new Date(entry.created_at), 'MMM d, yyyy · h:mm a')}</p>
         </div>
         <Button variant="outline" size="sm" className="h-7 text-xs gap-1 shrink-0" onClick={handleCopy}>
-          {isCopied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+          {isCopied ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
           {isCopied ? 'Copied!' : 'Copy'}
         </Button>
         <Button variant="outline" size="sm" className="h-7 text-xs gap-1 shrink-0" onClick={() => onStartCompare(entry)}>
@@ -752,13 +752,13 @@ function GitHubBadge({ ok }: { ok: boolean | null }) {
   if (ok === null || ok === undefined) return null
   if (ok) {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-600 border border-green-500/20 font-medium">
+      <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/10 text-success border border-green-500/20 font-medium">
         <CheckCircle2 className="w-2.5 h-2.5" /> GitHub
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/10 text-orange-600 border border-orange-500/20 font-medium">
+    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/10 text-warning border border-orange-500/20 font-medium">
       <AlertTriangle className="w-2.5 h-2.5" /> Sync failed
     </span>
   )
@@ -1083,8 +1083,8 @@ export default function ConfigHistory({ open, onClose, agentId, projectId, agent
           <div className="space-y-3 py-2">
             {restoreSuccess ? (
               <div className="flex items-center gap-2 rounded-lg bg-green-500/10 border border-green-500/20 px-3 py-2">
-                <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
-                <p className="text-xs text-green-700 dark:text-green-400 font-medium">{restoreSuccess}</p>
+                <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+                <p className="text-xs text-success font-medium">{restoreSuccess}</p>
               </div>
             ) : (
               <>
@@ -1129,9 +1129,9 @@ export default function ConfigHistory({ open, onClose, agentId, projectId, agent
             {prResult ? (
               <div className="space-y-3">
                 <div className="flex items-start gap-2 rounded-lg bg-green-500/10 border border-green-500/20 px-3 py-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-xs text-green-700 dark:text-green-400 font-medium">
+                    <p className="text-xs text-success font-medium">
                       PR #{prResult.number} created!
                     </p>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -1148,7 +1148,7 @@ export default function ConfigHistory({ open, onClose, agentId, projectId, agent
                     title="Copy PR link"
                     onClick={() => { navigator.clipboard.writeText(prResult.url); setCopiedPR(true); setTimeout(() => setCopiedPR(false), 2000) }}
                   >
-                    {copiedPR ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                    {copiedPR ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
                   </Button>
                   <Button
                     variant="outline" size="sm" className="h-8 w-8 p-0 shrink-0"

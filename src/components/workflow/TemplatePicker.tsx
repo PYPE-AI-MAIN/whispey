@@ -16,9 +16,9 @@ const ICONS: Record<string, React.ElementType> = {
 
 const COLORS: Record<string, string> = {
   blank: 'bg-muted text-muted-foreground',
-  'appointment-booking': 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400',
+  'appointment-booking': 'bg-primary/15 text-primary',
   'lead-qualification': 'bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400',
-  'ortho-triage': 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400',
+  'ortho-triage': 'bg-success/15 text-success',
 }
 
 const EXAMPLES = [
@@ -43,8 +43,8 @@ export function TemplatePicker({
     <div className="flex-1 flex items-center justify-center bg-muted/50 p-6 overflow-y-auto">
       <div className="max-w-2xl w-full">
         <div className="text-center mb-6">
-          <div className="w-12 h-12 mx-auto mb-3 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center">
-            <Sparkles className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          <div className="w-12 h-12 mx-auto mb-3 bg-primary/10 rounded-xl flex items-center justify-center">
+            <Sparkles className="w-6 h-6 text-primary" />
           </div>
           <h2 className="text-lg font-semibold text-foreground">What should this agent do?</h2>
           <p className="text-sm text-muted-foreground mt-1">

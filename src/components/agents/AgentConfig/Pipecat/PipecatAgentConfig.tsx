@@ -784,7 +784,7 @@ export default function PipecatAgentConfig({
     return (
       <div className="h-screen bg-muted/50 flex items-center justify-center p-6">
         <div className="max-w-md w-full bg-card border border-border rounded-xl p-8 text-center">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-foreground mb-2">
             Failed to load Pipecat agent
           </h3>
@@ -815,7 +815,7 @@ export default function PipecatAgentConfig({
               <div className="flex flex-col">
                 <span className="text-sm text-muted-foreground flex items-center gap-1.5">
                   {agentName}
-                  <span className="text-xs px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded font-medium">
+                  <span className="text-xs px-1.5 py-0.5 bg-warning/15 text-warning rounded font-medium">
                     Pipecat
                   </span>
                 </span>
@@ -864,8 +864,8 @@ export default function PipecatAgentConfig({
       {isProdLocked && (
         <div className="px-6 py-2 flex-shrink-0">
           <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
-            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-            <p className="text-xs text-amber-700 dark:text-amber-400">
+            <AlertCircle className="w-4 h-4 text-warning shrink-0" />
+            <p className="text-xs text-warning">
               <span className="font-semibold">Production agent — read only.</span>{' '}
               Edit the dev agent and use Merge to Prod to update this prompt.
             </p>
@@ -966,7 +966,7 @@ export default function PipecatAgentConfig({
                     onClick={() => setIsSettingsOpen(true)}
                     className={`flex items-center gap-1 text-xs transition-colors ${
                       detectedVarNames.some(n => !(n in variables))
-                        ? 'text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300'
+                        ? 'text-red-600 dark:text-red-400 hover:text-destructive dark:hover:text-red-300'
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
@@ -982,7 +982,7 @@ export default function PipecatAgentConfig({
                     disabled={!prompt}
                   >
                     {isCopied
-                      ? <><CheckIcon className="w-4 h-4 text-green-500" /><span className="text-green-500">Copied!</span></>
+                      ? <><CheckIcon className="w-4 h-4 text-success" /><span className="text-success">Copied!</span></>
                       : <><CopyIcon className="w-4 h-4" /><span>Copy</span></>
                     }
                   </button>
@@ -1139,7 +1139,7 @@ export default function PipecatAgentConfig({
             {/* Unmapped variable warning */}
             {detectedVarNames.filter(n => !(n in variables)).length > 0 && (
               <div
-                className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 cursor-pointer hover:bg-destructive/15 transition-colors"
                 onClick={() => {
                   const unmapped = detectedVarNames.filter(n => !(n in variables))
                   setVariables(v => {
@@ -1163,14 +1163,14 @@ export default function PipecatAgentConfig({
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-start gap-2 flex-1">
-                    <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                    <div className="text-xs text-red-800 dark:text-red-200">
+                    <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                    <div className="text-xs text-destructive">
                       <p className="font-medium mb-1">
                         {detectedVarNames.filter(n => !(n in variables)).length} unmapped variable{detectedVarNames.filter(n => !(n in variables)).length > 1 ? 's' : ''} — click to configure
                       </p>
                       <div className="flex flex-wrap gap-1">
                         {detectedVarNames.filter(n => !(n in variables)).map(name => (
-                          <code key={name} className="bg-red-100 dark:bg-red-900/40 px-1.5 py-0.5 rounded text-red-900 dark:text-red-200">
+                          <code key={name} className="bg-destructive/15 px-1.5 py-0.5 rounded text-red-900 dark:text-red-200">
                             {`{{${name}}}`}
                           </code>
                         ))}
@@ -1189,7 +1189,7 @@ export default function PipecatAgentConfig({
                         return next
                       })
                     }}
-                    className="h-7 text-xs flex-shrink-0 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30"
+                    className="h-7 text-xs flex-shrink-0 border-destructive/40 text-destructive hover:bg-destructive/15"
                   >
                     Map All
                   </Button>
@@ -1204,7 +1204,7 @@ export default function PipecatAgentConfig({
                   <VariableIcon className="w-4 h-4" />
                   <span className="font-medium text-sm">Variables</span>
                   {Object.keys(variables).length > 0 && (
-                    <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs px-2 py-0.5 rounded-full">
+                    <span className="bg-primary/15 text-primary text-xs px-2 py-0.5 rounded-full">
                       {Object.keys(variables).length}
                     </span>
                   )}
@@ -1220,7 +1220,7 @@ export default function PipecatAgentConfig({
                     <div className="space-y-2">
                       {detectedVarNames.map(name => (
                         <div key={name} className="flex items-center gap-2">
-                          <code className="font-mono text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded w-36 flex-shrink-0 truncate">
+                          <code className="font-mono text-xs text-primary bg-primary/10 px-2 py-1 rounded w-36 flex-shrink-0 truncate">
                             {`{{${name}}}`}
                           </code>
                           <Input
@@ -1294,7 +1294,7 @@ export default function PipecatAgentConfig({
                               </div>
                               <button
                                 onClick={() => setVariables(v => { const n = { ...v }; delete n[name]; return n })}
-                                className="p-1.5 text-muted-foreground hover:text-red-500 transition-colors rounded"
+                                className="p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded"
                               >
                                 <TrashIcon className="w-3.5 h-3.5" />
                               </button>

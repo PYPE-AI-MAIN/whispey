@@ -394,9 +394,9 @@ const ProviderCard = ({
 
   const getBorderColor = () => {
     switch (providerKey) {
-      case 'openai': return 'border-green-200 dark:border-green-600 bg-green-50 dark:bg-green-900/10'
-      case 'deepgram': return 'border-blue-200 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/10'
-      case 'sarvam': return 'border-orange-200 dark:border-orange-600 bg-orange-50 dark:bg-orange-900/10'
+      case 'openai': return 'border-success/30 bg-success/10'
+      case 'deepgram': return 'border-primary/30 bg-primary/10'
+      case 'sarvam': return 'border-warning/30 bg-warning/10'
       case 'smallestai': return 'border-purple-200 dark:border-purple-600 bg-purple-50 dark:bg-purple-900/10'
       default: return 'border-border bg-muted/50'
     }
@@ -433,7 +433,7 @@ const ProviderCard = ({
             <h3 className="font-semibold text-sm sm:text-base text-foreground">
               {provider.name}
             </h3>
-            {isSelected && <CheckCircle className="w-4 h-4 text-green-600" />}
+            {isSelected && <CheckCircle className="w-4 h-4 text-success" />}
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground">
             {provider.models.length} models • {getLanguageCount()} languages
@@ -762,7 +762,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                             onClick={() => setDeepgramConfig(prev => ({ ...prev, [key]: !active }))}
                             className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
                               active
-                                ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-300'
+                                ? 'bg-blue-50 border-primary/30 text-primary dark:bg-blue-900/30  dark:text-blue-300'
                                 : 'border-border text-muted-foreground hover:border-border'
                             }`}
                           >
@@ -796,7 +796,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                   className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground text-sm"
                 />
                 {keytermInput.trim() && (
-                  <button type="button" onClick={addKeyterm} className="ml-2 text-blue-500 hover:text-blue-600 transition-colors flex-shrink-0">
+                  <button type="button" onClick={addKeyterm} className="ml-2 text-primary hover:text-primary transition-colors flex-shrink-0">
                     <Plus className="w-4 h-4" />
                   </button>
                 )}
@@ -808,7 +808,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                       {term}
                       <button
                         onClick={() => setDeepgramConfig(prev => ({ ...prev, keyterm: prev.keyterm.filter(t => t !== term) }))}
-                        className="ml-0.5 hover:text-red-500 transition-colors"
+                        className="ml-0.5 hover:text-destructive transition-colors"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -977,12 +977,12 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
 
         {/* Show auto-detect message for Saaras */}
         {activeProvider === 'sarvam' && currentModel === 'saaras:v2.5' && (
-          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+          <div className="p-3 bg-primary/10 rounded-lg border border-primary/30">
             <div className="flex items-start gap-2">
               
               <div>
                 <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Auto-detects Language</p>
-                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                <p className="text-xs text-primary mt-1">
                   Saaras automatically detects the input language and translates speech to English. No language configuration needed.
                 </p>
               </div>
@@ -1017,7 +1017,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
                 )}
-                <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
+                <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                 <span className="text-sm sm:text-base">
                   {showSettings ? `${STT_PROVIDERS[activeProvider as keyof typeof STT_PROVIDERS]?.name} Settings` : 'Configure STT Provider'}
                 </span>

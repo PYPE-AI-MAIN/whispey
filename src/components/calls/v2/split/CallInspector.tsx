@@ -195,8 +195,8 @@ function CallDataGroups({ call, agentId, role, showEmpty, turns, isVapiAgent }: 
 }
 
 const TONE_CLASS = {
-  good: "text-emerald-600 dark:text-emerald-400",
-  fair: "text-amber-600 dark:text-amber-400",
+  good: "text-success",
+  fair: "text-warning",
   poor: "text-[var(--cl-red-text)]",
 } as const
 

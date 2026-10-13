@@ -373,7 +373,7 @@ export default function PhoneNumbersPage() {
               <span className="text-sm">No phone numbers yet</span>
               <button
                 onClick={() => setShowAddForm(true)}
-                className="text-xs text-blue-500 hover:text-blue-400 transition-colors"
+                className="text-xs text-primary hover:text-blue-400 transition-colors"
               >
                 Add your first number
               </button>
@@ -619,16 +619,16 @@ export default function PhoneNumbersPage() {
                 <div className="space-y-2">
                   <div>
                     <p className="text-[11px] text-muted-foreground mb-1">WebSocket stream (audio)</p>
-                    <code className="block bg-muted border border-border rounded-lg px-3 py-2 text-xs text-green-600 dark:text-green-400 font-mono break-all">wss://your-bridge-domain/bridge</code>
-                    <p className="text-[11px] text-muted-foreground mt-1">Use <span className="text-yellow-600 dark:text-yellow-400">wss://</span> with a domain in production</p>
+                    <code className="block bg-muted border border-border rounded-lg px-3 py-2 text-xs text-success font-mono break-all">wss://your-bridge-domain/bridge</code>
+                    <p className="text-[11px] text-muted-foreground mt-1">Use <span className="text-warning">wss://</span> with a domain in production</p>
                   </div>
                   <div>
                     <p className="text-[11px] text-muted-foreground mb-1">Prewarm webhook (Call received on Server)</p>
-                    <code className="block bg-muted border border-border rounded-lg px-3 py-2 text-xs text-green-600 dark:text-green-400 font-mono break-all">https://your-bridge-domain/acefone/inbound-prewarm</code>
+                    <code className="block bg-muted border border-border rounded-lg px-3 py-2 text-xs text-success font-mono break-all">https://your-bridge-domain/acefone/inbound-prewarm</code>
                   </div>
                   <div>
                     <p className="text-[11px] text-muted-foreground mb-1">Hangup webhook</p>
-                    <code className="block bg-muted border border-border rounded-lg px-3 py-2 text-xs text-green-600 dark:text-green-400 font-mono break-all">https://your-bridge-domain/acefone/hangup</code>
+                    <code className="block bg-muted border border-border rounded-lg px-3 py-2 text-xs text-success font-mono break-all">https://your-bridge-domain/acefone/hangup</code>
                   </div>
                 </div>
               </section>
@@ -639,15 +639,15 @@ export default function PhoneNumbersPage() {
                 <div className="space-y-2">
                   <div>
                     <p className="text-[11px] text-muted-foreground mb-1">WebSocket stream (audio)</p>
-                    <code className="block bg-muted border border-border rounded-lg px-3 py-2 text-xs text-green-600 dark:text-green-400 font-mono break-all">wss://your-bridge-domain/bridge</code>
+                    <code className="block bg-muted border border-border rounded-lg px-3 py-2 text-xs text-success font-mono break-all">wss://your-bridge-domain/bridge</code>
                   </div>
                   <div>
                     <p className="text-[11px] text-muted-foreground mb-1">Dynamic endpoint</p>
-                    <code className="block bg-muted border border-border rounded-lg px-3 py-2 text-xs text-green-600 dark:text-green-400 font-mono break-all">https://your-bridge-domain/dynamic-endpoint</code>
+                    <code className="block bg-muted border border-border rounded-lg px-3 py-2 text-xs text-success font-mono break-all">https://your-bridge-domain/dynamic-endpoint</code>
                   </div>
                   <div>
                     <p className="text-[11px] text-muted-foreground mb-1">Hangup webhook</p>
-                    <code className="block bg-muted border border-border rounded-lg px-3 py-2 text-xs text-green-600 dark:text-green-400 font-mono break-all">https://your-bridge-domain/acefone/hangup</code>
+                    <code className="block bg-muted border border-border rounded-lg px-3 py-2 text-xs text-success font-mono break-all">https://your-bridge-domain/acefone/hangup</code>
                   </div>
                 </div>
               </section>
@@ -656,10 +656,10 @@ export default function PhoneNumbersPage() {
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-blue-400">API Keys</h3>
                 <div className="space-y-2 text-xs text-muted-foreground">
                   <div className="bg-muted border border-border rounded-lg p-3">
-                    <p><span className="text-foreground font-medium">C2C API Key</span> — For outbound campaigns. Found in Acefone dashboard → API settings. Format: <code className="text-green-600 dark:text-green-400">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code></p>
+                    <p><span className="text-foreground font-medium">C2C API Key</span> — For outbound campaigns. Found in Acefone dashboard → API settings. Format: <code className="text-success">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code></p>
                   </div>
                   <div className="bg-muted border border-border rounded-lg p-3">
-                    <p><span className="text-foreground font-medium">Acefone Token (JWT)</span> — For mid-call transfer only. Set in agent → Tools &amp; Actions → Transfer Call. Format: <code className="text-green-600 dark:text-green-400">eyJ...long-jwt-string</code></p>
+                    <p><span className="text-foreground font-medium">Acefone Token (JWT)</span> — For mid-call transfer only. Set in agent → Tools &amp; Actions → Transfer Call. Format: <code className="text-success">eyJ...long-jwt-string</code></p>
                   </div>
                 </div>
               </section>
@@ -667,7 +667,7 @@ export default function PhoneNumbersPage() {
               <section className="space-y-2">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-blue-400">Important Notes</h3>
                 <ul className="text-xs text-muted-foreground space-y-1.5 list-disc list-inside">
-                  <li>Use <code className="text-yellow-600 dark:text-yellow-400">ws://</code> for dev/testing, <code className="text-yellow-600 dark:text-yellow-400">wss://</code> for production</li>
+                  <li>Use <code className="text-warning">ws://</code> for dev/testing, <code className="text-warning">wss://</code> for production</li>
                   <li>Replace <code className="text-foreground">your-bridge-domain</code> with your actual bridge server URL (shared by your admin)</li>
                   <li>Inbound → <strong className="text-foreground">Static</strong> endpoint mode in Acefone</li>
                   <li>Outbound → <strong className="text-foreground">Dynamic</strong> endpoint mode in Acefone</li>

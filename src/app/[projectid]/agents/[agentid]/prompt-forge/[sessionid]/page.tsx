@@ -669,7 +669,7 @@ function SettingsDialog({ open, onClose, provider, onProviderChange, model, onMo
           />
         </div>
         {status && !status.available && (
-          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-300">
+          <p className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
             {status.reason ?? 'This provider can’t run in Prompt Forge here.'} Pick another provider to test.
           </p>
         )}
@@ -717,15 +717,15 @@ function ConfigImportDialog({ open, onClose, onApply }: {
           rows={10}
           className="w-full text-xs font-mono rounded-lg border border-border bg-muted/50 text-foreground p-3 resize-none outline-none focus:border-border placeholder:text-muted-foreground leading-relaxed"
         />
-        {error && <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-lg px-3 py-2">{error}</p>}
+        {error && <p className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-lg px-3 py-2">{error}</p>}
         {parsed && (
-          <div className="bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/30 rounded-lg px-4 py-3 text-xs space-y-1">
-            <p className="font-semibold text-green-700 dark:text-green-400 mb-1.5">Config parsed — ready to apply</p>
-            <p className="text-green-600 dark:text-green-500">✓ Prompt: {parsed.prompt.length.toLocaleString()} chars</p>
-            <p className="text-green-600 dark:text-green-500">✓ Variables: {parsed.variables.length} ({parsed.variables.map(v => v.name).join(', ')})</p>
-            <p className="text-green-600 dark:text-green-500">✓ Tools: {parsed.tools.length} ({parsed.tools.map(t => t.name).join(', ')})</p>
-            {parsed.llm.model && <p className="text-green-600 dark:text-green-500">✓ Model: {modelLabelFor(parsed.llm.provider, parsed.llm.model)} · temperature {parsed.llm.temperature}</p>}
-            {parsed.greeting && <p className="text-green-600 dark:text-green-500">✓ Greeting: {GREETING_MODES.find(m => m.value === parsed.greeting!.mode)?.label}</p>}
+          <div className="bg-success/10 border border-success/30 rounded-lg px-4 py-3 text-xs space-y-1">
+            <p className="font-semibold text-success mb-1.5">Config parsed — ready to apply</p>
+            <p className="text-success">✓ Prompt: {parsed.prompt.length.toLocaleString()} chars</p>
+            <p className="text-success">✓ Variables: {parsed.variables.length} ({parsed.variables.map(v => v.name).join(', ')})</p>
+            <p className="text-success">✓ Tools: {parsed.tools.length} ({parsed.tools.map(t => t.name).join(', ')})</p>
+            {parsed.llm.model && <p className="text-success">✓ Model: {modelLabelFor(parsed.llm.provider, parsed.llm.model)} · temperature {parsed.llm.temperature}</p>}
+            {parsed.greeting && <p className="text-success">✓ Greeting: {GREETING_MODES.find(m => m.value === parsed.greeting!.mode)?.label}</p>}
           </div>
         )}
         <div className="flex gap-2 justify-end pt-1">
@@ -829,7 +829,7 @@ function ImportLogDialog({ open, onClose, agentId, onImport, transcriptionFields
             </div>
             <div className="flex-1 overflow-y-auto">
               {loading && <div className="flex items-center justify-center py-12 gap-2 text-xs text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" />Loading…</div>}
-              {!loading && error && <div className="px-4 py-3 text-xs text-red-600 dark:text-red-400">{error}</div>}
+              {!loading && error && <div className="px-4 py-3 text-xs text-destructive">{error}</div>}
               {!loading && !error && logs.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-12 gap-2 px-4 text-center">
                   <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center"><Phone className="w-4 h-4 text-muted-foreground" /></div>
@@ -839,14 +839,14 @@ function ImportLogDialog({ open, onClose, agentId, onImport, transcriptionFields
               {!loading && logs.map(log => (
                 <button key={log.id} onClick={() => handleSelectLog(log)}
                   className={cn('w-full flex items-start gap-2.5 px-4 py-3 text-left border-b border-border/60 last:border-0 transition-colors',
-                    selectedId === log.id ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-muted')}
+                    selectedId === log.id ? 'bg-primary/10' : 'hover:bg-muted')}
                 >
                   <div className={cn('w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 border',
-                    selectedId === log.id ? 'bg-blue-100 dark:bg-blue-900/40 border-blue-200 dark:border-blue-800' : 'bg-muted border-border')}>
-                    <Phone className={cn('w-3 h-3', selectedId === log.id ? 'text-blue-500 dark:text-blue-400' : 'text-muted-foreground')} />
+                    selectedId === log.id ? 'bg-primary/15 border-primary/30' : 'bg-muted border-border')}>
+                    <Phone className={cn('w-3 h-3', selectedId === log.id ? 'text-primary' : 'text-muted-foreground')} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={cn('text-xs font-medium truncate', selectedId === log.id ? 'text-blue-700 dark:text-blue-300' : 'text-foreground')}>
+                    <p className={cn('text-xs font-medium truncate', selectedId === log.id ? 'text-primary' : 'text-foreground')}>
                       {log.customer_number || 'Unknown caller'}
                     </p>
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
@@ -890,9 +890,9 @@ function ImportLogDialog({ open, onClose, agentId, onImport, transcriptionFields
 // ─── Tools sheet ──────────────────────────────────────────────────────────────
 
 const TOOL_TYPE_STYLES: Record<string, string> = {
-  custom_function:  'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800/40',
-  transfer_call:    'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800/40',
-  knowledge_search: 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800/40',
+  custom_function:  'bg-primary/10 text-primary border-primary/30',
+  transfer_call:    'bg-warning/10 text-warning border-warning/30',
+  knowledge_search: 'bg-success/10 text-success border-success/30',
 }
 
 /** The parts of a tool someone can change here — to tell an edited tool from the agent's. */
@@ -931,13 +931,13 @@ function ToolCard({ tool, onChange, readOnly, original, onReset }: Readonly<{
   return (
     <div className="rounded-lg border border-border overflow-hidden">
       <button onClick={() => setExpanded(e => !e)} className="w-full flex items-start gap-3 p-3 bg-muted/50 hover:bg-muted text-left transition-colors">
-        <Zap className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
+        <Zap className="w-3.5 h-3.5 text-warning mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-0.5">
             <span className="text-sm font-mono font-medium text-foreground">{tool.name}</span>
             <span className={cn('text-[10px] px-1.5 py-px rounded border font-medium shrink-0', typeStyle)}>{tool.type.replaceAll('_', ' ')}</span>
             {mock.enabled && <span className="text-[10px] px-1.5 py-px rounded border font-medium shrink-0 border-violet-300 text-violet-600 dark:border-violet-700 dark:text-violet-300">mocked</span>}
-            {original && toolShape(original) !== toolShape(tool) && <span className="text-[10px] px-1.5 py-px rounded border font-medium shrink-0 border-amber-300 text-amber-600 dark:border-amber-700 dark:text-amber-300">edited</span>}
+            {original && toolShape(original) !== toolShape(tool) && <span className="text-[10px] px-1.5 py-px rounded border font-medium shrink-0 border-warning/40 text-warning">edited</span>}
           </div>
           {tool.description && <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{tool.description}</p>}
         </div>
@@ -947,8 +947,8 @@ function ToolCard({ tool, onChange, readOnly, original, onReset }: Readonly<{
         <div className="border-t border-border divide-y divide-border/60">
           {!readOnly && original && toolShape(original) !== toolShape(tool) && (
             <div className="flex items-center justify-between px-3 py-2 bg-amber-50/60 dark:bg-amber-900/10">
-              <span className="text-[11px] text-amber-700 dark:text-amber-300">Changed from the agent&apos;s version</span>
-              <button className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-300 hover:underline" onClick={onReset}>
+              <span className="text-[11px] text-warning">Changed from the agent&apos;s version</span>
+              <button className="inline-flex items-center gap-1 text-[11px] font-medium text-warning hover:underline" onClick={onReset}>
                 <RotateCcw className="w-3 h-3" />Reset to agent&apos;s version
               </button>
             </div>
@@ -974,7 +974,7 @@ function ToolCard({ tool, onChange, readOnly, original, onReset }: Readonly<{
                     <input type="checkbox" checked={mock.success === false} disabled={readOnly} onChange={e => set({ mock: { ...mock, success: !e.target.checked } })} />
                     <span>Treat as a failed call</span>
                   </label>
-                  {mockInvalid && <span className="text-[11px] text-red-500">Not valid JSON — it will be sent as plain text</span>}
+                  {mockInvalid && <span className="text-[11px] text-destructive">Not valid JSON — it will be sent as plain text</span>}
                 </div>
               </>
             )}
@@ -1019,7 +1019,7 @@ function ToolCard({ tool, onChange, readOnly, original, onReset }: Readonly<{
             <div className="flex items-center justify-between mb-1.5">
               <p className={FIELD_LABEL}>Parameters</p>
               {!readOnly && (
-                <button className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline"
+                <button className="text-[11px] text-primary hover:underline"
                   onClick={() => set({ parameters: [...tool.parameters, { name: '', type: 'string', description: '', required: false }] })}>
                   + Add
                 </button>
@@ -1029,7 +1029,7 @@ function ToolCard({ tool, onChange, readOnly, original, onReset }: Readonly<{
               {tool.parameters.map((p, i) => (
                 <div key={paramKey(i)} className="rounded-md border border-border/60 p-2 space-y-1.5">
                   <div className="flex items-center gap-1.5">
-                    <input value={p.name} disabled={readOnly} placeholder="name" onChange={e => setParam(i, { name: e.target.value })} className={cn(FIELD, 'font-mono text-blue-600 dark:text-blue-400')} />
+                    <input value={p.name} disabled={readOnly} placeholder="name" onChange={e => setParam(i, { name: e.target.value })} className={cn(FIELD, 'font-mono text-primary')} />
                     <select value={p.type} disabled={readOnly} onChange={e => setParam(i, { type: e.target.value })} className={cn(FIELD, 'w-24 shrink-0')}>
                       {['string', 'number', 'integer', 'boolean'].map(t => <option key={t}>{t}</option>)}
                     </select>
@@ -1037,7 +1037,7 @@ function ToolCard({ tool, onChange, readOnly, original, onReset }: Readonly<{
                       <input type="checkbox" checked={p.required} disabled={readOnly} onChange={e => setParam(i, { required: e.target.checked })} />req
                     </label>
                     {!readOnly && (
-                      <button aria-label="Remove parameter" className="text-muted-foreground hover:text-red-500 shrink-0" onClick={() => removeParam(i)}>
+                      <button aria-label="Remove parameter" className="text-muted-foreground hover:text-destructive shrink-0" onClick={() => removeParam(i)}>
                         <X className="w-3.5 h-3.5" />
                       </button>
                     )}
@@ -1070,7 +1070,7 @@ function ToolsSheet({ open, onClose, tools, onChange, readOnly, agentTools }: Re
       <SheetContent className="w-[520px] sm:max-w-[520px] bg-card border-border overflow-y-auto">
         <SheetHeader className="pb-4">
           <SheetTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <Zap className="w-4 h-4 text-amber-500" />Tools ({tools.length})
+            <Zap className="w-4 h-4 text-warning" />Tools ({tools.length})
           </SheetTitle>
           <SheetDescription className="text-xs text-muted-foreground">
             {readOnly
@@ -1080,9 +1080,9 @@ function ToolsSheet({ open, onClose, tools, onChange, readOnly, agentTools }: Re
         </SheetHeader>
         <div className="space-y-2 mt-2">
           {!readOnly && anyEdited && (
-            <div className="flex items-center justify-between rounded-lg border border-amber-200 dark:border-amber-800/40 bg-amber-50/60 dark:bg-amber-900/10 px-3 py-2">
-              <span className="text-xs text-amber-700 dark:text-amber-300">These tools differ from the agent&apos;s.</span>
-              <button className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300 hover:underline"
+            <div className="flex items-center justify-between rounded-lg border border-warning/30 bg-amber-50/60 dark:bg-amber-900/10 px-3 py-2">
+              <span className="text-xs text-warning">These tools differ from the agent&apos;s.</span>
+              <button className="inline-flex items-center gap-1 text-xs font-medium text-warning hover:underline"
                 onClick={() => reset((agentTools ?? []).map(a => ({ ...a, id: crypto.randomUUID() })))}>
                 <RotateCcw className="w-3 h-3" />Reset all to agent&apos;s tools
               </button>
@@ -1110,11 +1110,11 @@ function ToolCallBlock({ tc }: { tc: ToolCall }) {
   const [expanded, setExpanded] = useState(false)
   if (tc.pending) {
     return (
-      <div className="mt-1.5 rounded-lg border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10 text-xs overflow-hidden">
+      <div className="mt-1.5 rounded-lg border border-warning/30 bg-warning/10 text-xs overflow-hidden">
         <div className="flex items-center gap-2 px-3 py-1.5">
-          <Loader2 className="w-3 h-3 text-amber-500 animate-spin shrink-0" />
-          <span className="font-mono font-medium text-amber-700 dark:text-amber-400 flex-1 truncate">{tc.name}</span>
-          <span className="text-[10px] text-amber-500 dark:text-amber-600">calling…</span>
+          <Loader2 className="w-3 h-3 text-warning animate-spin shrink-0" />
+          <span className="font-mono font-medium text-warning flex-1 truncate">{tc.name}</span>
+          <span className="text-[10px] text-warning">calling…</span>
         </div>
       </div>
     )
@@ -1123,7 +1123,7 @@ function ToolCallBlock({ tc }: { tc: ToolCall }) {
   return (
     <div className="mt-1.5 rounded-lg border border-border overflow-hidden text-xs bg-card">
       <button onClick={() => setExpanded(e => !e)} className="w-full flex items-center gap-2 px-3 py-1.5 bg-muted/50 hover:bg-muted text-left transition-colors">
-        <Zap className="w-3 h-3 text-amber-500 shrink-0" />
+        <Zap className="w-3 h-3 text-warning shrink-0" />
         <span className="font-mono font-medium text-foreground flex-1 truncate">{tc.name}</span>
         {tc.duration_ms != null && <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">{tc.duration_ms}ms</span>}
         <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', ok ? 'bg-green-500' : 'bg-red-500')} />
@@ -1174,7 +1174,7 @@ function VariablePanel({ variables, onChange, disabled, autoFilled = [] }: Reado
             <div key={v.name} className="flex items-center gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="text-[11px] font-mono text-blue-600 dark:text-blue-400 w-36 shrink-0 truncate cursor-default">{`{{${v.name}}}`}</span>
+                  <span className="text-[11px] font-mono text-primary w-36 shrink-0 truncate cursor-default">{`{{${v.name}}}`}</span>
                 </TooltipTrigger>
                 {v.description && <TooltipContent side="left" className="text-xs max-w-[200px]">{v.description}</TooltipContent>}
               </Tooltip>
@@ -1283,7 +1283,7 @@ function SessionNameEditor({ name, onSave }: { name: string; onSave: (v: string)
   }
 
   return (
-    <button onClick={startEdit} className="text-sm font-medium text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors truncate max-w-[200px]" title="Click to rename">
+    <button onClick={startEdit} className="text-sm font-medium text-foreground hover:text-primary transition-colors truncate max-w-[200px]" title="Click to rename">
       {name || 'Untitled session'}
     </button>
   )
@@ -1374,7 +1374,7 @@ function HeaderAction({ viewingVersion, canEdit, readOnly, onRestore, onOpenDraf
 /** Auto-save status of the draft (versions are separate — that's the Save button). */
 function DraftStatus({ state, onRetry }: Readonly<{ state: DraftState; onRetry: () => void }>) {
   if (state === 'error') {
-    return <button type="button" onClick={onRetry} className="text-[11px] text-red-500 hover:underline mr-1">{DRAFT_LABELS.error}</button>
+    return <button type="button" onClick={onRetry} className="text-[11px] text-destructive hover:underline mr-1">{DRAFT_LABELS.error}</button>
   }
   return (
     <span className="text-[11px] text-muted-foreground mr-1 flex items-center gap-1" aria-live="polite">
@@ -1456,7 +1456,7 @@ function ShareButton({ copied, version, onShare }: Readonly<{ copied: boolean; v
     <Tooltip>
       <TooltipTrigger asChild>
         <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted px-2" onClick={onShare}>
-          {copied ? <Check className="w-3 h-3 text-green-500" /> : <Link2 className="w-3 h-3" />}<span>{copied ? 'Copied' : 'Share'}</span>
+          {copied ? <Check className="w-3 h-3 text-success" /> : <Link2 className="w-3 h-3" />}<span>{copied ? 'Copied' : 'Share'}</span>
         </Button>
       </TooltipTrigger>
       <TooltipContent>{hint}</TooltipContent>
@@ -1467,14 +1467,14 @@ function ShareButton({ copied, version, onShare }: Readonly<{ copied: boolean; v
 /** Shown over the chat after a call log is imported. */
 function ImportedBanner({ meta, onClose }: Readonly<{ meta: ImportedMeta; onClose: () => void }>) {
   return (
-    <div className="shrink-0 flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800/30">
-      <Phone className="w-3 h-3 text-blue-500 dark:text-blue-400 shrink-0" />
-      <span className="text-xs text-blue-700 dark:text-blue-300 flex-1 min-w-0 truncate">
+    <div className="shrink-0 flex items-center gap-2 px-4 py-2 bg-primary/10 border-b border-primary/20">
+      <Phone className="w-3 h-3 text-primary shrink-0" />
+      <span className="text-xs text-primary flex-1 min-w-0 truncate">
         <span className="font-medium">{meta.phone}</span>
-        <span className="text-blue-500 dark:text-blue-400 ml-1.5">· {meta.date}{meta.duration && ` · ${meta.duration}`}</span>
+        <span className="text-primary ml-1.5">· {meta.date}{meta.duration && ` · ${meta.duration}`}</span>
       </span>
       <span className="text-[10px] text-blue-400 dark:text-blue-600 shrink-0">Imported · edit prompt &amp; replay</span>
-      <button onClick={onClose} aria-label="Dismiss" className="w-4 h-4 flex items-center justify-center rounded text-blue-400 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-800/30 transition-colors"><X className="w-3 h-3" /></button>
+      <button onClick={onClose} aria-label="Dismiss" className="w-4 h-4 flex items-center justify-center rounded text-blue-400 hover:text-primary hover:bg-primary/15 transition-colors"><X className="w-3 h-3" /></button>
     </div>
   )
 }
@@ -1491,7 +1491,7 @@ function MessageComposer({ inputRef, value, onChange, onSend, busy, blockedReaso
   return (
     <div className="shrink-0 px-4 pb-4 pt-3 border-t border-border/60 bg-card">
       {blockedReason && (
-        <p className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-300">
+        <p className="mb-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-1.5 text-xs text-warning">
           {blockedReason} Choose another in the model settings to test.
         </p>
       )}
@@ -1926,8 +1926,8 @@ function ForgeUI({
               </TooltipTrigger>
               <TooltipContent>Back to sessions</TooltipContent>
             </Tooltip>
-            <div className="w-6 h-6 rounded-md bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
-              <FlaskConical className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+            <div className="w-6 h-6 rounded-md bg-primary/15 flex items-center justify-center shrink-0">
+              <FlaskConical className="w-3.5 h-3.5 text-primary" />
             </div>
             <span className="text-sm font-semibold text-foreground shrink-0">Prompt Forge</span>
             {agentName && <><ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" /><span className="text-sm text-muted-foreground shrink-0 hidden sm:block truncate max-w-[120px]">{agentName}</span></>}
@@ -1943,7 +1943,7 @@ function ForgeUI({
             {backendDown && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-xs mr-1 cursor-default">
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-warning/10 text-warning text-xs mr-1 cursor-default">
                     <WifiOff className="w-3 h-3" /><span>Backend offline</span>
                   </div>
                 </TooltipTrigger>
@@ -2003,7 +2003,7 @@ function ForgeUI({
 
         {/* Read-only: a saved version, or someone else's session */}
         {readOnly && (
-          <div className="shrink-0 flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/15 border-b border-amber-100 dark:border-amber-800/30 text-xs text-amber-800 dark:text-amber-300">
+          <div className="shrink-0 flex items-center gap-2 px-4 py-2 bg-warning/10 border-b border-warning/20 text-xs text-warning">
             <Eye className="w-3.5 h-3.5 shrink-0" />
             <span className="flex-1 min-w-0 truncate">
               <ReadOnlyNotice viewingVersion={viewingVersion} canEdit={canEdit} ownerEmail={ownerEmail} />
@@ -2014,7 +2014,7 @@ function ForgeUI({
           </div>
         )}
         {saveError && (
-          <div className="shrink-0 flex items-center gap-2 px-4 py-1.5 bg-red-50 dark:bg-red-900/15 border-b border-red-100 dark:border-red-800/30 text-xs text-red-700 dark:text-red-300">
+          <div className="shrink-0 flex items-center gap-2 px-4 py-1.5 bg-destructive/10 border-b border-destructive/20 text-xs text-destructive">
             <span className="flex-1">{saveError}</span>
             <button onClick={() => setSaveError(null)}><X className="w-3 h-3" /></button>
           </div>
@@ -2038,7 +2038,7 @@ function ForgeUI({
                     <TooltipContent>Model settings</TooltipContent>
                   </Tooltip>
                   <button onClick={handleCopy} className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors rounded px-1.5 py-0.5 hover:bg-muted">
-                    {copied ? <><Check className="w-3 h-3 text-green-500" /><span className="text-green-500">Copied</span></> : <><Copy className="w-3 h-3" />Copy</>}
+                    {copied ? <><Check className="w-3 h-3 text-success" /><span className="text-success">Copied</span></> : <><Copy className="w-3 h-3" />Copy</>}
                   </button>
                 </div>
               </div>
@@ -2286,8 +2286,8 @@ function MessageBubble({ message, onReplay }: { message: Message; onReplay?: () 
     return (
       <div className="flex gap-3 items-center py-1">
         <div className="relative w-6 h-6 shrink-0">
-          <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800/60 flex items-center justify-center">
-            <Bot className="w-3 h-3 text-blue-500 dark:text-blue-400" />
+          <div className="w-6 h-6 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center">
+            <Bot className="w-3 h-3 text-primary" />
           </div>
           <span className="absolute inset-[-3px] rounded-full border border-blue-400/40 dark:border-blue-500/30 animate-ping" />
         </div>
@@ -2315,7 +2315,7 @@ function MessageBubble({ message, onReplay }: { message: Message; onReplay?: () 
   return (
     <div className={cn('group flex gap-2 items-start', isUser && 'flex-row-reverse')}>
       <div className={cn('w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold mt-1',
-        isUser ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900' : 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/60')}>
+        isUser ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900' : 'bg-primary/15 text-primary border border-primary/30')}>
         {isUser ? 'U' : <Bot className="w-3 h-3" />}
       </div>
       <div className={cn('flex flex-col min-w-0', isUser ? 'items-end' : 'items-start')} style={{ maxWidth: '80%' }}>

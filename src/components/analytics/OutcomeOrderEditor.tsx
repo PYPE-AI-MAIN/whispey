@@ -177,7 +177,7 @@ export function OutcomeOrderEditor({
               </span>
             </div>
 
-            {error && <p className="text-xs text-red-600">{error}</p>}
+            {error && <p className="text-xs text-destructive">{error}</p>}
 
             <div className="flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={onClose}>
@@ -211,7 +211,7 @@ function OutcomeRow({ value, rank, isBest, isWorst }: Readonly<{ value: string; 
       </button>
       <span className="w-5 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{rank}</span>
       <span className="min-w-0 flex-1 truncate">{value}</span>
-      {isBest && <span className="shrink-0 text-[11px] text-green-600 dark:text-green-500">best</span>}
+      {isBest && <span className="shrink-0 text-[11px] text-success">best</span>}
       {isWorst && !isBest && <span className="shrink-0 text-[11px] text-muted-foreground">worst</span>}
     </div>
   )

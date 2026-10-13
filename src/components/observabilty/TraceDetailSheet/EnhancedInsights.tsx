@@ -170,10 +170,10 @@ function EnhancedInsights({
             })}
           
           {/* Simple total with formula */}
-          <div className="p-3 bg-card rounded border-2 border-blue-200 dark:border-blue-700 font-medium mt-4">
+          <div className="p-3 bg-card rounded border-2 border-primary/30 font-medium mt-4">
             <div className="flex justify-between items-center">
               <span className="text-foreground">Total Pipeline Duration:</span>
-              <span className="font-mono text-lg text-blue-600 dark:text-blue-400">{formatDuration(actualPipelineDuration)}</span>
+              <span className="font-mono text-lg text-primary">{formatDuration(actualPipelineDuration)}</span>
             </div>
             
             {/* Show the calculation formula */}

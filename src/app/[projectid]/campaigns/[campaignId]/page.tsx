@@ -615,13 +615,13 @@ function ViewCampaign() {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'completed':
-        return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+        return 'bg-success/15 text-success'
       case 'failed':
-        return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+        return 'bg-destructive/15 text-destructive'
       case 'pending':
-        return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+        return 'bg-warning/15 text-warning'
       case 'in_progress':
-        return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+        return 'bg-primary/15 text-primary'
       default:
         return 'bg-muted text-foreground'
     }
@@ -650,7 +650,7 @@ function ViewCampaign() {
         {/* Loading State */}
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-3" />
+            <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">Loading campaign...</p>
           </div>
         </div>
@@ -743,7 +743,7 @@ function ViewCampaign() {
             <button
               onClick={handleDownloadContacts}
               disabled={isDownloading || logs.length === 0}
-              className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-green-700 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-success hover:text-success disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isDownloading ? (
                 <>
@@ -778,7 +778,7 @@ function ViewCampaign() {
   if (loadingLogs && logs.length === 0) {
     logsSection = (
       <div className="p-4 sm:p-8 text-center">
-        <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-2" />
+        <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto mb-2" />
         <p className="text-sm text-muted-foreground">Loading logs...</p>
       </div>
     )
@@ -980,7 +980,7 @@ function ViewCampaign() {
                 <Phone className="w-4 h-4 text-green-400" />
                 <span className="text-xs font-medium text-muted-foreground">Success</span>
               </div>
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+              <p className="text-2xl font-bold text-success">
                 {campaignDetails.callStats?.completed ?? campaignDetails.successCalls}
               </p>
             </div>
@@ -990,7 +990,7 @@ function ViewCampaign() {
                 <Phone className="w-4 h-4 text-red-400" />
                 <span className="text-xs font-medium text-muted-foreground">Failed</span>
               </div>
-              <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+              <p className="text-2xl font-bold text-destructive">
                 {campaignDetails.callStats?.failed ?? campaignDetails.failedCalls}
               </p>
             </div>
@@ -1000,7 +1000,7 @@ function ViewCampaign() {
                 <Phone className="w-4 h-4 text-blue-400" />
                 <span className="text-xs font-medium text-muted-foreground">Pending</span>
               </div>
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              <p className="text-2xl font-bold text-primary">
                 {campaignDetails.callStats?.pending ?? 0}
               </p>
             </div>

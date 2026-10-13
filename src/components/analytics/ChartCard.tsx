@@ -195,7 +195,7 @@ export function ChartCard({
                 <DropdownMenuItem onClick={onDuplicate}>
                   <Copy className="mr-2 h-3.5 w-3.5" /> Duplicate
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={onRemove} className="text-red-600 focus:text-red-600">
+                <DropdownMenuItem onClick={onRemove} className="text-destructive focus:text-destructive">
                   <Trash2 className="mr-2 h-3.5 w-3.5" /> Remove
                 </DropdownMenuItem>
               </>
@@ -289,7 +289,7 @@ function State({ icon, text, tone = 'warn' }: Readonly<{ icon?: React.ReactNode;
       {/* only the icon carries the warning color — a whole card in solid
           amber (icon and text both) reads as loud, especially with several
           cards failing at once; the icon alone is enough of a signal */}
-      {icon && <span className={tone === 'warn' ? 'text-amber-500 dark:text-amber-400' : 'text-muted-foreground'}>{icon}</span>}
+      {icon && <span className={tone === 'warn' ? 'text-warning' : 'text-muted-foreground'}>{icon}</span>}
       <span className="leading-snug">{text}</span>
     </div>
   )

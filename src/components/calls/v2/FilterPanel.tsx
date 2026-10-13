@@ -200,7 +200,7 @@ export function FilterPanel({ activeFilters, distinctConfig, onApply, metadataFi
                     onClick={() => togglePin(row)}
                     disabled={!row.column}
                     title={isPinned ? "Unpin from Quick add" : "Pin this field to Quick add"}
-                    className="grid h-6 w-6 shrink-0 place-items-center rounded text-muted-foreground hover:text-amber-500 disabled:opacity-30"
+                    className="grid h-6 w-6 shrink-0 place-items-center rounded text-muted-foreground hover:text-warning disabled:opacity-30"
                   >
                     <Star className={cn("h-3.5 w-3.5", isPinned && "fill-amber-400 text-amber-400")} />
                   </button>
@@ -209,7 +209,7 @@ export function FilterPanel({ activeFilters, distinctConfig, onApply, metadataFi
             })
           )}
           <div className="flex gap-4 pt-1">
-            <button type="button" onClick={() => addRow()} className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400">
+            <button type="button" onClick={() => addRow()} className="flex items-center gap-1.5 text-xs text-primary hover:text-primary">
               <Plus className="h-3.5 w-3.5" />
               Add filter
             </button>
@@ -217,7 +217,7 @@ export function FilterPanel({ activeFilters, distinctConfig, onApply, metadataFi
               type="button"
               onClick={() => addRow({ type: "distinct" })}
               title="Keep one call per value, e.g. the latest call per customer"
-              className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400"
+              className="text-xs text-primary hover:text-primary"
             >
               + Unique by…
             </button>
@@ -225,7 +225,7 @@ export function FilterPanel({ activeFilters, distinctConfig, onApply, metadataFi
         </div>
 
         <div className="flex items-center justify-between border-t border-[var(--cl-border2)] px-4 py-2.5">
-          <button type="button" onClick={clearAll} className="text-xs text-muted-foreground hover:text-red-500">
+          <button type="button" onClick={clearAll} className="text-xs text-muted-foreground hover:text-destructive">
             Clear all
           </button>
           <div className="flex items-center gap-2">

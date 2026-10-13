@@ -136,8 +136,8 @@ function ExperienceChooser({ isMobile, onSelect }: Readonly<{ isMobile: boolean;
   return (
     <div className="bg-card rounded-xl border border-border shadow-sm">
       <div className={`text-center py-6 ${isMobile ? 'px-4' : 'px-6'}`}>
-        <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center mx-auto mb-4">
-          <Eye className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+        <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+          <Eye className="h-6 w-6 text-primary" />
         </div>
         <h2 className={`font-semibold text-foreground mb-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
           Start Monitoring Your Voice Agents
@@ -152,14 +152,14 @@ function ExperienceChooser({ isMobile, onSelect }: Readonly<{ isMobile: boolean;
             onClick={() => onSelect('beginner')}
             className="group w-full text-left appearance-none bg-transparent p-4 border-2 border-border rounded-xl hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 cursor-pointer transition-all"
           >
-            <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center mx-auto mb-3">
-              <Terminal className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <div className="w-8 h-8 bg-primary/15 rounded-lg flex items-center justify-center mx-auto mb-3">
+              <Terminal className="h-4 w-4 text-primary" />
             </div>
             <h3 className="text-sm font-semibold text-foreground mb-2">New to LiveKit?</h3>
             <p className="text-muted-foreground mb-3 text-xs leading-relaxed">
               Complete walkthrough from installation to your first monitored voice agent
             </p>
-            <div className="inline-flex items-center text-blue-600 dark:text-blue-400 font-medium text-xs">
+            <div className="inline-flex items-center text-primary font-medium text-xs">
               Complete Tutorial
               <ChevronDown className="ml-1 h-3 w-3 rotate-[-90deg]" />
             </div>
@@ -170,14 +170,14 @@ function ExperienceChooser({ isMobile, onSelect }: Readonly<{ isMobile: boolean;
             onClick={() => onSelect('experienced')}
             className="group w-full text-left appearance-none bg-transparent p-4 border-2 border-border rounded-xl hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50/50 dark:hover:bg-green-900/10 cursor-pointer transition-all"
           >
-            <div className="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mx-auto mb-3">
-              <Play className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <div className="w-8 h-8 bg-success/15 rounded-lg flex items-center justify-center mx-auto mb-3">
+              <Play className="h-4 w-4 text-success" />
             </div>
             <h3 className="text-sm font-semibold text-foreground mb-2">Have Existing Agents?</h3>
             <p className="text-muted-foreground mb-3 text-xs leading-relaxed">
               Quick integration guide to add monitoring to your current setup
             </p>
-            <div className="inline-flex items-center text-green-600 dark:text-green-400 font-medium text-xs">
+            <div className="inline-flex items-center text-success font-medium text-xs">
               Quick Integration
               <ChevronDown className="ml-1 h-3 w-3 rotate-[-90deg]" />
             </div>
@@ -203,7 +203,7 @@ function TutorialHeader({ isMobile, title, subtitle, onBack }: Readonly<{ isMobi
           href="https://youtu.be/1POj8h99xnE"
           target="_blank"
           rel="noopener noreferrer"
-          className={`inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 px-2 py-1.5 rounded-lg transition-all ${isMobile ? 'w-full justify-center' : ''}`}
+          className={`inline-flex items-center gap-1 text-xs text-destructive hover:text-destructive bg-destructive/10 hover:bg-destructive/15 px-2 py-1.5 rounded-lg transition-all ${isMobile ? 'w-full justify-center' : ''}`}
         >
           <Play className="w-3 h-3" />
           Video tutorial
@@ -251,16 +251,16 @@ function BeginnerTutorial({
 
         {/* Important Notice - More compact on mobile */}
         {!noticeDismissed && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4 relative">
+          <div className="bg-primary/10 border border-primary/30 rounded-lg p-3 mb-4 relative">
             <button
               onClick={onDismissNotice}
-              className="absolute top-2 right-2 text-blue-400 dark:text-blue-500 hover:text-blue-600 dark:hover:text-blue-400"
+              className="absolute top-2 right-2 text-blue-400 dark:text-blue-500 hover:text-primary"
             >
               <X className="w-3 h-3" />
             </button>
             <div className="flex items-start gap-2 pr-6">
-              <Eye className="w-3 h-3 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-blue-700 dark:text-blue-300">
+              <Eye className="w-3 h-3 text-primary flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-primary">
                 The <strong>agent_id</strong> will be provided after you create monitoring below.
               </p>
             </div>
@@ -279,7 +279,7 @@ function BeginnerTutorial({
                   <p>• Python 3.8+ installed</p>
                   <p>• OpenAI/LLM API keys</p>
                   <p>• TTS service credentials</p>
-                  <p className="text-red-600 dark:text-red-400 font-medium">• Your Whispey Project API key</p>
+                  <p className="text-destructive font-medium">• Your Whispey Project API key</p>
                 </div>
               ) : (
                 <ul className="space-y-1 text-sm text-muted-foreground">
@@ -297,7 +297,7 @@ function BeginnerTutorial({
                   </li>
                   <li className="flex items-start gap-1.5">
                     <div className="w-1 h-1 bg-red-500 dark:bg-red-400 rounded-full mt-2 flex-shrink-0"></div>
-                    <span className="text-red-700 dark:text-red-400 font-medium">Your Whispey Project API key</span>
+                    <span className="text-destructive font-medium">Your Whispey Project API key</span>
                   </li>
                 </ul>
               )}
@@ -343,7 +343,7 @@ pip install livekit-plugins-silero`}
                 {isMobile && (
                   <button
                     onClick={onToggleExample}
-                    className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400"
+                    className="flex items-center gap-1 text-xs text-primary"
                   >
                     {expandedExample ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                     {expandedExample ? 'Hide' : 'Show'} Code

@@ -80,9 +80,9 @@ export function FilterBar({
 
 export function Chip({ label, onRemove }: Readonly<{ label: string; onRemove: () => void }>) {
   return (
-    <span className="inline-flex max-w-xs items-center gap-1 rounded-full bg-blue-50 py-0.5 pl-2.5 pr-1 text-xs text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
+    <span className="inline-flex max-w-xs items-center gap-1 rounded-full bg-primary/10 py-0.5 pl-2.5 pr-1 text-xs text-primary">
       <span className="truncate">{label}</span>
-      <button onClick={onRemove} aria-label={`Remove filter ${label}`} className="rounded-full p-0.5 hover:bg-blue-100 dark:hover:bg-blue-900">
+      <button onClick={onRemove} aria-label={`Remove filter ${label}`} className="rounded-full p-0.5 hover:bg-primary/15">
         <X className="h-3 w-3" />
       </button>
     </span>

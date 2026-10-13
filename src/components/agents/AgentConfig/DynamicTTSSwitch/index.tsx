@@ -297,7 +297,7 @@ const DynamicTTSSwitch: React.FC<Readonly<DynamicTTSSwitchProps>> = ({
                     variant="ghost"
                     size="sm"
                     onClick={() => handleDelete(index)}
-                    className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                    className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
@@ -321,7 +321,7 @@ const DynamicTTSSwitch: React.FC<Readonly<DynamicTTSSwitchProps>> = ({
               {/* Tool Name */}
               <div className="space-y-2">
                 <Label htmlFor="tool-name" className="text-sm font-medium text-foreground">
-                  Tool Name <span className="text-red-500">*</span>
+                  Tool Name <span className="text-destructive">*</span>
                 </Label>
                 <input
                   id="tool-name"
@@ -333,7 +333,7 @@ const DynamicTTSSwitch: React.FC<Readonly<DynamicTTSSwitchProps>> = ({
                   className={`w-full px-3 py-2 text-sm border rounded-md bg-card text-foreground placeholder:text-muted-foreground ${toolNameError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                 />
                 {toolNameError
-                  ? <p className="text-xs text-red-500">{toolNameError}</p>
+                  ? <p className="text-xs text-destructive">{toolNameError}</p>
                   : <p className="text-xs text-muted-foreground">Unique identifier for this TTS switch (used as tool name)</p>
                 }
               </div>
@@ -341,7 +341,7 @@ const DynamicTTSSwitch: React.FC<Readonly<DynamicTTSSwitchProps>> = ({
               {/* When to Switch - Description */}
               <div className="space-y-2">
                 <Label htmlFor="description" className="text-sm font-medium text-foreground">
-                  When to Switch <span className="text-red-500">*</span>
+                  When to Switch <span className="text-destructive">*</span>
                 </Label>
                 <Textarea
                   id="description"
@@ -358,7 +358,7 @@ const DynamicTTSSwitch: React.FC<Readonly<DynamicTTSSwitchProps>> = ({
               {/* TTS Configuration */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-foreground">
-                  TTS Configuration <span className="text-red-500">*</span>
+                  TTS Configuration <span className="text-destructive">*</span>
                 </Label>
                 <div className="border border-border rounded-lg p-4">
                   <SelectTTS

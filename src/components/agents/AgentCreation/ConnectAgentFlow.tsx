@@ -356,7 +356,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
     return (
       <div className="px-6 py-8 text-center">
         <div className="w-16 h-16 mx-auto mb-4 bg-linear-to-br from-blue-50 to-teal-50 dark:from-blue-900/20 dark:to-teal-900/20 rounded-2xl flex items-center justify-center border border-border/60">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
         <h3 className="text-lg font-semibold text-foreground mb-2">
           {currentStep === 'creating' ? 'Setting Up Monitoring' : 'Connecting Monitoring'}
@@ -370,8 +370,8 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
             <div className={`flex items-center gap-3 text-sm ${currentStep === 'creating' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
               <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
                 currentStep === 'creating'
-                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                  : 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                  ? 'bg-blue-100 dark:bg-blue-900/30 text-primary dark:text-blue-400'
+                  : 'bg-green-100 dark:bg-green-900/30 text-success dark:text-green-400'
               }`}>
                 {currentStep === 'creating' ? <Loader2 className="w-3 h-3 animate-spin" /> : '✓'}
               </div>
@@ -380,7 +380,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
             <div className={`flex items-center gap-3 text-sm ${currentStep === 'connecting' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-600'}`}>
               <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
                 currentStep === 'connecting'
-                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                  ? 'bg-blue-100 dark:bg-blue-900/30 text-primary dark:text-blue-400'
                   : 'bg-muted text-muted-foreground'
               }`}>
                 {currentStep === 'connecting' ? <Loader2 className="w-3 h-3 animate-spin" /> : '2'}
@@ -403,8 +403,8 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
     return (
       <>
         <DialogHeader className="px-6 pt-6 pb-4 text-center border-b border-border/60">
-          <div className="w-12 h-12 mx-auto mb-3 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-            <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
+          <div className="w-12 h-12 mx-auto mb-3 bg-success/15 rounded-full flex items-center justify-center">
+            <CheckCircle className="w-6 h-6 text-success" />
           </div>
           <DialogTitle className="text-lg font-semibold text-foreground mb-1">
             Monitoring Setup Complete!
@@ -417,7 +417,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
         <div className="px-6 py-5 space-y-4">
           <div className="p-4 bg-muted/50 rounded-lg border border-border">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
                 <Eye className="w-5 h-5 text-teal-600 dark:text-teal-400" />
               </div>
               <div className="flex-1 min-w-0">
@@ -437,13 +437,13 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
             {(selectedPlatform === 'vapi' || selectedPlatform === 'retell') && webhookSetupStatus && (
               <div className={`p-3 rounded-lg border mb-3 ${
                 webhookSetupStatus.success
-                  ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-                  : 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800'
+                  ? 'bg-green-50 dark:bg-green-900/20 border-success/30 dark:border-green-800'
+                  : 'bg-orange-50 dark:bg-orange-900/20 border-warning/30 dark:border-orange-800'
               }`}>
                 <div className="flex items-center gap-2">
                   {webhookSetupStatus.success
-                    ? <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
-                    : <LinkIcon className="w-4 h-4 text-orange-600 dark:text-orange-400" />}
+                    ? <CheckCircle className="w-4 h-4 text-success" />
+                    : <LinkIcon className="w-4 h-4 text-warning" />}
                   <span className={`text-sm font-medium ${webhookSetupStatus.success ? 'text-green-800 dark:text-green-200' : 'text-orange-800 dark:text-orange-200'}`}>
                     {webhookSetupStatus.success ? 'Monitoring Active' : 'Manual Setup Required'}
                   </span>
@@ -465,7 +465,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
                 </Button>
               </div>
             </div>
-            {copiedId && <p className="text-xs text-green-600 dark:text-green-400 text-right mt-1">Copied to clipboard</p>}
+            {copiedId && <p className="text-xs text-success text-right mt-1">Copied to clipboard</p>}
           </div>
 
           <div className="flex gap-3 pt-2">
@@ -482,8 +482,8 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
 
   // ── Form ────────────────────────────────────────────────────────────────────
   const platformAccentClass = {
-    livekit: { border: 'border-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20', icon: 'bg-blue-600 text-white', section: '', button: 'bg-blue-600 hover:bg-blue-700' },
-    pipecat: { border: 'border-orange-500', bg: 'bg-orange-50 dark:bg-orange-900/20', icon: 'bg-orange-600 text-white', section: '', button: 'bg-orange-600 hover:bg-orange-700' },
+    livekit: { border: 'border-blue-500', bg: 'bg-primary/10', icon: 'bg-blue-600 text-white', section: '', button: 'bg-blue-600 hover:bg-blue-700' },
+    pipecat: { border: 'border-orange-500', bg: 'bg-warning/10', icon: 'bg-orange-600 text-white', section: '', button: 'bg-orange-600 hover:bg-orange-700' },
     vapi:    { border: 'border-teal-500', bg: 'bg-teal-50 dark:bg-teal-900/20', icon: 'bg-teal-600 text-white', section: 'bg-teal-50/50 dark:bg-teal-900/10 px-4 py-4 rounded-lg border border-teal-100 dark:border-teal-800', button: 'bg-teal-600 hover:bg-teal-700' },
     retell:  { border: 'border-purple-500', bg: 'bg-purple-50 dark:bg-purple-900/20', icon: 'bg-purple-600 text-white', section: 'bg-purple-50/50 dark:bg-purple-900/10 px-4 py-4 rounded-lg border border-purple-100 dark:border-purple-800', button: 'bg-purple-600 hover:bg-purple-700' },
   }
@@ -642,7 +642,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
                   <div ref={assistantSectionRef} className="space-y-2 bg-card/60 rounded-lg p-4 border border-teal-200 dark:border-teal-800 -mx-2">
                     <label className="block text-sm font-medium text-foreground">
                       Select Assistant to Monitor
-                      <Badge variant="outline" className="ml-2 text-xs bg-green-50 text-green-700 border-green-200">
+                      <Badge variant="outline" className="ml-2 text-xs bg-success/10 text-success border-success/30">
                         {vapiData.availableAssistants.length} found
                       </Badge>
                     </label>
@@ -725,7 +725,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
                   <div ref={assistantSectionRef} className="space-y-2 bg-card/60 rounded-lg p-4 border border-purple-200 dark:border-purple-800 -mx-2">
                     <label className="block text-sm font-medium text-foreground">
                       Select Agent to Monitor
-                      <Badge variant="outline" className="ml-2 text-xs bg-green-50 text-green-700 border-green-200">
+                      <Badge variant="outline" className="ml-2 text-xs bg-success/10 text-success border-success/30">
                         {retellData.availableAgents.length} found
                       </Badge>
                     </label>
@@ -764,7 +764,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
           </div>
 
           {error && (
-            <Alert variant="destructive" className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
+            <Alert variant="destructive" className="border-destructive/30 bg-destructive/10">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>

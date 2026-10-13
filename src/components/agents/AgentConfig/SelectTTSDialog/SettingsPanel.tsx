@@ -68,7 +68,7 @@ const CopyButton = ({ text, className = '' }: { text: string; className?: string
   return (
     <Button variant="ghost" size="sm" onClick={handleCopy} className={`w-7 h-7 p-0 ${className}`}>
       {copied
-        ? <Check className="w-3.5 h-3.5 text-green-600" />
+        ? <Check className="w-3.5 h-3.5 text-success" />
         : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
     </Button>
   )
@@ -98,7 +98,7 @@ const languageDisplayMap: Record<string, string> = {
 }
 
 const NotAppliedBadge = () => (
-  <span className="text-xs text-amber-500 dark:text-amber-400">not applied for this model</span>
+  <span className="text-xs text-warning">not applied for this model</span>
 )
 
 // Kept as-is for the providers that already shipped; newer providers take the registry label.

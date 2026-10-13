@@ -33,7 +33,7 @@ export default function PipecatConfigPage() {
   const pipecatAgentId = agent?.configuration?.pipecat_agent_id
 
   if (!pipecatAgentId) {
-    return <div className="p-6 text-red-500">Pipecat agent ID not found in configuration.</div>
+    return <div className="p-6 text-destructive">Pipecat agent ID not found in configuration.</div>
   }
 
   return (

@@ -165,7 +165,7 @@ export default function SimplifiedSipManagement() {
       <div className="flex flex-col h-screen bg-muted/50">
         <div className="flex items-center justify-center flex-1">
           <div className="flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-blue-600 dark:text-blue-400" />
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
             <span className="text-sm text-muted-foreground">Loading Phone Settings...</span>
           </div>
         </div>
@@ -179,8 +179,8 @@ export default function SimplifiedSipManagement() {
       <div className="px-6 py-4 border-border bg-background border-b">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
-              <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <div className="w-8 h-8 bg-primary/15 rounded-lg flex items-center justify-center">
+              <Phone className="w-4 h-4 text-primary" />
             </div>
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-foreground">Phone Settings</h1>
@@ -204,11 +204,11 @@ export default function SimplifiedSipManagement() {
 
       {/* Alert Messages */}
       {error && (
-        <div className="mx-4 mt-3 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-xs">
+        <div className="mx-4 mt-3 p-2 bg-destructive/10 border border-destructive/30 rounded text-xs">
           <div className="flex items-center gap-2">
-            <AlertCircle className="h-3 w-3 text-red-600 dark:text-red-400 flex-shrink-0" />
-            <span className="text-red-800 dark:text-red-400 flex-1">{error}</span>
-            <Button variant="ghost" size="sm" onClick={() => setError('')} className="h-4 w-4 p-0 text-red-400 hover:text-red-600">
+            <AlertCircle className="h-3 w-3 text-destructive flex-shrink-0" />
+            <span className="text-destructive flex-1">{error}</span>
+            <Button variant="ghost" size="sm" onClick={() => setError('')} className="h-4 w-4 p-0 text-red-400 hover:text-destructive">
               <X className="h-3 w-3" />
             </Button>
           </div>
@@ -216,11 +216,11 @@ export default function SimplifiedSipManagement() {
       )}
 
       {success && (
-        <div className="mx-4 mt-3 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded text-xs">
+        <div className="mx-4 mt-3 p-2 bg-success/10 border border-success/30 rounded text-xs">
           <div className="flex items-center gap-2">
-            <CheckCircle className="h-3 w-3 text-green-600 dark:text-green-400 flex-shrink-0" />
-            <span className="text-green-800 dark:text-green-400 flex-1">{success}</span>
-            <Button variant="ghost" size="sm" onClick={() => setSuccess('')} className="h-4 w-4 p-0 text-green-400 hover:text-green-600">
+            <CheckCircle className="h-3 w-3 text-success flex-shrink-0" />
+            <span className="text-success flex-1">{success}</span>
+            <Button variant="ghost" size="sm" onClick={() => setSuccess('')} className="h-4 w-4 p-0 text-green-400 hover:text-success">
               <X className="h-3 w-3" />
             </Button>
           </div>
@@ -244,8 +244,8 @@ export default function SimplifiedSipManagement() {
       <div className="flex-1 overflow-auto bg-card">
       {filteredAgents.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-full text-center p-8">
-          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-3">
-            <Phone className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          <div className="w-12 h-12 bg-primary/15 rounded-full flex items-center justify-center mb-3">
+            <Phone className="w-6 h-6 text-primary" />
           </div>
           <h3 className="text-sm font-medium text-foreground mb-1">
             {searchQuery ? 'No phone numbers match your search' : 'No agents created yet'}
@@ -305,7 +305,7 @@ export default function SimplifiedSipManagement() {
                         <div className="text-[11px] font-medium text-muted-foreground sm:hidden">Assigned Agent Name</div>
                         {phoneAgent.name ? (
                           <div className="flex items-center gap-2">
-                            <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                            <Bot className="w-4 h-4 text-primary flex-shrink-0" />
                             <span className="text-sm text-foreground truncate max-w-[200px]" title={displayNameFor(phoneAgent)}>
                               {displayNameFor(phoneAgent)}
                             </span>

@@ -93,7 +93,7 @@ export default function PipecatKnowledgeBase({ pipecatAgentId }: PipecatKnowledg
           Documents {documents.length > 0 && `(${documents.length})`}
         </h3>
 
-        {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
+        {error && <p className="text-xs text-destructive mb-2">{error}</p>}
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
