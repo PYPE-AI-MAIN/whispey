@@ -385,7 +385,7 @@ export function WorkflowChat({
         <div
           className={`pointer-events-auto w-[min(440px,100%)] ${
             collapsed ? '' : 'max-h-[60vh]'
-          } bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden`}
+          } bg-card  border border-border  rounded-2xl shadow-2xl flex flex-col overflow-hidden`}
         >
           {/* Header — the subtitle IS the "already loaded" answer: what's already
               built, right where you'd look for it, instead of a separate card

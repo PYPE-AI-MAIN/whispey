@@ -99,7 +99,7 @@ export function RecipientsPreview({ csvData, dncBlocked }: Readonly<RecipientsPr
                   {headers.map((header) => (
                     <td
                       key={header}
-                      className={`px-4 py-3 text-xs border-r border-gray-200 dark:border-gray-700 last:border-r-0 ${
+                      className={`px-4 py-3 text-xs border-r border-border  last:border-r-0 ${
                         isBlocked ? 'text-red-700 dark:text-red-300' : 'text-foreground'
                       } ${
                         header.toLowerCase().includes('phone') ? 'font-mono' : ''

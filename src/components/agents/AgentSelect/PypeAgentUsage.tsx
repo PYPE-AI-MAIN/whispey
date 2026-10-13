@@ -31,7 +31,7 @@ function UsageDetails({
   return (
     <>
           {/* Header */}
-          <div className={`px-4 py-3 border-b border-gray-200 dark:border-gray-800 ${
+          <div className={`px-4 py-3 border-b border-border  ${
             hasReachedLimit 
               ? 'bg-red-50 dark:bg-red-900/20' 
               : 'bg-blue-50 dark:bg-blue-900/20'
@@ -114,7 +114,7 @@ const PypeAgentUsage: React.FC<PypeAgentUsageProps> = ({ projectId }) => {
       <div
         className={`
           flex items-center gap-2 px-3 py-1.5 rounded-lg
-          bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700
+          bg-muted  border border-border 
           animate-pulse
           ${isMobile ? 'text-xs' : 'text-sm'}
         `}

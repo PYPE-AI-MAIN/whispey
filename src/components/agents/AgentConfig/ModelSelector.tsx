@@ -106,7 +106,7 @@ function ProviderModelItems({
   onSelect: (providerKey: string, model: string) => void
 }>) {
   const itemClass = (modelValue: string, extra: string) =>
-    `flex items-center justify-between ${extra} text-gray-900 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800 focus:bg-gray-50 dark:focus:bg-slate-800 ${
+    `flex items-center justify-between ${extra} text-foreground  hover:bg-muted/50  focus:bg-muted/50  ${
       selectedProvider === providerKey && selectedModel === modelValue
         ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
         : ''
@@ -430,7 +430,7 @@ const getFlattenedMenuItems = () => {
                 {getDisplayText()}
               </span>
             </div>
-            <ChevronDown className={`ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4 shrink-0 transition-transform text-gray-400 dark:text-slate-500 ${isOpen ? 'rotate-180' : ''} ${
+            <ChevronDown className={`ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4 shrink-0 transition-transform text-muted-foreground  ${isOpen ? 'rotate-180' : ''} ${
               DISABLE_SETTINGS ? 'opacity-50' : ''
             }`} />
           </Button>
@@ -532,7 +532,7 @@ const getFlattenedMenuItems = () => {
               if (provider.type === 'direct' || provider.type === 'grouped') {
                 return (
                   <DropdownMenuSub key={providerKey}>
-                    <DropdownMenuSubTrigger className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-gray-900 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-gray-800 focus:bg-gray-50 dark:focus:bg-gray-800 ${
+                    <DropdownMenuSubTrigger className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-foreground  hover:bg-muted/50  focus:bg-muted/50  ${
                       DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : ''
                     }`}>
                       <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full ${provider.color} flex items-center justify-center text-white flex-shrink-0`}>
@@ -575,7 +575,7 @@ const getFlattenedMenuItems = () => {
                   <DropdownMenuItem
                     key={providerKey}
                     onClick={() => handleProviderSelect(providerKey)}
-                    className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-gray-900 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800 focus:bg-gray-50 dark:focus:bg-slate-800 ${
+                    className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-foreground  hover:bg-muted/50  focus:bg-muted/50  ${
                       DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                   >

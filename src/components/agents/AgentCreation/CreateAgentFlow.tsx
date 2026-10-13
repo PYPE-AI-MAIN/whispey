@@ -576,7 +576,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
                 autoComplete="off"
                 maxLength={AGENT_DISPLAY_NAME_MAX}
                 onChange={(e) => handleNameChange(e.target.value)}
-                className={`h-10 px-3 text-sm border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-lg focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 focus:outline-none transition-all ${
+                className={`h-10 px-3 text-sm border-border  bg-card  rounded-lg focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 focus:outline-none transition-all ${
                   nameError ? 'border-red-500 dark:border-red-500 focus:border-red-500 dark:focus:border-red-500 focus:ring-red-500/20 dark:focus:ring-red-500/20' : ''
                 }`}
               />

@@ -621,7 +621,7 @@ export default function Sidebar({
       <aside className={`
         ${isMobile ? 'fixed left-0 top-0 h-full w-64' : 'relative'}
         ${!isMobile && isCollapsed ? 'w-16 h-full' : 'w-64 h-full'}
-        bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 
+        bg-card  border-r border-border  
         flex flex-col transition-all duration-300 ease-in-out z-50
         ${isMobile ? 'shadow-lg' : ''}
       `}>
@@ -704,7 +704,7 @@ export default function Sidebar({
                 variant="ghost"
                 size="sm"
                 onClick={onToggleCollapse}
-                className={`p-2 hover:bg-gray-100 hover:cursor-pointer dark:hover:bg-gray-800 transition-colors group ${
+                className={`p-2 hover:bg-muted hover:cursor-pointer  transition-colors group ${
                   isCollapsed ? 'w-full flex justify-center' : ''
                 }`}
                 aria-label={isCollapsed ? 'Expand sidebar (Cmd+B)' : 'Collapse sidebar (Cmd+B)'}
@@ -889,7 +889,7 @@ function SidebarUserMenu({
         <SignedIn>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className={`w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
+              <button className={`w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50  transition-colors ${
                 isCollapsed && !isMobile ? 'justify-center' : ''
               }`}>
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">

@@ -137,7 +137,7 @@ function InterruptionSettings({
               <button
                 type="button"
                 onClick={() => handleModeChange('adaptive')}
-                className={`px-3 py-1.5 text-xs font-medium transition-colors border-l border-gray-200 dark:border-gray-700 ${
+                className={`px-3 py-1.5 text-xs font-medium transition-colors border-l border-border  ${
                   isAdaptive
                     ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900'
                     : 'bg-card text-muted-foreground hover:bg-muted/50'

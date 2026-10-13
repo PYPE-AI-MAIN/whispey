@@ -158,7 +158,7 @@ export default function OrganizationSwitcher({
       onClick={() => setOpen(true)}
       className={`
         flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer w-full
-        text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100
+        text-foreground  hover:bg-muted/50  hover:text-foreground 
         ${isCollapsed && !isMobile ? 'justify-center px-2' : ''}
       `}
     >

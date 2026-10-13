@@ -334,7 +334,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
   // Comfortable Card Component (Original Style)
   const ComfortableCard = ({ project }: { project: Project }) => (
     <Card
-      className={`group bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md dark:hover:shadow-lg transition-all duration-200 cursor-pointer ${
+      className={`group bg-card  border border-border  hover:border-border  hover:shadow-md dark:hover:shadow-lg transition-all duration-200 cursor-pointer ${
         selectedProject === project.id ? 'opacity-50 scale-[0.98]' : ''
       }`}
       onClick={() => handleProjectClick(project)}
@@ -449,7 +449,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
   // Compact Card Component (New Compact Style)
   const CompactCard = ({ project }: { project: Project }) => (
     <Card
-      className={`group bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md dark:hover:shadow-lg transition-all duration-200 cursor-pointer ${
+      className={`group bg-card  border border-border  hover:border-border  hover:shadow-md dark:hover:shadow-lg transition-all duration-200 cursor-pointer ${
         selectedProject === project.id ? 'opacity-50 scale-[0.98]' : ''
       }`}
       onClick={() => handleProjectClick(project)}
@@ -705,7 +705,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                 {filteredProjects.map((project, index) => (
                   <div
                     key={project.id}
-                    className={`group px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer ${
+                    className={`group px-6 py-4 hover:bg-muted/50  transition-colors cursor-pointer ${
                       index !== filteredProjects.length - 1 ? 'border-b border-border' : ''
                     } ${selectedProject === project.id ? 'opacity-50' : ''}`}
                     onClick={() => handleProjectClick(project)}
