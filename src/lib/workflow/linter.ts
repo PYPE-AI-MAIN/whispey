@@ -4,11 +4,14 @@
  * "valid" means. Structural validation is Zod's job (schema.ts); this catches
  * semantic problems (dangling edges, bad start, unreachable nodes, ...).
  */
+import { expandGlobalRules } from './globalRules'
 import type { Workflow } from './schema'
 import { LLM_NODE_TYPES, NONRUNTIME_NODE_TYPES, TELEPHONY_NODE_TYPES } from './schema'
 
 export type Severity = 'error' | 'warning'
 export interface LintIssue {
+  /** One-click repair the editor can offer next to the message. */
+  fixStartTo?: string
   severity: Severity
   message: string
   nodeId?: string
@@ -83,11 +86,32 @@ function lintIds(nodes: readonly Node[]): LintIssue[] {
   return issues
 }
 
+/** The step a call most likely should open on: a speaking step nothing else leads to, leftmost first. */
+function greetingCandidate(wf: Workflow): string | undefined {
+  const targeted = new Set(wf.edges.map((e) => e.target))
+  return wf.nodes
+    .filter((n) => (n.type === 'conversation' || n.type === 'subagent') && !targeted.has(n.id))
+    .sort((a, b) => (a.position?.x ?? 0) - (b.position?.x ?? 0) || (a.position?.y ?? 0) - (b.position?.y ?? 0))[0]?.id
+}
+
 function lintStart(wf: Workflow, idSet: Set<string>, nodeMap: Map<string, Node>): LintIssue[] {
   if (!idSet.has(wf.start)) return [{ severity: 'error', message: `start '${wf.start}' is not a node id` }]
   if (NONRUNTIME_NODE_TYPES.has(nodeMap.get(wf.start)!.type))
     return [{ severity: 'error', message: `start '${wf.start}' cannot be a note node`, nodeId: wf.start }]
+  const type = nodeMap.get(wf.start)!.type
+  if (type === 'knowledge')
+    return [{ severity: 'error', message: `start '${wf.start}' is a knowledge step — the call would open mid-answer. Set the greeting conversation step as the start.`, nodeId: wf.start, fixStartTo: greetingCandidate(wf) }]
+  if (!['conversation', 'extract_variable', 'subagent', 'logic_split'].includes(type))
+    return [{ severity: 'warning', message: `the call starts at a ${type} step ('${wf.start}'), not a conversation — usually the greeting step should be the start`, nodeId: wf.start, fixStartTo: greetingCandidate(wf) }]
   return []
+}
+
+function lintKnowledgeBase(nodes: readonly Node[]): LintIssue[] {
+  return nodes.flatMap((n): LintIssue[] =>
+    n.type === 'knowledge' && n.knowledgeBase && /\s/.test(n.knowledgeBase.trim())
+      ? [{ severity: 'warning', message: `'${n.id}': knowledge base should be an agent ID or blank (this agent), not a sentence`, nodeId: n.id }]
+      : []
+  )
 }
 
 const FAILABLE_NODE_TYPES = new Set(['function', 'mcp', 'code', 'sms'])
@@ -418,7 +442,9 @@ function collectToolNodeIds(wf: Workflow, nodeMap: Map<string, Node>): Set<strin
   return toolNodeIds
 }
 
-export function lintWorkflow(wf: Workflow): LintIssue[] {
+export function lintWorkflow(source: Workflow): LintIssue[] {
+  const ruleIssues = lintGlobalRules(source)
+  const wf = expandGlobalRules(source)
   const idSet = new Set(wf.nodes.map((n) => n.id))
   const nodeMap = new Map(wf.nodes.map((n) => [n.id, n]))
   const outEdges = (id: string) => wf.edges.filter((e) => e.source === id)
@@ -430,11 +456,13 @@ export function lintWorkflow(wf: Workflow): LintIssue[] {
     ? [{ severity: 'error', message: 'No transport enabled (enable web and/or telephony)' }]
     : []
   return [
+    ...ruleIssues,
     ...lintIds(wf.nodes),
     ...transportIssue,
     ...lintStart(wf, idSet, nodeMap),
     ...wf.nodes.flatMap((n) => lintNode(wf, n, telOn, nodeMap, outEdges)),
     ...lintSaveAs(wf.nodes),
+    ...lintKnowledgeBase(wf.nodes),
     ...wf.edges.flatMap((e) => lintEdge(e, idSet, nodeMap)),
     ...lintReachability(wf, toolNodeIds, outEdges),
     ...lintUnknownVariables(wf),
@@ -457,6 +485,13 @@ function reachableSet(wf: Workflow): Set<string> {
     ;(adj.get(cur) || []).forEach((t) => stack.push(t))
   }
   return seen
+}
+
+function lintGlobalRules(wf: Workflow): LintIssue[] {
+  const ids = new Set(wf.nodes.map((n) => n.id))
+  return (wf.globalRules ?? []).flatMap((r): LintIssue[] =>
+    ids.has(r.target) ? [] : [{ severity: 'error', message: `global rule '${r.id}' points at '${r.target}', which does not exist` }]
+  )
 }
 
 export function hasErrors(issues: LintIssue[]): boolean {

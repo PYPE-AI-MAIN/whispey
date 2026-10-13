@@ -89,14 +89,34 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
         </SheetHeader>
         <div className="px-4 space-y-4">
           <div className="space-y-1">
-            <Label className="text-xs">Global prompt</Label>
+            <Label className="text-xs">How your agent behaves</Label>
+            <p className="text-xs text-muted-foreground">
+              Who the agent is, how it sounds, and rules it must never break. It applies to every step. What to say or ask on one step goes in that step instead.
+            </p>
             <Textarea
               className="min-h-[140px]"
               value={agent.globalPrompt}
               onChange={(e) => updateAgentConfig({ globalPrompt: e.target.value })}
-              placeholder="Persona and rules that apply across every node."
+              placeholder="e.g. You are Maya, a calm receptionist for City Clinic. Keep sentences short. Never give medical advice."
             />
           </div>
+
+          <div className="flex items-start justify-between gap-3 rounded-lg border border-border p-3">
+            <div className="space-y-0.5">
+              <Label className="text-xs">Answer from the knowledge base</Label>
+              <p className="text-xs text-muted-foreground">
+                Upload your documents once. The whole agent can look things up in them on any step, so you do not need to add a step for it.
+              </p>
+            </div>
+            <Switch
+              checked={agent.knowledge?.enabled ?? false}
+              onCheckedChange={(enabled) => updateAgentConfig({ knowledge: { ...(agent.knowledge ?? { topK: 4 }), enabled } })}
+              aria-label="Answer from the knowledge base"
+            />
+          </div>
+          {agent.knowledge?.enabled && (
+            <p className="-mt-2 text-xs text-muted-foreground">Add or remove documents from Setup, then Knowledge base.</p>
+          )}
 
           {/* LLM */}
           <div className="space-y-1">

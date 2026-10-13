@@ -17,9 +17,9 @@ describe('computeAutoLayout', () => {
       )
     )
     expect(Object.keys(positions).sort()).toEqual(['a', 'b', 'c'])
-    // Top-to-bottom rank order: each node further down the chain sits lower.
-    expect(positions.a.y).toBeLessThan(positions.b.y)
-    expect(positions.b.y).toBeLessThan(positions.c.y)
+    // Left-to-right rank order: each node further along the chain sits further right.
+    expect(positions.a.x).toBeLessThan(positions.b.x)
+    expect(positions.b.x).toBeLessThan(positions.c.x)
   })
 
   it('skips edges referencing a node id that is not in the graph', () => {
@@ -39,7 +39,7 @@ describe('computeAutoLayout', () => {
     expect(Number.isFinite(positions.solo.y)).toBe(true)
   })
 
-  it('separates fan-out branches horizontally', () => {
+  it('separates fan-out branches into lanes', () => {
     const positions = computeAutoLayout(
       wf(
         [{ id: 'root' }, { id: 'left' }, { id: 'right' }],
@@ -50,7 +50,7 @@ describe('computeAutoLayout', () => {
       )
     )
     // Same rank (both direct children of root) but distinct lanes.
-    expect(positions.left.y).toBe(positions.right.y)
-    expect(positions.left.x).not.toBe(positions.right.x)
+    expect(positions.left.x).toBe(positions.right.x)
+    expect(positions.left.y).not.toBe(positions.right.y)
   })
 })
