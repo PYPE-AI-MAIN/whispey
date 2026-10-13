@@ -97,15 +97,15 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
   const renderPipecatAgentSelect = () => {
     if (loadingPipecatAgents) {
       return (
-        <div className="w-full h-8 flex items-center justify-center border border-gray-300 dark:border-gray-700 rounded-lg">
-          <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+        <div className="w-full h-8 flex items-center justify-center border border-border rounded-lg">
+          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
         </div>
       )
     }
     if (pipecatAgents.length === 0) {
       return (
-        <div className="w-full h-8 flex items-center px-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
-          <span className="text-xs text-gray-500 dark:text-gray-400">No Pipecat agents found</span>
+        <div className="w-full h-8 flex items-center px-3 border border-border rounded-lg bg-muted/50">
+          <span className="text-xs text-muted-foreground">No Pipecat agents found</span>
         </div>
       )
     }
@@ -131,15 +131,15 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
   const renderLivekitAgentSelect = (field: any) => {
     if (permissionsLoading) {
       return (
-        <div className="w-full h-8 flex items-center justify-center border border-gray-300 dark:border-gray-700 rounded-lg">
-          <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+        <div className="w-full h-8 flex items-center justify-center border border-border rounded-lg">
+          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
         </div>
       )
     }
     if (agents.length === 0) {
       return (
-        <div className="w-full h-8 flex items-center px-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
-          <span className="text-xs text-gray-500 dark:text-gray-400">No agents available</span>
+        <div className="w-full h-8 flex items-center px-3 border border-border rounded-lg bg-muted/50">
+          <span className="text-xs text-muted-foreground">No agents available</span>
         </div>
       )
     }
@@ -160,8 +160,8 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
                   variant="outline"
                   className={`text-xs ${
                     agent.status === 'active'
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                      : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                      ? 'bg-green-100 text-success dark:bg-green-900/30 dark:text-green-400'
+                      : 'bg-yellow-100 text-warning dark:bg-yellow-900/30 dark:text-yellow-400'
                   }`}
                 >
                   {agent.status}
@@ -178,7 +178,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
     <>
       {/* Batch Call Name */}
       <div>
-        <Label htmlFor="campaignName" className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+        <Label htmlFor="campaignName" className="text-xs font-medium text-foreground mb-1.5 block">
           Batch Call Name
         </Label>
         <Field
@@ -188,12 +188,12 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
           placeholder="Enter campaign name"
           className="w-full h-8 text-sm"
         />
-        <ErrorMessage name="campaignName" component="p" className="text-xs text-red-600 dark:text-red-400 mt-1" />
+        <ErrorMessage name="campaignName" component="p" className="text-xs text-destructive mt-1" />
       </div>
 
       {/* Agent Runtime - FIRST */}
       <div>
-        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
+        <Label className="text-xs font-medium text-foreground mb-1.5 flex items-center gap-1.5">
           <User className="w-3 h-3" />
           Agent Runtime
         </Label>
@@ -211,7 +211,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
             <SelectItem value="livekit">
               <div className="flex items-center gap-2">
                 <span>LiveKit</span>
-                <Badge variant="outline" className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                <Badge variant="outline" className="text-xs bg-primary/15 text-primary">
                   Default
                 </Badge>
               </div>
@@ -219,12 +219,12 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
             <SelectItem value="pipecat">Pipecat</SelectItem>
           </SelectContent>
         </Select>
-        <ErrorMessage name="agentRuntime" component="p" className="text-xs text-red-600 dark:text-red-400 mt-1" />
+        <ErrorMessage name="agentRuntime" component="p" className="text-xs text-destructive mt-1" />
       </div>
 
       {/* Select Agent - SECOND, changes based on runtime */}
       <div>
-        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
+        <Label className="text-xs font-medium text-foreground mb-1.5 flex items-center gap-1.5">
           <User className="w-3 h-3" />
           Select Agent
         </Label>
@@ -236,28 +236,30 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
             {({ field }: any) => renderLivekitAgentSelect(field)}
           </Field>
         )}
-        <ErrorMessage name="agentId" component="p" className="text-xs text-red-600 dark:text-red-400 mt-1" />
+        <ErrorMessage name="agentId" component="p" className="text-xs text-destructive mt-1" />
       </div>
 
       {/* From Number - only for livekit */}
       {values.agentRuntime === 'livekit' && (
         <div>
-          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
+          <Label className="text-xs font-medium text-foreground mb-1.5 flex items-center gap-1.5">
             <Phone className="w-3 h-3" />
             From Number (Outbound)
           </Label>
           <Field name="fromNumber">
             {({ field }: any) => (
               <>
-                {loadingPhones ? (
-                  <div className="w-full h-8 flex items-center justify-center border border-gray-300 dark:border-gray-700 rounded-lg">
-                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                {loadingPhones && (
+                  <div className="w-full h-8 flex items-center justify-center border border-border rounded-lg">
+                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                   </div>
-                ) : phoneNumbers.length === 0 ? (
-                  <div className="w-full h-8 flex items-center px-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">No outbound phone numbers available</span>
+                )}
+                {!loadingPhones && phoneNumbers.length === 0 && (
+                  <div className="w-full h-8 flex items-center px-3 border border-border rounded-lg bg-muted/50">
+                    <span className="text-xs text-muted-foreground">No outbound phone numbers available</span>
                   </div>
-                ) : (
+                )}
+                {!loadingPhones && phoneNumbers.length !== 0 && (
                   <Select
                     value={field.value}
                     onValueChange={(value) => {
@@ -281,7 +283,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
                               {phone.formatted_number || phone.phone_number}
                             </span>
                             {phone.provider && (
-                              <span className="text-gray-500 text-xs">({phone.provider})</span>
+                              <span className="text-muted-foreground text-xs">({phone.provider})</span>
                             )}
                           </div>
                         </SelectItem>
@@ -292,16 +294,16 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
               </>
             )}
           </Field>
-          <ErrorMessage name="fromNumber" component="p" className="text-xs text-red-600 dark:text-red-400 mt-1" />
+          <ErrorMessage name="fromNumber" component="p" className="text-xs text-destructive mt-1" />
         </div>
       )}
 
       {/* Campaign Concurrency */}
       <div>
-        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">
+        <Label className="text-xs font-medium text-foreground mb-1 block">
           Campaign Concurrency
         </Label>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+        <p className="text-xs text-muted-foreground mb-2">
           Number of simultaneous calls for this campaign (1-{maxConcurrency}).
         </p>
         <div className="flex items-center gap-2">
@@ -332,7 +334,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
             +
           </Button>
         </div>
-        <ErrorMessage name="reservedConcurrency" component="p" className="text-xs text-red-600 dark:text-red-400 mt-1" />
+        <ErrorMessage name="reservedConcurrency" component="p" className="text-xs text-destructive mt-1" />
       </div>
     </>
   )

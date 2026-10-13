@@ -43,6 +43,186 @@ interface CampaignDetails {
   updatedAt: string
 }
 
+// ── DynamoDB-shaped log helpers (pure, no component state) ───────────────────
+
+const hasDynamoShape = (v: any): boolean =>
+  Boolean(v) && typeof v === 'object' && !Array.isArray(v) &&
+  ['S', 'N', 'BOOL', 'M', 'L'].some(k => v[k] !== undefined)
+
+const mapDynamoValues = (obj: Record<string, any>): Record<string, any> =>
+  Object.fromEntries(Object.keys(obj).map(key => [key, parseDynamoDBValue(obj[key])]))
+
+// Parse DynamoDB AttributeValue format into plain values.
+function parseDynamoDBValue(value: any): any {
+  if (value === null || value === undefined) return null
+  // Already a plain value
+  if (typeof value !== 'object' || Array.isArray(value)) return value
+
+  if (value.S !== undefined) return value.S
+  if (value.N !== undefined) return Number(value.N)
+  if (value.BOOL !== undefined) return value.BOOL
+  if (value.L !== undefined) return value.L.map((item: any) => parseDynamoDBValue(item))
+  if (value.M !== undefined) return mapDynamoValues(value.M)
+
+  // A regular object whose values are AttributeValues is a DynamoDB Map
+  const keys = Object.keys(value)
+  if (keys.length > 0 && hasDynamoShape(value[keys[0]])) return mapDynamoValues(value)
+  return value
+}
+
+function parseAdditionalData(raw: unknown): any {
+  if (typeof raw === 'string') {
+    try { return parseDynamoDBValue(JSON.parse(raw)) } catch { return parseDynamoDBValue(raw) }
+  }
+  if (raw && typeof raw === 'object') return parseDynamoDBValue(raw)
+  return {}
+}
+
+const STANDARD_COLUMNS = ['status', 'retryCount', 'lastCallAt']
+const INTERNAL_KEYS = new Set(['contactId', 'campaignId', 'id', 'additionalData', 'name', 'email', 'phoneNumber', 'callAttempts'])
+// additionalData columns that should appear right after status
+const PRIORITY_ADDITIONAL_COLUMNS = ['appointment_time', 'doctor_name', 'patient_name', 'phone', 'appointment_date']
+const HIDDEN_ADDITIONAL_KEYS = new Set(['name', 'email', 'callattempts'])
+
+const bySort = (a: string, b: string) => a.localeCompare(b)
+
+interface ColumnKeys {
+  allKeys: Set<string>
+  additionalDataKeys: Set<string>
+  priorityAdditionalKeys: Set<string>
+}
+
+function collectDirectKeys(log: any, allKeys: Set<string>) {
+  STANDARD_COLUMNS.forEach(key => { if (log[key] !== undefined) allKeys.add(key) })
+  allKeys.add('retryCount') // always present: it's a DynamoDB column
+  Object.keys(log).forEach(key => {
+    if (!INTERNAL_KEYS.has(key) && !STANDARD_COLUMNS.includes(key)) allKeys.add(key)
+  })
+}
+
+function collectAdditionalKeys(log: any, keys: ColumnKeys) {
+  if (!log.additionalData) return
+  const parsed = parseAdditionalData(log.additionalData)
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return
+  Object.keys(parsed).forEach(key => {
+    const lower = key.toLowerCase()
+    if (STANDARD_COLUMNS.includes(key) || keys.allKeys.has(key) || HIDDEN_ADDITIONAL_KEYS.has(lower)) return
+    const isPriority = PRIORITY_ADDITIONAL_COLUMNS.some(priority => priority.toLowerCase() === lower)
+    ;(isPriority ? keys.priorityAdditionalKeys : keys.additionalDataKeys).add(key)
+  })
+}
+
+// Pull the data key matching a priority column (case-insensitive) out of both sets.
+function takePriorityKey(priorityCol: string, keys: ColumnKeys): string | undefined {
+  const matches = (key: string) => key.toLowerCase() === priorityCol.toLowerCase()
+  const found = Array.from(keys.priorityAdditionalKeys).find(matches) ?? Array.from(keys.additionalDataKeys).find(matches)
+  if (found) {
+    keys.priorityAdditionalKeys.delete(found)
+    keys.additionalDataKeys.delete(found)
+  }
+  return found
+}
+
+// Status first, then priority additionalData columns, other standard columns, other columns, remaining additionalData columns.
+function getAllColumns(logs: any[]): string[] {
+  if (logs.length === 0) return []
+  const keys: ColumnKeys = { allKeys: new Set(), additionalDataKeys: new Set(), priorityAdditionalKeys: new Set() }
+  logs.forEach(log => {
+    collectDirectKeys(log, keys.allKeys)
+    collectAdditionalKeys(log, keys)
+  })
+
+  const finalColumns: string[] = []
+  if (keys.allKeys.has('status')) finalColumns.push('status')
+  PRIORITY_ADDITIONAL_COLUMNS.forEach(priorityCol => {
+    const key = takePriorityKey(priorityCol, keys)
+    if (key) finalColumns.push(key)
+  })
+  STANDARD_COLUMNS
+    .filter(col => col !== 'status' && (keys.allKeys.has(col) || col === 'retryCount'))
+    .forEach(col => finalColumns.push(col))
+  Array.from(keys.allKeys)
+    .filter(col => !STANDARD_COLUMNS.includes(col) && col !== 'status')
+    .sort(bySort)
+    .forEach(col => finalColumns.push(col))
+  Array.from(keys.additionalDataKeys).sort(bySort).forEach(col => finalColumns.push(col))
+  return finalColumns
+}
+
+// Value from the log itself, falling back to its additionalData.
+function getValue(log: any, column: string) {
+  if (log[column] !== undefined) return log[column]
+  if (!log.additionalData) return null
+  const data = parseAdditionalData(log.additionalData)
+  return data && typeof data === 'object' ? data[column] : null
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  completed: 'bg-success/15 text-success',
+  failed: 'bg-destructive/15 text-destructive',
+  pending: 'bg-warning/15 text-warning',
+  in_progress: 'bg-primary/15 text-primary',
+}
+
+const getStatusColor = (status: string) => STATUS_COLORS[status.toLowerCase()] ?? 'bg-muted text-foreground'
+
+const DASH = <span className="text-muted-foreground">-</span>
+
+function formatDateValue(value: string): string {
+  try {
+    const date = new Date(value)
+    return Number.isNaN(date.getTime()) ? value : date.toLocaleString()
+  } catch {
+    return value
+  }
+}
+
+// Only treat a column as a date when its name says so; appointment_date and appointment_time show as-is.
+function isDateColumn(columnLower: string): boolean {
+  return (columnLower.endsWith('date') && columnLower !== 'appointment_date') ||
+    (columnLower.endsWith('at') && columnLower !== 'appointment_time') ||
+    ['createdat', 'updatedat', 'lastcallat', 'nextcallat'].includes(columnLower)
+}
+
+function formatGenericCell(column: string, value: any): React.ReactNode {
+  const columnLower = column.toLowerCase()
+  const isText = typeof value === 'string'
+  if (columnLower.includes('phone') && isText) return <span className="font-mono text-xs">{value}</span>
+  if (columnLower.includes('status') && isText) return <Badge className={getStatusColor(value)}>{value}</Badge>
+  if (value && isText) return isDateColumn(columnLower) ? formatDateValue(value) : value
+  if (typeof value === 'number') return value.toLocaleString()
+  if (value === null || value === undefined) return DASH
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    return <span className="text-xs text-muted-foreground">{JSON.stringify(value)}</span>
+  }
+  return value
+}
+
+function formatLastCallAt(value: any): React.ReactNode {
+  if (!value) return DASH
+  try {
+    return new Date(value as string).toLocaleString()
+  } catch {
+    return value
+  }
+}
+
+function formatCell(column: string, value: any): React.ReactNode {
+  switch (column) {
+    case 'status':
+      return value ? <Badge className={getStatusColor(value)}>{value}</Badge> : DASH
+    case 'retryCount':
+      return value ?? 0
+    case 'phoneNumber':
+    case 'phone':
+      return value ? <span className="font-mono text-xs">{value}</span> : DASH
+    case 'lastCallAt':
+      return formatLastCallAt(value)
+    default:
+      return formatGenericCell(column, value)
+  }
+}
+
 function ViewCampaign() {
   const params = useParams()
   const router = useRouter()
@@ -386,250 +566,11 @@ function ViewCampaign() {
     }
   }
 
-  // Helper function to parse DynamoDB AttributeValue format
-  const parseDynamoDBValue = (value: any): any => {
-    if (value === null || value === undefined) {
-      return null
-    }
-    
-    // If it's already a plain value, return it
-    if (typeof value !== 'object' || Array.isArray(value)) {
-      return value
-    }
-    
-    // Check if it's DynamoDB AttributeValue format
-    if (value.S !== undefined) {
-      return value.S // String
-    } else if (value.N !== undefined) {
-      return Number(value.N) // Number
-    } else if (value.BOOL !== undefined) {
-      return value.BOOL // Boolean
-    } else if (value.L !== undefined) {
-      return value.L.map((item: any) => parseDynamoDBValue(item)) // List
-    } else if (value.M !== undefined) {
-      const result: any = {}
-      Object.keys(value.M).forEach(key => {
-        result[key] = parseDynamoDBValue(value.M[key])
-      })
-      return result // Map
-    }
-    
-    // If it's a regular object, check if it's a DynamoDB Map (all values are AttributeValues)
-    const keys = Object.keys(value)
-    if (keys.length > 0) {
-      const firstKey = keys[0]
-      const firstValue = value[firstKey]
-      // Check if first value looks like DynamoDB AttributeValue (has S, N, BOOL, etc.)
-      if (firstValue && typeof firstValue === 'object' && !Array.isArray(firstValue) &&
-          (firstValue.S !== undefined || firstValue.N !== undefined || firstValue.BOOL !== undefined || 
-           firstValue.M !== undefined || firstValue.L !== undefined)) {
-        // It's a DynamoDB Map format
-        const result: any = {}
-        Object.keys(value).forEach(key => {
-          result[key] = parseDynamoDBValue(value[key])
-        })
-        return result
-      }
-    }
-    
-    // Regular object, return as-is
-    return value
-  }
-
-  // Get all unique keys from logs to create dynamic columns
-  const getAllColumns = () => {
-    if (logs.length === 0) return []
-    
-    // Define the standard columns order
-    const standardColumns = ['status', 'retryCount', 'lastCallAt']
-    // Define priority additionalData columns that should appear at the beginning
-    const priorityAdditionalColumns = ['appointment_time', 'doctor_name', 'patient_name', 'phone', 'appointment_date']
-    const allKeys = new Set<string>()
-    const additionalDataKeys = new Set<string>()
-    const priorityAdditionalKeys = new Set<string>()
-    
-    logs.forEach(log => {
-      // Add standard columns if they exist
-      standardColumns.forEach(key => {
-        if (log[key] !== undefined) {
-          allKeys.add(key)
-        }
-      })
-      
-      // Always add retryCount (it's a DynamoDB column)
-      allKeys.add('retryCount')
-      
-      // Add other direct keys (excluding internal fields and additionalData)
-      Object.keys(log).forEach(key => {
-        if (!['contactId', 'campaignId', 'id', 'additionalData', 'name', 'email', 'phoneNumber', 'callAttempts'].includes(key) && 
-            !standardColumns.includes(key)) {
-          allKeys.add(key)
-        }
-      })
-      
-      // Parse additionalData if it exists and collect its keys separately
-      if (log.additionalData) {
-        try {
-          let parsedData: any = {}
-          
-          // Handle both string and object formats
-          if (typeof log.additionalData === 'string') {
-            try {
-              const parsed = JSON.parse(log.additionalData)
-              parsedData = parseDynamoDBValue(parsed)
-            } catch (parseError) {
-              // If JSON parsing fails, try to parse as DynamoDB format directly
-              parsedData = parseDynamoDBValue(log.additionalData)
-            }
-          } else if (typeof log.additionalData === 'object') {
-            parsedData = parseDynamoDBValue(log.additionalData)
-          }
-          
-          // Debug: Log the parsed data structure
-          if (logs.indexOf(log) === 0) {
-            console.log('First log additionalData (raw):', log.additionalData)
-            console.log('First log additionalData (parsed):', parsedData)
-            console.log('Parsed keys:', parsedData ? Object.keys(parsedData) : [])
-          }
-          
-          // Ensure parsedData is an object with keys
-          if (parsedData && typeof parsedData === 'object' && !Array.isArray(parsedData)) {
-            // Collect keys from additionalData
-            Object.keys(parsedData).forEach(key => {
-              // Don't add if it's already a standard column, already in allKeys, or is excluded (name, email, callAttempts)
-              if (!standardColumns.includes(key) && !allKeys.has(key) && 
-                  !['name', 'email', 'callattempts'].includes(key.toLowerCase())) {
-                // Check if it's a priority column (case-insensitive match)
-                const keyLower = key.toLowerCase()
-                const isPriority = priorityAdditionalColumns.some(priority => priority.toLowerCase() === keyLower)
-                
-                if (isPriority) {
-                  // Store with original case from data
-                  priorityAdditionalKeys.add(key)
-                  if (logs.indexOf(log) === 0) {
-                    console.log(`Added priority key: ${key} (matches ${priorityAdditionalColumns.find(p => p.toLowerCase() === keyLower)})`)
-                  }
-                } else {
-                  additionalDataKeys.add(key)
-                }
-              } else if (logs.indexOf(log) === 0) {
-                console.log(`Skipped key: ${key} (standard: ${standardColumns.includes(key)}, in allKeys: ${allKeys.has(key)}, excluded: ${['name', 'email'].includes(key.toLowerCase())})`)
-              }
-            })
-          }
-        } catch (e) {
-          // If parsing fails, log error but continue
-          console.warn('Failed to parse additionalData:', e, 'Raw data:', log.additionalData)
-        }
-      }
-    })
-    
-    // Build final column array: status first, then priority additionalData columns, then other standard columns, then other columns, then remaining additionalData columns
-    const finalColumns: string[] = []
-    
-    // Add status first if it exists
-    if (allKeys.has('status')) {
-      finalColumns.push('status')
-    }
-    
-    // Add priority additionalData columns after status (in order)
-    priorityAdditionalColumns.forEach(priorityCol => {
-      // Find matching key from data (case-insensitive)
-      const matchingKey = Array.from(priorityAdditionalKeys).find(key => 
-        key.toLowerCase() === priorityCol.toLowerCase()
-      ) || Array.from(additionalDataKeys).find(key => 
-        key.toLowerCase() === priorityCol.toLowerCase()
-      )
-      
-      if (matchingKey) {
-        finalColumns.push(matchingKey)
-        // Remove from both sets if present
-        priorityAdditionalKeys.delete(matchingKey)
-        additionalDataKeys.delete(matchingKey)
-      }
-    })
-    
-    // Debug: Log what we found
-    if (priorityAdditionalKeys.size > 0 || additionalDataKeys.size > 0) {
-      console.log('Priority keys found:', Array.from(priorityAdditionalKeys))
-      console.log('Additional data keys found:', Array.from(additionalDataKeys))
-    }
-    
-    // Add other standard columns (excluding status which we already added)
-    standardColumns.forEach(col => {
-      if (col !== 'status' && (allKeys.has(col) || col === 'retryCount')) {
-        finalColumns.push(col)
-      }
-    })
-    
-    // Add other columns (excluding standard ones)
-    Array.from(allKeys)
-      .filter(col => !standardColumns.includes(col) && col !== 'status')
-      .sort((a, b) => a.localeCompare(b))
-      .forEach(col => finalColumns.push(col))
-
-    // Add remaining additionalData columns at the end
-    Array.from(additionalDataKeys)
-      .sort((a, b) => a.localeCompare(b))
-      .forEach(col => finalColumns.push(col))
-    
-    return finalColumns
-  }
-
-  const columns = getAllColumns()
-  
-  // Helper function to get value from log (checks additionalData if not found in main object)
-  const getValue = (log: any, column: string) => {
-    // First check if it's a direct property
-    if (log[column] !== undefined) {
-      return log[column]
-    }
-    
-    // If not found, check inside additionalData
-    if (log.additionalData) {
-      try {
-        let additionalData: any = {}
-        
-        // Handle DynamoDB AttributeValue format
-        if (typeof log.additionalData === 'string') {
-          try {
-            const parsed = JSON.parse(log.additionalData)
-            additionalData = parseDynamoDBValue(parsed)
-          } catch {
-            // If parsing fails, try as regular object
-            additionalData = JSON.parse(log.additionalData)
-          }
-        } else if (typeof log.additionalData === 'object') {
-          additionalData = parseDynamoDBValue(log.additionalData)
-        }
-        
-        return additionalData?.[column]
-      } catch {
-        return null
-      }
-    }
-    
-    return null
-  }
-  
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'completed':
-        return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-      case 'failed':
-        return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-      case 'in_progress':
-        return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-      default:
-        return 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
-    }
-  }
+  const columns = getAllColumns(logs)
 
   if (loading) {
     return (
-      <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
+      <div className="flex flex-col h-screen bg-card">
         {/* Header */}
         <div className="px-6 py-4 border-border bg-background border-b shadow-sm">
           <div className="flex items-center gap-3">
@@ -650,8 +591,8 @@ function ViewCampaign() {
         {/* Loading State */}
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-3" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">Loading campaign...</p>
+            <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">Loading campaign...</p>
           </div>
         </div>
       </div>
@@ -660,8 +601,8 @@ function ViewCampaign() {
 
   if (!campaignDetails) {
     return (
-      <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+      <div className="flex flex-col h-screen bg-card">
+        <div className="px-4 py-3 border-b border-border">
           <Button
             variant="ghost"
             size="sm"
@@ -672,7 +613,7 @@ function ViewCampaign() {
           </Button>
         </div>
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-sm text-gray-600 dark:text-gray-400">Campaign not found</p>
+          <p className="text-sm text-muted-foreground">Campaign not found</p>
         </div>
       </div>
     )
@@ -694,7 +635,7 @@ function ViewCampaign() {
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
               {campaignDetails.campaignName}
             </h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-muted-foreground">
               Campaign ID: {campaignDetails.campaignId}
             </p>
           </div>
@@ -725,13 +666,13 @@ function ViewCampaign() {
             </Button>
           )}
           {/* Download Section with Status Filter */}
-          <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
-            <Filter className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+          <div className="flex items-center gap-2 px-3 py-1 bg-muted/50 rounded-lg border border-border">
+            <Filter className="w-3.5 h-3.5 text-muted-foreground" />
             <select
               value={downloadStatusFilter}
               onChange={(e) => setDownloadStatusFilter(e.target.value)}
               disabled={isDownloading}
-              className="h-7 px-2 text-xs border-0 focus:ring-0 focus:outline-none bg-transparent text-gray-700 dark:text-gray-300 font-medium cursor-pointer"
+              className="h-7 px-2 text-xs border-0 focus:ring-0 focus:outline-none bg-transparent text-foreground font-medium cursor-pointer"
             >
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
@@ -739,11 +680,11 @@ function ViewCampaign() {
               <option value="failed">Failed</option>
               <option value="in_progress">In Progress</option>
             </select>
-            <div className="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
+            <div className="h-4 w-px bg-muted-foreground/30"></div>
             <button
               onClick={handleDownloadContacts}
               disabled={isDownloading || logs.length === 0}
-              className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-green-700 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-success hover:text-success disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isDownloading ? (
                 <>
@@ -778,14 +719,14 @@ function ViewCampaign() {
   if (loadingLogs && logs.length === 0) {
     logsSection = (
       <div className="p-4 sm:p-8 text-center">
-        <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-2" />
-        <p className="text-sm text-gray-600 dark:text-gray-400">Loading logs...</p>
+        <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto mb-2" />
+        <p className="text-sm text-muted-foreground">Loading logs...</p>
       </div>
     )
   } else if (logs.length === 0) {
     logsSection = (
       <div className="p-4 sm:p-8 text-center">
-        <p className="text-sm text-gray-600 dark:text-gray-400">No logs found</p>
+        <p className="text-sm text-muted-foreground">No logs found</p>
       </div>
     )
   } else {
@@ -793,7 +734,7 @@ function ViewCampaign() {
       <>
         <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
+            <thead className="bg-muted/50 sticky top-0 z-10">
               <tr>
                 {columns.map((column) => {
                   // Map column names to display labels
@@ -811,7 +752,7 @@ function ViewCampaign() {
                   return (
                     <th
                       key={column}
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap"
+                      className="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap"
                     >
                       {label}
                     </th>
@@ -819,96 +760,19 @@ function ViewCampaign() {
                 })}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody className="divide-y divide-border">
               {logs.map((log, index) => (
                 <tr
                   key={log.contactId || log.id || index}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-900/50"
+                  className="hover:bg-muted/50"
                 >
                   {columns.map((column) => {
-                    const value = getValue(log, column)
-                    let displayValue: React.ReactNode = value
-
-                    // Handle specific column mappings
-                    if (column === 'status') {
-                      displayValue = value ? (
-                        <Badge className={getStatusColor(value)}>
-                          {value}
-                        </Badge>
-                      ) : <span className="text-gray-400">-</span>
-                    } else if (column === 'retryCount') {
-                      displayValue = value !== undefined && value !== null ? value : 0
-                    } else if (column === 'phoneNumber' || column === 'phone') {
-                      displayValue = value ? <span className="font-mono text-xs">{value}</span> : <span className="text-gray-400">-</span>
-                    } else if (column === 'lastCallAt') {
-                      if (value) {
-                        try {
-                          displayValue = new Date(value as string).toLocaleString()
-                        } catch {
-                          displayValue = value
-                        }
-                      } else {
-                        displayValue = <span className="text-gray-400">-</span>
-                      }
-                    } else {
-                      // Format phone numbers
-                      if (column.toLowerCase().includes('phone') && typeof value === 'string') {
-                        displayValue = <span className="font-mono text-xs">{value}</span>
-                      }
-                      // Format status with badge
-                      else if (column.toLowerCase().includes('status') && typeof value === 'string') {
-                        displayValue = (
-                          <Badge className={getStatusColor(value)}>
-                            {value}
-                          </Badge>
-                        )
-                      }
-                      // Format dates - be more specific to avoid false positives
-                      else if (value && typeof value === 'string') {
-                        // Only format as date if column name explicitly indicates it's a date/time field
-                        // Exclude appointment_date and appointment_time - show them as-is
-                        const columnLower = column.toLowerCase()
-                        const isDateColumn = (columnLower.endsWith('date') && columnLower !== 'appointment_date') ||
-                                           (columnLower.endsWith('at') && columnLower !== 'appointment_time') ||
-                                           columnLower === 'createdat' ||
-                                           columnLower === 'updatedat' ||
-                                           columnLower === 'lastcallat' ||
-                                           columnLower === 'nextcallat'
-
-                        if (isDateColumn) {
-                          try {
-                            const dateValue = new Date(value)
-                            if (!isNaN(dateValue.getTime())) {
-                              displayValue = dateValue.toLocaleString()
-                            } else {
-                              displayValue = value
-                            }
-                          } catch {
-                            displayValue = value
-                          }
-                        } else {
-                          // For non-date columns (including appointment_date and appointment_time), just display the value as-is
-                          displayValue = value
-                        }
-                      }
-                      // Format numbers
-                      else if (typeof value === 'number') {
-                        displayValue = value.toLocaleString()
-                      }
-                      // Handle null/undefined
-                      else if (value === null || value === undefined) {
-                        displayValue = <span className="text-gray-400">-</span>
-                      }
-                      // Handle objects
-                      else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-                        displayValue = <span className="text-xs text-gray-500">{JSON.stringify(value)}</span>
-                      }
-                    }
+                    const displayValue = formatCell(column, getValue(log, column))
 
                     return (
                       <td
                         key={column}
-                        className="px-4 py-3 text-xs text-gray-900 dark:text-gray-100"
+                        className="px-4 py-3 text-xs text-foreground"
                       >
                         {displayValue}
                       </td>
@@ -922,7 +786,7 @@ function ViewCampaign() {
 
         {/* Load More Button */}
         {hasMoreLogs && (
-          <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 text-center">
+          <div className="px-4 py-3 border-t border-border text-center">
             <Button
               variant="outline"
               size="sm"
@@ -946,7 +810,7 @@ function ViewCampaign() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
+    <div className="flex flex-col h-screen bg-card">
       {/* Header */}
       {renderHeader()}
 
@@ -955,106 +819,106 @@ function ViewCampaign() {
         <div className="max-w-7xl mx-auto p-4 space-y-4">
           {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
+            <div className="rounded-xl border border-border bg-card shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Users className="w-4 h-4 text-gray-400" />
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Total Contacts</span>
+                <Users className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground">Total Contacts</span>
               </div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              <p className="text-2xl font-bold text-foreground">
                 {campaignDetails.callStats?.total ?? campaignDetails.totalContacts}
               </p>
             </div>
 
-            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
+            <div className="rounded-xl border border-border bg-card shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Phone className="w-4 h-4 text-purple-400" />
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Processed</span>
+                <span className="text-xs font-medium text-muted-foreground">Processed</span>
               </div>
               <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                 {campaignDetails.processedContacts}
               </p>
             </div>
 
-            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
+            <div className="rounded-xl border border-border bg-card shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Phone className="w-4 h-4 text-green-400" />
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Success</span>
+                <span className="text-xs font-medium text-muted-foreground">Success</span>
               </div>
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+              <p className="text-2xl font-bold text-success">
                 {campaignDetails.callStats?.completed ?? campaignDetails.successCalls}
               </p>
             </div>
 
-            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
+            <div className="rounded-xl border border-border bg-card shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Phone className="w-4 h-4 text-red-400" />
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Failed</span>
+                <span className="text-xs font-medium text-muted-foreground">Failed</span>
               </div>
-              <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+              <p className="text-2xl font-bold text-destructive">
                 {campaignDetails.callStats?.failed ?? campaignDetails.failedCalls}
               </p>
             </div>
 
-            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
+            <div className="rounded-xl border border-border bg-card shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Phone className="w-4 h-4 text-blue-400" />
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Pending</span>
+                <span className="text-xs font-medium text-muted-foreground">Pending</span>
               </div>
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              <p className="text-2xl font-bold text-primary">
                 {campaignDetails.callStats?.pending ?? 0}
               </p>
             </div>
           </div>
 
           {/* Campaign Info */}
-          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
-            <h2 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
+          <div className="rounded-xl border border-border bg-card shadow-sm p-4">
+            <h2 className="text-xs font-medium text-muted-foreground mb-3">
               Campaign Information
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Status</p>
+                <p className="text-xs text-muted-foreground mb-1">Status</p>
                 <Badge className={getStatusColor(campaignDetails.status)}>
                   {campaignDetails.status}
                 </Badge>
               </div>
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Agent</p>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <p className="text-xs text-muted-foreground mb-1">Agent</p>
+                <p className="text-sm font-medium text-foreground">
                   {displayCampaignAgentName}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Provider</p>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <p className="text-xs text-muted-foreground mb-1">Provider</p>
+                <p className="text-sm font-medium text-foreground">
                   {campaignDetails.callConfig.provider}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                <p className="text-xs text-muted-foreground mb-1">
                   <Calendar className="w-3 h-3 inline mr-1" />
                   Schedule
                 </p>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <p className="text-sm font-medium text-foreground">
                   {campaignDetails.schedule?.days && Array.isArray(campaignDetails.schedule.days) 
                     ? campaignDetails.schedule.days.join(', ')
                     : 'Not scheduled'}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                <p className="text-xs text-muted-foreground mb-1">
                   <Clock className="w-3 h-3 inline mr-1" />
                   Time Window
                 </p>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <p className="text-sm font-medium text-foreground">
                   {campaignDetails.schedule?.startTime && campaignDetails.schedule?.endTime
                     ? `${campaignDetails.schedule.startTime} - ${campaignDetails.schedule.endTime}`
                     : 'Not set'}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Timezone</p>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <p className="text-xs text-muted-foreground mb-1">Timezone</p>
+                <p className="text-sm font-medium text-foreground">
                   {campaignDetails.schedule?.timezone || 'Not set'}
                 </p>
               </div>
@@ -1062,8 +926,8 @@ function ViewCampaign() {
 
             {/* Retry Configuration */}
             {campaignDetails.schedule?.retryConfig && Array.isArray(campaignDetails.schedule.retryConfig) && campaignDetails.schedule.retryConfig.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-1.5">
+              <div className="mt-4 pt-4 border-t border-border">
+                <h3 className="text-xs font-medium text-muted-foreground mb-3 flex items-center gap-1.5">
                   <RefreshCw className="w-3 h-3" />
                   Retry Configuration
                 </h3>
@@ -1094,26 +958,26 @@ function ViewCampaign() {
                     return (
                       <div
                         key={configKey}
-                        className="p-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-md"
+                        className="p-3 bg-muted/50 border border-border rounded-md"
                       >
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">
+                          <span className="text-xs font-semibold text-foreground">
                             {config.type === 'sipCode' && config.errorCodes?.[0] ? config.errorCodes[0] : config.type || 'Retry'}
                           </span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                          <span className="text-xs text-muted-foreground">
                             {label}
                           </span>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div>
-                            <span className="text-gray-500 dark:text-gray-400">Delay:</span>
-                            <span className="ml-1 font-medium text-gray-900 dark:text-gray-100">
+                            <span className="text-muted-foreground">Delay:</span>
+                            <span className="ml-1 font-medium text-foreground">
                               {config.delayMinutes} min
                             </span>
                           </div>
                           <div>
-                            <span className="text-gray-500 dark:text-gray-400">Retries:</span>
-                            <span className="ml-1 font-medium text-gray-900 dark:text-gray-100">
+                            <span className="text-muted-foreground">Retries:</span>
+                            <span className="ml-1 font-medium text-foreground">
                               {config.maxRetries}
                             </span>
                           </div>
@@ -1127,9 +991,9 @@ function ViewCampaign() {
           </div>
 
           {/* Campaign Logs Table */}
-          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-              <h2 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-border">
+              <h2 className="text-xs font-medium text-muted-foreground">
                 Campaign Logs ({logs.length})
               </h2>
             </div>

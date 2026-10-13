@@ -38,11 +38,11 @@ function SwitchRow({ label, description, checked, onCheckedChange, tooltip }: {
     <div className="flex items-center justify-between py-1">
       <div className="flex-1 pr-3">
         <div className="flex items-center gap-1.5">
-          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">{label}</Label>
+          <Label className="text-xs font-medium text-foreground">{label}</Label>
           {tooltip && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-gray-400 cursor-help" />
+                <Info className="w-3 h-3 text-muted-foreground cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">{tooltip}</p>
@@ -50,7 +50,7 @@ function SwitchRow({ label, description, checked, onCheckedChange, tooltip }: {
             </Tooltip>
           )}
         </div>
-        <p className="text-xs text-gray-400 mt-0.5">{description}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
       </div>
       <Switch checked={checked} onCheckedChange={onCheckedChange} className="scale-75" />
     </div>
@@ -70,10 +70,10 @@ function NResultsField({ value, onChange }: { value: number; onChange: (v: numbe
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-1.5">
-        <Label className="text-xs text-gray-600 dark:text-gray-400">Top-K Chunks</Label>
+        <Label className="text-xs text-muted-foreground">Top-K Chunks</Label>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Info className="w-3 h-3 text-gray-400 cursor-help" />
+            <Info className="w-3 h-3 text-muted-foreground cursor-help" />
           </TooltipTrigger>
           <TooltipContent side="right" className="max-w-xs">
             <p className="text-xs">Number of knowledge base chunks retrieved per query. Lower = faster response, higher = more context. Default: 3.</p>
@@ -88,7 +88,7 @@ function NResultsField({ value, onChange }: { value: number; onChange: (v: numbe
         onBlur={e => commit(e.target.value)}
         className="h-8 text-xs"
       />
-      <p className="text-xs text-gray-500 dark:text-gray-400">Chunks returned per search. Lower = faster, fewer tokens. Range: 1–8.</p>
+      <p className="text-xs text-muted-foreground">Chunks returned per search. Lower = faster, fewer tokens. Range: 1–8.</p>
     </div>
   )
 }
@@ -114,10 +114,10 @@ function FillerPhrasesEditor({ phrases, onChange }: {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-1.5">
-        <Label className="text-xs text-gray-600 dark:text-gray-400">Filler Phrases</Label>
+        <Label className="text-xs text-muted-foreground">Filler Phrases</Label>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Info className="w-3 h-3 text-gray-400 cursor-help" />
+            <Info className="w-3 h-3 text-muted-foreground cursor-help" />
           </TooltipTrigger>
           <TooltipContent side="right" className="max-w-xs">
             <p className="text-xs">One phrase per line. The bot picks one at random each time it searches the knowledge base. Leave empty to use defaults.</p>
@@ -132,7 +132,7 @@ function FillerPhrasesEditor({ phrases, onChange }: {
         placeholder={DEFAULT_FILLERS.join('\n')}
         className="text-xs resize-none font-mono"
       />
-      <p className="text-xs text-gray-500 dark:text-gray-400">One phrase per line. Played while KB search runs.</p>
+      <p className="text-xs text-muted-foreground">One phrase per line. Played while KB search runs.</p>
     </div>
   )
 }
@@ -150,7 +150,7 @@ export default function KnowledgeBaseSettings({
   return (
     <TooltipProvider>
       <div className="space-y-4">
-        <p className="text-xs text-gray-500 dark:text-gray-400">
+        <p className="text-xs text-muted-foreground">
           When enabled, relevant documents from the agent's knowledge base are injected into context each turn.
         </p>
 
@@ -163,7 +163,7 @@ export default function KnowledgeBaseSettings({
 
         {ragEnabled && (
           <>
-            <div className="h-px bg-gray-100 dark:bg-gray-700" />
+            <div className="h-px bg-muted" />
 
             <NResultsField value={ragNResults} onChange={onRagNResultsChange} />
 

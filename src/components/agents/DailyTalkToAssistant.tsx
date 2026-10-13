@@ -91,8 +91,8 @@ export default function DailyTalkToAssistant({
 
   const statusColor = {
     running: 'bg-green-500', starting: 'bg-yellow-500',
-    stopping: 'bg-orange-500', stopped: 'bg-gray-500', error: 'bg-red-500',
-  }[agentStatus.status] ?? 'bg-gray-500'
+    stopping: 'bg-orange-500', stopped: 'bg-muted-foreground', error: 'bg-red-500',
+  }[agentStatus.status] ?? 'bg-muted-foreground'
 
   const agentStateLabel = {
     initializing: 'Initializing',
@@ -102,34 +102,34 @@ export default function DailyTalkToAssistant({
   }[state.agentState] ?? 'Unknown'
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-gray-800">
+    <div className="h-full flex flex-col bg-card">
 
       {/* ── Header ── */}
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0 space-y-2">
+      <div className="px-4 py-3 border-b border-border flex-shrink-0 space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h3 className="font-medium text-gray-900 dark:text-gray-100">Talk to Assistant</h3>
+            <h3 className="font-medium text-foreground">Talk to Assistant</h3>
             <div className={`w-2 h-2 rounded-full ${statusColor}`} />
           </div>
         </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400">{agentName}</p>
+        <p className="text-xs text-muted-foreground">{agentName}</p>
       </div>
 
       {/* ── Connection Error ── */}
       {state.connectionError && (
-        <div className="mx-4 mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex-shrink-0">
-          <span className="text-sm font-medium text-red-800 dark:text-red-300">Connection Error</span>
-          <p className="text-xs text-red-700 dark:text-red-400 mt-1">{state.connectionError}</p>
+        <div className="mx-4 mt-3 p-3 bg-destructive/10 border border-destructive/30 rounded-lg flex-shrink-0">
+          <span className="text-sm font-medium text-destructive">Connection Error</span>
+          <p className="text-xs text-destructive mt-1">{state.connectionError}</p>
         </div>
       )}
 
       {/* ── Idle ── */}
       {!state.isConnected && !state.isConnecting && (
         <div className="p-4 text-center flex-shrink-0">
-          <div className="w-12 h-12 mx-auto mb-3 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-            <PhoneIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          <div className="w-12 h-12 mx-auto mb-3 bg-primary/10 rounded-full flex items-center justify-center">
+            <PhoneIcon className="w-6 h-6 text-primary" />
           </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Start voice conversation</p>
+          <p className="text-sm text-muted-foreground mb-3">Start voice conversation</p>
           <Button onClick={actions.connect} className="w-full">Start Call</Button>
         </div>
       )}
@@ -137,25 +137,25 @@ export default function DailyTalkToAssistant({
       {/* ── Connecting ── */}
       {state.isConnecting && (
         <div className="p-4 text-center flex-shrink-0">
-          <div className="w-12 h-12 mx-auto mb-3 bg-yellow-50 dark:bg-yellow-900/30 rounded-full flex items-center justify-center">
-            <Loader2 className="w-6 h-6 text-yellow-600 dark:text-yellow-400 animate-spin" />
+          <div className="w-12 h-12 mx-auto mb-3 bg-warning/10 rounded-full flex items-center justify-center">
+            <Loader2 className="w-6 h-6 text-warning animate-spin" />
           </div>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Connecting to {agentName}...</p>
+          <p className="text-sm text-muted-foreground">Connecting to {agentName}...</p>
         </div>
       )}
 
       {/* ── Connected ── */}
       {state.isConnected && (
         <>
-          <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+          <div className="px-4 py-2 border-b border-border flex-shrink-0">
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-gray-700 dark:text-gray-300">Connected</span>
+                <span className="text-foreground">Connected</span>
                 <Badge variant="outline" className="text-xs">{agentStateLabel}</Badge>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">{formatTime(state.connectionTime)}</span>
+                <span className="text-xs text-muted-foreground">{formatTime(state.connectionTime)}</span>
                 <Collapsible open={showDetails} onOpenChange={setShowDetails}>
                   <CollapsibleTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
@@ -171,21 +171,21 @@ export default function DailyTalkToAssistant({
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-xs">Volume</label>
-                    <span className="text-xs text-gray-500">{volume}%</span>
+                    <span className="text-xs text-muted-foreground">{volume}%</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Volume2 className="w-3 h-3 text-gray-400" />
+                    <Volume2 className="w-3 h-3 text-muted-foreground" />
                     <Slider value={[volume]} onValueChange={v => setVolume(v[0])} max={100} step={1} className="flex-1" />
                   </div>
                 </div>
-                <div className="p-2 bg-gray-50 dark:bg-gray-900/50 rounded text-xs space-y-1">
+                <div className="p-2 bg-muted/50 rounded text-xs space-y-1">
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Audio:</span>
+                    <span className="text-muted-foreground">Audio:</span>
                     <span>{state.isMuted ? 'Muted' : 'Active'}</span>
                   </div>
                   {state.roomUrl && (
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Room:</span>
+                      <span className="text-muted-foreground">Room:</span>
                       <span className="truncate ml-2">{state.roomUrl.split('/').pop()}</span>
                     </div>
                   )}
@@ -198,8 +198,8 @@ export default function DailyTalkToAssistant({
           <div className="flex-1 flex flex-col min-h-0 p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-gray-500" />
-                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <MessageSquare className="w-4 h-4 text-muted-foreground" />
+                <h4 className="text-sm font-medium text-foreground">
                   Live Transcript ({state.transcripts.length})
                 </h4>
               </div>
@@ -211,10 +211,10 @@ export default function DailyTalkToAssistant({
               )}
             </div>
 
-            <div className="flex-1 bg-gray-50 dark:bg-gray-900/50 rounded-lg overflow-hidden">
+            <div className="flex-1 bg-muted/50 rounded-lg overflow-hidden">
               <div className="h-full overflow-y-auto p-3">
                 {state.transcripts.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-gray-500 dark:text-gray-400 text-sm">
+                  <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-sm">
                     <MessageSquare className="w-8 h-8 mb-2 opacity-50" />
                     <p>Start speaking to see transcripts...</p>
                   </div>
@@ -224,8 +224,8 @@ export default function DailyTalkToAssistant({
                       <div key={t.id} className={`flex gap-2 ${t.speaker === 'user' ? 'justify-start' : 'justify-end'}`}>
                         <div className="flex items-start gap-2 max-w-[85%]">
                           {t.speaker === 'user'
-                            ? <User className="w-4 h-4 text-blue-500 mt-1 flex-shrink-0" />
-                            : <Bot  className="w-4 h-4 text-green-500 mt-1 flex-shrink-0" />
+                            ? <User className="w-4 h-4 text-primary mt-1 flex-shrink-0" />
+                            : <Bot  className="w-4 h-4 text-success mt-1 flex-shrink-0" />
                           }
                           <div className={`rounded-lg px-3 py-2 text-sm ${
                             t.speaker === 'user'
@@ -248,9 +248,9 @@ export default function DailyTalkToAssistant({
           </div>
 
           {/* Bottom controls */}
-          <div className="p-3 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+          <div className="p-3 border-t border-border flex-shrink-0">
             {isEndCallHighlighted && (
-              <p className="text-center text-xs text-red-500 dark:text-red-400 mb-2 animate-pulse">
+              <p className="text-center text-xs text-destructive mb-2 animate-pulse">
                 End the call here before closing
               </p>
             )}
@@ -285,9 +285,9 @@ export default function DailyTalkToAssistant({
       {/* Tips — idle */}
       {!state.isConnected && !state.isConnecting && (
         <div className="p-4 mt-auto flex-shrink-0">
-          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <h4 className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-2">Voice Testing Tips</h4>
-            <ul className="text-xs text-blue-600 dark:text-blue-400 space-y-1">
+          <div className="p-3 bg-primary/10 rounded-lg">
+            <h4 className="text-xs font-medium text-primary mb-2">Voice Testing Tips</h4>
+            <ul className="text-xs text-primary space-y-1">
               <li>• Test your system prompt and agent behavior</li>
               <li>• Verify STT, LLM, and TTS configurations</li>
               <li>• Check response timing and accuracy</li>

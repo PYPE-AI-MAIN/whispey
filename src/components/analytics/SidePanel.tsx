@@ -113,9 +113,9 @@ function ChartTypeTile({
       disabled={disabled}
       onClick={onAdd}
       className={cn(
-        'flex flex-col items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-4 text-xs text-gray-600 transition',
-        'hover:border-blue-400 hover:bg-blue-50/50 hover:text-blue-700 active:cursor-grabbing',
-        'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-gray-200 disabled:hover:bg-transparent',
+        'flex flex-col items-center gap-1.5 rounded-lg border border-border px-3 py-4 text-xs text-muted-foreground transition',
+        'hover:border-blue-400 hover:bg-blue-50/50 hover:text-primary active:cursor-grabbing',
+        'disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:bg-transparent',
         'dark:border-gray-800 dark:text-gray-400 dark:hover:border-blue-500 dark:hover:bg-blue-950/30',
         !disabled && 'cursor-grab'
       )}
@@ -160,12 +160,12 @@ function SidePanelContent({
             variant="outline"
             size="sm"
             onClick={onOpenAi}
-            className="mb-3 w-full justify-center gap-1.5 border-dashed border-blue-300 text-blue-700 hover:border-blue-400 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-950/30"
+            className="mb-3 w-full justify-center gap-1.5 border-dashed border-primary/40 text-primary hover:border-blue-400 hover:bg-primary/10"
           >
             <Sparkles className="h-3.5 w-3.5" /> Generate with Pi
           </Button>
         )}
-        <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+        <p className="mb-3 text-xs text-muted-foreground">
           {canEdit
             ? 'Drag one onto the dashboard, or click to add it at the end.'
             : 'You can view this dashboard but not change it.'}
@@ -279,7 +279,7 @@ function TextSettings({
           value={widget.title}
           disabled={!canEdit}
           onChange={(e) => onChangeTitle(e.target.value)}
-          className="w-full rounded-md border border-gray-200 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-blue-400 disabled:opacity-60 dark:border-gray-800"
+          className="w-full rounded-md border border-border bg-transparent px-2 py-1.5 text-sm outline-none focus:border-blue-400 disabled:opacity-60"
         />
       </Row>
       <Row label="Content">
@@ -289,12 +289,12 @@ function TextSettings({
           onChange={(e) => onChange({ text: e.target.value })}
           placeholder={'# A heading\nA line of body text underneath it.'}
           rows={8}
-          className="w-full resize-y rounded-md border border-gray-200 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-blue-400 disabled:opacity-60 dark:border-gray-800"
+          className="w-full resize-y rounded-md border border-border bg-transparent px-2 py-1.5 text-sm outline-none focus:border-blue-400 disabled:opacity-60"
         />
       </Row>
-      <p className="text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">
-        A line starting with <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">#</code> is a
-        heading, <code className="rounded bg-gray-100 px-1 dark:bg-gray-800">##</code> a smaller one.
+      <p className="text-[11px] leading-relaxed text-muted-foreground">
+        A line starting with <code className="rounded bg-muted px-1">#</code> is a
+        heading, <code className="rounded bg-muted px-1">##</code> a smaller one.
         Everything else is a plain line of text.
       </p>
     </Panel>
@@ -335,7 +335,7 @@ function FormulaSettings({
           value={widget.title}
           disabled={!canEdit}
           onChange={(e) => onChangeTitle(e.target.value)}
-          className="w-full rounded-md border border-gray-200 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-blue-400 disabled:opacity-60 dark:border-gray-800"
+          className="w-full rounded-md border border-border bg-transparent px-2 py-1.5 text-sm outline-none focus:border-blue-400 disabled:opacity-60"
         />
       </Row>
 
@@ -353,8 +353,8 @@ function FormulaSettings({
               className={cn(
                 'rounded-md border px-2 py-1 text-xs transition disabled:opacity-50',
                 spec.op === o.op
-                  ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
-                  : 'border-gray-200 text-gray-600 hover:border-gray-300 dark:border-gray-800 dark:text-gray-400'
+                  ? 'border-blue-500 bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:border-border'
               )}
             >
               {o.label}
@@ -365,7 +365,7 @@ function FormulaSettings({
 
       <MiniAggEditor label="Value B" value={spec.b} fields={fields} canEdit={canEdit} onChange={(b) => onChange({ ...spec, b })} />
 
-      <p className="text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">
+      <p className="text-[11px] leading-relaxed text-muted-foreground">
         {spec.op === 'percent' ? 'Value A as a percentage of Value B.' : 'Value A divided by Value B.'}
       </p>
     </Panel>
@@ -394,8 +394,8 @@ function MiniAggEditor({
   const aggField = value.agg?.field
 
   return (
-    <div className="mb-3 rounded-md border border-gray-200 p-2.5 dark:border-gray-800">
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-400">{label}</p>
+    <div className="mb-3 rounded-md border border-border p-2.5">
+      <p className="mb-2 text-[11px] font-semibold text-muted-foreground">{label}</p>
 
       <Row label="Calculation">
         <Picker
@@ -508,20 +508,20 @@ function ChartSettings({
               const note = !text || text === generated ? undefined : text
               if (note !== spec.display?.note) setSpec({ display: { ...spec.display, note } })
             }}
-            className="w-full resize-y rounded-md border border-gray-200 bg-gray-100/70 px-2.5 py-2 text-[11px] leading-relaxed text-gray-600 outline-none focus:border-blue-400 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-300"
+            className="w-full resize-y rounded-md border border-border bg-muted/70 px-2.5 py-2 text-[11px] leading-relaxed text-muted-foreground outline-none focus:border-blue-400"
           />
           {spec.display?.note && (
             <button
               type="button"
               onClick={() => setSpec({ display: { ...spec.display, note: undefined } })}
-              className="mt-1 text-[11px] text-gray-400 underline-offset-2 hover:text-gray-600 hover:underline dark:hover:text-gray-300"
+              className="mt-1 text-[11px] text-muted-foreground underline-offset-2 hover:text-muted-foreground hover:underline"
             >
               Reset to the automatic description
             </button>
           )}
         </div>
       ) : (
-        <p className="mb-3 rounded-md bg-gray-100/70 px-2.5 py-2 text-[11px] leading-relaxed text-gray-600 dark:bg-gray-800/60 dark:text-gray-300">
+        <p className="mb-3 rounded-md bg-muted/70 px-2.5 py-2 text-[11px] leading-relaxed text-muted-foreground">
           {explainSpec(spec, fields)}
         </p>
       )}
@@ -531,7 +531,7 @@ function ChartSettings({
           value={widget.title}
           disabled={!canEdit}
           onChange={(e) => onChangeTitle(e.target.value)}
-          className="w-full rounded-md border border-gray-200 bg-transparent px-2 py-1.5 text-sm outline-none focus:border-blue-400 disabled:opacity-60 dark:border-gray-800"
+          className="w-full rounded-md border border-border bg-transparent px-2 py-1.5 text-sm outline-none focus:border-blue-400 disabled:opacity-60"
         />
       </Row>
 
@@ -545,8 +545,8 @@ function ChartSettings({
               className={cn(
                 'rounded-md border px-2 py-1 text-xs transition disabled:opacity-50',
                 widget.kind === t.kind
-                  ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
-                  : 'border-gray-200 text-gray-600 hover:border-gray-300 dark:border-gray-800 dark:text-gray-400'
+                  ? 'border-blue-500 bg-primary/10 text-primary'
+                  : 'border-border text-muted-foreground hover:border-border'
               )}
             >
               {t.label}
@@ -575,7 +575,7 @@ function ChartSettings({
             })
           }}
         />
-        <p className="mt-1 text-[11px] leading-snug text-gray-400">{calculation.help}</p>
+        <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{calculation.help}</p>
       </Row>
 
       {calculation.needs !== 'none' && (
@@ -602,7 +602,7 @@ function ChartSettings({
             }
           />
           {chosenAggField && (
-            <p className="mt-1 text-[11px] leading-snug text-gray-400">
+            <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
               {chosenAggField.description ? `${chosenAggField.description} ` : ''}
               <FieldShape field={chosenAggField} />
             </p>
@@ -629,8 +629,8 @@ function ChartSettings({
                 className={cn(
                   'rounded-md border px-2 py-1 text-xs transition disabled:opacity-50',
                   (spec.display?.unit === 'm') === (opt.unit === 'm')
-                    ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
-                    : 'border-gray-200 text-gray-600 hover:border-gray-300 dark:border-gray-800 dark:text-gray-400'
+                    ? 'border-blue-500 bg-primary/10 text-primary'
+                    : 'border-border text-muted-foreground hover:border-border'
                 )}
               >
                 {opt.label}
@@ -668,7 +668,7 @@ function ChartSettings({
             — but a near-unique field is still a bad chart split on its own
             terms: 50-odd nearly-meaningless lines beat 30,000, not "legible" */}
         {chosenDimensionField?.is_identity_candidate && (
-          <p className="mt-1 text-[11px] leading-snug text-amber-600 dark:text-amber-500">
+          <p className="mt-1 text-[11px] leading-snug text-warning">
             {chosenDimensionField.label} looks close to one-value-per-call — splitting by it
             usually produces a chart with too many categories to read.
           </p>
@@ -718,7 +718,7 @@ function ChartSettings({
           }
         />
         {spec.grain === 'entity' && (
-          <p className="mt-1 text-[11px] text-gray-400">
+          <p className="mt-1 text-[11px] text-muted-foreground">
             {spec.dedupe?.winner === 'best_outcome'
               ? 'Repeat calls collapse to one row, keeping the best outcome from the agent’s order.'
               : 'Repeat calls collapse to one row, keeping the most recent attempt.'}
@@ -749,19 +749,19 @@ function coverageHint(f: CatalogField): string | undefined {
 
 function Panel({ title, children, onBack }: Readonly<{ title: string; children: React.ReactNode; onBack?: () => void }>) {
   return (
-    <aside className="flex h-full w-full flex-col overflow-y-auto border-l border-gray-200 bg-gray-50/60 px-4 py-4 dark:border-gray-800 dark:bg-gray-900/40">
+    <aside className="flex h-full w-full flex-col overflow-y-auto border-l border-border bg-muted/50 px-4 py-4">
       {/* selecting a chart replaces the chart types with its settings, and
           until this existed the only way back was to guess that clicking the
           canvas background would do it */}
       {onBack ? (
         <button
           onClick={onBack}
-          className="mb-3 -ml-1 flex items-center gap-1.5 self-start rounded px-1 py-0.5 text-xs font-semibold uppercase tracking-wide text-gray-500 transition hover:bg-gray-200/60 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+          className="mb-3 -ml-1 flex items-center gap-1.5 self-start rounded px-1 py-0.5 text-xs font-semibold text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Chart types
         </button>
       ) : (
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{title}</h2>
+        <h2 className="mb-3 text-xs font-semibold text-muted-foreground">{title}</h2>
       )}
       {children}
     </aside>
@@ -771,7 +771,7 @@ function Panel({ title, children, onBack }: Readonly<{ title: string; children: 
 function Row({ label, children }: Readonly<{ label: string; children: React.ReactNode }>) {
   return (
     <div className="mb-3">
-      <label className="mb-1 block text-[11px] font-medium text-gray-500 dark:text-gray-400">{label}</label>
+      <label className="mb-1 block text-[11px] font-medium text-muted-foreground">{label}</label>
       {children}
     </div>
   )
@@ -816,7 +816,7 @@ function Picker({
           <SelectItem key={o.value} value={o.value} description={o.help}>
             <span className="flex w-full items-center justify-between gap-3">
               <span>{o.label}</span>
-              {o.hint && <span className="shrink-0 text-[11px] text-gray-400">{o.hint}</span>}
+              {o.hint && <span className="shrink-0 text-[11px] text-muted-foreground">{o.hint}</span>}
             </span>
           </SelectItem>
         ))}

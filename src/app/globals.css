@@ -41,6 +41,8 @@
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -76,6 +78,8 @@
   --accent: oklch(0.95 0.025 258);
   --accent-foreground: oklch(0.3 0.1 265);
   --destructive: oklch(0.577 0.245 27.325);
+  --success: oklch(0.53 0.14 155);
+  --warning: oklch(0.55 0.14 65);
   --border: oklch(0.91 0.025 260);
   --input: oklch(0.91 0.025 260);
   --ring: oklch(0.6 0.19 264);
@@ -123,6 +127,8 @@
   --accent: oklch(0.28 0.06 262);
   --accent-foreground: oklch(0.97 0.012 255);
   --destructive: oklch(0.704 0.191 22.216);
+  --success: oklch(0.78 0.15 155);
+  --warning: oklch(0.82 0.14 80);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.6 0.12 258);
@@ -338,4 +344,32 @@
 @keyframes shimmer {
   0%   { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
+}
+
+/* Motion: one short rise-in when a page's content first appears, and a light stagger for card rows.
+   Everything here switches off under prefers-reduced-motion. */
+@keyframes wp-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@utility wp-enter {
+  animation: wp-rise 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@utility wp-stagger {
+  & > * {
+    animation: wp-rise 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  & > :nth-child(2) { animation-delay: 40ms; }
+  & > :nth-child(3) { animation-delay: 80ms; }
+  & > :nth-child(4) { animation-delay: 120ms; }
+  & > :nth-child(n + 5) { animation-delay: 160ms; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wp-enter,
+  .wp-stagger > * {
+    animation: none;
+  }
 }

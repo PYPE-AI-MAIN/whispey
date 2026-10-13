@@ -31,18 +31,18 @@ function UsageDetails({
   return (
     <>
           {/* Header */}
-          <div className={`px-4 py-3 border-b border-gray-200 dark:border-gray-800 ${
+          <div className={`px-4 py-3 border-b border-border  ${
             hasReachedLimit 
               ? 'bg-red-50 dark:bg-red-900/20' 
               : 'bg-blue-50 dark:bg-blue-900/20'
           }`}>
-            <h3 className="font-medium text-gray-900 dark:text-gray-100">
+            <h3 className="font-medium text-foreground">
               Pype Agent Usage
             </h3>
             <p className={`text-xs mt-0.5 ${
               hasReachedLimit 
                 ? 'text-red-600 dark:text-red-400' 
-                : 'text-gray-600 dark:text-gray-400'
+                : 'text-muted-foreground'
             }`}>
               {hasReachedLimit ? 'You\'ve reached your agent limit' : `${remainingSlots} ${slotWord} remaining`}
             </p>
@@ -52,29 +52,29 @@ function UsageDetails({
           <div className="px-4 py-3 space-y-2">
             {agentsList.length > 0 ? (
               <>
-                <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
+                <p className="text-xs font-medium text-muted-foreground mb-2">
                   Active Agents:
                 </p>
                 <div className="space-y-1.5">
                   {agentsList.map((agent) => (
                     <div 
                       key={agent.id}
-                      className="flex items-center justify-between py-1.5 px-2 rounded-md bg-gray-50 dark:bg-gray-800"
+                      className="flex items-center justify-between py-1.5 px-2 rounded-md bg-muted/50"
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                        <p className="text-sm font-medium text-foreground truncate">
                           {agentDisplayName(projectAgents.find(a => a.id === agent.id)) || agent.name}
                         </p>
                         {agent.phone_number && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                          <p className="text-xs text-muted-foreground">
                             {agent.phone_number}
                           </p>
                         )}
                       </div>
                       <span className={`text-xs px-1.5 py-0.5 rounded ${
                         agent.status === 'active' 
-                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                          ? 'bg-green-100 dark:bg-green-900/30 text-success dark:text-green-300'
+                          : 'bg-muted text-muted-foreground'
                       }`}>
                         {agent.status}
                       </span>
@@ -83,15 +83,15 @@ function UsageDetails({
                 </div>
               </>
             ) : (
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 No active agents yet
               </p>
             )}
           </div>
 
           {/* Footer */}
-          <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-800">
-            <p className="text-xs text-gray-600 dark:text-gray-400">
+          <div className="px-4 py-3 bg-muted/50 border-t border-border">
+            <p className="text-xs text-muted-foreground">
               {hasReachedLimit 
                 ? 'Delete an existing agent to create a new one'
                 : 'You can create up to ' + maxAgents + ' Pype agents'
@@ -114,19 +114,19 @@ const PypeAgentUsage: React.FC<PypeAgentUsageProps> = ({ projectId }) => {
       <div
         className={`
           flex items-center gap-2 px-3 py-1.5 rounded-lg
-          bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700
+          bg-muted  border border-border 
           animate-pulse
           ${isMobile ? 'text-xs' : 'text-sm'}
         `}
       >
         {/* Skeleton text */}
-        <div className="h-3 w-20 bg-gray-300 dark:bg-gray-600 rounded"></div>
+        <div className="h-3 w-20 bg-muted-foreground/30 rounded"></div>
         
         {/* Skeleton progress bar */}
-        <div className="w-16 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
+        <div className="w-16 h-1.5 bg-muted-foreground/30 rounded-full"></div>
         
         {/* Skeleton icon */}
-        <div className="w-3.5 h-3.5 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
+        <div className="w-3.5 h-3.5 bg-muted-foreground/30 rounded-full"></div>
       </div>
     )
   }
@@ -170,7 +170,7 @@ const PypeAgentUsage: React.FC<PypeAgentUsageProps> = ({ projectId }) => {
         <TooltipContent 
           side="bottom" 
           align="end"
-          className="w-80 p-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700"
+          className="w-80 p-0 bg-card border border-border"
         >
           <UsageDetails
             hasReachedLimit={hasReachedLimit}

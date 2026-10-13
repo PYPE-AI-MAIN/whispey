@@ -48,14 +48,14 @@ export function AgentMultiSelect({
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="gap-1.5">
           {label}
-          <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-64 p-2" align="end">
         <div className="flex items-center justify-between px-1 pb-2">
-          <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Agents</span>
+          <span className="text-xs font-medium text-muted-foreground">Agents</span>
           <button
-            className="text-xs text-blue-600 hover:underline dark:text-blue-400"
+            className="text-xs text-primary hover:underline"
             onClick={() => onChange(null)}
           >
             Select all
@@ -65,13 +65,13 @@ export function AgentMultiSelect({
           {agents.map((a) => (
             <label
               key={a.id}
-              className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
             >
               <Checkbox checked={selectedSet.has(a.id)} onCheckedChange={() => toggle(a.id)} />
-              <span className="truncate text-gray-900 dark:text-gray-100">{a.name}</span>
+              <span className="truncate text-foreground">{a.name}</span>
             </label>
           ))}
-          {agents.length === 0 && <p className="px-2 py-3 text-sm text-gray-500 dark:text-gray-400">No agents in this project yet.</p>}
+          {agents.length === 0 && <p className="px-2 py-3 text-sm text-muted-foreground">No agents in this project yet.</p>}
         </div>
       </PopoverContent>
     </Popover>

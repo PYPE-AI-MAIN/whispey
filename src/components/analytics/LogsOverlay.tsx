@@ -140,18 +140,18 @@ export function LogsOverlay({
           variant bucket — a plain max-w-6xl doesn't override an sm: one. Without
           the sm: variant here the dialog stayed capped at 32rem on any real screen. */}
       <DialogContent className="max-h-[85vh] max-w-6xl sm:max-w-6xl overflow-hidden p-0">
-        <DialogHeader className="border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+        <DialogHeader className="border-b border-border px-5 py-4">
           <DialogTitle className="text-base">
             {widget?.title}
             {dimensionValue !== undefined && (
-              <span className="ml-2 font-normal text-gray-500">
+              <span className="ml-2 font-normal text-muted-foreground">
                 · {dimensionValue ?? 'no value'}
               </span>
             )}
           </DialogTitle>
 
           {/* explains why the count here can differ from the chart's number */}
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-muted-foreground">
             {grain === 'entity' ? `${grainLabel}, ${winnerLabel}` : grainLabel}
             {/* only show this when dedupe actually collapsed something —
                 "54 calls became 54 rows" just looks like a bug */}
@@ -172,16 +172,16 @@ export function LogsOverlay({
                 {csv.busy ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-2 h-3.5 w-3.5" />}
                 Export CSV
               </Button>
-              {csv.error && <span className="ml-2 text-xs text-red-600">{csv.error}</span>}
+              {csv.error && <span className="ml-2 text-xs text-destructive">{csv.error}</span>}
             </div>
           )}
         </DialogHeader>
 
         <div className="max-h-[60vh] overflow-auto px-5 py-3">
-          {error && <p className="py-6 text-center text-sm text-red-600">{error}</p>}
+          {error && <p className="py-6 text-center text-sm text-destructive">{error}</p>}
           {!error && loading && rows.length === 0 && <Skeleton className="h-40 w-full" />}
           {!error && !loading && rows.length === 0 && (
-            <p className="py-10 text-center text-sm text-gray-500">No calls here.</p>
+            <p className="py-10 text-center text-sm text-muted-foreground">No calls here.</p>
           )}
 
           {rows.length > 0 && (
@@ -197,8 +197,8 @@ export function LogsOverlay({
                   uses the theme's `--background` token, and gray-950 is close but not
                   an exact match — that tiny hue mismatch is what made the header look
                   like a separate floating panel instead of part of the table. */}
-              <thead className="sticky top-0 z-10 bg-background text-left text-xs uppercase tracking-wide text-gray-400">
-                <tr className="border-b border-gray-200 dark:border-gray-800">
+              <thead className="sticky top-0 z-10 bg-background text-left text-xs text-muted-foreground">
+                <tr className="border-b border-border">
                   <th className="py-2 font-medium">When</th>
                   {/* only on the org-wide canvas — a single-agent list has one
                       answer for every row, which the dialog title already gives */}
@@ -217,13 +217,13 @@ export function LogsOverlay({
                   <tr
                     key={r.id}
                     onClick={() => openCall(r)}
-                    className="group cursor-pointer border-b border-gray-100 last:border-0 hover:bg-gray-50 dark:border-gray-800/70 dark:hover:bg-gray-800/40"
+                    className="group cursor-pointer border-b border-border/60 last:border-0 hover:bg-muted/50"
                   >
-                    <td className="whitespace-nowrap py-2 pr-4 text-gray-700 dark:text-gray-300">
+                    <td className="whitespace-nowrap py-2 pr-4 text-foreground">
                       {r.started_at ? new Date(r.started_at).toLocaleString() : '—'}
                     </td>
                     {!agentId && (
-                      <td className="max-w-[8rem] truncate py-2 pr-4 text-gray-700 dark:text-gray-300" title={agentNames?.get(r.agent_id) ?? r.agent_id}>
+                      <td className="max-w-[8rem] truncate py-2 pr-4 text-foreground" title={agentNames?.get(r.agent_id) ?? r.agent_id}>
                         {agentNames?.get(r.agent_id) ?? r.agent_id}
                       </td>
                     )}
@@ -231,17 +231,17 @@ export function LogsOverlay({
                         phone number; left unbounded it pushed every other
                         column off the dialog. */}
                     <td
-                      className="max-w-[10rem] truncate py-2 pr-4 tabular-nums text-gray-700 dark:text-gray-300"
+                      className="max-w-[10rem] truncate py-2 pr-4 tabular-nums text-foreground"
                       title={r.customer_number ?? undefined}
                     >
                       {r.customer_number || '—'}
                     </td>
-                    <td className="whitespace-nowrap py-2 pr-4 tabular-nums text-gray-500">{length(r.duration_seconds)}</td>
-                    <td className="max-w-[9rem] truncate py-2 pr-4 text-gray-500" title={r.call_ended_reason ?? undefined}>
+                    <td className="whitespace-nowrap py-2 pr-4 tabular-nums text-muted-foreground">{length(r.duration_seconds)}</td>
+                    <td className="max-w-[9rem] truncate py-2 pr-4 text-muted-foreground" title={r.call_ended_reason ?? undefined}>
                       {r.call_ended_reason ?? '—'}
                     </td>
                     {showSeries && (
-                      <td className="max-w-[10rem] truncate py-2 pr-4 text-gray-500" title={r.series ?? undefined}>
+                      <td className="max-w-[10rem] truncate py-2 pr-4 text-muted-foreground" title={r.series ?? undefined}>
                         {r.series ?? '—'}
                       </td>
                     )}
