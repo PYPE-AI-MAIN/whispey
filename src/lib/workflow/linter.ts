@@ -106,6 +106,22 @@ function lintStart(wf: Workflow, idSet: Set<string>, nodeMap: Map<string, Node>)
   return []
 }
 
+// A placeholder word left in by whoever (or whatever) drafted the flow, in place of a real address, number or key.
+const PLACEHOLDER_RE = /\bTODO\b/
+
+function hasPlaceholder(value: unknown): boolean {
+  if (typeof value === 'string') return PLACEHOLDER_RE.test(value)
+  if (Array.isArray(value)) return value.some(hasPlaceholder)
+  if (value && typeof value === 'object') return Object.values(value).some(hasPlaceholder)
+  return false
+}
+
+function lintPlaceholders(nodes: readonly Node[]): LintIssue[] {
+  return nodes
+    .filter((n) => n.type !== 'note' && hasPlaceholder({ ...n, position: undefined }))
+    .map((n): LintIssue => ({ severity: 'warning', message: `'${n.id}' still has a TODO placeholder that needs a real value`, nodeId: n.id }))
+}
+
 function lintKnowledgeBase(nodes: readonly Node[]): LintIssue[] {
   return nodes.flatMap((n): LintIssue[] =>
     n.type === 'knowledge' && n.knowledgeBase && /\s/.test(n.knowledgeBase.trim())
@@ -463,6 +479,7 @@ export function lintWorkflow(source: Workflow): LintIssue[] {
     ...wf.nodes.flatMap((n) => lintNode(wf, n, telOn, nodeMap, outEdges)),
     ...lintSaveAs(wf.nodes),
     ...lintKnowledgeBase(wf.nodes),
+    ...lintPlaceholders(wf.nodes),
     ...wf.edges.flatMap((e) => lintEdge(e, idSet, nodeMap)),
     ...lintReachability(wf, toolNodeIds, outEdges),
     ...lintUnknownVariables(wf),

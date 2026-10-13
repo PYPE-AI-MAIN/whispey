@@ -9,6 +9,7 @@ export function explainIssue(issue: LintIssue, wf: Pick<Workflow, 'nodes'> | nul
   const stepName = (id: string) => wf?.nodes.find((n) => n.id === id)?.name || id
   const m = issue.message
   const rules: Array<[RegExp, (r: RegExpExecArray) => string]> = [
+    [/still has a TODO placeholder/, () => 'This step still has a TODO where a real value (an address, number or key) belongs. Replace it before you rely on this step.'],
     [/is unreachable from start/, () => 'Nothing leads to this step, so the call can never reach it. Connect an earlier step to it, or delete it.'],
     [/is a dead-end \(no outgoing edges\)/, () => 'This step has no way forward, so the call would stop here. Add what comes next, or end the call.'],
     [/skips the user response, so its condition edges/, () => 'This step moves on without waiting for a reply, so "when the caller says" connections from it never fire. Make them "Next step", or turn off "Move on without waiting for a reply".'],

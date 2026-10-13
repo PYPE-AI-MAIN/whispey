@@ -180,7 +180,8 @@ You are building something a non-technical person has to read, trust and edit. F
 6. **Few endings.** One \`ending\` per genuinely different farewell (normal close; no thanks / stop; wrong number or voicemail; emergency; hand-off to a human). Not one per reason.
 7. **Name for people.** Short plain names ("Greet and confirm identity", "Take the request"), and set \`stage\` on every node so the editor can group them. Use the same stage names for steps of one phase.
 8. **Start at the greeting.** \`start\` is the first conversation step. Never a knowledge, function, code or logic node.
-9. **Do not add what was not asked for.** No extra "confirm" or "summary" steps, no notes, no placeholder branches for cases the user never mentioned.
+9. **Know what each step can do.** Only a \`extract_variable\` step saves variables. A \`conversation\` step cannot, so never tell one to "save X as Y" or "set X": give that job to a Collect Details step. In \`extract_variable\` extractions set \`required: false\` for details that may not apply (a pregnancy week for someone only planning, a locality). A step with a required detail that never comes will keep asking for it. The \`functions\` list of a conversation step takes ONLY \`function\` (Call an API) step ids, never a knowledge step.
+10. **Do not add what was not asked for.** No extra "confirm" or "summary" steps, no notes, no placeholder branches for cases the user never mentioned.
 
 Before you answer, check your own JSON: node count within the budget above; total edges at most about twice the node count; no condition text repeated on two edges; every non-ending step has a way forward; \`start\` is the greeting. If any check fails, simplify and check again.
 

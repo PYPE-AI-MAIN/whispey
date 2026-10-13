@@ -136,10 +136,13 @@ describe('rule ids', () => {
 
 import { readFileSync } from 'node:fs'
 
-describe('editor page sends the compatible form', () => {
-  it('both the check and the deploy request use deployable()', () => {
-    const src = readFileSync('src/app/[projectid]/agents/[agentid]/workflow/page.tsx', 'utf8')
-    expect(src.split('workflow: deployable(workflow)').length - 1).toBe(2)
-    expect(src).not.toContain('JSON.stringify({ workflow })')
+describe('editor sends the compatible form', () => {
+  it('the check and the deploy request both use deployable()', () => {
+    const page = readFileSync('src/app/[projectid]/agents/[agentid]/workflow/page.tsx', 'utf8')
+    const hook = readFileSync('src/hooks/useWorkflowDeploy.ts', 'utf8')
+    expect(page.split('workflow: deployable(workflow)').length - 1).toBe(1)
+    expect(hook.split('workflow: deployable(workflow)').length - 1).toBe(1)
+    expect(page).not.toContain('JSON.stringify({ workflow })')
+    expect(hook).not.toContain('JSON.stringify({ workflow })')
   })
 })
