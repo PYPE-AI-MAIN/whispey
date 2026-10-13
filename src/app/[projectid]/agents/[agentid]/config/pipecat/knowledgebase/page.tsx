@@ -43,7 +43,7 @@ export default function PipecatKnowledgeBasePage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
+      <div className="px-6 py-4 border-border bg-background border-b flex-shrink-0">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center gap-4">
             <Button
@@ -60,7 +60,7 @@ export default function PipecatKnowledgeBasePage() {
                 <BookOpen className="h-5 w-5 text-primary" />
               </div>
               <div>
-                <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground">
                   Knowledge Base
                 </h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400">

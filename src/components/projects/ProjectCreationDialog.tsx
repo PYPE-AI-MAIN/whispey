@@ -39,7 +39,7 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
     e.preventDefault()
     
     if (!formData.name.trim()) {
-      setError('Project name is required')
+      setError('Organization name is required')
       return
     }
     
@@ -60,7 +60,7 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
 
       if (!response.ok) {
         const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to create project')
+        throw new Error(errorData.error || 'Failed to create organization')
       }
 
       const data = await response.json()
@@ -71,11 +71,11 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
       await queryClient.invalidateQueries({ queryKey: ['organizations'] })
       
       // Show success toast
-      toast.success(`Project "${data.name}" created successfully!`)
+      toast.success(`Organization "${data.name}" created successfully!`)
       
     } catch (err: unknown) {
       console.error('Error creating project:', err)
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create project'
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create organization'
       setError(errorMessage)
       toast.error(errorMessage)
     } finally {
@@ -111,10 +111,10 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
             {/* Header */}
             <DialogHeader className="px-6 pt-6 pb-4 text-center">
               <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                Create New Organisation
+                Create New Organization
               </DialogTitle>
               <p className="text-sm text-gray-600 dark:text-gray-400 font-normal">
-                Set up your voice AI project with automatic API token generation
+                Set up your organization with automatic API token generation
               </p>
             </DialogHeader>
 
@@ -124,11 +124,11 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
                 {/* Project Name */}
                 <div>
                   <label htmlFor="project-name" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                    Project Name
+                    Organization Name
                   </label>
                   <Input
                     id="project-name"
-                    placeholder="Enter project name"
+                    placeholder="Enter organization name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     disabled={loading}
@@ -144,7 +144,7 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
                   </label>
                   <textarea
                     id="project-description"
-                    placeholder="Brief description of your project..."
+                    placeholder="Brief description of your organization..."
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     disabled={loading}
@@ -179,7 +179,7 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
                     {loading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      'Create Project'
+                      'Create Organization'
                     )}
                   </Button>
                 </div>
@@ -194,10 +194,10 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
                 <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
               <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                Project Created Successfully!
+                Organization Created Successfully!
               </DialogTitle>
               <p className="text-sm text-gray-600 dark:text-gray-400 font-normal">
-                Your project "{createdProjectData?.name}" has been created
+                Your organization "{createdProjectData?.name}" has been created
               </p>
             </DialogHeader>
 
@@ -205,7 +205,7 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
             <div className="px-6 pb-6 space-y-4">
               {/* Project Details */}
               <div className="p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-                <h4 className="font-medium text-gray-900 dark:text-gray-100 text-sm mb-2">Project Details</h4>
+                <h4 className="font-medium text-gray-900 dark:text-gray-100 text-sm mb-2">Organization Details</h4>
                 <div className="space-y-1 text-xs">
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">ID:</span>
@@ -224,7 +224,7 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
                   onClick={handleFinish}
                   className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-sm transition-all"
                 >
-                  Continue to Project
+                  Continue to Organization
                 </Button>
               </div>
             </div>

@@ -4,6 +4,7 @@ import React, { memo } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { Play } from 'lucide-react'
 import type { WorkflowNode } from '@/lib/workflow/schema'
+import { AddNextStep } from './AddNextStep'
 import { NODE_REGISTRY } from './nodeRegistry'
 import { useWorkflowStore } from '@/stores/workflowStore'
 
@@ -13,12 +14,14 @@ type FlowNodeData = WorkflowNode & { isStart?: boolean }
 // says that at a glance, before anyone reads a single label.
 const TERMINAL_TYPES = new Set(['ending'])
 
-function FlowNodeComponent({ data, id, selected }: NodeProps<any>) {
+function FlowNodeComponent({ data, id, selected, positionAbsoluteX, positionAbsoluteY }: NodeProps<any>) {
   const nodeData = data as FlowNodeData
   const meta = NODE_REGISTRY[nodeData.type]
   const activeNodeId = useWorkflowStore((s) => s.activeNodeId)
   const lintIssues = useWorkflowStore((s) => s.lintIssues)
   const isActive = activeNodeId === id
+  const incoming = useWorkflowStore((s) => s.workflow?.edges.filter((e) => e.target === id).length ?? 0)
+  const fromAnywhere = useWorkflowStore((s) => s.workflow?.globalRules?.some((r) => r.target === id) ?? false)
 
   const nodeIssues = lintIssues.filter((i) => i.nodeId === id)
   const hasError = nodeIssues.some((i) => i.severity === 'error')
@@ -37,10 +40,15 @@ function FlowNodeComponent({ data, id, selected }: NodeProps<any>) {
 
   return (
     <div
-      className={`group relative flex items-stretch bg-white dark:bg-gray-900 ${isTerminal ? 'rounded-full' : 'rounded-xl'} shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_20px_-8px_rgba(0,0,0,0.15)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_8px_24px_-8px_rgba(0,0,0,0.6)] min-w-[168px] max-w-[220px] cursor-pointer overflow-hidden transition-all hover:-translate-y-0.5 hover:shadow-[0_1px_2px_rgba(0,0,0,0.06),0_12px_28px_-8px_rgba(0,0,0,0.22)] ${ringClass}`}
+      className={`group relative flex items-stretch bg-white dark:bg-gray-900 ${isTerminal ? 'rounded-full' : 'rounded-xl'} shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_20px_-8px_rgba(0,0,0,0.15)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_8px_24px_-8px_rgba(0,0,0,0.6)] min-w-[168px] max-w-[220px] cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-[0_1px_2px_rgba(0,0,0,0.06),0_12px_28px_-8px_rgba(0,0,0,0.22)] ${ringClass}`}
       style={selected ? ({ '--tw-ring-color': color } as React.CSSProperties) : undefined}
     >
-      <Handle type="target" position={Position.Top} className="!w-2.5 !h-2.5 !border-2 !border-white dark:!border-gray-900" style={{ background: color }} />
+      {nodeData.isStart && (
+        <span className="absolute -top-5 left-0 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+          Start
+        </span>
+      )}
+      <Handle type="target" position={Position.Left} className="!w-2.5 !h-2.5 !border-2 !border-white dark:!border-gray-900" style={{ background: color }} />
 
       {/* type-color spine — instant recognition even zoomed out, no need to read the icon */}
       <div className="w-1 shrink-0" style={{ backgroundColor: color }} />
@@ -56,10 +64,20 @@ function FlowNodeComponent({ data, id, selected }: NodeProps<any>) {
           <div className="text-[13px] font-semibold leading-tight text-gray-900 dark:text-gray-50 truncate">{label}</div>
           {!isTerminal && (
             <div className="text-[11px] font-medium tracking-wide uppercase text-gray-400 dark:text-gray-500 mt-0.5">
-              {meta?.label}
+              {nodeData.stage ? `${nodeData.stage} · ${meta?.label}` : meta?.label}
             </div>
           )}
         </div>
+        {fromAnywhere && (
+          <span className="shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400" title="A global rule can send the call here from any step">
+            any step
+          </span>
+        )}
+        {isTerminal && incoming >= 3 && (
+          <span className="shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400" title={`${incoming} steps can end here`}>
+            {incoming} steps
+          </span>
+        )}
         {nodeData.isStart && (
           <div
             className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
@@ -71,7 +89,8 @@ function FlowNodeComponent({ data, id, selected }: NodeProps<any>) {
         )}
       </div>
 
-      <Handle type="source" position={Position.Bottom} className="!w-2.5 !h-2.5 !border-2 !border-white dark:!border-gray-900" style={{ background: color }} />
+      {!isTerminal && nodeData.type !== 'note' && <AddNextStep id={id} x={positionAbsoluteX} y={positionAbsoluteY} />}
+      <Handle type="source" position={Position.Right} className="!w-2.5 !h-2.5 !border-2 !border-white dark:!border-gray-900" style={{ background: color }} />
     </div>
   )
 }

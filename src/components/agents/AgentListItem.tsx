@@ -89,12 +89,12 @@ const getEnvironmentBadgeColor = (environment: string) => {
   switch (environment.toLowerCase()) {
     case 'production':
     case 'prod':
-      return 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300'
+      return 'bg-destructive/10 text-destructive'
     case 'staging':
     case 'stage':
-      return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-300'
+      return 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
     default:
-      return 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300'
+      return 'bg-primary/10 text-primary'
   }
 }
 
@@ -177,7 +177,7 @@ const getStatusIndicator = (agent: Agent, runningAgents?: RunningAgent[], size: 
   
   return (
     <div className={`${dotSize} rounded-full border border-white dark:border-gray-900 ${
-      runningStatus.isRunning ? 'bg-green-500' : 'bg-red-500'
+      runningStatus.isRunning ? 'bg-green-500' : 'bg-muted-foreground/50'
     }`}></div>
   )
 }
@@ -204,16 +204,16 @@ const getStatusColor = (agent: Agent, runningAgents?: RunningAgent[], isLoading?
   const runningStatus = getAgentRunningStatus(agent, runningAgents, isLoading)
   
   if (!runningStatus) {
-    return 'text-gray-500 dark:text-gray-400'
+    return 'text-muted-foreground'
   }
   
   if (runningStatus.status === 'loading') {
-    return 'text-gray-500 dark:text-gray-400'
+    return 'text-muted-foreground'
   }
   
   return runningStatus.isRunning 
     ? 'text-green-600 dark:text-green-400' 
-    : 'text-red-600 dark:text-red-400'
+    : 'text-muted-foreground'
 }
 
 interface AgentStatusLabelProps {
@@ -244,11 +244,12 @@ interface AgentBadgesProps {
   isWorkflow: boolean
   sizeClassName: string
   showDeployment: boolean
+  hidePype?: boolean
 }
 
-const AgentBadges: React.FC<AgentBadgesProps> = ({ agent, isWorkflow, sizeClassName, showDeployment }) => (
+const AgentBadges: React.FC<AgentBadgesProps> = ({ agent, isWorkflow, sizeClassName, showDeployment, hidePype }) => (
   <>
-    {agent.agent_type === 'pype_agent' && (
+    {agent.agent_type === 'pype_agent' && !hidePype && (
       <Badge variant="outline" className={sizeClassName}>Pype</Badge>
     )}
     {showDeployment && agent.configuration?.deployment_target === 'docker' && (
@@ -318,10 +319,10 @@ const MonitoringToggleMenuItem: React.FC<MonitoringToggleMenuItemProps> = ({
       >
         <div className="flex items-center justify-between w-full gap-3">
           <div className="flex flex-col text-left">
-            <span className="font-medium text-gray-900 dark:text-gray-100">
+            <span className="font-medium text-foreground">
               Enable monitoring
             </span>
-            <span className="text-xs text-gray-500 dark:text-gray-400">
+            <span className="text-xs text-muted-foreground">
               {monitoringToggleLoading ? 'Updating...' : helperText}
             </span>
           </div>
@@ -380,13 +381,13 @@ const MobileAgentCard: React.FC<AgentViewProps> = ({
 }) => {
   return (
     <Link href={`/${projectId}/agents/${agent.id}`} className="block">
-      <div className={`bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 shadow-sm active:scale-[0.98] transition-all duration-150 ${
-        isSelected ? 'ring-2 ring-blue-500 border-blue-300 dark:ring-blue-400 dark:border-blue-600' : ''
+      <div className={`bg-card border border-border rounded-xl p-4 shadow-sm active:scale-[0.98] transition-all duration-150 ${
+        isSelected ? 'ring-2 ring-primary border-primary/50' : ''
       }`}>
         {/* Header with icon, name, and chevron */}
         <div className="flex items-center gap-3 mb-3">
           <div className="relative">
-            <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center flex-shrink-0">
+            <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center flex-shrink-0">
               {getAgentTypeIcon(agent.agent_type)}
             </div>
             <div className="absolute -bottom-1 -right-1">
@@ -396,19 +397,19 @@ const MobileAgentCard: React.FC<AgentViewProps> = ({
           
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100 truncate">
+              <h3 className="font-semibold text-lg text-foreground truncate">
                 {agentDisplayName(agent)}
               </h3>
               <AgentBadges agent={agent} isWorkflow={isWorkflow} sizeClassName="text-xs px-2 py-0.5 h-6" showDeployment={false} />
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">
+            <p className="text-sm text-muted-foreground capitalize">
               {agent.agent_type === 'livekit' ? 'LiveKit Agent' : 
                agent.agent_type === 'pype_agent' ? 'Pype Agent' :
                agent.agent_type === 'vapi' ? 'Vapi Agent' : `${agent.agent_type} Agent`}
             </p>
           </div>
           
-          <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+          <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
         </div>
 
         {/* Status and environment row */}
@@ -421,11 +422,11 @@ const MobileAgentCard: React.FC<AgentViewProps> = ({
         </div>
 
         {/* Agent ID section */}
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4">
+        <div className="bg-muted/60 rounded-lg p-3 mb-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex-1 min-w-0">
-              <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Agent ID</div>
-              <code className="text-sm text-gray-700 dark:text-gray-300 font-mono block truncate">
+              <div className="text-xs font-medium text-muted-foreground mb-1">Agent ID</div>
+              <code className="text-sm text-foreground/80 font-mono block truncate">
                 {agent.id}
               </code>
             </div>
@@ -452,11 +453,11 @@ const MobileAgentCard: React.FC<AgentViewProps> = ({
 
         {/* Inbound Number - mobile */}
         {assignedInboundNumber && (
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-4">
+          <div className="bg-muted/60 rounded-lg p-3 mb-4">
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Inbound Number</div>
-                <code className="text-sm text-gray-700 dark:text-gray-300 font-mono block truncate">
+                <div className="text-xs font-medium text-muted-foreground mb-1">Inbound Number</div>
+                <code className="text-sm text-foreground/80 font-mono block truncate">
                   {assignedInboundNumber}
                 </code>
               </div>
@@ -483,7 +484,7 @@ const MobileAgentCard: React.FC<AgentViewProps> = ({
 
         {/* Actions row */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="w-4 h-4" />
             <span>Created {formatDate(agent.created_at, true)}</span>
           </div>
@@ -564,37 +565,47 @@ const ListAgentRow: React.FC<AgentViewWithMobileProps> = ({
   return (
     <Link href={`/${projectId}/agents/${agent.id}`} className="block">
       <div
-        className={`group px-4 py-4 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors border-b border-gray-100 dark:border-gray-800 ${
+        className={`group px-4 py-4 hover:bg-accent/50 cursor-pointer transition-colors border-b border-border ${
           isLastItem ? '' : 'border-b'
-        } ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+        } ${isSelected ? 'bg-primary/10' : ''}`}
       >
         <div className="flex items-center gap-3">
           {/* Icon */}
-          <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center flex-shrink-0 relative">
+          <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center flex-shrink-0 relative">
             {getAgentTypeIcon(agent.agent_type)}
-            <div className="absolute -bottom-0.5 -right-0.5">
-              {getStatusIndicator(agent, runningAgents, 'sm', isLoadingRunningAgents)}
-            </div>
           </div>
 
           {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2 min-w-0">
-                <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
+                <h3 className="font-semibold text-sm text-foreground truncate">
                   {agentDisplayName(agent)}
                 </h3>
                 <span className={`text-xs font-medium px-2 py-1 rounded-full ${getEnvironmentBadgeColor(agent.environment)}`}>
                   {agent.environment}
                 </span>
-                <AgentBadges agent={agent} isWorkflow={isWorkflow} sizeClassName="text-xs px-2 py-0 h-5" showDeployment={true} />
+                <AgentBadges agent={agent} isWorkflow={isWorkflow} sizeClassName="text-xs px-2 py-0 h-5" showDeployment={true} hidePype />
               </div>
               <AgentStatusLabel agent={agent} runningStatus={runningStatus} runningAgents={runningAgents} isLoading={isLoadingRunningAgents} className="text-sm font-medium flex items-center gap-2" spinnerClassName="w-4 h-4" />
             </div>
             
-            <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
               <div className="flex items-center gap-3">
-                <span className="font-mono text-xs">ID: {agent.id.slice(0, 8)}...{agent.id.slice(-4)}</span>
+                {agent.agent_type !== 'pype_agent' && (
+                  <span className="text-xs capitalize">{agent.agent_type.replaceAll('_', ' ')}</span>
+                )}
+                <span className="group/id flex items-center gap-1 font-mono text-xs">
+                  {agent.id.slice(0, 8)}...{agent.id.slice(-4)}
+                  <button
+                    type="button"
+                    aria-label="Copy agent ID"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); onCopyId(e) }}
+                    className="opacity-0 transition-opacity group-hover:opacity-100"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </button>
+                </span>
                 {assignedInboundNumber && (
                   <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-mono">
                     <Phone className="w-3 h-3" />
@@ -685,15 +696,15 @@ const GridAgentCard: React.FC<AgentViewWithMobileProps> = ({
 return (
   <Link href={`/${projectId}/agents/${agent.id}`} className="block">
     <div
-      className={`group bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl hover:shadow-md dark:hover:shadow-gray-900/20 cursor-pointer transition-all duration-200 ${
-        isSelected ? 'ring-2 ring-blue-500 border-blue-300 dark:ring-blue-400 dark:border-blue-600' : 'hover:border-gray-300 dark:hover:border-gray-700'
+      className={`group bg-card border border-border rounded-xl hover:shadow-md dark:hover:shadow-gray-900/20 cursor-pointer transition-all duration-200 ${
+        isSelected ? 'ring-2 ring-primary border-primary/50' : 'hover:border-primary/40'
       }`}
     >
       <div className="p-4">
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center flex-shrink-0 relative">
+            <div className="w-10 h-10 bg-muted rounded-xl flex items-center justify-center flex-shrink-0 relative">
               {getAgentTypeIcon(agent.agent_type)}
               <div className="absolute -bottom-1 -right-1">
                 {getStatusIndicator(agent, runningAgents, 'md', isLoadingRunningAgents)}
@@ -701,10 +712,10 @@ return (
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">{agentDisplayName(agent)}</h3>
+                <h3 className="font-semibold text-sm text-foreground truncate">{agentDisplayName(agent)}</h3>
                 <AgentBadges agent={agent} isWorkflow={isWorkflow} sizeClassName="text-xs px-2 py-0.5 h-5" showDeployment={false} />
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 {agent.agent_type === 'livekit' ? 'LiveKit Agent' : 
                  agent.agent_type === 'pype_agent' ? 'Pype Agent' :
                  agent.agent_type === 'vapi' ? 'Vapi Agent' : `${agent.agent_type} Agent`}
@@ -759,11 +770,11 @@ return (
         </div>
 
         {/* Agent ID */}
-        <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-3">
+        <div className="bg-muted/60 rounded-lg p-3 mb-3">
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
-              <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Agent ID</div>
-              <code className="text-xs text-gray-700 dark:text-gray-300 font-mono block truncate">
+              <div className="text-xs font-medium text-muted-foreground mb-1">Agent ID</div>
+              <code className="text-xs text-foreground/80 font-mono block truncate">
                 {agent.id}
               </code>
             </div>
@@ -787,11 +798,11 @@ return (
 
         {/* Inbound Number */}
         {assignedInboundNumber && (
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-3">
+          <div className="bg-muted/60 rounded-lg p-3 mb-3">
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Inbound Number</div>
-                <code className="text-xs text-gray-700 dark:text-gray-300 font-mono block truncate">
+                <div className="text-xs font-medium text-muted-foreground mb-1">Inbound Number</div>
+                <code className="text-xs text-foreground/80 font-mono block truncate">
                   {assignedInboundNumber}
                 </code>
               </div>
@@ -817,7 +828,7 @@ return (
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
             <Clock className="w-3.5 h-3.5" />
             <span>{formatDate(agent.created_at, isMobile)}</span>

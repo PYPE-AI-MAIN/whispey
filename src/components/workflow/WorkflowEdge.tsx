@@ -1,7 +1,7 @@
 'use client'
 
 import React, { memo } from 'react'
-import { BaseEdge, EdgeLabelRenderer, getBezierPath, type EdgeProps } from '@xyflow/react'
+import { BaseEdge, EdgeLabelRenderer, getBezierPath, useStore, type EdgeProps } from '@xyflow/react'
 import { useWorkflowStore } from '@/stores/workflowStore'
 
 // react-flow's default label sits exactly on the path midpoint — fine for one
@@ -29,7 +29,10 @@ function WorkflowEdgeComponent({
   label,
   selected,
   animated,
+  data,
 }: EdgeProps) {
+  // Zoomed out, a big flow's labels pile up into noise: show them when close in or selected.
+  const zoom = useStore((s) => s.transform[2])
   const setSelectedEdge = useWorkflowStore((s) => s.setSelectedEdge)
   const [edgePath, labelX, labelY] = getBezierPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition })
 
@@ -44,7 +47,7 @@ function WorkflowEdgeComponent({
   return (
     <>
       <BaseEdge id={id} path={edgePath} style={style} markerEnd={markerEnd} className={animated ? 'react-flow__edge-path-animated' : undefined} />
-      {label != null && label !== '' && (
+      {label != null && label !== '' && !data?.dim && (selected || data?.focus || zoom >= 0.6) && (
         <EdgeLabelRenderer>
           <button
             type="button"

@@ -4,7 +4,7 @@ import { auth, currentUser } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
 import { normalizeFlags, type FlagEntry } from '@/utils/callLogsUtils'
-import { notifyQaTeam } from '@/server/qa/notify'
+import { logQaEvent, notifyQaTeam } from '@/server/qa/notify'
 
 const supabase = createServiceRoleClient()
 
@@ -88,6 +88,8 @@ async function syncQaTicket(
         flagged_by_email: flag.flagged_by?.email ?? null,
         flagged_at: flag.flagged_at,
       }, { onConflict: 'call_log_id,flag_id', ignoreDuplicates: true })
+      const { data: ticket } = await supabase.from('qa_flag_tickets').select('id').eq('call_log_id', ids.callLogId).eq('flag_id', flag.id).maybeSingle()
+      if (ticket) await logQaEvent(ticket.id, 'flagged', flag.flagged_by?.email ?? '', flag.text)
       await notifyQaTeam({
         kind: 'flag',
         agentName: ids.agentName,

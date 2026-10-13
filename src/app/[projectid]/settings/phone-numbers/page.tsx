@@ -368,7 +368,7 @@ export default function PhoneNumbersPage() {
       return (
         <tr>
           <td colSpan={6} className="py-16 text-center">
-            <div className="flex flex-col items-center gap-2 text-gray-600">
+            <div className="flex flex-col items-center gap-2 text-gray-600 dark:text-gray-400">
               <Phone className="h-6 w-6" />
               <span className="text-sm">No phone numbers yet</span>
               <button
@@ -430,7 +430,7 @@ export default function PhoneNumbersPage() {
               ? <span className="text-gray-900 dark:text-gray-200">
                   {agentDisplayName(agents.find(a => a.id === n.assigned_agent_id)) || n.assigned_agent_name}
                 </span>
-              : <span className="text-gray-600 text-xs italic">Unassigned</span>
+              : <span className="text-gray-600 text-xs italic dark:text-gray-400">Unassigned</span>
             }
           </td>
 
@@ -443,7 +443,7 @@ export default function PhoneNumbersPage() {
                 </span>
                 <button
                   onClick={() => toggleKeyReveal(n.id)}
-                  className="text-gray-600 hover:text-gray-400 transition-colors flex-shrink-0"
+                  className="text-gray-600 hover:text-gray-400 transition-colors flex-shrink-0 dark:text-gray-400"
                 >
                   {keyRevealed
                     ? <EyeOff className="h-3.5 w-3.5" />
@@ -452,7 +452,7 @@ export default function PhoneNumbersPage() {
                 </button>
               </div>
             ) : (
-              <span className="text-gray-700 text-xs">—</span>
+              <span className="text-gray-700 text-xs dark:text-gray-300">—</span>
             )}
           </td>
 
@@ -508,8 +508,8 @@ export default function PhoneNumbersPage() {
     <div className="h-full flex flex-col overflow-hidden bg-white dark:bg-gray-900">
 
       {/* ── Navbar ── */}
-      <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
+      <div className="flex-shrink-0 border-b border-border bg-background">
+        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push(`/${projectId}/agents`)}
@@ -518,10 +518,10 @@ export default function PhoneNumbersPage() {
               <ArrowLeft className="h-4 w-4" />
             </button>
             <div className="flex items-center gap-2.5">
-              <div className="h-7 w-7 rounded-lg bg-blue-900/40 border border-blue-800/50 flex items-center justify-center">
-                <Phone className="h-3.5 w-3.5 text-blue-400" />
+              <div className="h-8 w-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+                <Phone className="h-4 w-4 text-primary" />
               </div>
-              <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Phone Numbers</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Phone Numbers</h1>
             </div>
           </div>
 
@@ -620,7 +620,7 @@ export default function PhoneNumbersPage() {
                   <div>
                     <p className="text-[11px] text-gray-500 mb-1">WebSocket stream (audio)</p>
                     <code className="block bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-xs text-green-600 dark:text-green-400 font-mono break-all">wss://your-bridge-domain/bridge</code>
-                    <p className="text-[11px] text-gray-500 mt-1">⚠️ Use <span className="text-yellow-600 dark:text-yellow-400">wss://</span> with a domain in production</p>
+                    <p className="text-[11px] text-gray-500 mt-1">Use <span className="text-yellow-600 dark:text-yellow-400">wss://</span> with a domain in production</p>
                   </div>
                   <div>
                     <p className="text-[11px] text-gray-500 mb-1">Prewarm webhook (Call received on Server)</p>

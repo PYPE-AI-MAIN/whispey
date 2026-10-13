@@ -125,11 +125,11 @@ export default function TalkToAssistant({
 
   const getAgentStateDisplay = () => {
     switch (voiceState.agentState) {
-      case 'initializing': return '🔄 Initializing'
-      case 'listening':    return '👂 Listening'
-      case 'thinking':     return '🤔 Thinking'
-      case 'speaking':     return '🗣️ Speaking'
-      default:             return '⚫ Unknown'
+      case 'initializing': return 'Initializing'
+      case 'listening':    return 'Listening'
+      case 'thinking':     return 'Thinking'
+      case 'speaking':     return 'Speaking'
+      default:             return 'Unknown'
     }
   }
 
@@ -433,7 +433,7 @@ export default function TalkToAssistant({
       {!voiceState.isConnected && !voiceState.isConnecting && mode === 'voice' && (
         <div className="p-4 mt-auto flex-shrink-0">
           <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <h4 className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-2">💡 Voice Testing Tips</h4>
+            <h4 className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-2">Voice Testing Tips</h4>
             <ul className="text-xs text-blue-600 dark:text-blue-400 space-y-1">
               <li>• Test your system prompt and personality</li>
               <li>• Verify STT, LLM, and TTS configurations</li>

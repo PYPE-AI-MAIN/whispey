@@ -2,7 +2,7 @@
 
 import React, { useRef } from 'react'
 import { Trash2 } from 'lucide-react'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -36,6 +36,9 @@ export function VariablesPanel({ open, onOpenChange }: Readonly<{ open: boolean;
       <SheetContent side="right" className="w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Variables</SheetTitle>
+          <SheetDescription>
+            Details the agent knows or collects, like a customer name or phone number. Write {'{{name}}'} in any step to use one.
+          </SheetDescription>
         </SheetHeader>
         <div className="px-4 space-y-2">
           <div className="flex justify-end">
@@ -47,6 +50,15 @@ export function VariablesPanel({ open, onOpenChange }: Readonly<{ open: boolean;
               + Add variable
             </Button>
           </div>
+          {variables.length > 0 && (
+            <div className="flex gap-1.5 text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <span className="w-28">Name</span>
+              <span className="w-24">Type</span>
+              <span className="w-24">Starts as</span>
+              <span className="flex-1">What it is</span>
+              <span className="w-8" />
+            </div>
+          )}
           {variables.map((v, i) => {
             let boolDefault = ''
             if (v.default === true) boolDefault = 'true'
@@ -54,7 +66,7 @@ export function VariablesPanel({ open, onOpenChange }: Readonly<{ open: boolean;
             return (
             <div key={rowIds.current[i]} className="flex gap-1.5 items-start border-b border-gray-100 dark:border-gray-800 pb-2">
               <Input
-                placeholder="key"
+                placeholder="e.g. customer_name"
                 value={v.key}
                 onChange={(e) => {
                   const next = [...variables]
@@ -87,7 +99,7 @@ export function VariablesPanel({ open, onOpenChange }: Readonly<{ open: boolean;
                     setVariables(next)
                   }}
                 >
-                  <SelectTrigger className="h-8 text-xs w-24"><SelectValue placeholder="default" /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-xs w-24"><SelectValue placeholder="optional" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="true">true</SelectItem>
                     <SelectItem value="false">false</SelectItem>
@@ -95,7 +107,7 @@ export function VariablesPanel({ open, onOpenChange }: Readonly<{ open: boolean;
                 </Select>
               ) : (
                 <Input
-                  placeholder="default"
+                  placeholder="optional"
                   type={v.type === 'number' ? 'number' : 'text'}
                   value={v.default ?? ''}
                   onChange={(e) => {
@@ -113,7 +125,7 @@ export function VariablesPanel({ open, onOpenChange }: Readonly<{ open: boolean;
                 />
               )}
               <Input
-                placeholder="description"
+                placeholder="e.g. the caller's full name"
                 value={v.description ?? ''}
                 onChange={(e) => {
                   const next = [...variables]
@@ -130,7 +142,7 @@ export function VariablesPanel({ open, onOpenChange }: Readonly<{ open: boolean;
           })}
           {!variables.length && (
             <p className="text-xs text-gray-500 dark:text-gray-400 py-4 text-center">
-              No variables yet. Nodes reference these by <code>{'{{key}}'}</code>.
+              No variables yet. Add one for anything you want to reuse, like a name or a date.
             </p>
           )}
         </div>

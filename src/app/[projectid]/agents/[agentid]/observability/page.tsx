@@ -84,7 +84,7 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
       
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
+      <div className="px-6 py-4 border-border bg-background border-b shadow-sm">
         <div className="px-4 py-2">
           <div className="flex items-center gap-2">
             <button
@@ -95,7 +95,7 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
             </button>
             
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
                 Observability
               </h1>
             </div>

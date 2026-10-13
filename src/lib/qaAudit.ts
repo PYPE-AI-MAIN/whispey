@@ -65,6 +65,30 @@ export function sheetUrlError(url: unknown): string | null {
   return null
 }
 
+// Plain string checks, not a regex: no backtracking, so no ReDoS on long input.
+function looksLikeEmail(email: string): boolean {
+  const at = email.indexOf('@')
+  const domain = email.slice(at + 1)
+  return (
+    email.length <= 254 && at > 0 && at === email.lastIndexOf('@') && !/\s/.test(email) &&
+    domain.includes('.') && !domain.startsWith('.') && !domain.endsWith('.')
+  )
+}
+
+export type TeamMember = { name: string; email: string; role: 'qa' | 'prompt_engineer'; slack_id: string | null }
+
+/** A roster entry: name, email, role, and an optional Slack member ID (U0123ABCD). */
+export function teamMemberError(body: Record<string, unknown>): { error: string } | { member: TeamMember } {
+  const name = typeof body.name === 'string' ? body.name.trim() : ''
+  const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
+  const slack = typeof body.slack_id === 'string' ? body.slack_id.trim() : ''
+  if (!name) return { error: 'Name is required' }
+  if (!looksLikeEmail(email)) return { error: 'Enter a valid email' }
+  if (body.role !== 'qa' && body.role !== 'prompt_engineer') return { error: 'Role must be QA or prompt engineer' }
+  if (slack && !/^[UW][A-Z0-9]{6,}$/.test(slack)) return { error: 'Slack ID looks like U0123ABCD (profile > More > Copy member ID)' }
+  return { member: { name, email, role: body.role, slack_id: slack || null } }
+}
+
 function cleanNote(note: unknown): string | null {
   return typeof note === 'string' && note.trim() ? note.trim().slice(0, 2000) : null
 }
@@ -89,4 +113,12 @@ export function weeklyPatch(body: Record<string, unknown>): Check<WeeklyPatch> {
   const error = sheetUrlError(body.sheet_url)
   if (error) return { error }
   return { patch: { status: 'ready', sheet_url: (body.sheet_url as string).trim(), note } }
+}
+
+/** Keep only images uploaded for this very ticket (key under qa/<ticketId>/), at most 5. */
+export function ticketAttachments(raw: unknown, ticketId: string): { key: string; name: string }[] {
+  return (Array.isArray(raw) ? raw : [])
+    .filter((a): a is { key: string; name?: unknown } => typeof a?.key === 'string' && a.key.startsWith(`qa/${ticketId}/`))
+    .slice(0, 5)
+    .map((a) => ({ key: a.key, name: (typeof a.name === 'string' ? a.name : 'image').slice(0, 120) }))
 }

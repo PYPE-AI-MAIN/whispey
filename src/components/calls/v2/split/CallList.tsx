@@ -173,7 +173,7 @@ function QuickDetails({ call, role, hasSummaryField }: Readonly<{ call: CallLog;
         <p className="text-xs opacity-70">
           {call.call_started_at ? formatToIndianDateTime(call.call_started_at) : ""} · {formatDuration(callDurationSeconds(call) ?? 0)}
         </p>
-        {summary && <p className="mt-2 leading-relaxed opacity-90"><span className="text-violet-400">✦</span> {summary}</p>}
+        {summary && <p className="mt-2 leading-relaxed opacity-90">{summary}</p>}
         {(shown.length > 0 || tags.length > 0 || flags.length > 0) && (
           <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
             {shown.map(([k, v]) => (

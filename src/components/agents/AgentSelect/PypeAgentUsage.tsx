@@ -16,99 +16,20 @@ interface PypeAgentUsageProps {
   projectId: string
 }
 
-const PypeAgentUsage: React.FC<PypeAgentUsageProps> = ({ projectId }) => {
-  const { permissions, canCreatePypeAgent, loading } = useUserPermissions({ projectId })
-  const { data: projectAgents = [] } = useProjectAgents(projectId)
-  const { isMobile } = useMobile(768)
-  const [showDetails, setShowDetails] = useState(false)
-  
-  // Show skeleton while loading
-  if (loading) {
-    return (
-      <div
-        className={`
-          flex items-center gap-2 px-3 py-1.5 rounded-lg
-          bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700
-          animate-pulse
-          ${isMobile ? 'text-xs' : 'text-sm'}
-        `}
-      >
-        {/* Skeleton text */}
-        <div className="h-3 w-20 bg-gray-300 dark:bg-gray-600 rounded"></div>
-        
-        {/* Skeleton progress bar */}
-        <div className="w-16 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
-        
-        {/* Skeleton icon */}
-        <div className="w-3.5 h-3.5 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
-      </div>
-    )
-  }
-  
-  // Don't show if user can't create Pype agents
-  if (!canCreatePypeAgent || !permissions?.agent) {
-    return null
-  }
+type UsageAgent = { id: string; name: string; phone_number?: string | null; status: string }
 
-  const activeCount = permissions.agent.usage.active_count || 0
-  const maxAgents = permissions.agent.limits.max_agents || 2
-  const agentsList = permissions.agent.agents || []
-  const hasReachedLimit = activeCount >= maxAgents
-  const remainingSlots = Math.max(0, maxAgents - activeCount)
-
-  // Progress percentage
-  const usagePercentage = maxAgents > 0 ? (activeCount / maxAgents) * 100 : 0
-
+function UsageDetails({
+  hasReachedLimit, remainingSlots, maxAgents, agentsList, projectAgents,
+}: Readonly<{
+  hasReachedLimit: boolean
+  remainingSlots: number
+  maxAgents: number
+  agentsList: UsageAgent[]
+  projectAgents: Array<{ id: string; display_name?: string | null; name?: string | null }>
+}>) {
+  const slotWord = remainingSlots === 1 ? 'slot' : 'slots'
   return (
-    <TooltipProvider>
-      <Tooltip open={showDetails} onOpenChange={setShowDetails}>
-        <TooltipTrigger asChild>
-          <button
-            className={`
-              flex items-center gap-2 px-3 py-1.5 rounded-lg
-              ${hasReachedLimit 
-                ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800' 
-                : 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800'
-              }
-              hover:shadow-sm transition-all cursor-pointer
-              ${isMobile ? 'text-xs' : 'text-sm'}
-            `}
-          >
-            {/* Usage Text */}
-            <span className={`font-medium ${
-              hasReachedLimit 
-                ? 'text-red-700 dark:text-red-300' 
-                : 'text-blue-700 dark:text-blue-300'
-            }`}>
-              {activeCount}/{maxAgents} Pype Agents
-            </span>
-
-            {/* Progress Bar */}
-            <div className="w-16 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div 
-                className={`h-full transition-all duration-300 ${
-                  hasReachedLimit 
-                    ? 'bg-red-500 dark:bg-red-400' 
-                    : 'bg-blue-500 dark:bg-blue-400'
-                }`}
-                style={{ width: `${Math.min(100, usagePercentage)}%` }}
-              />
-            </div>
-
-            {/* Info Icon */}
-            <Info className={`w-3.5 h-3.5 ${
-              hasReachedLimit 
-                ? 'text-red-600 dark:text-red-400' 
-                : 'text-blue-600 dark:text-blue-400'
-            }`} />
-          </button>
-        </TooltipTrigger>
-
-        <TooltipContent 
-          side="bottom" 
-          align="end"
-          className="w-80 p-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700"
-        >
+    <>
           {/* Header */}
           <div className={`px-4 py-3 border-b border-gray-200 dark:border-gray-800 ${
             hasReachedLimit 
@@ -123,10 +44,7 @@ const PypeAgentUsage: React.FC<PypeAgentUsageProps> = ({ projectId }) => {
                 ? 'text-red-600 dark:text-red-400' 
                 : 'text-gray-600 dark:text-gray-400'
             }`}>
-              {hasReachedLimit 
-                ? 'You\'ve reached your agent limit' 
-                : `${remainingSlots} slot${remainingSlots !== 1 ? 's' : ''} remaining`
-              }
+              {hasReachedLimit ? 'You\'ve reached your agent limit' : `${remainingSlots} ${slotWord} remaining`}
             </p>
           </div>
 
@@ -180,6 +98,87 @@ const PypeAgentUsage: React.FC<PypeAgentUsageProps> = ({ projectId }) => {
               }
             </p>
           </div>
+    </>
+  )
+}
+
+const PypeAgentUsage: React.FC<PypeAgentUsageProps> = ({ projectId }) => {
+  const { permissions, canCreatePypeAgent, loading } = useUserPermissions({ projectId })
+  const { data: projectAgents = [] } = useProjectAgents(projectId)
+  const { isMobile } = useMobile(768)
+  const [showDetails, setShowDetails] = useState(false)
+  
+  // Show skeleton while loading
+  if (loading) {
+    return (
+      <div
+        className={`
+          flex items-center gap-2 px-3 py-1.5 rounded-lg
+          bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700
+          animate-pulse
+          ${isMobile ? 'text-xs' : 'text-sm'}
+        `}
+      >
+        {/* Skeleton text */}
+        <div className="h-3 w-20 bg-gray-300 dark:bg-gray-600 rounded"></div>
+        
+        {/* Skeleton progress bar */}
+        <div className="w-16 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
+        
+        {/* Skeleton icon */}
+        <div className="w-3.5 h-3.5 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
+      </div>
+    )
+  }
+  
+  // Don't show if user can't create Pype agents
+  if (!canCreatePypeAgent || !permissions?.agent) {
+    return null
+  }
+
+  const activeCount = permissions.agent.usage.active_count || 0
+  const maxAgents = permissions.agent.limits.max_agents || 2
+  const agentsList = permissions.agent.agents || []
+  const hasReachedLimit = activeCount >= maxAgents
+  const remainingSlots = Math.max(0, maxAgents - activeCount)
+
+  // Progress percentage
+  const usagePercentage = maxAgents > 0 ? (activeCount / maxAgents) * 100 : 0
+
+  return (
+    <TooltipProvider>
+      <Tooltip open={showDetails} onOpenChange={setShowDetails}>
+        <TooltipTrigger asChild>
+          <button
+            className={`flex cursor-pointer items-center gap-2.5 rounded-lg border bg-card px-3 py-2 transition-colors hover:bg-accent ${
+              hasReachedLimit ? 'border-destructive/50' : 'border-border'
+            } ${isMobile ? 'text-xs' : 'text-sm'}`}
+          >
+            <span className={`font-medium ${hasReachedLimit ? 'text-destructive' : 'text-foreground'}`}>
+              {activeCount}/{maxAgents} Pype agents
+            </span>
+            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-muted">
+              <div
+                className={`h-full transition-all duration-300 ${hasReachedLimit ? 'bg-destructive' : 'bg-primary'}`}
+                style={{ width: `${Math.min(100, usagePercentage)}%` }}
+              />
+            </div>
+            <Info className="h-3.5 w-3.5 text-muted-foreground" />
+          </button>
+        </TooltipTrigger>
+
+        <TooltipContent 
+          side="bottom" 
+          align="end"
+          className="w-80 p-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700"
+        >
+          <UsageDetails
+            hasReachedLimit={hasReachedLimit}
+            remainingSlots={remainingSlots}
+            maxAgents={maxAgents}
+            agentsList={agentsList}
+            projectAgents={projectAgents}
+          />
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

@@ -12,8 +12,8 @@
  * everyone else sees the same rows read-only.
  */
 import { useState, type ReactNode } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ExternalLink, FileSpreadsheet } from 'lucide-react'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ChevronDown, ExternalLink, FileSpreadsheet, ImagePlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -29,7 +29,15 @@ type Ticket = {
   resolution_note: string | null
   resolved_by: string | null
   resolved_at: string | null
+  sheet_url: string | null
+  assignee_email: string | null
+  comments: Comment[]
+  events: FlagEvent[]
 }
+
+type FlagEvent = { id: string; kind: 'flagged' | 'status' | 'assigned'; actor_email: string | null; detail: string; created_at: string }
+
+type Comment = { id: string; author_email: string; body: string; attachments: { key: string; name: string }[]; created_at: string }
 
 type Review = {
   id: string
@@ -169,24 +177,50 @@ export default function QaAuditPanel({ agentId, projectId }: Readonly<{ agentId:
   )
 }
 
+type FlagsPage = {
+  tickets: Ticket[]
+  total: number
+  page: number
+  pageSize: number
+  counts: Record<Ticket['status'], number>
+  canManage: boolean
+  internal: boolean
+}
+
 function FlaggedCalls({ agentId, projectId }: Readonly<{ agentId: string; projectId: string }>) {
   const [filter, setFilter] = useState<'all' | Ticket['status']>('all')
-  const { data, isLoading, error } = useQuery<{ tickets: Ticket[]; canManage: boolean }>({
-    queryKey: ['qa-audit', 'flags', agentId],
-    queryFn: () => load(`/api/qa-audit/flags?agentId=${agentId}`, 'flagged calls'),
+  const [page, setPage] = useState(1)
+  const { data, isLoading, error } = useQuery<FlagsPage>({
+    queryKey: ['qa-audit', 'flags', agentId, filter, page],
+    queryFn: () => {
+      const statusParam = filter === 'all' ? '' : `&status=${filter}`
+      return load(`/api/qa-audit/flags?agentId=${agentId}&page=${page}${statusParam}`, 'flagged calls')
+    },
+    placeholderData: keepPreviousData,
+  })
+  const { data: team } = useQuery<{ engineers: { name: string; email: string }[] }>({
+    queryKey: ['qa-audit', 'team', agentId],
+    queryFn: () => load(`/api/qa-audit/team?agentId=${agentId}`, 'the team'),
+    enabled: !!data?.canManage,
   })
 
   const tickets = data?.tickets ?? []
-  const shown = filter === 'all' ? tickets : tickets.filter((t) => t.status === filter)
-  const count = (s: string) => tickets.filter((t) => t.status === s).length
+  const counts = data?.counts
+  const all = counts ? counts.pending + counts.in_review + counts.resolved : 0
+  const lastPage = Math.max(1, Math.ceil((data?.total ?? 0) / (data?.pageSize ?? 25)))
+  const from = tickets.length ? ((data?.page ?? 1) - 1) * (data?.pageSize ?? 25) + 1 : 0
+  const pick = (s: 'all' | Ticket['status']) => {
+    setFilter(s)
+    setPage(1)
+  }
 
   let body: ReactNode
   if (isLoading) body = <Skeleton className="h-40 w-full rounded-xl" />
   else if (error) body = <p className="text-sm text-red-600">{(error as Error).message}</p>
-  else if (shown.length === 0) {
+  else if (tickets.length === 0) {
     body = (
       <Empty>
-        {tickets.length === 0 ? (
+        {all === 0 ? (
           <>
             Nothing has been flagged for this agent. Open{' '}
             <a href={`/${projectId}/agents/${agentId}?tab=logs`} className="font-medium text-gray-900 underline underline-offset-2 dark:text-gray-100">Call Logs</a>{' '}
@@ -197,9 +231,35 @@ function FlaggedCalls({ agentId, projectId }: Readonly<{ agentId: string; projec
     )
   } else {
     body = (
-      <RowList>
-        {shown.map((t) => <TicketRow key={t.id} ticket={t} canManage={!!data?.canManage} agentId={agentId} projectId={projectId} />)}
-      </RowList>
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+        <div className="max-h-[65vh] overflow-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="sticky top-0 z-10 bg-gray-50 text-xs font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+              <tr>
+                <th className="px-4 py-2.5">Flag</th>
+                <th className="px-4 py-2.5">Flagged by</th>
+                <th className="px-4 py-2.5">Date</th>
+                <th className="px-4 py-2.5">Status</th>
+                {data?.internal && <th className="px-4 py-2.5">Assigned to</th>}
+                <th className="w-8" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+              {tickets.map((t) => (
+                <TicketRow key={t.id} ticket={t} canManage={!!data?.canManage} internal={!!data?.internal} engineers={team?.engineers ?? []} agentId={agentId} projectId={projectId} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex items-center justify-between border-t border-gray-200 px-4 py-2.5 text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
+          <span className="tabular-nums">{from}–{from + tickets.length - 1} of {data?.total}</span>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</Button>
+            <span className="tabular-nums">Page {page} of {lastPage}</span>
+            <Button size="sm" variant="outline" disabled={page >= lastPage} onClick={() => setPage(page + 1)}>Next</Button>
+          </div>
+        </div>
+      </div>
     )
   }
 
@@ -210,10 +270,10 @@ function FlaggedCalls({ agentId, projectId }: Readonly<{ agentId: string; projec
           <button
             key={s}
             type="button"
-            onClick={() => setFilter(s)}
+            onClick={() => pick(s)}
             className={filter === s ? 'font-medium text-gray-900 dark:text-gray-100' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'}
           >
-            {s === 'all' ? 'All' : STATUS_LABEL[s]} <span className="tabular-nums text-gray-400">{s === 'all' ? tickets.length : count(s)}</span>
+            {s === 'all' ? 'All' : STATUS_LABEL[s]} <span className="tabular-nums text-gray-400">{s === 'all' ? all : (counts?.[s] ?? 0)}</span>
           </button>
         ))}
       </div>
@@ -222,61 +282,195 @@ function FlaggedCalls({ agentId, projectId }: Readonly<{ agentId: string; projec
   )
 }
 
-function TicketRow({ ticket, canManage, agentId, projectId }: Readonly<{ ticket: Ticket; canManage: boolean; agentId: string; projectId: string }>) {
+function TicketRow({ ticket, canManage, internal, engineers, agentId, projectId }: Readonly<{ ticket: Ticket; canManage: boolean; internal: boolean; engineers: { name: string; email: string }[]; agentId: string; projectId: string }>) {
+  const [open, setOpen] = useState(false)
+  const engineerName = (email: string | null) => engineers.find((e) => e.email === email)?.name ?? email
+
+  return (
+    <>
+      <tr onClick={() => setOpen(!open)} className="cursor-pointer align-top hover:bg-gray-50 dark:hover:bg-gray-800/50">
+        <td className="max-w-xs px-4 py-3 font-medium text-gray-900 dark:text-gray-100"><span className="line-clamp-2">{ticket.reason}</span></td>
+        <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">{ticket.flagged_by_email ?? '—'}</td>
+        <td className="whitespace-nowrap px-4 py-3 text-xs text-gray-500 dark:text-gray-400">{fmtDate(ticket.flagged_at)}</td>
+        <td className="px-4 py-3"><StatusPill status={ticket.status} /></td>
+        {internal && <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">{engineerName(ticket.assignee_email) ?? '—'}</td>}
+        <td className="px-2 py-3 text-gray-400"><ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} /></td>
+      </tr>
+      {open && (
+        <tr className="bg-gray-50/50 dark:bg-gray-800/20">
+          <td colSpan={internal ? 6 : 5} className="px-4 pb-4 pt-1">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+              <a
+                href={`/${projectId}/agents/${agentId}/observability?session_id=${ticket.call_log_id}`}
+                className="inline-flex items-center gap-1 font-medium text-blue-600 hover:underline dark:text-blue-400"
+              >
+                Open call <ExternalLink className="h-3 w-3" />
+              </a>
+              {internal && ticket.sheet_url && (
+                <a href={ticket.sheet_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-blue-600 hover:underline dark:text-blue-400">
+                  <FileSpreadsheet className="h-3 w-3" /> Internal sheet
+                </a>
+              )}
+            </div>
+            {ticket.status === 'resolved' && ticket.resolution_note && !ticket.comments.some((c) => c.body === ticket.resolution_note) && (
+              <p className="mt-3 border-l-2 border-emerald-500 pl-3 text-sm text-gray-700 dark:text-gray-300">{ticket.resolution_note}</p>
+            )}
+            <Thread ticket={ticket} />
+            {canManage && <Composer ticket={ticket} engineers={engineers} agentId={agentId} />}
+          </td>
+        </tr>
+      )}
+    </>
+  )
+}
+
+const imageSrc = (key: string) => `/api/qa-audit/attachments?key=${encodeURIComponent(key)}`
+
+/** What has happened to this flag so far: flagged, status changes, hand-offs and every comment, oldest first. */
+function Thread({ ticket }: Readonly<{ ticket: Ticket }>) {
+  const journey: { at: string; event?: FlagEvent; comment?: Comment }[] = [
+    ...ticket.events.map((e) => ({ at: e.created_at, event: e })),
+    ...ticket.comments.map((c) => ({ at: c.created_at, comment: c })),
+  ].sort((a, b) => a.at.localeCompare(b.at))
+  const eventText = (e: FlagEvent) => {
+    if (e.kind === 'flagged') return `Flagged: ${e.detail}`
+    if (e.kind === 'assigned') return e.detail
+    return `Status: ${e.detail.split(' -> ').map((s) => STATUS_LABEL[s] ?? s).join(' → ')}`
+  }
+
+  if (journey.length === 0) return null
+  return (
+    <div className="mt-3 space-y-3">
+      {journey.map(({ event, comment: c }) => event ? (
+        <p key={event.id} className="text-xs text-gray-500 dark:text-gray-400">
+          <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-gray-400" />
+          {eventText(event)} · {fmtDate(event.created_at)}
+        </p>
+      ) : c && (
+        <div key={c.id} className="border-l-2 border-blue-500 pl-3 text-sm text-gray-700 dark:text-gray-300">
+          {c.body && <p className="whitespace-pre-wrap">{c.body}</p>}
+          {c.attachments.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {c.attachments.map((a) => (
+                <a key={a.key} href={imageSrc(a.key)} target="_blank" rel="noreferrer">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imageSrc(a.key)} alt={a.name} className="h-24 rounded-md border border-gray-200 object-cover dark:border-gray-700" />
+                </a>
+              ))}
+            </div>
+          )}
+          <p className="mt-1 text-xs text-gray-400">QA team · {fmtDate(c.created_at)}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+const STATUS_HINT: Record<Ticket['status'], string> = {
+  pending: 'Not started. The customer sees nothing new until you comment or change the status.',
+  in_review: 'Passes it to the prompt engineer: they get an email and a Slack tag. Pick who, and attach the sheet if you have one.',
+  resolved: 'Write what was done. The customer sees it and gets an email.',
+}
+
+/** QA team only: the one place to reply, change the status, and hand off. One Send does it all. */
+function Composer({ ticket, engineers, agentId }: Readonly<{ ticket: Ticket; engineers: { name: string; email: string }[]; agentId: string }>) {
   const qc = useQueryClient()
-  const [editing, setEditing] = useState(false)
+  const [text, setText] = useState('')
+  const [images, setImages] = useState<{ key: string; name: string }[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [err, setErr] = useState('')
   const [status, setStatus] = useState<Ticket['status']>(ticket.status)
-  const [note, setNote] = useState(ticket.resolution_note ?? '')
-  const save = useMutation({
-    mutationFn: () => send(`/api/qa-audit/flags/${ticket.id}`, 'PATCH', { status, resolution_note: note }),
+  const [assignee, setAssignee] = useState(ticket.assignee_email ?? '')
+  const [sheet, setSheet] = useState(ticket.sheet_url ?? '')
+
+  const upload = async (files: FileList | null) => {
+    if (!files?.length) return
+    setUploading(true)
+    setErr('')
+    try {
+      for (const file of Array.from(files).slice(0, 5 - images.length)) {
+        const form = new FormData()
+        form.append('ticketId', ticket.id)
+        form.append('file', file)
+        const res = await fetch('/api/qa-audit/attachments', { method: 'POST', body: form })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(json.error || 'Upload failed')
+        setImages((prev) => [...prev, json])
+      }
+    } catch (e) {
+      setErr((e as Error).message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const hasMessage = !!text.trim() || images.length > 0
+  const statusChanged = status !== ticket.status
+  const changed = statusChanged || assignee !== (ticket.assignee_email ?? '') || sheet.trim() !== (ticket.sheet_url ?? '')
+  const needsNote = status === 'resolved' && !text.trim() && !ticket.resolution_note
+  const submit = useMutation({
+    mutationFn: () =>
+      changed
+        ? send(`/api/qa-audit/flags/${ticket.id}`, 'PATCH', {
+            status,
+            resolution_note: status === 'resolved' ? text.trim() || ticket.resolution_note : ticket.resolution_note,
+            sheet_url: sheet,
+            assignee_email: assignee,
+            comment: { body: text, attachments: images },
+          })
+        : send(`/api/qa-audit/flags/${ticket.id}/comments`, 'POST', { body: text, attachments: images }),
     onSuccess: () => {
-      setEditing(false)
+      setText('')
+      setImages([])
       return qc.invalidateQueries({ queryKey: ['qa-audit', 'flags', agentId] })
     },
   })
 
+  let label = 'Send'
+  if (statusChanged) label = `Send and move to ${STATUS_LABEL[status]}`
+  else if (!hasMessage) label = 'Save changes'
+
   return (
-    <li className="px-5 py-4">
-      <div className="flex items-start justify-between gap-4">
-        <p className="min-w-0 flex-1 text-sm font-medium text-gray-900 dark:text-gray-100">{ticket.reason}</p>
-        <StatusPill status={ticket.status} />
-      </div>
-      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
-        <span>{fmtDate(ticket.flagged_at)}</span>
-        {ticket.flagged_by_email && <span>{ticket.flagged_by_email}</span>}
-        <a
-          href={`/${projectId}/agents/${agentId}/observability?session_id=${ticket.call_log_id}`}
-          className="inline-flex items-center gap-1 font-medium text-blue-600 hover:underline dark:text-blue-400"
-        >
-          Open call <ExternalLink className="h-3 w-3" />
-        </a>
-        {canManage && !editing && (
-          <button type="button" onClick={() => setEditing(true)} className="font-medium text-gray-700 hover:underline dark:text-gray-300">
-            Update
-          </button>
+    <div className="mt-4 space-y-3 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+      <Textarea
+        rows={3}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={status === 'resolved' ? 'What was done? (required, the customer sees this)' : 'Write a comment (the customer sees it)'}
+      />
+      {images.length > 0 && <p className="text-xs text-gray-500">Attached: {images.map((i) => i.name).join(', ')}</p>}
+      <label className="inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-gray-600 hover:underline dark:text-gray-400">
+        <ImagePlus className="h-3.5 w-3.5" /> {uploading ? 'Uploading…' : 'Attach image'}
+        <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple className="hidden" onChange={(e) => { void upload(e.target.files); e.target.value = '' }} />
+      </label>
+      <div className="flex flex-wrap items-end gap-3">
+        <Labelled label="Status">
+          <select className={`${fieldClass} w-40`} value={status} onChange={(e) => setStatus(e.target.value as Ticket['status'])}>
+            <option value="pending">Pending</option>
+            <option value="in_review">In review</option>
+            <option value="resolved">Resolved</option>
+          </select>
+        </Labelled>
+        {status === 'in_review' && (
+          <>
+            <Labelled label="Prompt engineer">
+              <select className={`${fieldClass} w-44`} value={assignee} onChange={(e) => setAssignee(e.target.value)}>
+                <option value="">Choose…</option>
+                {engineers.map((e) => <option key={e.email} value={e.email}>{e.name}</option>)}
+              </select>
+            </Labelled>
+            <Labelled label="Internal sheet (Pype staff only)">
+              <Input className="w-64" value={sheet} onChange={(e) => setSheet(e.target.value)} placeholder="https://docs.google.com/…" />
+            </Labelled>
+          </>
         )}
+        <Button size="sm" onClick={() => submit.mutate()} disabled={submit.isPending || uploading || needsNote || (!hasMessage && !changed)}>
+          {submit.isPending ? 'Sending…' : label}
+        </Button>
       </div>
-      {ticket.status === 'resolved' && ticket.resolution_note && (
-        <p className="mt-3 border-l-2 border-emerald-500 pl-3 text-sm text-gray-700 dark:text-gray-300">
-          {ticket.resolution_note}
-          {ticket.resolved_at && <span className="ml-2 text-xs text-gray-400">{fmtDate(ticket.resolved_at)}</span>}
-        </p>
-      )}
-      {canManage && editing && (
-        <Editor onSave={() => save.mutate()} saving={save.isPending} error={save.isError ? (save.error as Error).message : undefined}>
-          <Labelled label="Status">
-            <select className={fieldClass} value={status} onChange={(e) => setStatus(e.target.value as Ticket['status'])}>
-              <option value="pending">Pending</option>
-              <option value="in_review">In review</option>
-              <option value="resolved">Resolved</option>
-            </select>
-          </Labelled>
-          <Labelled label="Resolution note (required to resolve)">
-            <Textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
-          </Labelled>
-        </Editor>
-      )}
-    </li>
+      <p className="text-xs text-gray-500 dark:text-gray-400">{STATUS_HINT[status]}</p>
+      {(err || submit.isError) && <p className="text-xs text-red-600">{err || (submit.error as Error).message}</p>}
+    </div>
   )
 }
 

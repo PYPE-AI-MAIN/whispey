@@ -32,7 +32,6 @@ import AnalyticsCanvas from './analytics/AnalyticsCanvas'
 import CallLogs from './calls/CallLogs'
 import CallLogsV2 from './calls/v2/CallLogsV2'
 import CampaignLogs from './campaigns/CampaignLogs'
-import Header from '@/components/shared/Header'
 import { useSupabaseQuery } from '../hooks/useSupabase'
 import FieldExtractorDialog from './FieldExtractorLogs'
 import { modelChange } from '@/config/fieldExtractorModels'
@@ -312,14 +311,14 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
     
     if (agent && !agent.project_id) {
       return {
-        project: 'No Project',
+        project: 'No Organization',
         item: agentDisplayName(agent)
       }
     }
     
     if (agent && !project) {
       return {
-        project: 'Unknown Project',
+        project: 'Unknown Organization',
         item: agentDisplayName(agent)
       }
     }
@@ -786,12 +785,13 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                     
                     {/* Field Extractor & Metrics - skeleton while agent loading; visibility-controlled */}
                     <div className="flex gap-2">
-                      {agentLoading ? (
+                      {agentLoading && (
                         <>
                           <Skeleton className="h-9 w-32 rounded-lg" />
                           <Skeleton className="h-9 w-24 rounded-lg" />
                         </>
-                      ) : agent && (canSeeFieldExtractor || canSeeMetrics) ? (
+                      )}
+                      {!agentLoading && agent && (canSeeFieldExtractor || canSeeMetrics) && (
                         <>
                           {canSeeFieldExtractor && (
                           <FieldExtractorDialog
@@ -840,7 +840,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                           />
                           )}
                         </>
-                      ) : null}
+                      )}
                     </div>
                   </>
                 )}
