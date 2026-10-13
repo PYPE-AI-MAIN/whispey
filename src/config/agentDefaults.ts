@@ -84,7 +84,9 @@ export const AGENT_DEFAULT_CONFIG = {
       user_away_timeout: undefined, // None to disable, 0 to use config default, or seconds
       user_away_timeout_message: undefined, // Message to speak each time user goes away
       user_away_timeout_max_count: undefined, // Max times to send message before ending call (undefined = unlimited)
-      user_away_timeout_end_message: undefined // Message to speak before ending call after max count
+      user_away_timeout_end_message: undefined, // Message to speak before ending call after max count
+      user_away_timeout_mode: "static" as "static" | "dynamic", // "dynamic" = LLM-generated, context-aware check-in (needs context_memory)
+      user_away_instructions: undefined as string | undefined // Owner instructions steering how dynamic away messages are written
     },
   
     // Background Audio Configuration
@@ -250,7 +252,9 @@ export const AGENT_DEFAULT_CONFIG = {
         user_away_timeout: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout,
         user_away_timeout_message: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_message,
         user_away_timeout_max_count: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_max_count,
-        user_away_timeout_end_message: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_end_message
+        user_away_timeout_end_message: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_end_message,
+        user_away_timeout_mode: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_mode,
+        user_away_instructions: AGENT_DEFAULT_CONFIG.session_behavior.user_away_instructions
       },
       tools: {
         tools: AGENT_DEFAULT_CONFIG.tools.map((tool, index) => ({

@@ -64,7 +64,9 @@ export const MCP_AGENT_DEFAULT_CONFIG = {
     user_away_timeout: undefined as number | undefined,
     user_away_timeout_message: undefined as string | undefined,
     user_away_timeout_max_count: undefined as number | undefined,
-    user_away_timeout_end_message: undefined as string | undefined
+    user_away_timeout_end_message: undefined as string | undefined,
+    user_away_timeout_mode: "static" as "static" | "dynamic",
+    user_away_instructions: undefined as string | undefined
   },
 
   background_audio: {

@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Info, AlertTriangle } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -16,6 +17,8 @@ interface SessionBehaviourSettingsProps {
   user_away_timeout_message?: string
   user_away_timeout_max_count?: number
   user_away_timeout_end_message?: string
+  user_away_timeout_mode?: 'static' | 'dynamic'
+  user_away_instructions?: string
   onFieldChange: (field: string, value: any) => void
 }
 
@@ -30,6 +33,8 @@ export default function SessionBehaviourSettings({
   user_away_timeout_message,
   user_away_timeout_max_count,
   user_away_timeout_end_message,
+  user_away_timeout_mode = 'static',
+  user_away_instructions,
   onFieldChange
 }: SessionBehaviourSettingsProps) {
   // Local state for input values to handle intermediate states
@@ -40,6 +45,7 @@ export default function SessionBehaviourSettings({
   const [userAwayTimeoutMessageInput, setUserAwayTimeoutMessageInput] = useState(user_away_timeout_message || '')
   const [userAwayMaxCountInput, setUserAwayMaxCountInput] = useState(user_away_timeout_max_count !== undefined && user_away_timeout_max_count !== null ? String(user_away_timeout_max_count) : '')
   const [userAwayEndMessageInput, setUserAwayEndMessageInput] = useState(user_away_timeout_end_message || '')
+  const [userAwayInstructionsInput, setUserAwayInstructionsInput] = useState(user_away_instructions || '')
 
   // Sync with props when they change externally
   React.useEffect(() => {
@@ -69,6 +75,10 @@ export default function SessionBehaviourSettings({
   React.useEffect(() => {
     setUserAwayEndMessageInput(user_away_timeout_end_message || '')
   }, [user_away_timeout_end_message])
+
+  React.useEffect(() => {
+    setUserAwayInstructionsInput(user_away_instructions || '')
+  }, [user_away_instructions])
 
   const handleNumberInput = (
     value: string,
@@ -458,6 +468,74 @@ export default function SessionBehaviourSettings({
             placeholder="Are you still on the line?"
           />
         </div>
+
+        {/* User Away Message Mode */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
+              User Away Message Mode
+            </Label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs">
+                <p className="text-xs">
+                  <strong>Static</strong>: always speaks the message above.<br />
+                  <strong>Dynamic</strong>: writes a context-aware check-in from the last 3 user and 3 agent messages. The same line is repeated until the user responds, then a new one is written. If the user has said nothing since the greeting, or generation fails, the static message is used.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <Select
+            value={user_away_timeout_mode}
+            onValueChange={(value) =>
+              onFieldChange('advancedSettings.session.user_away_timeout_mode', value)
+            }
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="static" className="text-xs">Static (default)</SelectItem>
+              <SelectItem value="dynamic" className="text-xs">Dynamic (context-aware)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* User Away Instructions (dynamic mode only) */}
+        {user_away_timeout_mode === 'dynamic' && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-gray-600 dark:text-gray-400">
+                User Away Message Instructions
+              </Label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="w-3 h-3 text-gray-400 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="right" className="max-w-xs">
+                  <p className="text-xs">
+                    Optional guidance for how the model should word the check-in (tone, language, formality, what to mention). Basic rules (one short spoken sentence, at least 4 words) always apply.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <Textarea
+              value={userAwayInstructionsInput}
+              maxLength={1000}
+              rows={4}
+              onChange={(e) => {
+                const value = e.target.value
+                setUserAwayInstructionsInput(value)
+                onFieldChange('advancedSettings.session.user_away_instructions', value || undefined)
+              }}
+              className="text-xs resize-y"
+              placeholder="e.g. Speak politely in Hinglish. Mention the appointment we were discussing. Keep it warm and under 15 words."
+            />
+            <p className="text-[10px] text-gray-400">{userAwayInstructionsInput.length}/1000</p>
+          </div>
+        )}
 
         {/* User Away Timeout Max Count */}
         <div className="space-y-2">
