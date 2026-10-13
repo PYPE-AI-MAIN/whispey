@@ -133,6 +133,8 @@ export const extractionField = z.object({
   variable: z.string(),
   description: z.string().nullish(),
   type: varType.default('string'),
+  // false: nice to have; the step moves on without it instead of asking until the caller gives it.
+  required: z.boolean().default(true),
 })
 export const extractVariableNode = z.object({
   ...nodeBase,

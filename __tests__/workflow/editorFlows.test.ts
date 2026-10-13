@@ -100,3 +100,27 @@ describe('global rules in the store', () => {
     expect(issues().some((i) => i.message.includes('unreachable'))).toBe(false)
   })
 })
+
+describe('details that may not apply', () => {
+  it('a collect-details field is required unless marked otherwise', () => {
+    start([{ id: 'q', type: 'extract_variable', prompt: 'ask', extractions: [{ variable: 'status' }, { variable: 'weeks', required: false }] }, { id: 'e', type: 'ending' }],
+      [{ id: 'x', source: 'q', target: 'e', kind: 'always' }])
+    const node = store().workflow!.nodes[0] as any
+    expect(node.extractions.map((f: any) => f.required)).toEqual([true, false])
+  })
+})
+
+describe('placeholders', () => {
+  it('a TODO left in a step is flagged, in plain words', () => {
+    start([{ id: 'a', type: 'conversation', prompt: 'hi' }, { id: 'api', type: 'function', url: 'TODO: patient_register endpoint', method: 'POST' }, { id: 'e', type: 'ending' }],
+      [{ id: 'x', source: 'a', target: 'api', kind: 'always' }, { id: 'y', source: 'api', target: 'e', kind: 'always' }])
+    const i = issues().find((x) => x.nodeId === 'api' && x.message.includes('TODO'))!
+    expect(i.severity).toBe('warning')
+    expect(explainIssue(i, store().workflow)).toContain('real value')
+  })
+  it('a normal URL is not flagged', () => {
+    start([{ id: 'a', type: 'conversation', prompt: 'hi' }, { id: 'api', type: 'function', url: 'https://api.example.com/x', method: 'GET' }, { id: 'e', type: 'ending' }],
+      [{ id: 'x', source: 'a', target: 'api', kind: 'always' }, { id: 'y', source: 'api', target: 'e', kind: 'always' }])
+    expect(issues().some((x) => x.message.includes('TODO'))).toBe(false)
+  })
+})

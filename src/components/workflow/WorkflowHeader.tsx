@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { AlertTriangle, ArrowLeft, PanelLeft, BookOpen, Braces, ChevronDown, ClipboardPaste, Copy, Globe, Loader2, MoreHorizontal, PhoneIcon, Rocket, Settings2, ShieldCheck, Sparkles } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, History, PanelLeft, Webhook, BookOpen, Braces, ChevronDown, ClipboardPaste, Copy, Globe, Loader2, MoreHorizontal, PhoneIcon, Rocket, Settings2, ShieldCheck, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -26,6 +26,8 @@ type HeaderProps = Readonly<{
   onOpenRules: () => void
   rulesCount: number
   onOpenKnowledge: () => void
+  onOpenHistory: () => void
+  onOpenWebhook: () => void
   canTest: boolean
   onTest: () => void
   onValidate: () => void
@@ -147,6 +149,14 @@ export function WorkflowHeader(p: HeaderProps) {
           <DropdownMenuItem onClick={p.onOpenKnowledge}>
             <BookOpen className="mr-2 h-4 w-4" />
             <span>Knowledge base (documents)</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={p.onOpenWebhook}>
+            <Webhook className="mr-2 h-4 w-4" />
+            <span>Webhook (send calls to your system)</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={p.onOpenHistory}>
+            <History className="mr-2 h-4 w-4" />
+            <span>Version history</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
