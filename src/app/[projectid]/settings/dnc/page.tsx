@@ -331,7 +331,7 @@ export default function DncPage() {
       <div className="min-h-full bg-muted/50">
         {/* Navbar */}
         <div className="border-b border-border sticky top-0 z-10 bg-background/85 backdrop-blur">
-          <div className="max-w-5xl mx-auto px-6 py-4 flex items-center gap-3">
+          <div className="max-w-6xl mx-auto px-4 sm:px-8 py-4 flex items-center gap-3">
             <Button
               variant="ghost"
               size="icon"
@@ -351,7 +351,7 @@ export default function DncPage() {
           </div>
         </div>
 
-        <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
+        <div className="max-w-6xl mx-auto px-4 sm:px-8 py-6 space-y-6">
           {/* Add card */}
           <div className="rounded-xl border border-border bg-card shadow-sm">
             <div className="px-5 py-4 border-b border-border/60 flex items-center gap-2">

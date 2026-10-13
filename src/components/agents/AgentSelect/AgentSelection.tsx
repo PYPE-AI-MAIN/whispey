@@ -190,7 +190,7 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
 
   return (
     <div className="min-h-screen bg-background">
-      <div className={`max-w-7xl mx-auto py-6 ${isMobile ? 'px-4' : 'px-8 py-8'}`}>
+      <div className="wp-enter max-w-6xl mx-auto px-4 py-6 sm:px-8 sm:py-8">
         <AgentToolbar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}

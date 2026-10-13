@@ -74,7 +74,7 @@ export default function SettingsPage() {
   // grows, with the table given its own fixed vh-based height (immune to any
   // ancestor's height math) is far less clever but cannot fail this way.
   return (
-    <div className="max-w-5xl mx-auto space-y-6 p-4 sm:p-6">
+    <div className="max-w-6xl mx-auto space-y-6 px-4 py-6 sm:px-8 sm:py-8">
       <OrganizationSettings
         organizationName={organization.name}
         organizationId={organization.id}

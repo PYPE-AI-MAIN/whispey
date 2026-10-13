@@ -509,7 +509,7 @@ export default function PhoneNumbersPage() {
 
       {/* ── Navbar ── */}
       <div className="flex-shrink-0 border-b border-border bg-background">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 sm:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push(`/${projectId}/agents`)}
@@ -552,7 +552,7 @@ export default function PhoneNumbersPage() {
 
       {/* ── Content ── */}
       <div className="flex-1 overflow-y-auto px-6 py-6">
-        <div className="max-w-5xl mx-auto space-y-4">
+        <div className="max-w-6xl mx-auto space-y-4">
 
           {/* Add form */}
           {showAddForm && (

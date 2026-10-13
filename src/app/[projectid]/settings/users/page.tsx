@@ -184,8 +184,8 @@ function MetricsTab() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-6 pb-6">
-      <div className="max-w-5xl mx-auto pt-4 space-y-4">
+    <div className="flex-1 overflow-y-auto px-4 pb-6 sm:px-8">
+      <div className="max-w-6xl mx-auto pt-4 space-y-4">
 
         {/* the admin insert route always sets is_active: true on create */}
         <CreateMetricTemplateForm onCreated={(t) => setTemplates(prev => [...prev, { ...t, is_active: true }])} />
@@ -413,7 +413,7 @@ export default function UsersSettingsPage() {
 
       {/* ── Navbar — matches sidebar header border style ── */}
       <div className="flex-shrink-0 border-b border-border bg-background">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 sm:px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push(`/${projectId}/agents`)}
@@ -435,7 +435,7 @@ export default function UsersSettingsPage() {
 
       {/* ── Tabs ── */}
       <div className="flex-shrink-0 border-b border-border">
-        <div className="max-w-5xl mx-auto px-6 flex gap-1 pt-1">
+        <div className="max-w-6xl mx-auto px-4 sm:px-8 flex gap-1 pt-1">
           {(['users', 'metrics', 'qa'] as Tab[]).map(tab => (
             <button
               key={tab}
@@ -453,11 +453,11 @@ export default function UsersSettingsPage() {
       </div>
 
       {activeTab === 'metrics' && <MetricsTab />}
-      {activeTab === 'qa' && <div className="max-w-5xl w-full mx-auto px-6 pt-6"><QaTeamAdmin /></div>}
+      {activeTab === 'qa' && <div className="max-w-6xl w-full mx-auto px-4 sm:px-8 pt-6"><QaTeamAdmin /></div>}
 
       {/* ── Users tab content ── */}
       {activeTab === 'users' && <>
-      <div className="flex-shrink-0 max-w-5xl w-full mx-auto px-6 pt-4 pb-3 flex items-center justify-between gap-4">
+      <div className="flex-shrink-0 max-w-6xl w-full mx-auto px-4 sm:px-8 pt-4 pb-3 flex items-center justify-between gap-4">
         {/* Native input — avoids shadcn adding w-full */}
         <div className="flex items-center gap-3">
           <div className="relative flex-shrink-0" style={{ width: '200px' }}>
@@ -505,8 +505,8 @@ export default function UsersSettingsPage() {
       </div>
 
       {/* ── Scrollable table area — this is the ONLY element that scrolls ── */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6">
-        <div className="max-w-5xl mx-auto rounded-xl border border-border overflow-hidden">
+      <div className="flex-1 overflow-y-auto px-4 pb-6 sm:px-8">
+        <div className="max-w-6xl mx-auto rounded-xl border border-border overflow-hidden">
           <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
             <colgroup>
               <col style={{ width: 'auto' }} />
