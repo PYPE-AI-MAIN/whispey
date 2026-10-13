@@ -72,7 +72,7 @@ export function FormulaCard({
                 <GripVertical className="h-3.5 w-3.5" />
               </button>
             )}
-            <h3 className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <h3 className="truncate text-xs font-medium text-muted-foreground">
               {widget.title}
             </h3>
             {/* the same "how is this calculated" affordance every other card

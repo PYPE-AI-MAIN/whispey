@@ -116,7 +116,7 @@ function LiveTranscript({ transcripts, agentName }: Readonly<{ transcripts: Tran
     <div className="space-y-2.5">
       {transcripts.map((t) => (
         <div key={t.id} className={cn('flex flex-col', t.speaker === 'user' ? 'items-end' : 'items-start')}>
-          <span className="mb-0.5 px-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="mb-0.5 px-1 text-[10px] font-medium text-muted-foreground">
             {t.speaker === 'user' ? 'You' : agentName}
           </span>
           <p
@@ -264,7 +264,7 @@ function TabBar({
           >
             {t.label}
             {!t.ready && (
-              <span className="rounded-full bg-muted px-1.5 py-px text-[10px] font-normal uppercase tracking-wide text-muted-foreground">
+              <span className="rounded-full bg-muted px-1.5 py-px text-[10px] font-normal text-muted-foreground">
                 Soon
               </span>
             )}
@@ -453,7 +453,7 @@ function SetupDrawer({
               className="space-y-4 overflow-y-auto border-t border-border/60 px-3 py-3"
             >
               <section>
-                <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="mb-1.5 text-[11px] font-medium text-muted-foreground">
                   Voice
                 </p>
                 <MinimalVoicePicker
@@ -476,7 +476,7 @@ function SetupDrawer({
                 )}
               </section>
               <section>
-                <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="mb-1.5 text-[11px] font-medium text-muted-foreground">
                   Variables
                 </p>
                 <SessionVariablesPanel

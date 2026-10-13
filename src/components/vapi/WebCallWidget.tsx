@@ -188,7 +188,7 @@ export const WebCallWidget: React.FC<WebCallWidgetProps> = ({
 
         {/* Live Messages */}
         <div className="space-y-3">
-          <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+          <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
             Live Transcript
           </h4>

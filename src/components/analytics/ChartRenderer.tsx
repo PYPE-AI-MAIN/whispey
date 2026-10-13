@@ -261,7 +261,7 @@ function Table({
   return (
     <div className="h-full overflow-auto">
       <table className="w-full text-sm">
-        <thead className="sticky top-0 z-10 bg-card text-[11px] uppercase tracking-wide text-muted-foreground">
+        <thead className="sticky top-0 z-10 bg-card text-[11px] text-muted-foreground">
           <tr className="border-b border-border">
             <th className="whitespace-nowrap py-1.5 pr-3 text-left font-medium">{firstColumnLabel(shaped.axis, bucket, spec.dimension?.field?.col)}</th>
             {shaped.seriesKeys.map((key) => (

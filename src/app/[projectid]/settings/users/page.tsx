@@ -517,10 +517,10 @@ export default function UsersSettingsPage() {
             <thead>
               {/* Header bg slightly darker than gray-900, matching sidebar group headers */}
               <tr className="border-b border-border bg-muted/50">
-                <th className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">User</th>
-                <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Role</th>
-                <th className="px-3 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Joined</th>
-                <th className="px-4 py-2.5 text-right text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Access</th>
+                <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-muted-foreground">User</th>
+                <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-muted-foreground">Role</th>
+                <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-muted-foreground">Joined</th>
+                <th className="px-4 py-2.5 text-right text-[10px] font-semibold text-muted-foreground">Access</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">

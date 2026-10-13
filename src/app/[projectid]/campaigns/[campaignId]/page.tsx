@@ -958,7 +958,7 @@ function ViewCampaign() {
             <div className="rounded-xl border border-border bg-card shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Users className="w-4 h-4 text-muted-foreground" />
-                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total Contacts</span>
+                <span className="text-xs font-medium text-muted-foreground">Total Contacts</span>
               </div>
               <p className="text-2xl font-bold text-foreground">
                 {campaignDetails.callStats?.total ?? campaignDetails.totalContacts}
@@ -968,7 +968,7 @@ function ViewCampaign() {
             <div className="rounded-xl border border-border bg-card shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Phone className="w-4 h-4 text-purple-400" />
-                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Processed</span>
+                <span className="text-xs font-medium text-muted-foreground">Processed</span>
               </div>
               <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                 {campaignDetails.processedContacts}
@@ -978,7 +978,7 @@ function ViewCampaign() {
             <div className="rounded-xl border border-border bg-card shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Phone className="w-4 h-4 text-green-400" />
-                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Success</span>
+                <span className="text-xs font-medium text-muted-foreground">Success</span>
               </div>
               <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                 {campaignDetails.callStats?.completed ?? campaignDetails.successCalls}
@@ -988,7 +988,7 @@ function ViewCampaign() {
             <div className="rounded-xl border border-border bg-card shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Phone className="w-4 h-4 text-red-400" />
-                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Failed</span>
+                <span className="text-xs font-medium text-muted-foreground">Failed</span>
               </div>
               <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                 {campaignDetails.callStats?.failed ?? campaignDetails.failedCalls}
@@ -998,7 +998,7 @@ function ViewCampaign() {
             <div className="rounded-xl border border-border bg-card shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Phone className="w-4 h-4 text-blue-400" />
-                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Pending</span>
+                <span className="text-xs font-medium text-muted-foreground">Pending</span>
               </div>
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {campaignDetails.callStats?.pending ?? 0}
@@ -1008,7 +1008,7 @@ function ViewCampaign() {
 
           {/* Campaign Info */}
           <div className="rounded-xl border border-border bg-card shadow-sm p-4">
-            <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-3">
+            <h2 className="text-xs font-medium text-muted-foreground mb-3">
               Campaign Information
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
@@ -1063,7 +1063,7 @@ function ViewCampaign() {
             {/* Retry Configuration */}
             {campaignDetails.schedule?.retryConfig && Array.isArray(campaignDetails.schedule.retryConfig) && campaignDetails.schedule.retryConfig.length > 0 && (
               <div className="mt-4 pt-4 border-t border-border">
-                <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-3 flex items-center gap-1.5">
+                <h3 className="text-xs font-medium text-muted-foreground mb-3 flex items-center gap-1.5">
                   <RefreshCw className="w-3 h-3" />
                   Retry Configuration
                 </h3>
@@ -1129,7 +1129,7 @@ function ViewCampaign() {
           {/* Campaign Logs Table */}
           <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
             <div className="px-4 py-3 border-b border-border">
-              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <h2 className="text-xs font-medium text-muted-foreground">
                 Campaign Logs ({logs.length})
               </h2>
             </div>

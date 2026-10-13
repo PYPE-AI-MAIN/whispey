@@ -88,7 +88,7 @@ export function SessionsTable({
       </div>
 
       <div className="rounded-xl border border-border bg-card overflow-hidden">
-        <div className={cn(COLS, 'px-4 h-9 border-b border-border text-[11px] font-medium uppercase tracking-wide text-muted-foreground')}>
+        <div className={cn(COLS, 'px-4 h-9 border-b border-border text-[11px] font-medium text-muted-foreground')}>
           <span>Session</span><span>Model</span><span>Messages</span><span>Versions</span><span>Owner</span><span>Updated</span><span />
         </div>
         {shown.length === 0 ? (

@@ -98,7 +98,7 @@ export function CreateMetricTemplateForm({ onCreated }: Readonly<CreateMetricTem
           {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
           <div>
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Name *</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Name *</Label>
               <span className="text-[11px] text-muted-foreground">{form.name.length}/30</span>
             </div>
             <Input
@@ -110,7 +110,7 @@ export function CreateMetricTemplateForm({ onCreated }: Readonly<CreateMetricTem
             />
           </div>
           <div>
-            <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Description</Label>
+            <Label className="text-xs font-medium text-muted-foreground">Description</Label>
             <Input
               className="mt-1 text-xs bg-card border-border text-foreground"
               placeholder="Short description"
@@ -119,7 +119,7 @@ export function CreateMetricTemplateForm({ onCreated }: Readonly<CreateMetricTem
             />
           </div>
           <div>
-            <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Default Criteria *</Label>
+            <Label className="text-xs font-medium text-muted-foreground">Default Criteria *</Label>
             <Textarea
               className="mt-1 text-xs min-h-[80px] font-mono resize-none bg-card border-border text-foreground"
               placeholder="Evaluation criteria prompt..."
@@ -129,7 +129,7 @@ export function CreateMetricTemplateForm({ onCreated }: Readonly<CreateMetricTem
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Scoring Mode *</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Scoring Mode *</Label>
               <Select value={form.default_scoring_mode} onValueChange={(v: 'continuous' | 'binary') => setForm(f => ({ ...f, default_scoring_mode: v }))}>
                 <SelectTrigger className="mt-1 text-xs bg-card border-border text-foreground"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -139,7 +139,7 @@ export function CreateMetricTemplateForm({ onCreated }: Readonly<CreateMetricTem
               </Select>
             </div>
             <div>
-              <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Default Threshold</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Default Threshold</Label>
               <Input
                 type="number" step="0.01" min="0" max="1"
                 className="mt-1 text-xs bg-card border-border text-foreground"
@@ -150,7 +150,7 @@ export function CreateMetricTemplateForm({ onCreated }: Readonly<CreateMetricTem
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Category</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Category</Label>
               <Select value={form.category} onValueChange={v => setForm(f => ({ ...f, category: v }))}>
                 <SelectTrigger className="mt-1 text-xs bg-card border-border text-foreground"><SelectValue placeholder="Select category" /></SelectTrigger>
                 <SelectContent>
@@ -164,7 +164,7 @@ export function CreateMetricTemplateForm({ onCreated }: Readonly<CreateMetricTem
               </Select>
             </div>
             <div>
-              <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Priority</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Priority</Label>
               <Select value={form.priority} onValueChange={v => setForm(f => ({ ...f, priority: v }))}>
                 <SelectTrigger className="mt-1 text-xs bg-card border-border text-foreground"><SelectValue /></SelectTrigger>
                 <SelectContent>

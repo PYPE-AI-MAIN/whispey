@@ -149,7 +149,7 @@ function Section({ icon, label, open, onToggle, children }: {
         <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-muted/50 rounded transition-colors">
           <div className="flex items-center gap-2">
             <span className="text-muted-foreground">{icon}</span>
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+            <span className="text-xs font-medium text-muted-foreground">{label}</span>
           </div>
           <ChevronDownIcon className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
         </CollapsibleTrigger>
@@ -365,10 +365,10 @@ export default function PipecatAdvancedSettings({
 
         {/* Background Sounds */}
         <Section icon={<Music2Icon className="w-3.5 h-3.5" />} label="Background Sounds" open={openSections.ambient} onToggle={() => toggle('ambient')}>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">Ambient</p>
+          <p className="text-xs font-medium text-muted-foreground mb-2">Ambient</p>
           <AmbientSoundSettings ambientSoundEnabled={ambientSoundEnabled} ambientSoundVolume={ambientSoundVolume} onAmbientSoundEnabledChange={onAmbientSoundEnabledChange} onAmbientSoundVolumeChange={onAmbientSoundVolumeChange} />
           <div className="h-px bg-muted my-4" />
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">Keyboard Typing</p>
+          <p className="text-xs font-medium text-muted-foreground mb-2">Keyboard Typing</p>
           <KeyboardSoundSettings keyboardSoundEnabled={keyboardSoundEnabled} keyboardSoundVolume={keyboardSoundVolume} keyboardSoundProbability={keyboardSoundProbability} keyboardSoundOnToolCalls={keyboardSoundOnToolCalls} onKeyboardSoundEnabledChange={onKeyboardSoundEnabledChange} onKeyboardSoundVolumeChange={onKeyboardSoundVolumeChange} onKeyboardSoundProbabilityChange={onKeyboardSoundProbabilityChange} onKeyboardSoundOnToolCallsChange={onKeyboardSoundOnToolCallsChange} />
         </Section>
 

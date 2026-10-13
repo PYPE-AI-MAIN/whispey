@@ -106,7 +106,7 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
       {/* Audio Player - show if we have a recording URL */}
       {recordingUrl && !callLoading && (
         <div className="px-4 py-2 border-b border-border bg-muted/50">
-          <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">Call Recording</h3>
+          <h3 className="text-xs font-medium text-muted-foreground mb-2">Call Recording</h3>
           <AudioPlayer
             s3Key={extractS3Key(recordingUrl)}
             url={recordingUrl}

@@ -553,7 +553,7 @@ function Section({ title, children }: Readonly<{ title: string; children: React.
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{title}</h4>
+        <h4 className="text-xs font-medium text-muted-foreground">{title}</h4>
         <div className="flex-1 h-px bg-muted" />
       </div>
       {children}

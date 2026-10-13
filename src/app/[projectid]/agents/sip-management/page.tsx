@@ -269,7 +269,7 @@ export default function SimplifiedSipManagement() {
                 crush every field to under 90px. Each row below labels its own
                 fields inline on mobile instead of relying on this header. */}
             <div className="hidden sm:block px-4 py-3 bg-muted/50 border-b border-border">
-              <div className="grid grid-cols-4 gap-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <div className="grid grid-cols-4 gap-4 text-xs font-medium text-muted-foreground">
                 <div>Number</div>
                 <div>Assigned Agent Name</div>
                 <div>Last Updated</div>
@@ -288,7 +288,7 @@ export default function SimplifiedSipManagement() {
                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-4 sm:items-center">
                       {/* Phone Number */}
                       <div>
-                        <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:hidden">Number</div>
+                        <div className="text-[11px] font-medium text-muted-foreground sm:hidden">Number</div>
                         {phoneAgent.inbound_phone_number ? (
                           <Badge variant="outline" className="text-sm font-mono">
                             {phoneAgent.inbound_phone_number}
@@ -302,7 +302,7 @@ export default function SimplifiedSipManagement() {
                       
                       {/* Assigned Agent */}
                       <div>
-                        <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:hidden">Assigned Agent Name</div>
+                        <div className="text-[11px] font-medium text-muted-foreground sm:hidden">Assigned Agent Name</div>
                         {phoneAgent.name ? (
                           <div className="flex items-center gap-2">
                             <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
@@ -319,7 +319,7 @@ export default function SimplifiedSipManagement() {
                       
                       {/* Last Updated */}
                       <div>
-                        <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:hidden">Last Updated</div>
+                        <div className="text-[11px] font-medium text-muted-foreground sm:hidden">Last Updated</div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Clock className="w-4 h-4 flex-shrink-0" />
                           <span className="truncate max-w-[150px]" title={formatDate(phoneAgent.created_at)}>

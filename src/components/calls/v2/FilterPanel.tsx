@@ -156,7 +156,7 @@ export function FilterPanel({ activeFilters, distinctConfig, onApply, metadataFi
       <PopoverContent align="start" sideOffset={6} className={cn("w-auto min-w-[520px] max-w-[95vw] rounded-xl border-[var(--cl-border2)] bg-[var(--cl-raised)] p-0 text-[var(--cl-text)] shadow-[0_16px_40px_rgba(0,0,0,.35)]", V2_THEME)}>
         {quickAdd.length > 0 && (
           <div className="border-b border-[var(--cl-border2)] px-4 py-3">
-            <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="mb-2 text-[10.5px] font-semibold text-muted-foreground">
               Quick add <span className="font-normal normal-case tracking-normal">· star a filter to pin its field here</span>
             </p>
             <div className="flex flex-wrap gap-1.5">

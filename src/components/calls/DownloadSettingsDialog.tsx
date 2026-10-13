@@ -101,7 +101,7 @@ export default function DownloadSettingsDialog({
             >
               {basicCols.length > 0 && (
                 <div className="space-y-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-1">Basic columns</p>
+                  <p className="text-[11px] font-semibold text-muted-foreground px-1">Basic columns</p>
                   {basicCols.map(col => (
                     <CheckboxRow key={col.key} checked={restricted.has(col.key)} onToggle={() => toggle(col.key)} label={col.label} />
                   ))}

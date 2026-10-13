@@ -65,7 +65,7 @@ function TranscriptCard({
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-muted/50 text-left">
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-2.5">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="text-[11px] font-medium text-muted-foreground">
             Last call
           </span>
           {meta && meta.length > 0 && (
@@ -95,7 +95,7 @@ function TranscriptCard({
         <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-4 py-3">
           {turns.map((t) => (
             <div key={t.id} className={cn('flex flex-col', t.speaker === 'user' ? 'items-end' : 'items-start')}>
-              <span className="mb-0.5 px-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              <span className="mb-0.5 px-1 text-[10px] font-medium text-muted-foreground">
                 {t.speaker === 'user' ? 'You' : 'Agent'}
               </span>
               <p

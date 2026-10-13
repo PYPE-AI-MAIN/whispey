@@ -587,7 +587,7 @@ export default function PhoneNumbersPage() {
               <thead>
                 <tr className="border-b border-border bg-muted/50">
                   {['Phone Number', 'Provider', 'Type', 'Assigned Agent', 'API Key', 'Actions'].map(h => (
-                    <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold text-muted-foreground">
                       {h}
                     </th>
                   ))}

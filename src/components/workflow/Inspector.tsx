@@ -86,7 +86,7 @@ function JsonField({ label, value, onChange }: Readonly<{ label: string; value: 
 function Field({ label, hint, children }: Readonly<{ label: string; hint?: string; children: React.ReactNode }>) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</Label>
+      <Label className="text-[11px] font-medium text-muted-foreground">{label}</Label>
       {children}
       {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
     </div>

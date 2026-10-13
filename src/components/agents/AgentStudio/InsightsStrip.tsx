@@ -93,7 +93,7 @@ function InsightCard({
   return (
     <div className="flex flex-col rounded-xl border border-border bg-card px-4 pb-3 pt-3 shadow-sm transition-colors hover:border-border">
       <div className="flex items-center gap-1.5">
-        <h3 className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <h3 className="truncate text-xs font-medium text-muted-foreground">
           {def.title}
         </h3>
         <TooltipProvider>

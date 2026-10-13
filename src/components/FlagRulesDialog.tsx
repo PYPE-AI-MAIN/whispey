@@ -288,10 +288,10 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
                   </div>
 
                   <div className="grid grid-cols-12 gap-2 px-1">
-                    <div className="col-span-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">What to check</div>
-                    <div className="col-span-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Field</div>
-                    <div className="col-span-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Condition</div>
-                    <div className="col-span-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Value</div>
+                    <div className="col-span-3 text-[10px] font-medium text-muted-foreground">What to check</div>
+                    <div className="col-span-3 text-[10px] font-medium text-muted-foreground">Field</div>
+                    <div className="col-span-3 text-[10px] font-medium text-muted-foreground">Condition</div>
+                    <div className="col-span-2 text-[10px] font-medium text-muted-foreground">Value</div>
                     <div className="col-span-1" />
                   </div>
 
@@ -457,17 +457,17 @@ function ConditionRow({
           <SelectTrigger className="h-8 text-xs w-full min-w-0"><SelectValue className="truncate" /></SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              <SelectLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">From the AI analysis</SelectLabel>
+              <SelectLabel className="text-[10px] text-muted-foreground">From the AI analysis</SelectLabel>
               <SelectItem value="exact">Field extractor value</SelectItem>
               <SelectItem value="metric_score">Metric score</SelectItem>
             </SelectGroup>
             <SelectGroup>
-              <SelectLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">From the call record</SelectLabel>
+              <SelectLabel className="text-[10px] text-muted-foreground">From the call record</SelectLabel>
               <SelectItem value="call_info">Call info</SelectItem>
               <SelectItem value="call_metadata">Call metadata</SelectItem>
             </SelectGroup>
             <SelectGroup>
-              <SelectLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">Match many fields by name</SelectLabel>
+              <SelectLabel className="text-[10px] text-muted-foreground">Match many fields by name</SelectLabel>
               <SelectItem value="pattern:starts_with">Field name starts with</SelectItem>
               <SelectItem value="pattern:ends_with">Field name ends with</SelectItem>
               <SelectItem value="pattern:contains">Field name contains</SelectItem>

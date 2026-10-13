@@ -17,7 +17,7 @@ export function RecipientsPreview({ csvData, dncBlocked }: Readonly<RecipientsPr
     return (
       <div className="border-l-0 sm:border-l border-t sm:border-t-0 border-border bg-card flex flex-col w-full sm:w-80">
         <div className="p-3 border-b border-border flex-shrink-0">
-          <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <h3 className="text-xs font-medium text-muted-foreground">
             Recipients (0)
           </h3>
         </div>
@@ -53,7 +53,7 @@ export function RecipientsPreview({ csvData, dncBlocked }: Readonly<RecipientsPr
   return (
       <div className="border-l-0 sm:border-l border-t sm:border-t-0 border-border bg-muted/50 flex flex-col w-full sm:w-[900px] h-[50vh] sm:h-auto">
       <div className="p-3 border-b border-border flex-shrink-0 bg-card">
-        <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <h3 className="text-xs font-medium text-muted-foreground">
           Recipients ({csvData.length})
         </h3>
         {blockedCount > 0 ? (

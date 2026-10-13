@@ -320,7 +320,7 @@ export default function MinimalVoicePicker({
           )}
           {groups.map((g) => (
             <div key={g.provider} className="pb-1">
-              <p className="px-2 pb-1 pt-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              <p className="px-2 pb-1 pt-2 text-[10px] font-medium text-muted-foreground">
                 {PROVIDER_LABEL[g.provider]}
               </p>
               {g.items.map((v) => {

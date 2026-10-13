@@ -52,7 +52,7 @@ import type { OverviewRange } from '@/hooks/useOrgOverview'
 
 const ALL = '__all__'
 const CARD = 'rounded-xl border border-border bg-card shadow-sm'
-const CARD_TITLE = 'text-xs font-medium uppercase tracking-wide text-muted-foreground'
+const CARD_TITLE = 'text-xs font-medium text-muted-foreground'
 const INK = 'text-foreground'
 const MUTED = 'text-muted-foreground'
 const GRID_STROKE = 'stroke-gray-200 dark:stroke-gray-800'

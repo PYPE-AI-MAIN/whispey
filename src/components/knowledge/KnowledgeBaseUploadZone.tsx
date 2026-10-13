@@ -230,7 +230,7 @@ export function KnowledgeBaseUploadZone({
 
       {/* URL ingestion */}
       <div className="rounded-xl border border-border bg-card shadow-sm p-4">
-        <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-2 mb-2">
+        <Label className="text-xs font-medium text-muted-foreground flex items-center gap-2 mb-2">
           <LinkIcon className="h-4 w-4" />
           Add from URL
         </Label>

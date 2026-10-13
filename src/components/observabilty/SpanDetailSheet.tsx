@@ -454,7 +454,7 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
             {/* Key Details */}
             <div className="grid grid-cols-2 gap-4">
               <div className="rounded-xl border border-border bg-muted/50 shadow-sm p-4">
-                <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-2">
+                <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
                   <Hash className="w-4 h-4" />
                   Request ID
                 </h4>
@@ -480,7 +480,7 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
               </div>
 
               <div className="rounded-xl border border-border bg-muted/50 shadow-sm p-4">
-                <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-2">
+                <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
                   <ExternalLink className="w-4 h-4" />
                   Source
                 </h4>
@@ -515,21 +515,21 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
           <div className="space-y-6">
             <div className="grid grid-cols-1 gap-4">
               <div className="rounded-xl border border-border bg-muted/50 shadow-sm p-4">
-                <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-3">Operation Name</h4>
+                <h4 className="text-xs font-medium text-muted-foreground mb-3">Operation Name</h4>
                 <code className="bg-card border border-border rounded p-2 text-sm font-mono block text-foreground">
                   {displaySpan.name || 'Not available'}
                 </code>
               </div>
 
               <div className="rounded-xl border border-border bg-muted/50 shadow-sm p-4">
-                <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-3">Operation Type</h4>
+                <h4 className="text-xs font-medium text-muted-foreground mb-3">Operation Type</h4>
                 <Badge variant="outline" className="text-sm border-border text-foreground bg-card">
                   {displaySpan.operation_type || 'unknown'}
                 </Badge>
               </div>
 
               <div className="rounded-xl border border-border bg-muted/50 shadow-sm p-4">
-                <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-3">Request Identifiers</h4>
+                <h4 className="text-xs font-medium text-muted-foreground mb-3">Request Identifiers</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Request ID:</span>
@@ -549,7 +549,7 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
               </div>
 
               <div className="rounded-xl border border-border bg-muted/50 shadow-sm p-4">
-                <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-3">Timing Information</h4>
+                <h4 className="text-xs font-medium text-muted-foreground mb-3">Timing Information</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Captured At:</span>

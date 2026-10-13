@@ -167,7 +167,7 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Session Overview</h3>
+              <h3 className="text-xs font-medium text-muted-foreground">Session Overview</h3>
               {/* Plain inline metadata, not colored chips — this row is identifying
                   info (which call, when), not a status to draw the eye to. Color is
                   reserved for the things below that actually need attention (bad

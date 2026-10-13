@@ -279,7 +279,7 @@ const validateCsvData = (data: RecipientRow[], headers: string[]): CsvValidation
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <Label className="text-xs font-medium text-muted-foreground">
           Upload Recipients
         </Label>
         <Button

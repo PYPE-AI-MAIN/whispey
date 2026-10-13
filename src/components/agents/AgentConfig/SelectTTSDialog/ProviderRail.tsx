@@ -40,7 +40,7 @@ export default function ProviderRail({ providers, counts, appliedProvider, activ
   return (
     <div className="flex-shrink-0 border-b md:border-b-0 md:border-r border-border md:w-60 md:flex md:flex-col bg-muted/50">
       <div className="hidden md:block px-4 pt-4 pb-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <p className="text-[11px] font-semibold text-muted-foreground">
           Voice provider
         </p>
       </div>

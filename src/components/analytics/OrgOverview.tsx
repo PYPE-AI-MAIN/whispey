@@ -49,7 +49,7 @@ function Kpi({
         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
           <Icon className="h-3.5 w-3.5" />
         </span>
-        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</div>
+        <div className="text-xs font-medium text-muted-foreground">{label}</div>
       </div>
       <div className="mt-3 text-3xl font-semibold tabular-nums text-foreground">
         {value === null ? '—' : formatValue(value, spec)}
@@ -219,7 +219,7 @@ export function OrgOverview({
               <div className="max-h-[32rem] overflow-auto scrollbar-thin">
                 <table className="w-full min-w-[640px] text-sm">
                   {/* Background on each <th>, not the <thead>/<tr> — see the comment above. */}
-                  <thead className="sticky top-0 z-10 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <thead className="sticky top-0 z-10 text-left text-xs text-muted-foreground">
                     <tr>
                       <th className="py-3 pl-6 pr-4 font-semibold border-b border-border bg-muted/50">Agent</th>
                       <th className="py-3 pr-4 font-semibold border-b border-border bg-muted/50">Calls</th>

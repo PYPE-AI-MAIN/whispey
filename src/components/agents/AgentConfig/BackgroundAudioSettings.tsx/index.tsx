@@ -78,7 +78,7 @@ export default function BackgroundAudioSettings({
     <div className="space-y-4">
       {/* Mode Selection */}
       <div className="space-y-3">
-        <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        <Label className="text-xs font-medium text-muted-foreground">
           Background Audio Mode
         </Label>
         <RadioGroup 
@@ -110,7 +110,7 @@ export default function BackgroundAudioSettings({
       {mode === 'single' && (
         <div className="space-y-4 ml-6">
           <div className="space-y-2">
-            <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Audio Type</Label>
+            <Label className="text-xs font-medium text-muted-foreground">Audio Type</Label>
             <Select 
               value={singleType}
               onValueChange={(value) => onFieldChange('advancedSettings.backgroundAudio.singleType', value)}
@@ -129,7 +129,7 @@ export default function BackgroundAudioSettings({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <Label className="text-xs font-medium text-muted-foreground">
               Volume (0-100)
             </Label>
             <Input
@@ -145,7 +145,7 @@ export default function BackgroundAudioSettings({
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Play Timing</Label>
+            <Label className="text-xs font-medium text-muted-foreground">Play Timing</Label>
             <RadioGroup 
               value={singleTiming}
               onValueChange={(value: 'thinking' | 'always') => onFieldChange('advancedSettings.backgroundAudio.singleTiming', value)}
@@ -172,10 +172,10 @@ export default function BackgroundAudioSettings({
         <div className="space-y-4 ml-6">
           {/* Ambient Audio */}
           <div className="space-y-3 p-3 bg-muted/50 rounded-lg">
-            <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Ambient Audio</h4>
+            <h4 className="text-xs font-medium text-muted-foreground">Ambient Audio</h4>
             
             <div className="space-y-2">
-              <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Type</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Type</Label>
               <Select 
                 value={ambientType}
                 onValueChange={(value) => onFieldChange('advancedSettings.backgroundAudio.ambientType', value)}
@@ -194,7 +194,7 @@ export default function BackgroundAudioSettings({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <Label className="text-xs font-medium text-muted-foreground">
                 Volume (0-100)
               </Label>
               <Input
@@ -212,10 +212,10 @@ export default function BackgroundAudioSettings({
 
           {/* Thinking Audio */}
           <div className="space-y-3 p-3 bg-muted/50 rounded-lg">
-            <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Thinking Audio</h4>
+            <h4 className="text-xs font-medium text-muted-foreground">Thinking Audio</h4>
             
             <div className="space-y-2">
-              <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Type</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Type</Label>
               <Select 
                 value={thinkingType}
                 onValueChange={(value) => onFieldChange('advancedSettings.backgroundAudio.thinkingType', value)}
@@ -234,7 +234,7 @@ export default function BackgroundAudioSettings({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <Label className="text-xs font-medium text-muted-foreground">
                 Volume (0-100)
               </Label>
               <Input
@@ -250,7 +250,7 @@ export default function BackgroundAudioSettings({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <Label className="text-xs font-medium text-muted-foreground">
                 Play Probability (0–100%)
               </Label>
               <Input
@@ -290,7 +290,7 @@ export default function BackgroundAudioSettings({
       {mode !== 'disabled' && (
         <div className="space-y-3 p-3 bg-muted/50 rounded-lg">
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Tool Call Typing Sound</h4>
+            <h4 className="text-xs font-medium text-muted-foreground">Tool Call Typing Sound</h4>
             <Switch
               checked={toolCallTyping}
               onCheckedChange={(checked) => onFieldChange('advancedSettings.backgroundAudio.toolCallTyping', checked)}
@@ -302,7 +302,7 @@ export default function BackgroundAudioSettings({
 
           {toolCallTyping && (
             <div className="space-y-2">
-              <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Volume (0–100)</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Volume (0–100)</Label>
               <Input
                 type="number"
                 value={localToolCallVolume}

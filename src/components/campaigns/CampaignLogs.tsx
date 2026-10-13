@@ -203,7 +203,7 @@ function UploadDialogContent({
         <div className="w-12 h-12 mx-auto mb-4 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
           <Upload className="w-6 h-6 text-blue-600 dark:text-blue-400" />
         </div>
-        <DialogTitle className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">Upload CSV File</DialogTitle>
+        <DialogTitle className="text-xs font-medium text-muted-foreground mb-2">Upload CSV File</DialogTitle>
         <p className="text-sm text-muted-foreground">Select a CSV file to upload to S3</p>
       </div>
 
@@ -410,7 +410,7 @@ function ScheduleDialogContent({
         <div className="w-12 h-12 mx-auto mb-4 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
           <Calendar className="w-6 h-6 text-blue-600 dark:text-blue-400" />
         </div>
-        <DialogTitle className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">Schedule Campaign</DialogTitle>
+        <DialogTitle className="text-xs font-medium text-muted-foreground mb-2">Schedule Campaign</DialogTitle>
         <p className="text-sm text-muted-foreground">Configure your campaign schedule settings</p>
       </div>
 

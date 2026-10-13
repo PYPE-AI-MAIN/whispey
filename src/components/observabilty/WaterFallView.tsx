@@ -365,7 +365,7 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
 
         {/* Summary */}
         <div className="mt-8 px-6 py-4 bg-muted/50 border-t border-border">
-          <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">Session Summary</div>
+          <div className="text-xs font-medium text-muted-foreground mb-2">Session Summary</div>
           <div className="text-xs text-muted-foreground space-y-1">
             <div>• {traceGroups.length} distinct traces executed</div>
             <div>• {totalSpans} total operations performed</div>

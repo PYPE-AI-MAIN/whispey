@@ -306,7 +306,7 @@ function MembersTableBody({
               positioning, table-layout: fixed, and a horizontally scrolling
               ancestor (our exact combination here); per-cell background
               can't have that problem since each cell paints its own box. */}
-          <thead className="sticky top-0 z-10 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <thead className="sticky top-0 z-10 text-left text-xs font-medium text-muted-foreground">
             <tr>
               <th className="px-4 py-2 font-medium border-b border-border bg-muted/50">Member</th>
               <th className="px-4 py-2 font-medium border-b border-border bg-muted/50 w-40">Role</th>

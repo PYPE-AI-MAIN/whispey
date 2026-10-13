@@ -234,13 +234,13 @@ export default function WebCallPage() {
           <CardContent className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="text-xs font-medium text-muted-foreground">
                   Agent Name
                 </p>
                 <p className="text-foreground">{agentData.name}</p>
               </div>
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="text-xs font-medium text-muted-foreground">
                   Vapi Assistant ID
                 </p>
                 <div className="flex items-center gap-2">
@@ -251,7 +251,7 @@ export default function WebCallPage() {
                 </div>
               </div>
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <p className="text-xs font-medium text-muted-foreground">
                   API Key Type
                 </p>
                 <div className="flex items-center gap-2">

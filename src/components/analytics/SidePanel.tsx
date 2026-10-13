@@ -395,7 +395,7 @@ function MiniAggEditor({
 
   return (
     <div className="mb-3 rounded-md border border-border p-2.5">
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mb-2 text-[11px] font-semibold text-muted-foreground">{label}</p>
 
       <Row label="Calculation">
         <Picker
@@ -756,12 +756,12 @@ function Panel({ title, children, onBack }: Readonly<{ title: string; children: 
       {onBack ? (
         <button
           onClick={onBack}
-          className="mb-3 -ml-1 flex items-center gap-1.5 self-start rounded px-1 py-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"
+          className="mb-3 -ml-1 flex items-center gap-1.5 self-start rounded px-1 py-0.5 text-xs font-semibold text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Chart types
         </button>
       ) : (
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
+        <h2 className="mb-3 text-xs font-semibold text-muted-foreground">{title}</h2>
       )}
       {children}
     </aside>

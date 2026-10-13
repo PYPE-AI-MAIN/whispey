@@ -197,7 +197,7 @@ export function LogsOverlay({
                   uses the theme's `--background` token, and gray-950 is close but not
                   an exact match — that tiny hue mismatch is what made the header look
                   like a separate floating panel instead of part of the table. */}
-              <thead className="sticky top-0 z-10 bg-background text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <thead className="sticky top-0 z-10 bg-background text-left text-xs text-muted-foreground">
                 <tr className="border-b border-border">
                   <th className="py-2 font-medium">When</th>
                   {/* only on the org-wide canvas — a single-agent list has one

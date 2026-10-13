@@ -306,7 +306,7 @@ function AgentColumnChecklist({
 
   const alwaysHiddenSection = alwaysHiddenColumns.length > 0 && (
     <div className="space-y-0.5">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground px-2 flex items-center gap-1">
+      <p className="text-xs font-medium text-muted-foreground px-2 flex items-center gap-1">
         <Lock className="h-2.5 w-2.5" />
         Always hidden for all non-superadmins (agent-wide setting)
       </p>
@@ -666,7 +666,7 @@ export default function UserDetailPage() {
       <div className="flex-1 overflow-y-auto px-6 pb-6">
         <div className="max-w-5xl mx-auto pt-4 space-y-4">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <h2 className="text-xs font-medium text-muted-foreground">
               Call log column access
             </h2>
             {projects.length > 0 && (

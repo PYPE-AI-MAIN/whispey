@@ -1396,7 +1396,7 @@ const inboundLookupVariables = useMemo(() => {
             {/* Conversation Flow */}
             <div className="rounded-xl border border-border bg-card shadow-sm p-3 space-y-3 flex-shrink-0">
               <div className="space-y-2">
-                <label htmlFor="firstMessageMode" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                <label htmlFor="firstMessageMode" className="text-xs font-medium text-muted-foreground">
                   Conversation Start
                 </label>
                 <Select
@@ -1463,7 +1463,7 @@ const inboundLookupVariables = useMemo(() => {
             <div className="flex-1 min-h-0 rounded-xl border border-border bg-card shadow-sm p-4 flex flex-col">
               <div className="flex items-center justify-between mb-3 flex-shrink-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">System Prompt</span>
+                  <span className="text-xs font-medium text-muted-foreground">System Prompt</span>
                   <Popover>
                     <PopoverTrigger asChild>
                       <button className="p-1 hover:bg-muted rounded">

@@ -281,7 +281,7 @@ const SessionTraceView = ({
         {/* Header */}
         <div className="bg-card border-b border-border px-4 py-2 sticky top-0 z-50">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Session Trace</h2>
+            <h2 className="text-xs font-medium text-muted-foreground">Session Trace</h2>
             <div className="flex items-center justify-center gap-2">
               <div className="flex items-center">
                 <div className="w-px h-4 bg-muted-foreground/30 mx-2"></div>

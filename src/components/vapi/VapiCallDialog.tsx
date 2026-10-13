@@ -323,7 +323,7 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
           <div className="space-y-4">
             {/* Phone Number Selection */}
             <div className="space-y-3">
-              <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <Label className="text-xs font-medium text-muted-foreground">
                 Call From (Your Numbers) <span className="text-red-500 dark:text-red-400">*</span>
               </Label>
               
@@ -410,7 +410,7 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
 
             {/* Country Selection */}
             <div className="space-y-3">
-              <Label htmlFor="country" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <Label htmlFor="country" className="text-xs font-medium text-muted-foreground">
                 Country <span className="text-red-500 dark:text-red-400">*</span>
               </Label>
               <Select value={selectedCountry.code} onValueChange={handleCountryChange}>
@@ -439,7 +439,7 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
 
             {/* Phone Number Input */}
             <div>
-              <Label htmlFor="phone" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <Label htmlFor="phone" className="text-xs font-medium text-muted-foreground">
                 Call To (Customer Number) <span className="text-red-500 dark:text-red-400">*</span>
               </Label>
               <div className="flex items-center gap-2 mt-1">
@@ -465,7 +465,7 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
 
             {/* Custom Message */}
             <div>
-              <Label htmlFor="message" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <Label htmlFor="message" className="text-xs font-medium text-muted-foreground">
                 Custom First Message (Optional)
               </Label>
               <Textarea

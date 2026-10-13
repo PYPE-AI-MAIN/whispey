@@ -51,7 +51,7 @@ export function VariablesPanel({ open, onOpenChange }: Readonly<{ open: boolean;
             </Button>
           </div>
           {variables.length > 0 && (
-            <div className="flex gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <div className="flex gap-1.5 text-[11px] font-medium text-muted-foreground">
               <span className="w-28">Name</span>
               <span className="w-24">Type</span>
               <span className="w-24">Starts as</span>

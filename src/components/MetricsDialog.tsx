@@ -398,7 +398,7 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                   {groupTemplatesByCategory(metricsTemplates.filter(template => !metrics[template.metric_id]))
                     .map(({ category, templates }) => (
                       <div key={category}>
-                        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                        <h4 className="text-xs font-semibold text-muted-foreground mb-2">
                           {category} <span className="font-normal normal-case text-muted-foreground">({templates.length})</span>
                         </h4>
                         <div className="space-y-2">

@@ -347,7 +347,7 @@ function NodeDetails({
             <div className="mb-4">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-2 h-2 rounded-full bg-amber-500"></div>
-                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">System Instructions</span>
+                <span className="text-xs font-medium text-muted-foreground">System Instructions</span>
               </div>
               <div className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-400 dark:border-amber-600 rounded-r-lg p-3 max-h-64 overflow-y-auto">
                 <pre className="text-xs text-foreground whitespace-pre-wrap font-mono leading-relaxed">
@@ -361,7 +361,7 @@ function NodeDetails({
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                  <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Available Tools</span>
+                  <span className="text-xs font-medium text-muted-foreground">Available Tools</span>
                   <Badge variant="outline" className="text-xs">
                     {trace.enhanced_data.prompt_data.available_tools.length}
                   </Badge>
@@ -387,7 +387,7 @@ function NodeDetails({
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                    <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Conversation History</span>
+                    <span className="text-xs font-medium text-muted-foreground">Conversation History</span>
                     <Badge variant="outline" className="text-xs">
                       {trace.enhanced_data.prompt_data.conversation_history.length} messages
                     </Badge>

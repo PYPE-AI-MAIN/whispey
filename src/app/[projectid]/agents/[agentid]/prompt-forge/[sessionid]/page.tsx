@@ -902,7 +902,7 @@ const toolShape = (t: AgentTool) => JSON.stringify({
 })
 
 const FIELD = 'w-full rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground outline-none focus:border-blue-400 dark:focus:border-blue-500 disabled:opacity-60'
-const FIELD_LABEL = 'text-[10px] font-medium uppercase tracking-wide text-muted-foreground mb-1'
+const FIELD_LABEL = 'text-[10px] font-medium text-muted-foreground mb-1'
 
 // One tool, editable in place (owner only). Changes apply to the next message
 // and are saved with the session; they never touch the agent's real config.
@@ -1133,7 +1133,7 @@ function ToolCallBlock({ tc }: { tc: ToolCall }) {
         <div className="border-t border-border divide-y divide-border/60">
           {tc.arguments != null && (
             <div className="px-3 py-2">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground mb-1.5">Arguments</p>
+              <p className="text-[10px] font-medium text-muted-foreground mb-1.5">Arguments</p>
               <pre className="text-[11px] text-foreground font-mono whitespace-pre-wrap break-all leading-relaxed max-h-40 overflow-auto">
                 {typeof tc.arguments === 'string' ? tc.arguments : JSON.stringify(tc.arguments, null, 2)}
               </pre>
@@ -1141,7 +1141,7 @@ function ToolCallBlock({ tc }: { tc: ToolCall }) {
           )}
           {tc.result != null && (
             <div className="px-3 py-2">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground mb-1.5">Result</p>
+              <p className="text-[10px] font-medium text-muted-foreground mb-1.5">Result</p>
               <pre className="text-[11px] text-foreground font-mono whitespace-pre-wrap break-all leading-relaxed max-h-40 overflow-auto">
                 {typeof tc.result === 'string' ? tc.result : JSON.stringify(tc.result, null, 2)}
               </pre>

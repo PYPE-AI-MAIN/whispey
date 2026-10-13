@@ -54,7 +54,7 @@ export function SuggestedStrip({
 
   return (
     <div className="mt-4">
-      <h2 className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+      <h2 className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
         <Sparkles className="h-3 w-3" /> Suggested
       </h2>
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">

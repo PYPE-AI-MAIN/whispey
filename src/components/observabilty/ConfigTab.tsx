@@ -118,7 +118,7 @@ const ConfigTab: React.FC<ConfigTabProps> = ({ sessionId }) => {
         <div className="rounded-xl border border-border bg-card shadow-sm p-3">
           <div className="flex items-center gap-2 mb-2">
             <Brain className="w-4 h-4 text-blue-500" />
-            <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">LLM Configuration</h3>
+            <h3 className="text-xs font-medium text-muted-foreground">LLM Configuration</h3>
           </div>
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
@@ -152,7 +152,7 @@ const ConfigTab: React.FC<ConfigTabProps> = ({ sessionId }) => {
         <div className="rounded-xl border border-border bg-card shadow-sm p-3">
           <div className="flex items-center gap-2 mb-2">
             <Mic className="w-4 h-4 text-green-500" />
-            <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">STT Configuration</h3>
+            <h3 className="text-xs font-medium text-muted-foreground">STT Configuration</h3>
           </div>
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
@@ -176,7 +176,7 @@ const ConfigTab: React.FC<ConfigTabProps> = ({ sessionId }) => {
         <div className="rounded-xl border border-border bg-card shadow-sm p-3">
           <div className="flex items-center gap-2 mb-2">
             <Volume2 className="w-4 h-4 text-purple-500" />
-            <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">TTS Configuration</h3>
+            <h3 className="text-xs font-medium text-muted-foreground">TTS Configuration</h3>
           </div>
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
@@ -214,7 +214,7 @@ const ConfigTab: React.FC<ConfigTabProps> = ({ sessionId }) => {
         <div className="rounded-xl border border-border bg-card shadow-sm p-3">
           <div className="flex items-center gap-2 mb-2">
             <FileText className="w-4 h-4 text-orange-500" />
-            <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Prompt</h3>
+            <h3 className="text-xs font-medium text-muted-foreground">Prompt</h3>
           </div>
           <div className="mt-1.5">
             <pre className="p-2.5 bg-muted/50 rounded-lg text-xs text-foreground whitespace-pre-wrap overflow-x-auto max-h-96 overflow-y-auto">

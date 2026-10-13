@@ -53,7 +53,7 @@ export default function StudioEmptyState({ onPreview }: Readonly<{ onPreview: ()
 
           {/* Slot for the MCP connection instructions (to be provided). */}
           <div className="mt-6 rounded-lg border border-dashed border-border bg-muted/50 px-4 py-3">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <p className="text-[11px] font-medium text-muted-foreground">
               MCP setup
             </p>
             <p className="mt-1 text-xs text-muted-foreground">Connection instructions are coming soon.</p>

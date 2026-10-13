@@ -135,7 +135,7 @@ export default function CallAnalytics({
           <div className="w-6 h-6 rounded-md bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
             <BarChart2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
           </div>
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Call Analytics</span>
+          <span className="text-xs font-medium text-muted-foreground">Call Analytics</span>
           {isAnalyzing && (
             <div className="flex items-center gap-1 text-xs text-blue-500">
               <Loader2 className="w-3 h-3 animate-spin" />
@@ -172,7 +172,7 @@ export default function CallAnalytics({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <SentimentBadge sentiment={analysis.overallSentiment} />
-                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Overall</span>
+                <span className="text-xs font-medium text-muted-foreground">Overall</span>
               </div>
               <p className="text-xs text-foreground font-medium">{analysis.callOutcome}</p>
             </div>
@@ -180,7 +180,7 @@ export default function CallAnalytics({
 
           {/* Summary */}
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">Summary</p>
+            <p className="text-xs font-medium text-muted-foreground mb-1">Summary</p>
             <p className="text-xs text-foreground leading-relaxed">{analysis.summary}</p>
           </div>
 
@@ -189,7 +189,7 @@ export default function CallAnalytics({
             <div>
               <div className="flex items-center gap-1 mb-1.5">
                 <Tag className="w-3 h-3 text-muted-foreground" />
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Key Topics</p>
+                <p className="text-[10px] text-muted-foreground">Key Topics</p>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {analysis.topics.map(topic => (
@@ -208,7 +208,7 @@ export default function CallAnalytics({
           <div>
             <div className="flex items-center gap-1 mb-2">
               <MessageSquare className="w-3 h-3 text-muted-foreground" />
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Turn-by-Turn</p>
+              <p className="text-[10px] text-muted-foreground">Turn-by-Turn</p>
             </div>
             <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
               {transcripts.map(turn => {

@@ -444,7 +444,7 @@ function ChartProposal({
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold text-foreground">{chart.title}</p>
           <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{safeExplain(chart, fields)}</p>
-          {range && <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{range}</p>}
+          {range && <p className="mt-1 text-[10px] font-medium text-muted-foreground">{range}</p>}
         </div>
       </div>
       <Button

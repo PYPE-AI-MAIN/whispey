@@ -589,7 +589,7 @@ function Campaigns() {
 
               {/* Info */}
               <div className="rounded-xl border border-border bg-card shadow-sm p-4 sm:p-6">
-                <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-4">Campaign Information</h4>
+                <h4 className="text-xs font-medium text-muted-foreground mb-4">Campaign Information</h4>
                 <InfoRow label="Campaign ID"  value={<span className="font-mono">{selectedCampaign.campaignId}</span>} />
                 <InfoRow label="Organization ID"   value={<span className="font-mono">{selectedCampaign.projectId}</span>} />
                 <InfoRow label="Provider"     value={selectedCampaign.callConfig.provider} />
@@ -597,14 +597,14 @@ function Campaigns() {
 
               {/* Agent */}
               <div className="rounded-xl border border-border bg-card shadow-sm p-4 sm:p-6">
-                <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-4">Agent Details</h4>
+                <h4 className="text-xs font-medium text-muted-foreground mb-4">Agent Details</h4>
                 <InfoRow label="Agent Name"  value={resolveStoredAgentName(agents, selectedCampaign.callConfig.agentName)} />
                 <InfoRow label="SIP Trunk"   value={<span className="font-mono">{selectedCampaign.callConfig.sipTrunkId}</span>} />
               </div>
 
               {/* Metrics */}
               <div className="rounded-xl border border-border bg-card shadow-sm p-4 sm:p-6">
-                <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-5">Performance Metrics</h4>
+                <h4 className="text-xs font-medium text-muted-foreground mb-5">Performance Metrics</h4>
                 <div className="space-y-4">
                   <MetricRow label="Total Contacts" value={selectedCampaign.callStats?.total   ?? selectedCampaign.totalContacts} />
                   <MetricRow label="Successful"      value={selectedCampaign.callStats?.completed ?? selectedCampaign.successCalls} color="text-green-600 dark:text-green-400" />
