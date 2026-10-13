@@ -1,0 +1,50 @@
+---
+title: Voice and behaviour
+description: How your agent sounds, what it is like, and when each setting applies.
+---
+
+Open **Setup**, then **Voice, model and language**.
+
+## How your agent behaves
+
+This is the text that applies to every step. Use it for:
+
+- who the agent is, for example "You are Maya, a calm receptionist for City Clinic"
+- how it sounds, such as short sentences, warm, no slang
+- rules it must never break, such as "never give medical advice"
+
+Do not use it for what to say on one step. Put that in the step itself.
+
+A good example:
+
+> You are Maya, a calm receptionist for City Clinic. Keep sentences short and warm. Ask one question at a time. Never give medical advice and never say an appointment is confirmed.
+
+:::tip
+Add one line that keeps each step on its job, such as "Only do what the current step says, then move on." It stops the agent getting ahead of the script.
+:::
+
+## Voice, model and language
+
+| Setting | What it controls |
+|---|---|
+| **LLM** | The AI model that thinks and replies. |
+| **STT** | The speech-to-text service that hears the caller. |
+| **TTS** | The text-to-speech voice the caller hears. |
+| **Languages** | Lets the agent switch language during a call without copying steps. |
+
+If you are not sure, keep the defaults and test first.
+
+A single step can use a different voice or model. Open the step and look under **Advanced**.
+
+## Answer from the knowledge base
+
+This switch is also here. It is described in [Variables and the knowledge base](./variables-and-knowledge).
+
+## Web calls and phone calls
+
+Under **Transports** you choose where the agent can take calls:
+
+- **Web calls** let people talk to the agent in a browser, including your test calls.
+- **Telephony** lets the agent make and take phone calls. Steps such as Call Transfer, Press Digit and SMS only work on phone calls.
+
+When telephony is on, you can pick an **Outbound number**. If you leave it as the default, the agent uses the shared one for your deployment.

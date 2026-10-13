@@ -1,0 +1,57 @@
+---
+title: A tour of the editor
+description: What every button and panel in the workflow editor does.
+---
+
+## The top bar
+
+From left to right:
+
+| Control | What it does |
+|---|---|
+| **Back arrow** | Returns to the agent page. |
+| **Panel icon** | Shows or hides the side panel with the **Add** and **Outline** tabs. |
+| **Agent name** and **Unsaved** | The name, and a badge when you have changes that are not deployed yet. |
+| **Problems button** | Appears when something needs attention. Red "to fix" means Deploy is blocked until you fix it. Grey "to check" is advice. Click it for a list. |
+| **Ask Pi** | Opens a chat where you describe a change and Pi makes it. |
+| **Setup** | Voice, variables, global rules, knowledge base, webhook and version history. See below. |
+| **Test call** | Talk to the deployed agent in your browser. Greyed out until the agent is deployed. |
+| **Deploy** | Makes your changes live and saves a version. |
+| **More (three dots)** | **Check for problems**, **Copy flow as JSON** and **Paste flow from JSON**. |
+
+### The Setup menu
+
+| Item | What it opens |
+|---|---|
+| **Voice, model and language** | How the agent sounds, which AI model it uses, how it behaves, and whether it answers from your documents. |
+| **Variables** | The details the agent knows or collects. |
+| **Rules for any step** | [Global rules](./global-rules). |
+| **Knowledge base (documents)** | Upload documents and switch them on. |
+| **Webhook (send calls to your system)** | Send each finished call to your own address. |
+| **Version history** | Every deploy, with a button to restore one. |
+
+## The canvas
+
+- **Step boxes** show the step name and type. A green START label marks the first step.
+- **A plus button** appears to the right of a step when you hover it. Use it to add the next step. See [Connections](./connections).
+- **Fit view** zooms out to show the whole flow.
+- **Go to start** centres the canvas on the first step.
+- **Auto-arrange** lays the steps out from left to right in call order.
+- Drag the canvas to move around, and scroll to zoom.
+
+In a long flow, connections into shared endings are hidden to keep the picture readable. A bar at the bottom says how many are hidden. Click a step to see its own connections, or choose **Show all**.
+
+## The side panel
+
+Click the panel icon to open it.
+
+- **Add** lists step types you can drag onto the canvas. The plus button on a step is usually quicker.
+- **Outline** lists your steps in call order, grouped by stage, with START marked. Click one to jump to it.
+
+## The step panel
+
+Click a step to open its settings on the right. At the top it explains what the step type does. If the step has a problem, such as nothing leading to it, a yellow box says so and offers a way to fix it.
+
+## The checklist
+
+The **Get your agent live** card walks you through describing, fixing, voice, documents, deploy and test. You can collapse it or close it with the cross.

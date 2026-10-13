@@ -1,0 +1,54 @@
+---
+title: Workflows overview
+description: What a workflow agent is, when to use one, and the words you will see.
+---
+
+A workflow agent is a voice agent whose call follows a path you design, one step at a time. Each step has a small job, such as "greet the caller", "ask for a date" or "say goodbye". When a step is done, the call moves to the next one.
+
+You do not need to write code or understand AI to build one.
+
+## Workflow agent or single-prompt agent?
+
+Whispey has two kinds of agent.
+
+| | Single-prompt agent | Workflow agent |
+|---|---|---|
+| How it works | One set of instructions for the whole call | A path of steps, each with its own instructions |
+| Best for | Short, open conversations | Calls that must follow an order, such as booking, qualifying a lead or collecting details |
+| You control | What the agent is like | What the agent is like and what happens in what order |
+
+Start with a single prompt if the call is short and has few branches. Choose a workflow when the call needs to follow a script, collect specific details, or end in different ways.
+
+## How a call moves
+
+1. The call starts at the first step, called the **start** step. It is marked START on the canvas.
+2. The agent does what that step says, such as talking with the caller.
+3. When the step is done, a **connection** sends the call to the next step.
+4. The call ends at an **End Call** step.
+
+The map you see on screen is called the **canvas**. Boxes are steps and lines are connections.
+
+## Words you will see
+
+| Word | What it means |
+|---|---|
+| **Step** | One box on the canvas. It does one job in the call. |
+| **Connection** | A line between two steps. It decides when the call goes from one to the other. |
+| **Start** | The step the call begins with. Usually the greeting. |
+| **Variable** | A detail the agent knows or collects, such as a name or a date. Write it as `{{name}}` to use it in a step. |
+| **Global rule** | Something that can happen at any point, such as "the caller asks for a person". You write it once instead of drawing a line from every step. |
+| **Knowledge base** | Documents you upload, such as a price list, that the agent can look things up in. |
+| **Deploy** | Make your changes live for new calls. |
+| **Stage** | An optional label, such as Greeting or Close, that groups steps in the Outline list. |
+
+## What you need
+
+- A Whispey workspace and permission to edit agents. People with view-only access cannot open the workflow editor.
+- About ten minutes for your first flow. Start with the [quick start](./quickstart).
+
+## Where to go next
+
+- [Build your first workflow](./quickstart)
+- [A tour of the editor](./editor-tour)
+- [Steps](./steps)
+- [Connections](./connections)
