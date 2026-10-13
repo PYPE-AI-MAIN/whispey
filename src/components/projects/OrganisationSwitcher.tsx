@@ -1,5 +1,6 @@
 'use client'
 
+import { Skeleton } from '@/components/ui/skeleton'
 import React, { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -52,7 +53,7 @@ const fetchOrganizations = async (): Promise<Organization[]> => {
 }
 
 function orgButtonLabel(loading: boolean, name?: string): string {
-  if (loading) return 'Loading...'
+  if (loading) return 'Organization'
   return name ?? 'Select Organization'
 }
 
@@ -163,12 +164,8 @@ export default function OrganizationSwitcher({
     >
       {loading ? (
         <>
-          <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin text-muted-foreground" />
-          {(!isCollapsed || isMobile) && (
-            <span className="truncate flex-1 text-left text-xs text-muted-foreground">
-              Loading...
-            </span>
-          )}
+          <Skeleton className="h-6 w-6 flex-shrink-0 rounded" />
+          {(!isCollapsed || isMobile) && <Skeleton className="h-3 flex-1" />}
         </>
       ) : (
         <>
