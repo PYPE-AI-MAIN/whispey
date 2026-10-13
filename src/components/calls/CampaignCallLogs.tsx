@@ -16,6 +16,13 @@ import type { FilterOperation } from '@/components/CallFilter'
 import Papa from 'papaparse'
 import type { Campaign } from './CampaignSelector'
 
+
+function headerTone(id: string): string {
+  if (id.startsWith('transcription-')) return "text-muted-foreground bg-muted/50"
+  if (id.startsWith('metrics-')) return "text-primary bg-blue-50/60 dark:bg-blue-900/10"
+  return "text-foreground dark:text-gray-100"
+}
+
 // ── Sub-rows for expanded contact (renders <tr> elements into parent tbody) ─
 interface ContactCallsRowsProps {
   subRows: CallLog[]
@@ -348,11 +355,7 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
                       key={h.id}
                       className={cn(
                         "px-4 truncate py-1.5 text-left font-semibold border-b-2 border-border text-sm leading-tight",
-                        h.id.startsWith('transcription-')
-                          ? "text-muted-foreground bg-muted/50"
-                          : h.id.startsWith('metrics-')
-                            ? "text-primary bg-blue-50/60 dark:bg-blue-900/10"
-                            : "text-foreground dark:text-gray-100"
+                        headerTone(h.id)
                       )}
                       style={{ minWidth: h.column.columnDef.minSize || 120, width: h.column.columnDef.size || 'auto' }}
                     >

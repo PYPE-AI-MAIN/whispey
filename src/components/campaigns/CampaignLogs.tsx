@@ -1218,14 +1218,15 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
 
       {/* Table - show loading state only for data */}
       <div className="flex-1 overflow-hidden bg-muted/50 flex flex-col">
-        {loading && logs.length === 0 ? (
+        {(loading && logs.length === 0) && (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
               <p className="text-muted-foreground">Loading campaign logs...</p>
             </div>
           </div>
-        ) : logs.length === 0 ? (
+        )}
+        {!(loading && logs.length === 0) && logs.length === 0 && (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <Building2 className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
@@ -1243,7 +1244,8 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
               )}
             </div>
           </div>
-        ) : (
+        )}
+        {!(loading && logs.length === 0) && !(logs.length === 0) && (
           <>
             {/* Scrollable Table Area */}
             <div className="flex-1 overflow-hidden">

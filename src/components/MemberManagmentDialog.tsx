@@ -266,14 +266,16 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-foreground">Current Members ({members.length})</h3>
               
-              {fetchingMembers ? (
+              {!!fetchingMembers && (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="w-6 h-6 animate-spin text-primary" />
                   <span className="ml-2 text-muted-foreground">Loading members...</span>
                 </div>
-              ) : members.length === 0 ? (
+              )}
+              {!fetchingMembers && members.length === 0 && (
                 <p className="text-muted-foreground text-center py-4">No members found</p>
-              ) : (
+              )}
+              {!fetchingMembers && !(members.length === 0) && (
                 <div className="space-y-3">
                   {members.map((member) => (
                     <div key={member.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">

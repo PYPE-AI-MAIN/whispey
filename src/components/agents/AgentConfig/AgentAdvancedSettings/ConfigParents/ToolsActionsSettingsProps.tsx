@@ -820,17 +820,19 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                     <Phone className="w-3 h-3" />
                     SIP Trunk
                   </Label>
-                  {loadingPhoneNumbers ? (
+                  {loadingPhoneNumbers && (
                     <div className="w-full h-8 flex items-center justify-center border border-border rounded-lg">
                       <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                     </div>
-                  ) : phoneNumbers.length === 0 ? (
+                  )}
+                  {!loadingPhoneNumbers && phoneNumbers.length === 0 && (
                     <div className="w-full h-8 flex items-center px-3 border border-border rounded-lg bg-muted/50">
                       <span className="text-xs text-muted-foreground">
                         {projectId ? 'No phone numbers available for this project' : 'No phone numbers available for outbound calls'}
                       </span>
                     </div>
-                  ) : (
+                  )}
+                  {!loadingPhoneNumbers && !(phoneNumbers.length === 0) && (
                     <Select
                       value={formData.selectedPhoneId || '__none__'}
                       onValueChange={(phoneId) => {

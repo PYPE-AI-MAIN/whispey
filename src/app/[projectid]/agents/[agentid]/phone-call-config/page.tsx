@@ -571,11 +571,13 @@ export default function PhoneCallConfig() {
             <div className="space-y-5 flex-1 w-full">
               <div className='w-full'>
                 <div className="block text-sm font-semibold text-foreground mb-2">Calling From <span className="text-destructive">*</span></div>
-                {loadingPhoneNumbers ? (
+                {loadingPhoneNumbers && (
                   <div className="h-12 w-full flex items-center justify-center border border-border rounded-xl bg-card"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
-                ) : phoneNumbers.length === 0 ? (
+                )}
+                {!loadingPhoneNumbers && phoneNumbers.length === 0 && (
                   <div className="h-12 flex items-center px-4 border border-border rounded-xl bg-muted/50"><span className="text-sm text-muted-foreground">No outbound phone numbers available</span></div>
-                ) : (
+                )}
+                {!loadingPhoneNumbers && !(phoneNumbers.length === 0) && (
                   <Select value={fromPhoneNumberId} onValueChange={setFromPhoneNumberId}>
                     <SelectTrigger className="h-12 w-full bg-card border-border hover:border-border transition-colors"><SelectValue placeholder="Select your outbound number" /></SelectTrigger>
                     <SelectContent className="bg-card border-border">

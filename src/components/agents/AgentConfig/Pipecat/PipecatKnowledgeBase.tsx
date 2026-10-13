@@ -95,17 +95,19 @@ export default function PipecatKnowledgeBase({ pipecatAgentId }: PipecatKnowledg
 
         {error && <p className="text-xs text-destructive mb-2">{error}</p>}
 
-        {loading ? (
+        {loading && (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
-        ) : documents.length === 0 ? (
+        )}
+        {!loading && documents.length === 0 && (
           <div className="rounded-xl border border-dashed border-border bg-muted/50 py-12 text-center">
             <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
             <p className="text-sm font-medium text-muted-foreground">No documents yet</p>
             <p className="text-xs text-muted-foreground mt-1">Upload files or add a URL above.</p>
           </div>
-        ) : (
+        )}
+        {!loading && !(documents.length === 0) && (
           <ul className="space-y-1">
             {documents.map(doc => (
               <li

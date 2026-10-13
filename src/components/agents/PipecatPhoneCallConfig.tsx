@@ -368,17 +368,19 @@ export default function PipecatPhoneCallConfig({
                 <div className="block text-sm font-semibold text-foreground mb-2">
                   Calling From <span className="text-destructive">*</span>
                 </div>
-                {loadingNumbers ? (
+                {loadingNumbers && (
                   <div className="h-12 w-full flex items-center justify-center border border-border rounded-xl bg-card">
                     <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                   </div>
-                ) : numbers.length === 0 ? (
+                )}
+                {!loadingNumbers && numbers.length === 0 && (
                   <div className="h-12 flex items-center px-4 border border-border rounded-xl bg-muted/50">
                     <span className="text-sm text-muted-foreground">
                       No numbers assigned to this agent
                     </span>
                   </div>
-                ) : (
+                )}
+                {!loadingNumbers && !(numbers.length === 0) && (
                   <Select value={selectedFromNumber} onValueChange={setSelectedFromNumber}>
                     <SelectTrigger className="h-12 w-full bg-card border-border hover:border-border transition-colors">
                       <SelectValue placeholder="Select number to call from" />

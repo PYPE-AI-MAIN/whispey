@@ -373,12 +373,13 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
                   Select specific fields to reprocess. Leave empty to process all fields.
                 </div>
                 <div className="border border-border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
-                  {loadingFields ? (
+                  {loadingFields && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       Loading fields...
                     </div>
-                  ) : availableTranscriptionFields.length > 0 ? (
+                  )}
+                  {!loadingFields && availableTranscriptionFields.length > 0 && (
                     availableTranscriptionFields.map((field) => (
                       <div key={field} className="flex items-center space-x-2">
                         <Checkbox
@@ -401,7 +402,8 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
                         </label>
                       </div>
                     ))
-                  ) : (
+                  )}
+                  {!loadingFields && !(availableTranscriptionFields.length > 0) && (
                     <div className="text-sm text-muted-foreground italic">
                       No transcription fields configured for this agent. Configure field extractor in agent settings.
                     </div>
@@ -429,12 +431,13 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
                   Select specific metrics to reprocess. Leave empty to process all metrics.
                 </div>
                 <div className="border border-border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
-                  {loadingFields ? (
+                  {loadingFields && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       Loading fields...
                     </div>
-                  ) : availableMetricsFields.length > 0 ? (
+                  )}
+                  {!loadingFields && availableMetricsFields.length > 0 && (
                     availableMetricsFields.map((field) => (
                       <div key={field} className="flex items-center space-x-2">
                         <Checkbox
@@ -457,7 +460,8 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
                         </label>
                       </div>
                     ))
-                  ) : (
+                  )}
+                  {!loadingFields && !(availableMetricsFields.length > 0) && (
                     <div className="text-sm text-muted-foreground italic">
                       No metrics configured for this agent. Configure metrics in agent settings.
                     </div>

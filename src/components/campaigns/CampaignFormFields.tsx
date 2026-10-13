@@ -249,15 +249,17 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
           <Field name="fromNumber">
             {({ field }: any) => (
               <>
-                {loadingPhones ? (
+                {loadingPhones && (
                   <div className="w-full h-8 flex items-center justify-center border border-border rounded-lg">
                     <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                   </div>
-                ) : phoneNumbers.length === 0 ? (
+                )}
+                {!loadingPhones && phoneNumbers.length === 0 && (
                   <div className="w-full h-8 flex items-center px-3 border border-border rounded-lg bg-muted/50">
                     <span className="text-xs text-muted-foreground">No outbound phone numbers available</span>
                   </div>
-                ) : (
+                )}
+                {!loadingPhones && !(phoneNumbers.length === 0) && (
                   <Select
                     value={field.value}
                     onValueChange={(value) => {

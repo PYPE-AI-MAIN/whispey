@@ -319,7 +319,7 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
           </TabsList>
 
           <TabsContent value="phone" className="space-y-4">
-            {callStatus === 'idle' || callStatus === 'connecting' ? (
+            {(callStatus === 'idle' || callStatus === 'connecting') && (
           <div className="space-y-4">
             {/* Phone Number Selection */}
             <div className="space-y-3">
@@ -488,7 +488,8 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
               </Alert>
             )}
           </div>
-        ) : callStatus === 'success' ? (
+        )}
+            {!(callStatus === 'idle' || callStatus === 'connecting') && callStatus === 'success' && (
           <div className="text-center space-y-4">
             <div className="w-16 h-16 bg-success/15 rounded-full flex items-center justify-center mx-auto">
               <CheckCircle className="w-8 h-8 text-success" />
@@ -508,8 +509,9 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
               )}
             </div>
           </div>
-        ) : (
-          <div className="text-center space-y-4">
+        )}
+            {!(callStatus === 'idle' || callStatus === 'connecting') && !(callStatus === 'success') && (
+              <div className="text-center space-y-4">
             <div className="w-16 h-16 bg-destructive/15 rounded-full flex items-center justify-center mx-auto">
               <AlertCircle className="w-8 h-8 text-destructive" />
             </div>
@@ -518,7 +520,7 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
               <p className="text-sm text-muted-foreground mt-1">{error}</p>
             </div>
           </div>
-        )}
+            )}
 
           </TabsContent>
 

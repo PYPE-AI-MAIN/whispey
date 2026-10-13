@@ -369,16 +369,18 @@ export default function DropOffCallSettings({
           <Label htmlFor="phone-number" className="text-xs font-medium text-foreground">
             Outbound Phone Number
           </Label>
-          {loadingPhones ? (
+          {loadingPhones && (
             <div className="flex items-center gap-2 py-2">
               <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
               <span className="text-xs text-muted-foreground">Loading phone numbers...</span>
             </div>
-          ) : phoneNumbers.length === 0 ? (
+          )}
+          {!loadingPhones && phoneNumbers.length === 0 && (
             <div className="text-xs text-muted-foreground py-2 px-3 bg-muted/50 rounded border border-border">
               No outbound phone numbers available. Please configure phone numbers in SIP Management.
             </div>
-          ) : (
+          )}
+          {!loadingPhones && !(phoneNumbers.length === 0) && (
             <Select
               value={settings.phone_number_id || undefined}
               onValueChange={(value) => {

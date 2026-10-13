@@ -38,6 +38,12 @@ import NodeSelector from "./NodeSelector"
 import BugReport from "./BugReport"
 import AudioPlayer from "@/components/AudioPlayer"
 
+
+function tabTone(selected: boolean, isBugReport: boolean): string {
+  if (!selected) return "border-transparent hover:text-foreground"
+  return isBugReport ? "border-red-500 dark:border-red-400 text-destructive" : "border-blue-500 dark:border-blue-400 text-primary"
+}
+
 interface TraceDetailSheetProps {
   isOpen: boolean
   trace: any
@@ -384,11 +390,7 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({
                       onClick={() => setSelectedView(tab.id)}
                       className={cn(
                         "flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px",
-                        selectedView === tab.id
-                          ? tab.id === "bug-report"
-                            ? "border-red-500 dark:border-red-400 text-destructive"
-                            : "border-blue-500 dark:border-blue-400 text-primary" 
-                          : "border-transparent hover:text-foreground", 
+                        tabTone(selectedView === tab.id, tab.id === "bug-report"),
                         tab.id === "bug-report" ? "text-destructive hover:text-destructive" : "text-muted-foreground"
                       )}
                     >

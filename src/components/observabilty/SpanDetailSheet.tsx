@@ -27,6 +27,15 @@ import { Badge } from "../ui/badge";
 import { useState } from "react";
 import { useSupabaseQuery } from "@/hooks/useSupabase";
 
+
+function valueTone(value: unknown, isTimeField: boolean): string {
+  if (value === null || value === undefined) return 'text-muted-foreground italic'
+  if (typeof value === 'boolean') return value ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+  if (typeof value === 'number') return 'text-blue-700 dark:text-blue-400'
+  if (isTimeField) return 'text-indigo-700 dark:text-indigo-400'
+  return 'text-foreground'
+}
+
 interface SpanDetailSheetProps {
   span: any;
   isOpen: boolean;
@@ -151,17 +160,7 @@ const RawDataView = ({ span }: { span: any }) => {
                   </details>
                 ) : (
                   <div className="flex flex-col gap-1">
-                    <span className={`font-medium break-all ${
-                      value === null || value === undefined 
-                        ? 'text-muted-foreground italic' 
-                        : typeof value === 'boolean'
-                        ? value ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                        : typeof value === 'number'
-                        ? 'text-blue-700 dark:text-blue-400'
-                        : isTimeField
-                        ? 'text-indigo-700 dark:text-indigo-400'
-                        : 'text-foreground'
-                    }`}>
+                    <span className={`font-medium break-all ${valueTone(value, isTimeField)}`}>
                       {formatValue(value)}
                     </span>
                     {isTimeField && formattedTimestamp && (

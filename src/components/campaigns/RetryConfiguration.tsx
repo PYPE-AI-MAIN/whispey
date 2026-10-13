@@ -725,12 +725,13 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                       <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                         Metric Name
                       </Label>
-                      {loadingFields ? (
+                      {loadingFields && (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Loader2 className="w-4 h-4 animate-spin" />
                           Loading metrics...
                         </div>
-                      ) : availableMetrics.length > 0 ? (
+                      )}
+                      {!loadingFields && availableMetrics.length > 0 && (
                         <Select
                           value={config.metricName || ''}
                           onValueChange={(value) => {
@@ -748,7 +749,8 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                             ))}
                           </SelectContent>
                         </Select>
-                      ) : (
+                      )}
+                      {!loadingFields && !(availableMetrics.length > 0) && (
                         <div className="text-xs text-muted-foreground">
                           No metrics configured for this agent. Configure metrics in agent settings.
                         </div>
@@ -812,12 +814,13 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                       <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                         Field Name
                       </Label>
-                      {loadingFields ? (
+                      {loadingFields && (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Loader2 className="w-4 h-4 animate-spin" />
                           Loading fields...
                         </div>
-                      ) : availableFields.length > 0 ? (
+                      )}
+                      {!loadingFields && availableFields.length > 0 && (
                         <Select
                           value={config.fieldName || ''}
                           onValueChange={(value) => {
@@ -835,7 +838,8 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                             ))}
                           </SelectContent>
                         </Select>
-                      ) : (
+                      )}
+                      {!loadingFields && !(availableFields.length > 0) && (
                         <div className="text-xs text-muted-foreground">
                           No field extractor fields configured for this agent. Configure field extractor in agent settings.
                         </div>
