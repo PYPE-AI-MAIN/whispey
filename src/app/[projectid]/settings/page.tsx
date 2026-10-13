@@ -26,20 +26,20 @@ export default function SettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
-        <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400" />
+      <div className="flex items-center justify-center min-h-screen bg-muted/50">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="flex items-center justify-center min-h-screen bg-muted/50">
         <div className="text-center">
-          <p className="text-red-600 dark:text-red-400 mb-2">Failed to load organization</p>
+          <p className="text-destructive mb-2">Failed to load organization</p>
           <button 
             onClick={() => window.location.reload()} 
-            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            className="text-sm text-primary hover:underline"
           >
             Try again
           </button>
@@ -50,12 +50,12 @@ export default function SettingsPage() {
 
   if (!organization) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="flex items-center justify-center min-h-screen bg-muted/50">
         <div className="text-center">
-          <p className="text-gray-500 dark:text-gray-400 mb-2">Organization not found</p>
+          <p className="text-muted-foreground mb-2">Organization not found</p>
           <Link
             href="/projects"
-            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            className="text-sm text-primary hover:underline"
           >
             Back to organizations
           </Link>
@@ -74,7 +74,7 @@ export default function SettingsPage() {
   // grows, with the table given its own fixed vh-based height (immune to any
   // ancestor's height math) is far less clever but cannot fail this way.
   return (
-    <div className="max-w-5xl mx-auto space-y-6 p-4 sm:p-6">
+    <div className="max-w-6xl mx-auto space-y-6 px-4 py-6 sm:px-8 sm:py-8">
       <OrganizationSettings
         organizationName={organization.name}
         organizationId={organization.id}

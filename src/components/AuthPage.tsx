@@ -101,7 +101,7 @@ function FormSkeleton() {
   return (
     <output className="block space-y-4" aria-label="Loading the sign-in form">
       {SKELETON_ROWS.map((row) => (
-        <div key={row} className="h-[3.25rem] animate-pulse rounded-full bg-white/70 dark:bg-white/10" />
+        <div key={row} className="h-[3.25rem] animate-pulse rounded-full bg-card/70" />
       ))}
     </output>
   );

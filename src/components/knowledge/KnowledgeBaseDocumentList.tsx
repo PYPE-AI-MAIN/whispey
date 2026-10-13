@@ -70,7 +70,7 @@ export function KnowledgeBaseDocumentList({
   if (loading) {
     return (
       <div className={cn('flex items-center justify-center py-12', className)}>
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     )
   }
@@ -79,13 +79,13 @@ export function KnowledgeBaseDocumentList({
     return (
       <div
         className={cn(
-          'rounded-xl border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-800/30 py-12 text-center',
+          'rounded-xl border border-dashed border-border bg-muted/50 py-12 text-center',
           className
         )}
       >
-        <FileText className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
-        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">No documents yet</p>
-        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+        <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+        <p className="text-sm font-medium text-muted-foreground">No documents yet</p>
+        <p className="text-xs text-muted-foreground mt-1">
           Upload files or add a URL above to build your knowledge base.
         </p>
       </div>
@@ -108,18 +108,18 @@ export function KnowledgeBaseDocumentList({
           return (
             <li
               key={doc.id}
-              className="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm px-4 py-3 group"
+              className="flex items-center gap-3 rounded-xl border border-border bg-card shadow-sm px-4 py-3 group"
             >
               {isUrl ? (
-                <LinkIcon className="h-5 w-5 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                <LinkIcon className="h-5 w-5 text-muted-foreground flex-shrink-0" />
               ) : (
-                <FileText className="h-5 w-5 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+                <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                <p className="text-sm font-medium text-foreground truncate">
                   {name}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-muted-foreground">
                   {isUrl ? 'URL' : getKnowledgeFileTypeLabel(name)}
                   {doc.created_at && (
                     <span className="ml-2">
@@ -131,7 +131,7 @@ export function KnowledgeBaseDocumentList({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-gray-500 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                 onClick={() => handleDelete(doc.id)}
                 disabled={isDeleting}
                 aria-label={`Delete ${name}`}

@@ -57,7 +57,7 @@ function ExploreTab({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-end border-b border-gray-200 bg-white px-4 py-2 dark:border-gray-800 dark:bg-gray-900">
+      <div className="flex items-center justify-end border-b border-border bg-card px-4 py-2">
         <RangePicker range={range} onChange={setRange} />
       </div>
       <div className="min-h-0 flex-1">
@@ -103,19 +103,19 @@ function OrgAnalyticsPageContent() {
   }
 
   return (
-    <div className="flex h-full flex-col bg-gray-50 dark:bg-gray-900">
-      <div className="flex-none border-b border-gray-200 bg-white px-6 dark:border-gray-800 dark:bg-gray-900 md:px-8">
+    <div className="flex h-full flex-col bg-muted/50">
+      <div className="flex-none border-b border-border bg-card px-6 md:px-8">
         <div className="flex items-center justify-between py-3">
           <div className="flex items-center gap-1">
-            <BarChart3 className="mr-2 h-4 w-4 text-gray-400" />
+            <BarChart3 className="mr-2 h-4 w-4 text-muted-foreground" />
             {TABS.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => handleTabChange(tab.id)}
                 className={`rounded-md px-3 py-1.5 text-sm ${
                   activeTab === tab.id
-                    ? 'bg-gray-100 font-medium text-gray-900 dark:bg-gray-800 dark:text-gray-50'
-                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                    ? 'bg-muted font-medium text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 {tab.label}

@@ -43,7 +43,7 @@ const ROLE_META: Record<GlobalRole, { label: string; icon: React.ReactNode; pill
   superadmin: {
     label: 'Superadmin',
     icon: <Crown className="h-3 w-3" />,
-    pillClass: 'text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-400/10 border-amber-300 dark:border-amber-400/20',
+    pillClass: 'text-warning bg-warning/15 border-warning/40',
   },
   prompter: {
     label: 'Prompter',
@@ -53,7 +53,7 @@ const ROLE_META: Record<GlobalRole, { label: string; icon: React.ReactNode; pill
   user: {
     label: 'User',
     icon: <User className="h-3 w-3" />,
-    pillClass: 'text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700',
+    pillClass: 'text-muted-foreground bg-muted border-border',
   },
 }
 
@@ -114,7 +114,7 @@ function ColumnAccessRow({
   }
 
   return (
-    <div className="flex items-center justify-between gap-2 text-xs text-gray-700 dark:text-gray-300 px-2 py-1.5 rounded-md hover:bg-gray-100/60 dark:hover:bg-gray-800/40">
+    <div className="flex items-center justify-between gap-2 text-xs text-foreground px-2 py-1.5 rounded-md hover:bg-muted/60">
       <span className="truncate">{COLUMN_LABELS[column] ?? column}</span>
       <div className="flex items-center gap-1.5 flex-shrink-0">
         <Button
@@ -126,7 +126,7 @@ function ColumnAccessRow({
           className={
             viewable
               ? 'h-7 px-2 text-[11px] gap-1 bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'
-              : 'h-7 px-2 text-[11px] gap-1 text-gray-400 dark:text-gray-500 border-dashed bg-transparent'
+              : 'h-7 px-2 text-[11px] gap-1 text-muted-foreground border-dashed bg-transparent'
           }
         >
           {viewable ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
@@ -143,14 +143,14 @@ function ColumnAccessRow({
             className={
               downloadable
                 ? 'h-7 px-2 text-[11px] gap-1 bg-emerald-600 hover:bg-emerald-700 text-white border-transparent'
-                : 'h-7 px-2 text-[11px] gap-1 text-gray-400 dark:text-gray-500 border-dashed bg-transparent'
+                : 'h-7 px-2 text-[11px] gap-1 text-muted-foreground border-dashed bg-transparent'
             }
           >
             {downloadable ? <DownloadCloud className="h-3 w-3" /> : <Download className="h-3 w-3" />}
             Download
           </Button>
           {!viewable && (
-            <span className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5 leading-none">
+            <span className="text-[11px] text-muted-foreground mt-0.5 leading-none">
               Download follows View
             </span>
           )}
@@ -291,9 +291,9 @@ function AgentColumnChecklist({
   }
 
   const downloadToggle = (
-    <label className="flex items-center justify-between gap-2 text-xs text-gray-700 dark:text-gray-300 px-1 pb-2 mb-1 border-b border-gray-200 dark:border-gray-800">
+    <label className="flex items-center justify-between gap-2 text-xs text-foreground px-1 pb-2 mb-1 border-b border-border">
       <span className="flex items-center gap-1.5">
-        {downloadDisabled ? <ShieldOff className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" /> : <Download className="h-3.5 w-3.5 text-gray-400" />}
+        {downloadDisabled ? <ShieldOff className="h-3.5 w-3.5 text-warning" /> : <Download className="h-3.5 w-3.5 text-muted-foreground" />}
         Allow this user to download from this agent
       </span>
       <Switch
@@ -306,12 +306,12 @@ function AgentColumnChecklist({
 
   const alwaysHiddenSection = alwaysHiddenColumns.length > 0 && (
     <div className="space-y-0.5">
-      <p className="text-xs font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500 px-2 flex items-center gap-1">
+      <p className="text-xs font-medium text-muted-foreground px-2 flex items-center gap-1">
         <Lock className="h-2.5 w-2.5" />
         Always hidden for all non-superadmins (agent-wide setting)
       </p>
       {alwaysHiddenColumns.map(col => (
-        <div key={col} className="flex items-center justify-between gap-2 text-xs text-gray-400 dark:text-gray-500 px-2 py-1.5">
+        <div key={col} className="flex items-center justify-between gap-2 text-xs text-muted-foreground px-2 py-1.5">
           <span className="truncate">{COLUMN_LABELS[col] ?? col}</span>
           <span className="flex items-center gap-1 text-[11px] flex-shrink-0">
             <Lock className="h-3 w-3" />
@@ -319,11 +319,11 @@ function AgentColumnChecklist({
           </span>
         </div>
       ))}
-      <p className="text-[11px] text-gray-400 dark:text-gray-500 px-2 pt-0.5">
+      <p className="text-[11px] text-muted-foreground px-2 pt-0.5">
         Always hidden for all non-superadmins — manage this in{' '}
         <Link
           href={`/${projectId}/agents/${agent.id}?tab=logs&openDownloadSettings=1`}
-          className="underline text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+          className="underline text-primary hover:text-primary"
         >
           {agent.name}&apos;s Download Settings
         </Link>
@@ -334,11 +334,11 @@ function AgentColumnChecklist({
 
   if (toggleableColumns.length === 0) {
     return (
-      <div className="px-4 py-3 space-y-1 bg-gray-50/50 dark:bg-gray-800/30 border-t border-gray-200 dark:border-gray-800">
+      <div className="px-4 py-3 space-y-1 bg-muted/50 border-t border-border">
         {downloadToggle}
         {alwaysHiddenSection}
         {alwaysHiddenColumns.length === 0 && (
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 px-1">
+          <p className="text-[11px] text-muted-foreground px-1">
             This agent has no restrictable columns configured.
           </p>
         )}
@@ -347,7 +347,7 @@ function AgentColumnChecklist({
   }
 
   return (
-    <div className="px-4 py-3 space-y-2 bg-gray-50/50 dark:bg-gray-800/30 border-t border-gray-200 dark:border-gray-800">
+    <div className="px-4 py-3 space-y-2 bg-muted/50 border-t border-border">
       {downloadToggle}
 
       {editingColumns ? (
@@ -355,7 +355,7 @@ function AgentColumnChecklist({
           <div className="space-y-2.5">
             <ColumnAccessGroup
               title="Basic columns"
-              titleClassName="text-gray-400 dark:text-gray-500"
+              titleClassName="text-muted-foreground"
               columns={basicToggleable}
               hiddenView={hiddenView}
               hiddenDownload={hiddenDownload}
@@ -365,7 +365,7 @@ function AgentColumnChecklist({
             />
             <ColumnAccessGroup
               title="Sensitive columns"
-              titleClassName="text-amber-600 dark:text-amber-400"
+              titleClassName="text-warning"
               columns={sensitiveToggleable}
               hiddenView={hiddenView}
               hiddenDownload={hiddenDownload}
@@ -377,7 +377,7 @@ function AgentColumnChecklist({
           </div>
 
           <div className="flex items-center justify-between gap-3 pt-1">
-            <div className="flex items-start gap-1.5 text-[11px] text-gray-500 dark:text-gray-400 min-w-0">
+            <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground min-w-0">
               {otherAgentIds.length > 0 && (
                 <>
                   <Copy className="h-3 w-3 mt-0.5 flex-shrink-0" />
@@ -410,7 +410,7 @@ function AgentColumnChecklist({
         </>
       ) : (
         <div className="flex items-center justify-between gap-2 px-1 py-1">
-          <p className="text-[11px] text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+          <p className="text-[11px] text-success flex items-center gap-1.5">
             No column restrictions — user has full access to this agent&apos;s columns.
           </p>
           <Button size="sm" variant="outline" onClick={() => setEditingColumns(true)} className="h-7 text-[11px] gap-1 flex-shrink-0">
@@ -444,12 +444,12 @@ function AgentRow({
       <button
         type="button"
         onClick={onToggleExpand}
-        className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-muted/50 transition-colors"
       >
         <span className="flex items-center gap-2 min-w-0">
-          <span className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">{agent.name}</span>
+          <span className="text-xs font-medium text-foreground truncate">{agent.name}</span>
           {downloadDisabled && (
-            <Badge className="text-[11px] px-1.5 py-0 gap-1 bg-red-100 text-red-700 border-red-300 dark:bg-red-400/10 dark:text-red-400 dark:border-red-400/20 flex-shrink-0">
+            <Badge className="text-[11px] px-1.5 py-0 gap-1 bg-destructive/15 text-destructive border-destructive/40 flex-shrink-0">
               <ShieldOff className="h-2.5 w-2.5" />
               Downloads disabled
             </Badge>
@@ -457,12 +457,12 @@ function AgentRow({
         </span>
         <div className="flex items-center gap-2 flex-shrink-0">
           {agent.superadminOnlyColumns.length > 0 && (
-            <span className="text-[11px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-700 flex items-center gap-1">
+            <span className="text-[11px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border flex items-center gap-1">
               <Lock className="h-2.5 w-2.5" />
               {agent.superadminOnlyColumns.length} restricted column{agent.superadminOnlyColumns.length === 1 ? '' : 's'}
             </span>
           )}
-          <ChevronDown className={`h-3.5 w-3.5 text-gray-500 dark:text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+          <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
         </div>
       </button>
       {isExpanded && (
@@ -517,10 +517,10 @@ function ProjectAgentsCard({
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-      <div className="px-4 py-2.5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between gap-3">
-        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{project.name}</span>
-        <label className="flex items-center gap-2 text-[11px] text-gray-600 dark:text-gray-400">
+    <div className="rounded-xl border border-border overflow-hidden">
+      <div className="px-4 py-2.5 bg-muted/50 border-b border-border flex items-center justify-between gap-3">
+        <span className="text-xs font-semibold text-foreground">{project.name}</span>
+        <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
           Allow downloads in this project
           <Switch
             checked={!downloadDisabled}
@@ -529,9 +529,9 @@ function ProjectAgentsCard({
           />
         </label>
       </div>
-      <div className="divide-y divide-gray-100 dark:divide-gray-800">
+      <div className="divide-y divide-border/60">
         {project.agents.length === 0 && (
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 px-4 py-3">No agents in this organization.</p>
+          <p className="text-[11px] text-muted-foreground px-4 py-3">No agents in this organization.</p>
         )}
         {project.agents.map(agent => (
           <AgentRow
@@ -573,7 +573,7 @@ export default function UserDetailPage() {
 
   if (roleLoading || (isSuperAdmin && isLoading)) {
     return (
-      <div className="flex items-center justify-center h-full bg-white dark:bg-gray-900">
+      <div className="flex items-center justify-center h-full bg-card">
         <div className="w-5 h-5 animate-spin rounded-full border-2 border-blue-500 dark:border-blue-400 border-t-transparent" />
       </div>
     )
@@ -605,13 +605,13 @@ export default function UserDetailPage() {
   let projectsContent: React.ReactNode
   if (projects.length === 0) {
     projectsContent = (
-      <div className="rounded-xl border border-gray-200 dark:border-gray-800 py-12 flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+      <div className="rounded-xl border border-border py-12 flex items-center justify-center text-sm text-muted-foreground">
         This user has no project access.
       </div>
     )
   } else if (filteredProjects.length === 0) {
     projectsContent = (
-      <div className="rounded-xl border border-gray-200 dark:border-gray-800 py-12 flex items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+      <div className="rounded-xl border border-border py-12 flex items-center justify-center text-sm text-muted-foreground">
         No projects or agents found{q ? ` for "${search}"` : ''}.
       </div>
     )
@@ -632,13 +632,13 @@ export default function UserDetailPage() {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-white dark:bg-gray-900">
+    <div className="h-full flex flex-col overflow-hidden bg-card">
       {/* ── Header notch ── */}
-      <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-800">
+      <div className="flex-shrink-0 border-b border-border">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center gap-4">
           <button
             onClick={() => router.push(`/${projectId}/settings/users`)}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex-shrink-0"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex-shrink-0"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
@@ -650,12 +650,12 @@ export default function UserDetailPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{name}</h1>
+                  <h1 className="text-sm font-semibold text-foreground truncate">{name}</h1>
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border whitespace-nowrap ${roleMeta.pillClass}`}>
                     {roleMeta.icon}{roleMeta.label}
                   </span>
                 </div>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{user.email} · Joined {joined}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{user.email} · Joined {joined}</p>
               </div>
             </>
           )}
@@ -666,17 +666,17 @@ export default function UserDetailPage() {
       <div className="flex-1 overflow-y-auto px-6 pb-6">
         <div className="max-w-5xl mx-auto pt-4 space-y-4">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            <h2 className="text-xs font-medium text-muted-foreground">
               Call log column access
             </h2>
             {projects.length > 0 && (
               <div className="relative flex-shrink-0" style={{ width: '200px' }}>
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-500 dark:text-gray-400 pointer-events-none" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                 <input
                   placeholder="Search organizations or agents…"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="w-full pl-8 pr-3 h-8 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:bg-white dark:focus:bg-gray-800 transition-colors"
+                  className="w-full pl-8 pr-3 h-8 text-xs rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:bg-card transition-colors"
                 />
               </div>
             )}

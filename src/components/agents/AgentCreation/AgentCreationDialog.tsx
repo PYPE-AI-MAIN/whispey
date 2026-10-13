@@ -69,9 +69,9 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
       return (
         <div className="flex items-center justify-center py-16">
           <div className="animate-pulse">
-            <div className="w-12 h-12 mx-auto mb-3 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
-            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-32 mx-auto mb-2"></div>
-            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-24 mx-auto"></div>
+            <div className="w-12 h-12 mx-auto mb-3 bg-muted rounded-xl"></div>
+            <div className="h-4 bg-muted rounded w-32 mx-auto mb-2"></div>
+            <div className="h-3 bg-muted rounded w-24 mx-auto"></div>
           </div>
         </div>
       )
@@ -127,7 +127,7 @@ const AgentCreationDialog: React.FC<AgentCreationDialogProps> = ({
 
   return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="max-w-lg w-[90vw] sm:w-full p-0 gap-0 rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xl bg-white dark:bg-gray-900 max-h-[90vh] flex flex-col">
+        <DialogContent className="max-w-lg w-[90vw] sm:w-full p-0 gap-0 rounded-xl border border-border shadow-2xl bg-card max-h-[90vh] flex flex-col">
           {renderCurrentFlow()}
         </DialogContent>
       </Dialog>

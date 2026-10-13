@@ -65,21 +65,21 @@ const ObservabilityFilters: React.FC<ObservabilityFiltersProps> = ({
   }
 
   return (
-    <div className="flex-shrink-0 border-b bg-gray-50/50 dark:bg-gray-800">
+    <div className="flex-shrink-0 border-b bg-muted/50">
       {/* Quick Stats Bar */}
-      <div className="px-6 py-4 border-b bg-white dark:bg-gray-900">
+      <div className="px-6 py-4 border-b bg-card">
         <div className="flex items-center gap-8">
           <div className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-blue-600" />
+            <BarChart3 className="w-4 h-4 text-primary" />
             <span className="text-sm text-muted-foreground">Quick Stats:</span>
           </div>
           <div className="flex items-center gap-6">
             <div className="text-center">
-              <div className="text-lg font-semibold text-blue-600">{stats.totalTraces}</div>
+              <div className="text-lg font-semibold text-primary">{stats.totalTraces}</div>
               <div className="text-xs text-muted-foreground">Traces</div>
             </div>
             <div className="text-center">
-              <div className="text-lg font-semibold text-green-600">{stats.avgDuration.toFixed(2)}s</div>
+              <div className="text-lg font-semibold text-success">{stats.avgDuration.toFixed(2)}s</div>
               <div className="text-xs text-muted-foreground">Avg Duration</div>
             </div>
             <div className="text-center">
