@@ -16,6 +16,7 @@ import { useOrgOverview, type OrgAgentRow, type OverviewRange } from '@/hooks/us
 import { formatValue } from './chartData'
 import { OverviewSkeleton } from './OverviewSkeleton'
 import type { SpecInput } from '@/server/analytics/spec'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const DAY_OPTIONS = [7, 30, 90]
 
@@ -41,18 +42,18 @@ const KPI_ICONS = {
 } as const
 
 function Kpi({
-  label, value, spec, icon: Icon,
-}: Readonly<{ label: string; value: number | null; spec: SpecInput; icon: (typeof KPI_ICONS)[keyof typeof KPI_ICONS] }>) {
+  label, value, spec, icon: Icon, loading,
+}: Readonly<{ label: string; value: number | null; spec: SpecInput; icon: (typeof KPI_ICONS)[keyof typeof KPI_ICONS]; loading: boolean }>) {
   return (
     <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
       <div className="flex items-center gap-2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <Icon className="h-3.5 w-3.5" />
         </span>
         <div className="text-xs font-medium text-muted-foreground">{label}</div>
       </div>
       <div className="mt-3 text-3xl font-semibold tabular-nums text-foreground">
-        {value === null ? '—' : formatValue(value, spec)}
+        {value === null ? (loading ? <Skeleton className="h-9 w-20" /> : '—') : formatValue(value, spec)}
       </div>
     </div>
   )
@@ -67,7 +68,7 @@ function StatusBadge({ isActive, environment }: Readonly<{ isActive: boolean; en
           : 'bg-muted text-muted-foreground'
       }`}
     >
-      <span className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+      <span className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-muted-foreground/40'}`} />
       {isActive ? environment ?? 'Live' : 'Inactive'}
     </span>
   )
@@ -81,12 +82,12 @@ function AgentRow({ agent, projectId, loading }: Readonly<{ agent: OrgAgentRow; 
       onClick={() => router.push(`/${projectId}/agents/${agent.id}`)}
     >
       <td className="py-4 pl-6 pr-4 font-medium text-foreground">{agent.name}</td>
-      <td className="py-4 pr-4 tabular-nums text-foreground">{(agent.calls ?? (loading ? null : 0))?.toLocaleString() ?? '—'}</td>
+      <td className="py-4 pr-4 tabular-nums text-foreground">{(agent.calls ?? (loading ? null : 0))?.toLocaleString() ?? (loading ? <Skeleton className="h-4 w-10" /> : '—')}</td>
       <td className="py-4 pr-4 tabular-nums text-foreground">
-        {agent.pickupPct === null ? '—' : `${agent.pickupPct.toFixed(0)}%`}
+        {agent.pickupPct === null ? (loading ? <Skeleton className="h-4 w-10" /> : '—') : `${agent.pickupPct.toFixed(0)}%`}
       </td>
       <td className="py-4 pr-4 tabular-nums text-foreground">
-        {agent.latency === null ? '—' : `${agent.latency.toFixed(1)}s`}
+        {agent.latency === null ? (loading ? <Skeleton className="h-4 w-10" /> : '—') : `${agent.latency.toFixed(1)}s`}
       </td>
       <td className="py-4 pr-6 text-muted-foreground">
         <StatusBadge isActive={agent.is_active} environment={agent.environment} />
@@ -193,10 +194,10 @@ export function OrgOverview({
         )}
 
         <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Kpi label="Total Calls" value={data.totalCalls} spec={KPI_SPECS.calls} icon={KPI_ICONS.calls} />
-          <Kpi label="Pickup %" value={data.pickupPct} spec={KPI_SPECS.pickup} icon={KPI_ICONS.pickup} />
-          <Kpi label="Avg Latency" value={data.avgLatency} spec={KPI_SPECS.latency} icon={KPI_ICONS.latency} />
-          <Kpi label="Billing Minutes" value={data.billingMinutes} spec={KPI_SPECS.billing} icon={KPI_ICONS.billing} />
+          <Kpi label="Total calls" value={data.totalCalls} spec={KPI_SPECS.calls} icon={KPI_ICONS.calls} loading={isLoading} />
+          <Kpi label="Pickup %" value={data.pickupPct} spec={KPI_SPECS.pickup} icon={KPI_ICONS.pickup} loading={isLoading} />
+          <Kpi label="Avg latency" value={data.avgLatency} spec={KPI_SPECS.latency} icon={KPI_ICONS.latency} loading={isLoading} />
+          <Kpi label="Billing minutes" value={data.billingMinutes} spec={KPI_SPECS.billing} icon={KPI_ICONS.billing} loading={isLoading} />
         </div>
 
         <div>
