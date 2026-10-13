@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown'
 import { Button } from '@/components/ui/button'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import { safeParseWorkflow } from '@/lib/workflow/schema'
+import { extractGlobalRules } from '@/lib/workflow/globalRules'
 import { lintWorkflow, hasErrors } from '@/lib/workflow/linter'
 import { isRetryableApplyError } from '@/lib/workflow/chatRetry'
 import { extractJsonFence, stripJsonFencesForHistory } from '@/lib/jsonFence'
@@ -227,7 +228,9 @@ export function WorkflowChat({
         return fail(`AI returned a broken workflow graph: ${applyError}`)
       }
 
-      setWorkflow(parsed.data)
+      // Whatever Pi drew, fold repeated condition edges into global rules so the canvas stays readable.
+      const merged = extractGlobalRules(parsed.data)
+      setWorkflow({ ...parsed.data, edges: merged.edges, globalRules: merged.globalRules })
       toast.success('Workflow updated from chat')
       const warnings = issues.filter((i) => i.severity === 'warning')
       return {
