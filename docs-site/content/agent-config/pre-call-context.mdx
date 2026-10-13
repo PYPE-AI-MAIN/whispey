@@ -1,0 +1,194 @@
+---
+title: Pre-call context fetch
+description: Look up caller details from your own system when someone phones your agent, so the prompt and greeting can use them.
+---
+
+Pre-call context fetch lets your agent look up details about a caller before it says hello. In the dashboard this feature is called **Inbound Variables**.
+
+For example, your agent can greet a caller by name and mention their next appointment. The agent gets these details from your own system, using the number the person is calling from.
+
+## Why use it
+
+When you start an outbound call, you can send the person's details along with it. When someone phones your agent, nothing comes with the call. The agent only knows the number.
+
+Without this feature, the greeting on an inbound call has no caller details to use. With it, Whispey asks your system for them first.
+
+## How it works
+
+1. Someone calls your agent's phone number.
+2. Whispey checks if **Fetch variables on inbound calls** is on for this agent. If it is off, nothing happens and no request is sent.
+3. Whispey sends a request to your **Endpoint URL**. The request holds the caller's number and the agent's ID.
+4. Your system looks up the caller and answers with a list of variables, such as `patient_name`.
+5. Whispey puts those values into the prompt and the greeting, in place of `{{patient_name}}` and similar placeholders.
+6. The agent says its greeting.
+
+Whispey waits for your answer before the greeting. The wait has a limit, so a slow system cannot hold up the call for long. See [When the fetch fails or is slow](#when-the-fetch-fails-or-is-slow).
+
+## Set it up
+
+### 1. Use variables in your prompt and greeting
+
+Write each detail as a name in double curly brackets, for example `{{patient_name}}`.
+
+Variable names follow these rules:
+
+- Lowercase letters, numbers and underscores only.
+- Must not start with a number.
+- Must not start or end with an underscore.
+- At most 16 characters.
+
+### 2. Set a default value for each variable
+
+A default is used when your system returns nothing for that name. Add defaults here:
+
+1. Open the agent and open the prompt settings.
+2. Open **Variables**, then **Custom Variables**.
+3. Click **Add Variable**.
+4. Type the name (shown as `variable_name`) and a **Default value**.
+
+### 3. Turn on the fetch
+
+1. Open the agent's configuration page.
+2. In the **Advanced Settings** panel, open **Inbound Variables**. On a narrow screen, open the menu and choose **Advanced Settings**.
+3. Turn on **Fetch variables on inbound calls**.
+4. Fill in the fields below.
+5. Save and deploy the agent, as you do for other changes.
+
+| Field | What it does | Default |
+|---|---|---|
+| **Endpoint URL** | The address on your system that Whispey calls. Required. | Empty |
+| **Authorization header (optional)** | Sent as the `Authorization` header exactly as you type it, for example `Bearer ...`. | Empty |
+| **Max wait (ms)** | The longest Whispey waits for your answer, in milliseconds. The field accepts 100 to 3000. | 1000 |
+| **Cache (seconds)** | How long Whispey remembers an answer for the same caller. The field accepts 0 to 600. | 90 |
+
+If the switch is on but the **Endpoint URL** is empty, no request is sent.
+
+The panel also shows **Variables this agent uses**. These are the names found in your prompt and greeting, plus any custom variables you added. Your system must return these exact names. Built-in variables are not listed, because Whispey fills them in itself.
+
+### 4. Test it
+
+1. Under **Test with a phone number**, type a number such as `9876543210`.
+2. Click **Test**. The button is disabled until the **Endpoint URL** is filled in.
+
+The test calls your endpoint once, with the settings currently on screen, even if you have not saved them. It never uses the cache. The result shows how many variables came back and how many milliseconds the answer took. It also marks names that are not used in your prompt, and lists names your system did not return, which will use the default.
+
+## What your system receives
+
+Whispey sends an HTTP POST with a JSON body.
+
+```json
+{
+  "phone_number": "9876543210",
+  "agent_id": "..."
+}
+```
+
+- `phone_number` is always 10 digits, with no `+91` and no leading `0`. If the phone company gives a longer number, Whispey keeps the last 10 digits.
+- `agent_id` is the ID of the agent that took the call.
+- The `Content-Type` is `application/json`. If you filled in the authorization field, the `Authorization` header is sent too.
+
+The **Copy** button under **What their developer builds** copies a ready-made description of this request, written with your agent's variable names. You can pass it to the person who builds your endpoint.
+
+## What your system must return
+
+Answer with HTTP status 200 and a JSON object with a `variables` key.
+
+```json
+{
+  "variables": {
+    "patient_name": "Anita",
+    "appointment_date": "24 Sep"
+  }
+}
+```
+
+If you do not know the caller, return an empty list. The agent then uses the defaults.
+
+```json
+{ "variables": {} }
+```
+
+Whispey applies these rules to your answer:
+
+| Rule | Detail |
+|---|---|
+| Status | Any status other than 200 is ignored. |
+| Names | Names are made lowercase. A name that breaks the naming rules above is dropped. The other names are still used. |
+| Values | Each value is turned into text and cut to 200 characters. A value that is `null`, a list or an object is dropped. |
+| Count | Only the first 32 variables are used. |
+| Empty values | An empty value does not replace a default. |
+
+:::note
+Whispey also accepts a bare object without the `variables` key, such as `{"patient_name": "Anita"}`. Use the `variables` form, since that is what the dashboard shows.
+:::
+
+## How values appear in the prompt and greeting
+
+Whispey replaces each `{{name}}` with the value. When the same name has several sources, the highest one wins:
+
+1. Built-in variables, the lowest. See [Built-in variables](./built-in-variables).
+2. The default values you set under **Custom Variables**.
+3. The values from your system, the highest.
+
+The prompt and the greeting are treated a little differently when a name has no value at all:
+
+- **Greeting:** the placeholder is removed, so the agent does not read it out loud. Spaces around it are tidied up, so the sentence stays readable but plainer.
+- **Prompt:** the placeholder stays as written, so the agent can see which detail is missing.
+
+:::tip
+Set a default value for every variable your greeting uses. Then the greeting still reads well when the lookup returns nothing.
+:::
+
+## When the fetch fails or is slow
+
+The call is never blocked for long and never dropped because of this feature. In each case below, the agent greets using the default values.
+
+| Situation | Result |
+|---|---|
+| Your system does not answer within **Max wait (ms)** | Whispey gives up and uses the defaults. |
+| Your system cannot be reached, or returns an error | Defaults are used. |
+| Your system returns a status other than 200 | Defaults are used. |
+| Your system returns no variables | Defaults are used. |
+
+Whispey does not retry during the call.
+
+### Caching
+
+For the same agent and the same caller number, Whispey remembers your answer for **Cache (seconds)** seconds. A caller who rings again inside that time does not cause a second request. An answer with no variables is remembered too. Failed or timed-out requests are not remembered.
+
+The cache is not shared between servers. A repeat call may still reach your system if it is handled by a different one.
+
+## Phone calls and web calls
+
+| Call type | Pre-call context fetch |
+|---|---|
+| Inbound phone call | Used, if the switch is on. |
+| Outbound phone call | Not used. Send the caller's details with the call when you start it. |
+| Web call | Not used. |
+
+On an inbound phone call, the fetch is also skipped when the call already arrives with its own variables. In that case those variables are used.
+
+## Troubleshooting
+
+**The greeting is generic and has no caller details.**
+Click **Test** with a real number. If no variables come back, the cause is on the lookup side. Check the endpoint URL, the authorization header, and whether your system answers within **Max wait (ms)**.
+
+**The test works but live calls do not use the values.**
+Check that you saved and deployed the agent after turning on **Fetch variables on inbound calls**. Also check that the call is an inbound phone call.
+
+**A value is missing.**
+Look at the names marked in the test result. The names your system returns must match the names in the prompt exactly. Names with capital letters are made lowercase. Names longer than 16 characters are dropped.
+
+**The answer is correct but arrives late.**
+The test result shows the time in milliseconds. If it is close to or above **Max wait (ms)**, make your lookup faster. You can raise **Max wait (ms)**, but the caller hears silence while Whispey waits, so keep it short.
+
+**A caller's details are out of date.**
+Whispey remembers answers for **Cache (seconds)**. Wait for that time to pass, or lower the number.
+
+**The test says "Nothing usable came back".**
+This means no variables were returned. It can be an unknown caller, an error, or an answer slower than the limit. Whispey's agent logs hold the exact reason.
+
+## Related pages
+
+- [Built-in variables](./built-in-variables)
+- [Variables and the knowledge base](../workflows/variables-and-knowledge) for workflow agents

@@ -1,0 +1,106 @@
+---
+title: Ask Pi overview
+description: What Pi is, where to open it, who can use it, and how your chats are saved.
+---
+
+Pi is the built-in assistant in Whispey. You type a request in plain words, and Pi answers it or does the task for you. You do not need to know where a setting lives.
+
+Pi can read your call data, create and edit voice agents, work with phone numbers, and open pages for you.
+
+## Where to open Pi
+
+| Place | How to open it | What Pi helps with |
+|---|---|---|
+| **Ask Pi** page | Choose **Ask Pi** in the left sidebar | Everything on this page: analytics, agents, phone numbers |
+| Call logs | The **Ask Pi** button on an agent's call logs page | The calls of that agent: summaries, counts, filters |
+| Prompt editor | Select some text in a prompt, then click **Ask Pi** | Rewriting or translating the selected text |
+| Workflow editor | The **Ask Pi** button in the top bar | Building and editing a workflow. See [Workflows overview](../workflows/overview). |
+
+The rest of this page is about the **Ask Pi** page in the sidebar.
+
+## What Pi can do
+
+- Answer questions about your calls, such as volume over time, task completion and how agents compare.
+- Create a new voice agent.
+- Change an agent's prompt, greeting, voice, language model, prompt variables and dispositions.
+- Open a form to add a custom tool to an agent.
+- Start a test call with an agent, right in the chat.
+- List your phone numbers, search for numbers to buy, buy one, and attach one to an agent for inbound calls.
+- Check whether a phone number is flagged as spam.
+- Open a page for you, such as call logs, an agent's settings, or campaigns.
+
+See [What you can ask](./what-you-can-ask) for example requests.
+
+## What Pi cannot do
+
+- It cannot change anything without you clicking **Confirm**. See [Tips and limits](./tips-and-limits).
+- Viewers cannot create or edit anything. Pi tells them it is read-only.
+- It does not send phone numbers to the AI model in full. They are masked first.
+
+## Who can use it
+
+| Role | What happens |
+|---|---|
+| Owner or admin | Can open **Ask Pi** from the sidebar. |
+| Other roles | The **Ask Pi** entry in the sidebar is greyed out and shows a **Beta** badge. |
+| Viewer | Can chat and ask about data, but cannot create or edit agents. |
+
+Buying a phone number needs an owner or admin.
+
+:::note
+The sidebar greys out **Ask Pi** for people who are not an owner or admin. We could not confirm from the code whether a non-admin who opens the page by its address is blocked. If you cannot see **Ask Pi**, ask a project owner or admin.
+:::
+
+## Start a chat
+
+1. Choose **Ask Pi** in the sidebar.
+2. Type in the box that says **Ask Pi…**, or click one of the starter buttons.
+3. Press Enter to send. Use the **Send** arrow if you prefer.
+
+A new chat opens with a greeting and these starter buttons:
+
+| Button | What it does |
+|---|---|
+| Call volume over the last 30 days | Asks for your call volume trend |
+| Top agent and how it performed | Compares your agents |
+| Check if a number is spam | Types the start of the question so you can add a number |
+| Attach an inbound number to an agent | Starts the phone number flow |
+| Create a new voice agent | Explains what happens when you create an agent |
+
+While Pi works, it shows short status lines such as "Checking your agents" or "Running analytics".
+
+## Chats and history
+
+The left panel is called **Chats**. Every conversation is saved there.
+
+- Your chat gets a short title from your first message.
+- Use **Search** to find a chat by its title.
+- Click the plus button to start a new chat.
+- Click the three dots on a chat, then **Rename** or **Delete**.
+- Use the panel buttons to hide or show the **Chats** list. Whispey remembers your choice.
+- When you open **Ask Pi** again, you land in your most recent chat.
+
+Chats are private. Other people in your project, including owners and admins, cannot open your chats.
+
+Pi remembers the last 24 turns of a chat when it replies. Older messages stay in the saved chat, but Pi no longer uses them. For a new topic, start a new chat.
+
+## Choosing the model
+
+Under the message box there is a small menu called **Model**. You can pick one of these:
+
+- GPT-5.6 Luna
+- GPT-5.6 Terra
+- GPT-5.6 Sol
+- GPT-4.1
+- GPT-4.1 mini
+
+You can only change it while Pi is not replying. We could not confirm from the code how the models differ in quality or speed, so no advice is given here.
+
+## Voice input
+
+The microphone button next to **Send** turns speech into text in the message box. Its label changes between **Start voice input** and **Stop voice input**. If voice input is not set up for your deployment, Pi shows "Voice transcription is not configured".
+
+## Next steps
+
+- [What you can ask](./what-you-can-ask)
+- [Tips and limits](./tips-and-limits)
