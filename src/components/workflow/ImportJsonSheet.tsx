@@ -5,10 +5,22 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { Button } from '@/components/ui/button'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import { safeParseWorkflow } from '@/lib/workflow/schema'
+import { Copy } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { WORKFLOW_AI_PROMPT } from '@/lib/workflow/aiPrompt'
 
 // Paste a full workflow JSON and drop it straight onto the canvas — no LLM.
 // Same validation the AI-builder apply path uses, incl. the graphless guard.
+// Copies a prompt that teaches any AI the workflow format, so people can have it write a flow to paste here.
+async function copyAiPrompt() {
+  try {
+    await navigator.clipboard.writeText(WORKFLOW_AI_PROMPT)
+    toast.success('Prompt copied. Paste it into any AI, describe your agent, then paste its answer here.')
+  } catch {
+    toast.error('Could not copy. Select the text in the docs instead.')
+  }
+}
+
 export function ImportJsonSheet({ open, onOpenChange }: Readonly<{ open: boolean; onOpenChange: (v: boolean) => void }>) {
   const setWorkflow = useWorkflowStore((s) => s.setWorkflow)
   const [text, setText] = useState('')
@@ -49,6 +61,9 @@ export function ImportJsonSheet({ open, onOpenChange }: Readonly<{ open: boolean
           <SheetDescription>
             Paste a complete workflow JSON (schemaVersion 1.0). It replaces the current canvas.
           </SheetDescription>
+          <Button variant="outline" size="sm" className="mt-2 w-fit" onClick={copyAiPrompt}>
+            <Copy className="mr-1.5 h-3.5 w-3.5" /> Copy a prompt for any AI
+          </Button>
         </SheetHeader>
         {/* SheetContent itself has no padding — it lives on the header/footer, so
             the body needs its own px-4. min-h-0 lets the textarea flex-shrink. */}

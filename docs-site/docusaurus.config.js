@@ -8,6 +8,9 @@ const config = {
   url: 'https://docs.whispey.pypeai.com',
   baseUrl: '/',
   onBrokenLinks: 'throw',
+  stylesheets: [
+    {href: 'https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap', type: 'text/css'},
+  ],
   i18n: {defaultLocale: 'en', locales: ['en']},
   presets: [
     [
@@ -28,6 +31,11 @@ const config = {
       navbar: {
         title: 'Whispey Docs',
         logo: {alt: 'Whispey', src: 'img/logo.svg', srcDark: 'img/logo-dark.svg'},
+        items: [
+          {to: '/workflows/overview', label: 'Workflows', position: 'left'},
+          {to: '/quick-start', label: 'SDK', position: 'left'},
+          {href: 'https://whispey.xyz', label: 'Open Whispey', position: 'right', className: 'wp-nav-cta'},
+        ],
       },
       footer: {copyright: `© ${new Date().getFullYear()} Pype`},
       prism: {theme: prismThemes.github, darkTheme: prismThemes.dracula, additionalLanguages: ['python', 'bash', 'json']},
