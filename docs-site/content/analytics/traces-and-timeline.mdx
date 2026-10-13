@@ -1,0 +1,135 @@
+---
+title: Traces and timeline
+description: Open a single call and see every turn, how long each step took, which tools ran and where time was lost.
+---
+
+The **Observability** page shows one call in detail. Use it when a call went wrong or felt slow, and you want to know why.
+
+This page explains how to read it. To set up the data it shows, see [Observability](../observability) in the SDK section.
+
+## Open a call
+
+You reach the page from a call:
+
+- In the classic [Call Logs](./call-logs) table, click a row.
+- In the new Call Logs view, click **Open the full trace in a new tab** at the top of the transcript.
+- From a chart's calls window, click a row.
+- From [QA Audit](./qa-audit), open a flagged ticket and click **Open call**.
+
+The page is called **Observability**. The back arrow takes you to where you came from.
+
+## The top of the page
+
+### Recording
+
+If the call has a recording, a **Call Recording** player sits at the top. If it was placed through Acefone, a **Listen to telephony recording** link opens the carrier's own recording. To set up recordings, see [Recording URLs](../sdk/recording-urls).
+
+### Session Overview
+
+A bar summarises the call:
+
+| Item | What it shows |
+|---|---|
+| Phone number and start time | Who was on the call and when. A web call shows **Web Call** and the first characters of its id. |
+| **Flag** | Report a problem with this call. See [QA Audit](./qa-audit). |
+| **turns** | How many back-and-forth turns the call had. |
+| **duration** | How long the call lasted. |
+| **p75** | The 75th percentile of end-to-end response time. 75 out of 100 responses were faster than this. Hover it to see the median (P50) too. |
+| **bugs** | How many turns were reported as bugs. It turns amber when there are any. See [Bug reporting](../sdk/bug-reporting). |
+| **LiveKit** or **Vapi** | The kind of agent that took the call. |
+
+Next to those, a group of figures breaks the response time down by step. Each shows a 75th percentile. Hover one to see the median, 75th percentile and average.
+
+| Figure | Step |
+|---|---|
+| **TTFT P75** | The language model's time to first token. How long until it starts to answer. |
+| **TTFB P75** | The voice's time to first byte. How long until the first sound is ready. |
+| **EOU P75** | End of utterance. How long Whispey waited to be sure the caller had finished speaking. |
+| **STT P75** | Speech to text. For a Vapi agent this counts toward the total. For a LiveKit agent it sits in a box marked **Reference** and is not included in the total. |
+
+The numbers are coloured. Green is good, amber is fair and red is poor. The cut-offs depend on the step:
+
+| Step | Green up to | Amber up to |
+|---|---|---|
+| **STT** | 1 second | 2 seconds |
+| **LLM** (first token) | 1 second | 3 seconds |
+| **TTS** (first byte) | 1 second | 2 seconds |
+| **EOU** | 0.5 seconds | 1.5 seconds |
+| **End to end** | 4 seconds | 8 seconds |
+
+Anything above the amber limit is red.
+
+## The tabs
+
+| Tab | What it is |
+|---|---|
+| **Turns** | The conversation, one row per turn. Always shown. |
+| **Trace** | The behind-the-scenes steps grouped by turn. Appears when the call has telemetry data. |
+| **Timeline** | The same steps drawn against time. Appears when the call has telemetry data. |
+| **Config** | The settings the agent used. Only for project owners, admins and superadmins. |
+
+If **Trace** and **Timeline** are missing, the call has no telemetry data. Telemetry is switched on in the SDK. See [Observability](../observability).
+
+### Turns
+
+Each row is one turn. The columns:
+
+| Column | What it shows |
+|---|---|
+| **Trace Info** | An id for the turn, the last characters of the session id and the last four digits of the phone number. |
+| **Conversation** | What the caller said (arrow right) and what the agent said (arrow left). Tools the agent used appear between them. Click **Copy** to copy the whole transcript. |
+| **Operations** | Number of tool calls with how many succeeded (shown as a tick), small tags for the steps that ran (such as STT, LLM and TTS), and the number of spans. A red warning with a number means a provider failed and a fallback was tried. |
+| **Latency** | Total response time for the turn, coloured by how slow it was. |
+| **Cost** | Cost of the turn, in dollars. |
+| **Status** | A tick (fine), an amber triangle (warning) or a red mark (error or reported bug). |
+
+Above the list:
+
+- **English** switches the transcript to English.
+- **Download Transcript** downloads the whole conversation.
+
+A turn that someone reported shows a red bar, a **Bug** badge and **[REPORTED]** after the agent's reply.
+
+Click a row to open the **turn details** side panel.
+
+### Turn details
+
+The panel opens on the right. It has these tabs:
+
+| Tab | What it shows |
+|---|---|
+| **Pipeline Flow** | The steps the turn went through, such as VAD, EOU, STT, LLM and TTS. Pick a step to see its input, output and measures. A step with **No data** did not run on this turn. |
+| **Config** | The settings used for this turn. |
+| **Cost & Metrics** | The cost breakdown, the latency analysis (it says **Vapi Pipeline** or **LiveKit Pipeline**) and session information. |
+| **Bug Report** | Only on a reported turn: what was reported. |
+
+If a provider failed and Whispey switched to a backup, the step lists the fallback events. A recovery is shown as good news, not as an error.
+
+### Trace
+
+**Trace** groups the telemetry steps (called spans) into turns: **user_turn**, **assistant_turn**, and session steps such as **start_agent_activity**. Click **Expand All** to open every group or **Collapse All** to close them. Click a span to open its details.
+
+The span details have three tabs: **Overview**, **Technical** and **Raw Data**. **Raw Data** is the unprocessed record, useful when you are working with the Whispey team.
+
+### Timeline
+
+**Timeline** is titled **Trace-based Timeline**. It draws each span as a bar along time, so you can see what ran at the same time and what ran one after another. At the top it shows **Traces**, **Total Spans**, **Duration** and **Errors**. Hover a bar to see its name and length. **Session Summary** sits at the bottom.
+
+Long bars show where time went. Look at them first when a call felt slow.
+
+### Config
+
+**Config** shows the **LLM Configuration**, **STT Configuration**, **TTS Configuration** and the **Prompt** the call ran with. Use it to check that a call used the settings you expected.
+
+## How to find why a call felt slow
+
+1. Open the call and read the **p75** figure. Is it red?
+2. Look at the four step figures. The red one is the slow step.
+3. Open the **Turns** tab and find the turns with a red **Latency**.
+4. Click that turn and read **Pipeline Flow** to see which step took the time.
+5. If a tool ran, check how long it took. In [Call Logs](./call-logs), the right-hand **Tools** tab shows each tool's time.
+6. If a provider failed, look for fallback warnings in **Operations**.
+
+## Flagging from here
+
+The **Flag** control in the Session Overview works like it does in Call Logs. Click it, describe the problem and add the flag. The QA team is notified. See [QA Audit](./qa-audit).
