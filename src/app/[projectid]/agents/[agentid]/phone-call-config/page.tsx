@@ -577,7 +577,7 @@ export default function PhoneCallConfig() {
                 {!loadingPhoneNumbers && phoneNumbers.length === 0 && (
                   <div className="h-12 flex items-center px-4 border border-border rounded-xl bg-muted/50"><span className="text-sm text-muted-foreground">No outbound phone numbers available</span></div>
                 )}
-                {!loadingPhoneNumbers && !(phoneNumbers.length === 0) && (
+                {!loadingPhoneNumbers && phoneNumbers.length !== 0 && (
                   <Select value={fromPhoneNumberId} onValueChange={setFromPhoneNumberId}>
                     <SelectTrigger className="h-12 w-full bg-card border-border hover:border-border transition-colors"><SelectValue placeholder="Select your outbound number" /></SelectTrigger>
                     <SelectContent className="bg-card border-border">

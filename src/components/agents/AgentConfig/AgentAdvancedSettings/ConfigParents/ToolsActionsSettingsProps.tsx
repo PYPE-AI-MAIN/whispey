@@ -830,7 +830,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                       </span>
                     </div>
                   )}
-                  {!loadingPhoneNumbers && !(phoneNumbers.length === 0) && (
+                  {!loadingPhoneNumbers && phoneNumbers.length !== 0 && (
                     <Select
                       value={formData.selectedPhoneId || '__none__'}
                       onValueChange={(phoneId) => {

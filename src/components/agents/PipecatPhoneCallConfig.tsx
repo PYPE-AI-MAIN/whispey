@@ -380,7 +380,7 @@ export default function PipecatPhoneCallConfig({
                     </span>
                   </div>
                 )}
-                {!loadingNumbers && !(numbers.length === 0) && (
+                {!loadingNumbers && numbers.length !== 0 && (
                   <Select value={selectedFromNumber} onValueChange={setSelectedFromNumber}>
                     <SelectTrigger className="h-12 w-full bg-card border-border hover:border-border transition-colors">
                       <SelectValue placeholder="Select number to call from" />

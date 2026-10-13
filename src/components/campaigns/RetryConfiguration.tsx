@@ -750,7 +750,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                           </SelectContent>
                         </Select>
                       )}
-                      {!loadingFields && !(availableMetrics.length > 0) && (
+                      {!loadingFields && availableMetrics.length <= 0 && (
                         <div className="text-xs text-muted-foreground">
                           No metrics configured for this agent. Configure metrics in agent settings.
                         </div>
@@ -839,7 +839,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                           </SelectContent>
                         </Select>
                       )}
-                      {!loadingFields && !(availableFields.length > 0) && (
+                      {!loadingFields && availableFields.length <= 0 && (
                         <div className="text-xs text-muted-foreground">
                           No field extractor fields configured for this agent. Configure field extractor in agent settings.
                         </div>

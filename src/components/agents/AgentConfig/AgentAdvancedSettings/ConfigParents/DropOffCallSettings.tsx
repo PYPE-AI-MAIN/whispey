@@ -380,7 +380,7 @@ export default function DropOffCallSettings({
               No outbound phone numbers available. Please configure phone numbers in SIP Management.
             </div>
           )}
-          {!loadingPhones && !(phoneNumbers.length === 0) && (
+          {!loadingPhones && phoneNumbers.length !== 0 && (
             <Select
               value={settings.phone_number_id || undefined}
               onValueChange={(value) => {

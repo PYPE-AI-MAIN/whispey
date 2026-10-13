@@ -294,7 +294,7 @@ const validateCsvData = (data: RecipientRow[], headers: string[]): CsvValidation
         </Button>
       </div>
 
-      <div
+      <div /* NOSONAR: drag-and-drop target; the file picker inside is the keyboard control */
         role="presentation"
         onDrop={handleDrop}
         onDragOver={handleDragOver}

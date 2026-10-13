@@ -403,7 +403,7 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
                       </div>
                     ))
                   )}
-                  {!loadingFields && !(availableTranscriptionFields.length > 0) && (
+                  {!loadingFields && availableTranscriptionFields.length <= 0 && (
                     <div className="text-sm text-muted-foreground italic">
                       No transcription fields configured for this agent. Configure field extractor in agent settings.
                     </div>
@@ -461,7 +461,7 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
                       </div>
                     ))
                   )}
-                  {!loadingFields && !(availableMetricsFields.length > 0) && (
+                  {!loadingFields && availableMetricsFields.length <= 0 && (
                     <div className="text-sm text-muted-foreground italic">
                       No metrics configured for this agent. Configure metrics in agent settings.
                     </div>

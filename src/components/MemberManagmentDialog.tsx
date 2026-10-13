@@ -275,7 +275,7 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
               {!fetchingMembers && members.length === 0 && (
                 <p className="text-muted-foreground text-center py-4">No members found</p>
               )}
-              {!fetchingMembers && !(members.length === 0) && (
+              {!fetchingMembers && members.length !== 0 && (
                 <div className="space-y-3">
                   {members.map((member) => (
                     <div key={member.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">

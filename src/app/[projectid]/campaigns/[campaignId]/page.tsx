@@ -79,10 +79,10 @@ function parseAdditionalData(raw: unknown): any {
 }
 
 const STANDARD_COLUMNS = ['status', 'retryCount', 'lastCallAt']
-const INTERNAL_KEYS = ['contactId', 'campaignId', 'id', 'additionalData', 'name', 'email', 'phoneNumber', 'callAttempts']
+const INTERNAL_KEYS = new Set(['contactId', 'campaignId', 'id', 'additionalData', 'name', 'email', 'phoneNumber', 'callAttempts'])
 // additionalData columns that should appear right after status
 const PRIORITY_ADDITIONAL_COLUMNS = ['appointment_time', 'doctor_name', 'patient_name', 'phone', 'appointment_date']
-const HIDDEN_ADDITIONAL_KEYS = ['name', 'email', 'callattempts']
+const HIDDEN_ADDITIONAL_KEYS = new Set(['name', 'email', 'callattempts'])
 
 const bySort = (a: string, b: string) => a.localeCompare(b)
 
@@ -96,7 +96,7 @@ function collectDirectKeys(log: any, allKeys: Set<string>) {
   STANDARD_COLUMNS.forEach(key => { if (log[key] !== undefined) allKeys.add(key) })
   allKeys.add('retryCount') // always present: it's a DynamoDB column
   Object.keys(log).forEach(key => {
-    if (!INTERNAL_KEYS.includes(key) && !STANDARD_COLUMNS.includes(key)) allKeys.add(key)
+    if (!INTERNAL_KEYS.has(key) && !STANDARD_COLUMNS.includes(key)) allKeys.add(key)
   })
 }
 
@@ -106,7 +106,7 @@ function collectAdditionalKeys(log: any, keys: ColumnKeys) {
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return
   Object.keys(parsed).forEach(key => {
     const lower = key.toLowerCase()
-    if (STANDARD_COLUMNS.includes(key) || keys.allKeys.has(key) || HIDDEN_ADDITIONAL_KEYS.includes(lower)) return
+    if (STANDARD_COLUMNS.includes(key) || keys.allKeys.has(key) || HIDDEN_ADDITIONAL_KEYS.has(lower)) return
     const isPriority = PRIORITY_ADDITIONAL_COLUMNS.some(priority => priority.toLowerCase() === lower)
     ;(isPriority ? keys.priorityAdditionalKeys : keys.additionalDataKeys).add(key)
   })

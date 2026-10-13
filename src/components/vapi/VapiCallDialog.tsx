@@ -79,6 +79,41 @@ const COUNTRY_CODES: CountryCode[] = [
   }
 ]
 
+function formatPhoneNumber(number: string): string {
+  if (number.startsWith('+1')) {
+    const digits = number.slice(2)
+    if (digits.length === 10) {
+      return `+1 (${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+    }
+  } else if (number.startsWith('+91')) {
+    const digits = number.slice(3)
+    if (digits.length === 10) {
+      return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`
+    }
+  }
+  return number
+}
+
+async function requestAssistantPhoneNumbers(agentId: string, assistantId: string): Promise<PhoneNumber[]> {
+  const response = await fetch(`/api/agents/${agentId}/vapi/phone-numbers?assistantId=${assistantId}`)
+  const result = await response.json()
+  if (!response.ok) throw new Error(result.error || 'Failed to fetch phone numbers')
+  return result.phoneNumbers || []
+}
+
+function extractCallError(status: number, result: any): string {
+  if (status === 429) {
+    const hasCounts = result.current_calls !== undefined && result.max_calls !== undefined
+    return hasCounts
+      ? `Rate limit exceeded. Current calls: ${result.current_calls}/${result.max_calls}. Please try again later.`
+      : 'Rate limit exceeded. Please try again later.'
+  }
+  if (typeof result.error === 'string') return result.error
+  if (result.error?.message) return result.error.message
+  if (!result.error && typeof result.message === 'string') return result.message
+  return 'Failed to initiate call'
+}
+
 const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAssistantId }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [selectedCountry, setSelectedCountry] = useState<CountryCode>(COUNTRY_CODES[0])
@@ -104,31 +139,10 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
   const fetchPhoneNumbers = async () => {
     setLoadingPhoneNumbers(true)
     setPhoneNumberError(null)
-    
     try {
-      console.log(`Fetching phone numbers for Vapi assistant ID: ${vapiAssistantId}`)
-      console.log(`Using agent ID: ${agentId}`)
-      
-      const url = `/api/agents/${agentId}/vapi/phone-numbers?assistantId=${vapiAssistantId}`
-      console.log(`Calling endpoint: ${url}`)
-      
-      const response = await fetch(url)
-      const result = await response.json()
-      
-      console.log(`Response status: ${response.status}`)
-      console.log(`Response data:`, result)
-      
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch phone numbers')
-      }
-      
-      setAvailablePhoneNumbers(result.phoneNumbers || [])
-      
-      if (result.phoneNumbers && result.phoneNumbers.length > 0) {
-        setSelectedPhoneNumberId(result.phoneNumbers[0].id)
-      }
-      
-      console.log(`Fetched ${result.phoneNumbers?.length || 0} phone numbers for assistant ${vapiAssistantId}:`, result.phoneNumbers)
+      const phoneNumbers = await requestAssistantPhoneNumbers(agentId, vapiAssistantId)
+      setAvailablePhoneNumbers(phoneNumbers)
+      if (phoneNumbers.length > 0) setSelectedPhoneNumberId(phoneNumbers[0].id)
     } catch (err) {
       console.error('Error fetching phone numbers:', err)
       setPhoneNumberError(err instanceof Error ? err.message : 'Failed to fetch phone numbers')
@@ -157,21 +171,6 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
 
   const getSelectedPhoneNumber = (): PhoneNumber | null => {
     return availablePhoneNumbers.find(num => num.id === selectedPhoneNumberId) || null
-  }
-
-  const formatPhoneNumber = (number: string) => {
-    if (number.startsWith('+1')) {
-      const digits = number.slice(2)
-      if (digits.length === 10) {
-        return `+1 (${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
-      }
-    } else if (number.startsWith('+91')) {
-      const digits = number.slice(3)
-      if (digits.length === 10) {
-        return `+91 ${digits.slice(0, 5)} ${digits.slice(5)}`
-      }
-    }
-    return number
   }
 
   const initiateCall = async () => {
@@ -225,30 +224,7 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
       const result = await response.json()
 
       if (!response.ok) {
-        let errorMessage = 'Failed to initiate call'
-        
-        // Extract error message from response
-        if (result.error) {
-          if (typeof result.error === 'string') {
-            errorMessage = result.error
-          } else if (result.error.message) {
-            errorMessage = result.error.message
-          }
-        } else if (result.message) {
-          if (typeof result.message === 'string') {
-            errorMessage = result.message
-          }
-        }
-        
-        // Handle 429 rate limit errors specifically
-        if (response.status === 429) {
-          if (result.current_calls !== undefined && result.max_calls !== undefined) {
-            errorMessage = `Rate limit exceeded. Current calls: ${result.current_calls}/${result.max_calls}. Please try again later.`
-          } else {
-            errorMessage = 'Rate limit exceeded. Please try again later.'
-          }
-        }
-        
+        const errorMessage = extractCallError(response.status, result)
         throw new Error(errorMessage)
       }
 
@@ -327,17 +303,19 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
                 Call From (Your Numbers) <span className="text-destructive">*</span>
               </Label>
               
-              {loadingPhoneNumbers ? (
+              {loadingPhoneNumbers && (
                 <div className="flex items-center gap-2 p-3 border border-border rounded-lg bg-muted/50">
                   <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">Loading phone numbers...</span>
                 </div>
-              ) : phoneNumberError ? (
+              )}
+              {!loadingPhoneNumbers && !!phoneNumberError && (
                 <Alert variant="destructive" className="bg-destructive/10 border-destructive/30">
                   <AlertCircle className="h-4 w-4 text-destructive" />
                   <AlertDescription className="text-destructive">{phoneNumberError}</AlertDescription>
                 </Alert>
-              ) : availablePhoneNumbers.length === 0 ? (
+              )}
+              {!loadingPhoneNumbers && !phoneNumberError && availablePhoneNumbers.length === 0 && (
                 <Alert variant="destructive" className="bg-destructive/10 border-destructive/30">
                   <AlertCircle className="h-4 w-4 text-destructive" />
                   <AlertDescription className="text-destructive">
@@ -360,7 +338,8 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
                     </div>
                   </AlertDescription>
                 </Alert>
-              ) : (
+              )}
+              {!loadingPhoneNumbers && !phoneNumberError && availablePhoneNumbers.length !== 0 && (
                 <Select value={selectedPhoneNumberId} onValueChange={setSelectedPhoneNumberId}>
                   <SelectTrigger className="w-full bg-card border-border">
                     <SelectValue>
@@ -510,7 +489,7 @@ const CallDialog: React.FC<CallDialogProps> = ({ agentId, assistantName, vapiAss
             </div>
           </div>
         )}
-            {!(callStatus === 'idle' || callStatus === 'connecting') && !(callStatus === 'success') && (
+            {!(callStatus === 'idle' || callStatus === 'connecting') && callStatus !== 'success' && (
               <div className="text-center space-y-4">
             <div className="w-16 h-16 bg-destructive/15 rounded-full flex items-center justify-center mx-auto">
               <AlertCircle className="w-8 h-8 text-destructive" />

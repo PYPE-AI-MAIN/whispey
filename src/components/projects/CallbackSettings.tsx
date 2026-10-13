@@ -337,7 +337,7 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
             No outbound phone numbers available. Configure phone numbers in SIP Management.
           </div>
         )}
-        {!loadingPhones && !(phoneNumbers.length === 0) && (
+        {!loadingPhones && phoneNumbers.length !== 0 && (
           <Select
             value={
               form.phoneNumberId

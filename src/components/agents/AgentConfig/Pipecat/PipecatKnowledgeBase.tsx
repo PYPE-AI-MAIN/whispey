@@ -107,7 +107,7 @@ export default function PipecatKnowledgeBase({ pipecatAgentId }: PipecatKnowledg
             <p className="text-xs text-muted-foreground mt-1">Upload files or add a URL above.</p>
           </div>
         )}
-        {!loading && !(documents.length === 0) && (
+        {!loading && documents.length !== 0 && (
           <ul className="space-y-1">
             {documents.map(doc => (
               <li

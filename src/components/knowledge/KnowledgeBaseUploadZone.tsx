@@ -195,7 +195,7 @@ export function KnowledgeBaseUploadZone({
   return (
     <div className={cn('space-y-4', className)}>
       {/* File upload zone */}
-      <div
+      <div /* NOSONAR: drag-and-drop target; the file picker inside is the keyboard control */
         role="presentation"
         onDrop={handleDrop}
         onDragOver={handleDragOver}

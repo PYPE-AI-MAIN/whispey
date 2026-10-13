@@ -1247,7 +1247,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
             </div>
           </div>
         )}
-        {!(loading && logs.length === 0) && !(logs.length === 0) && (
+        {!(loading && logs.length === 0) && logs.length !== 0 && (
           <>
             {/* Scrollable Table Area */}
             <div className="flex-1 overflow-hidden">

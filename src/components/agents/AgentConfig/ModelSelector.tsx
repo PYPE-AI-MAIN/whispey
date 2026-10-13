@@ -233,8 +233,8 @@ function MobileGroupModelItems({
   )
 }
 
-const GPT5_MODELS = ['gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-5.6-terra', 'gpt-5.6-luna']
-const isGPT5Model = (modelValue: string): boolean => GPT5_MODELS.includes(modelValue)
+const GPT5_MODELS = new Set(['gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-5.6-terra', 'gpt-5.6-luna'])
+const isGPT5Model = (modelValue: string): boolean => GPT5_MODELS.has(modelValue)
 
 const getTemperatureLabel = (temp: number) => {
   if (temp <= 0.3) return 'Precise'

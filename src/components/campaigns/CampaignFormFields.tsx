@@ -259,7 +259,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
                     <span className="text-xs text-muted-foreground">No outbound phone numbers available</span>
                   </div>
                 )}
-                {!loadingPhones && !(phoneNumbers.length === 0) && (
+                {!loadingPhones && phoneNumbers.length !== 0 && (
                   <Select
                     value={field.value}
                     onValueChange={(value) => {
