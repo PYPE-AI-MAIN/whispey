@@ -14,9 +14,8 @@
  * reserves for small in-place toggles.
  */
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
 import { Suspense, useMemo, useState } from 'react'
-import { BarChart3, ChevronRight } from 'lucide-react'
+import { BarChart3 } from 'lucide-react'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { OrgOverview, RangePicker } from '@/components/analytics/OrgOverview'
 import AnalyticsCanvas from '@/components/analytics/AnalyticsCanvas'
@@ -90,12 +89,6 @@ function OrgAnalyticsPageContent() {
   const requestedTab = searchParams.get('tab')
   const activeTab = TABS.find((t) => t.id === requestedTab)?.id ?? 'overview'
 
-  const { data: projects, isLoading: projectLoading } = useSupabaseQuery('pype_voice_projects', {
-    select: 'id, name',
-    filters: [{ column: 'id', operator: 'eq', value: projectId }],
-  })
-  const project = projects?.[0]
-
   // shared across all three tabs (§3.5's "Agents: All ▾") — null means every
   // agent, which is also what keeps a newly added agent included by default
   const { data: agents } = useSupabaseQuery<{ id: string; name: string; display_name: string | null }>('pype_voice_agents', {
@@ -111,22 +104,6 @@ function OrgAnalyticsPageContent() {
 
   return (
     <div className="flex h-full flex-col bg-gray-50 dark:bg-gray-900">
-      {/* Just the breadcrumb — the app's own sidebar already carries the logo,
-          Docs/Help links and the signed-in user, so repeating all of that in a
-          second header bar (the shared Header component's usual job on pages
-          with no sidebar of their own) was pure duplication here. */}
-      <div className="flex-none border-b border-gray-200 bg-white px-6 py-3 dark:border-gray-800 dark:bg-gray-900 md:px-8">
-        <nav className="flex items-center gap-2 text-sm">
-          <Link href="/" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">
-            Home
-          </Link>
-          <ChevronRight className="h-4 w-4 text-gray-300 dark:text-gray-600" />
-          <span className="text-gray-900 dark:text-gray-100">{projectLoading ? 'Loading…' : project?.name ?? 'Project'}</span>
-          <ChevronRight className="h-4 w-4 text-gray-300 dark:text-gray-600" />
-          <span className="text-gray-900 dark:text-gray-100">Analytics</span>
-        </nav>
-      </div>
-
       <div className="flex-none border-b border-gray-200 bg-white px-6 dark:border-gray-800 dark:bg-gray-900 md:px-8">
         <div className="flex items-center justify-between py-3">
           <div className="flex items-center gap-1">

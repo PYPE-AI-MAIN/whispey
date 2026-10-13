@@ -4,7 +4,7 @@ import AuthPage from "@/components/AuthPage";
 
 export const metadata: Metadata = {
   title: "Sign in | Whispey",
-  description: "Sign in to Whispey, the observability platform from Pype AI.",
+  description: "Sign in to Whispey, Pype AI's workspace for voice agents.",
 };
 
 export default async function SignInPage({

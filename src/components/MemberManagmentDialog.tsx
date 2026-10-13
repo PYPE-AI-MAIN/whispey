@@ -131,14 +131,14 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
       if (data.inviteSent === false) {
         toast.error(
           data.type === 'direct_add'
-            ? 'User added to project, but the invite email could not be sent. Check your email configuration.'
+            ? 'User added to organization, but the invite email could not be sent. Check your email configuration.'
             : 'User added to pending list, but the invite email could not be sent. Check your email configuration.',
           { duration: 5000 }
         )
       } else {
         toast.success(
           data.type === 'direct_add'
-            ? 'User added to project successfully! An invite email has been sent.'
+            ? 'User added to organization successfully! An invite email has been sent.'
             : 'Invite sent! User will be added when they sign up.'
         )
       }

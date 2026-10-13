@@ -14,6 +14,7 @@ import { ClerkLoaded, ClerkLoading, SignIn } from '@clerk/nextjs';
 import Image from 'next/image';
 import { Instrument_Serif, Plus_Jakarta_Sans } from 'next/font/google';
 import { useTheme } from 'next-themes';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 
 const serif = Instrument_Serif({ weight: '400', style: ['normal', 'italic'], subsets: ['latin'], variable: '--font-sw-serif', display: 'swap' });
 const sans = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-sw-sans', display: 'swap' });
@@ -106,7 +107,7 @@ function FormSkeleton() {
   );
 }
 
-export default function AuthPage({ redirectUrl }: AuthPageProps) {
+export default function AuthPage({ redirectUrl }: Readonly<AuthPageProps>) {
   const { resolvedTheme } = useTheme();
   const mode = resolvedTheme === 'dark' ? 'dark' : 'light';
   const field = FIELD[mode];
@@ -117,6 +118,7 @@ export default function AuthPage({ redirectUrl }: AuthPageProps) {
 
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4 sm:px-10">
         <Brand />
+        <ThemeToggle />
       </header>
 
       <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 py-3 text-center">

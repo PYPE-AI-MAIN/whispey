@@ -1,0 +1,43 @@
+---
+title: Pipecat agents
+description: How the Agent Config screen differs when an agent runs on Pipecat.
+---
+
+When you create an agent you can choose **Pipecat Agent** as the platform. Its **Agent Config** screen is a close cousin of the LiveKit screen described in the rest of this section.
+
+## What is the same
+
+- The same pickers for the language model, speech-to-text and voice. See [Voice and models](./voice-and-models).
+- A **System Prompt** with variables and a **Settings** button. The first message is called **Opening Message** and can use variables, for example `Hello {{customer_name}}!`. See [Prompt and greeting](./prompt-and-greeting).
+- A **Timezone** setting.
+- **Update Config** and **Talk to Agent**. A **Production agent — read only.** banner shows on production agents.
+
+## What is different
+
+Publishing opens **Save prompt version** with a box labelled **Describe this change** (placeholder "e.g. Fixed greeting for missed calls"). Click **Save & Deploy**. After a save, a window asks **Version saved! Merge to prod?**.
+
+The **Advanced Settings** list is shorter and has its own names.
+
+| Section | Notes |
+|---|---|
+| **Voice Activity Detection (VAD)** | Voice detection. |
+| **Smart Turn Detection** | How the agent decides a turn has ended. |
+| **Turn Management** | Turn handling. |
+| **Call Behavior** | Call-level behaviour. |
+| **Prompt Rule Overrides** | Prompt rule options. |
+| **Tools & Actions** | Tools for the agent. |
+| **Knowledge Base (RAG)** | Search your documents. |
+| **Context Memory** | Remember what the caller said. |
+| **Background Sounds** | Ambient and keyboard sounds. |
+| **Webhook Configuration** | Send call logs to your address. See [Webhook](./webhook). |
+| **Callback Scheduling** | Schedule callbacks. See [Drop-off and callbacks](./drop-off-and-callbacks). |
+
+The settings inside the Pipecat-only sections are not described in this guide yet.
+
+## Knowledge base
+
+Pipecat agents have their own **Knowledge Base** page, opened from the same **Knowledge Base** menu item. It follows the same idea as [Knowledge base](./knowledge-base).
+
+## Phone calls
+
+**Phone Calls** works for Pipecat agents too. See [Phone and web calls](./phone-and-web-calls).

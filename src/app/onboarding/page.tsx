@@ -155,7 +155,7 @@ export default function OnboardingPage() {
                 className="animate-bounce hidden dark:block"
               />
             </a>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">
               Welcome to Whispey!
             </h1>
           </div>
@@ -190,7 +190,7 @@ export default function OnboardingPage() {
                   </Label>
                   <Input
                     id="name"
-                    placeholder="e.g., Acme Corp, My Startup, Personal Projects"
+                    placeholder="e.g., Acme Corp, My Startup"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="h-11 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100"

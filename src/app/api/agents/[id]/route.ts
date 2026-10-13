@@ -1,5 +1,6 @@
 // src/app/api/agents/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+import { isFieldExtractorModel } from '@/config/fieldExtractorModels'
 import { auth } from '@clerk/nextjs/server'
 import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
 import { serviceAuthHeaders } from '@/lib/serviceToken'
@@ -68,6 +69,7 @@ export async function GET(
       agentResponse.field_extractor_prompt = agent.field_extractor_prompt
       agentResponse.field_extractor_keys = agent.field_extractor_keys
       agentResponse.field_extractor_variables = agent.field_extractor_variables || {}
+      agentResponse.field_extractor_model = agent.field_extractor_model ?? null
       agentResponse.flag_rules = agent.flag_rules || null
     }
     if (allowMetrics) {
@@ -91,6 +93,7 @@ const GATED_FIELDS = {
   field_extractor_prompt: 'fieldExtractor',
   field_extractor: 'fieldExtractor',
   field_extractor_variables: 'fieldExtractor',
+  field_extractor_model: 'fieldExtractor',
   flag_rules: 'fieldExtractor', // same sensitivity as field extractor internals
   metrics: 'metrics',
 } as const
@@ -132,6 +135,10 @@ function flagRulesError(body: Record<string, unknown>, existingFieldExtractorPro
 /** Field-specific content checks, beyond the role/visibility gate. */
 function gatedFieldContentError(key: string, body: Record<string, unknown>, existingFieldExtractorPrompt: unknown): string | null {
   if (key === 'flag_rules') return flagRulesError(body, existingFieldExtractorPrompt)
+  // null = the default model; otherwise one of the Azure deployments we offer
+  if (key === 'field_extractor_model' && body.field_extractor_model !== null && !isFieldExtractorModel(body.field_extractor_model)) {
+    return 'Invalid field_extractor_model'
+  }
   return null
 }
 

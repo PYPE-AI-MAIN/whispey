@@ -1,0 +1,110 @@
+// One sidebar, grouped by what a person is trying to do. Ids are file paths under content/.
+const sidebars = {
+  docs: [
+    'index',
+    {
+      type: 'category',
+      label: 'Get started',
+      collapsed: false,
+      items: [
+        'workspace/getting-started',
+        'workflows/quickstart',
+        {type: 'doc', id: 'quick-start', label: 'Connect the SDK'},
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Workflow agents',
+      link: {type: 'doc', id: 'workflows/overview'},
+      items: [
+        'workflows/editor-tour',
+        'workflows/steps',
+        'workflows/connections',
+        'workflows/global-rules',
+        'workflows/variables-and-knowledge',
+        'workflows/voice-and-behavior',
+        'workflows/build-with-ai',
+        'workflows/test-deploy',
+        'workflows/troubleshooting',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Single-prompt agents',
+      link: {type: 'doc', id: 'agent-config/overview'},
+      items: [
+        'agent-config/prompt-and-greeting',
+        'agent-config/voice-and-models',
+        'agent-config/languages',
+        'agent-config/tools-and-actions',
+        'agent-config/interruptions-and-speech',
+        'agent-config/advanced-settings',
+        'agent-config/knowledge-base',
+        'agent-config/pre-call-context',
+        'agent-config/built-in-variables',
+        'agent-config/webhook',
+        'agent-config/drop-off-and-callbacks',
+        'agent-config/publish-and-history',
+        'agent-config/phone-and-web-calls',
+        'agent-config/pipecat-agents',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Ask Pi',
+      link: {type: 'doc', id: 'ask-pi/overview'},
+      items: ['ask-pi/what-you-can-ask', 'ask-pi/tips-and-limits'],
+    },
+    {
+      type: 'category',
+      label: 'Calls and phones',
+      items: ['workspace/phone-numbers', 'workspace/campaigns', 'campaign-logs', 'workspace/do-not-call'],
+    },
+    {
+      type: 'category',
+      label: 'Analytics and quality',
+      link: {type: 'doc', id: 'analytics/overview'},
+      items: [
+        'analytics/reading-your-numbers',
+        'analytics/call-logs',
+        'analytics/custom-charts',
+        'analytics/project-analytics',
+        'analytics/send-events',
+        'analytics/exporting-data',
+        'analytics/traces-and-timeline',
+        'analytics/qa-audit',
+        'analytics/prompt-forge',
+        'analytics/testing-your-agent',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Your workspace',
+      items: [
+        'workspace/organizations',
+        'workspace/team-and-roles',
+        'workspace/api-keys',
+        'workspace/settings-reference',
+        'workspace/billing-and-limits',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Connect other platforms',
+      items: ['integrations/connect-an-agent', 'integrations/vapi', 'integrations/retell'],
+    },
+    {
+      type: 'category',
+      label: 'SDK and reference',
+      items: [
+        {type: 'category', label: 'SDK', items: ['sdk/setup', 'sdk/recording-urls', 'sdk/bug-reporting', 'sdk/healthbench-evaluation', 'sdk/features']},
+        'configuration',
+        'complete-implementation',
+        'observability',
+        'examples',
+      ],
+    },
+  ],
+};
+
+export default sidebars;

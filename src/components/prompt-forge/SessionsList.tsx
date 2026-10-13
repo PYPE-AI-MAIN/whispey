@@ -82,8 +82,8 @@ export function SessionsList({ projectId, agentId }: Props) {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
 
       {/* Navbar */}
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
-        <div className="max-w-5xl mx-auto px-6 py-3 flex items-center justify-between">
+      <div className="px-6 py-4 border-border bg-background border-b flex-shrink-0">
+        <div className="max-w-6xl mx-auto px-8 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push(`/${projectId}/agents/${agentId}`)}
@@ -95,7 +95,7 @@ export function SessionsList({ projectId, agentId }: Props) {
               <div className="h-8 w-8 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                 <FlaskConical className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </div>
-              <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Prompt Forge</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Prompt Forge</h1>
               <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-medium rounded-full">Beta</Badge>
             </div>
           </div>
@@ -108,7 +108,7 @@ export function SessionsList({ projectId, agentId }: Props) {
         </div>
 
         {/* Tab row */}
-        <div className="max-w-5xl mx-auto px-6 flex items-center">
+        <div className="max-w-6xl mx-auto px-8 flex items-center">
           {TABS.map(t => (
             <button
               key={t.key}
@@ -140,14 +140,14 @@ export function SessionsList({ projectId, agentId }: Props) {
             <p className="text-sm font-medium text-gray-400 mb-1">
               {tab === 'persona' ? 'Persona' : 'Test Cases'}
             </p>
-            <p className="text-xs text-gray-600">Coming soon</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Coming soon</p>
           </div>
         </div>
       )}
 
       {/* Forge content */}
       {tab === 'forge' && (
-        <div className="max-w-4xl mx-auto px-10 py-10">
+        <div className="max-w-6xl mx-auto px-8 py-8">
           {error && <p className="text-xs text-red-400 mb-4">{error}</p>}
           <SessionsTable
             sessions={sessions}

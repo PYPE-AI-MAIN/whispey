@@ -4,20 +4,28 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ReactFlowProvider } from '@xyflow/react'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Braces, ClipboardPaste, Copy, Loader2, PhoneIcon, Rocket, Settings2, ShieldCheck, Sparkles } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { useAgentLifecycle } from '@/hooks/useAgentLifecycle'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import { safeParseWorkflow } from '@/lib/workflow/schema'
+import { deployable, stripExpandedEdges } from '@/lib/workflow/globalRules'
 import { hasErrors } from '@/lib/workflow/linter'
 import { WORKFLOW_TEMPLATES, type WorkflowTemplate } from '@/lib/workflow/templates'
 import { WorkflowPalette } from '@/components/workflow/WorkflowPalette'
 import { WorkflowCanvas } from '@/components/workflow/WorkflowCanvas'
 import { Inspector } from '@/components/workflow/Inspector'
+import type { LintIssue } from '@/lib/workflow/linter'
+import { WorkflowHeader } from '@/components/workflow/WorkflowHeader'
+import { PublishDialog } from '@/components/workflow/PublishDialog'
+import { WorkflowHistory } from '@/components/workflow/WorkflowHistory'
+import { WebhookPanel } from '@/components/workflow/WebhookPanel'
+import { useWorkflowDeploy } from '@/hooks/useWorkflowDeploy'
+import { KnowledgePanel } from '@/components/workflow/KnowledgePanel'
+import { GlobalRulesPanel } from '@/components/workflow/GlobalRulesPanel'
 import { VariablesPanel } from '@/components/workflow/VariablesPanel'
 import { AgentSettingsPanel } from '@/components/workflow/AgentSettingsPanel'
 import { TemplatePicker } from '@/components/workflow/TemplatePicker'
@@ -29,12 +37,6 @@ import { LoaderFive } from '@/components/ui/loader-five'
 
 const LOADING_LINES = ['yup, warming things up…', 'stitching your nodes together…', 'almost there, hang tight…']
 import { ImportJsonSheet } from '@/components/workflow/ImportJsonSheet'
-
-/** "3 errors" / "1 warning" label for the lint badge — plural-aware, no nested ternary. */
-function formatLintBadgeLabel(errorCount: number, warningCount: number): string {
-  if (errorCount > 0) return `${errorCount} error${errorCount > 1 ? 's' : ''}`
-  return `${warningCount} warning${warningCount > 1 ? 's' : ''}`
-}
 
 /** Deploy is always available; it just has nothing to send when the canvas is unchanged. */
 function deployButtonTitle(isDirty: boolean): string | undefined {
@@ -93,7 +95,6 @@ function WorkflowPageInner() {
   const isDirty = useWorkflowStore((s) => s.isDirty)
   const lintIssues = useWorkflowStore((s) => s.lintIssues)
   const setWorkflow = useWorkflowStore((s) => s.setWorkflow)
-  const markClean = useWorkflowStore((s) => s.markClean)
   const setActiveNode = useWorkflowStore((s) => s.setActiveNode)
 
   const [needsTemplate, setNeedsTemplate] = useState(false)
@@ -120,7 +121,7 @@ function WorkflowPageInner() {
     if (existing.success) {
       // This is already the deployed config (it came from the agent row we
       // just loaded), not new content waiting to be deployed.
-      setWorkflow(existing.data, { dirty: false })
+      setWorkflow(stripExpandedEdges(existing.data), { dirty: false })
     } else {
       setNeedsTemplate(true)
     }
@@ -144,10 +145,22 @@ function WorkflowPageInner() {
   }
 
   const [variablesOpen, setVariablesOpen] = useState(false)
+  const [rulesOpen, setRulesOpen] = useState(false)
+  const [issuesOpen, setIssuesOpen] = useState(false)
+  const [knowledgeOpen, setKnowledgeOpen] = useState(false)
+  const [serverIssues, setServerIssues] = useState<LintIssue[]>([])
+  // Results from a server check describe the flow as it was then; drop them once it changes.
+  useEffect(() => setServerIssues([]), [workflow])
+  // Steps are added with the + on a step, so the side list stays out of the way until asked for.
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const [voiceChecked, setVoiceChecked] = useState(false)
+  const [tested, setTested] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [deploying, setDeploying] = useState(false)
+  const [publishOpen, setPublishOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [webhookOpen, setWebhookOpen] = useState(false)
 
   // Copy the canvas as workflow JSON — the counterpart to ImportJsonSheet.
   const copyJson = useCallback(async () => {
@@ -191,7 +204,6 @@ function WorkflowPageInner() {
   )
 
   const errorCount = useMemo(() => lintIssues.filter((i) => i.severity === 'error').length, [lintIssues])
-  const warningCount = lintIssues.length - errorCount
 
   const handleValidate = async () => {
     if (!workflow) return
@@ -200,15 +212,21 @@ function WorkflowPageInner() {
       const res = await fetch('/api/workflow/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workflow }),
+        body: JSON.stringify({ workflow: deployable(workflow) }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         toast.error(data?.message || 'Validation request failed')
       } else if (data?.valid === false) {
-        toast.error(`Backend found ${data.issues?.length ?? 'some'} issue(s)`)
+        const found = ((data.issues ?? []) as Array<{ severity: 'error' | 'warning'; message: string; node_id?: string; edge_id?: string }>).map(
+          (i) => ({ severity: i.severity, message: i.message, nodeId: i.node_id ?? undefined, edgeId: i.edge_id ?? undefined })
+        )
+        setServerIssues(found)
+        setIssuesOpen(true)
+        toast.error(`Found ${found.length || 'some'} ${found.length === 1 ? 'problem' : 'problems'} to fix`)
       } else {
-        toast.success('Workflow is valid')
+        setServerIssues([])
+        toast.success('No problems found')
       }
     } catch {
       toast.error('Could not reach the validation endpoint')
@@ -217,45 +235,24 @@ function WorkflowPageInner() {
     }
   }
 
-  // Deploy saves the workflow. Every agent runs on the shared worker pool, which re-reads the stored config
-  // on each call, so a deployed agent is live immediately — there is nothing to start.
-  const handleDeploy = async (): Promise<boolean> => {
-    if (!workflow || !backendAgentName) return false
+  const { deploying, deploy } = useWorkflowDeploy({ backendAgentName, agentId, onDeployed: agentLifecycle.refresh })
+
+  // Deploy asks what changed first; a flow with errors cannot be deployed, so show them instead.
+  const requestDeploy = () => {
+    if (!workflow || !backendAgentName) return
     if (hasErrors(lintIssues)) {
-      const errors = lintIssues.filter((i) => i.severity === 'error')
-      const errorList = errors.map((e) => `• ${e.message}`).join('\n')
-      toast.error(`Fix ${errorCount} error(s):\n${errorList}`, { duration: 6000 })
-      return false
+      // The list opens next to the button: a long multi-line toast ran its lines together.
+      setIssuesOpen(true)
+      toast.error(`Fix ${errorCount} ${errorCount === 1 ? 'problem' : 'problems'} before deploying`)
+      return
     }
-    setDeploying(true)
-    try {
-      const res = await fetch(`/api/workflow/${encodeURIComponent(backendAgentName)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workflow }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (res.ok) {
-        toast.success('Workflow deployed')
-        if (data?.warning) toast.error(data.warning, { duration: 8000 })
-        markClean()
-        agentLifecycle.refresh()
-        return true
-      }
-      toast.error(data?.message || `Deploy failed (${res.status})`)
-      return false
-    } catch {
-      toast.error('Could not reach the deploy endpoint')
-      return false
-    } finally {
-      setDeploying(false)
-    }
+    setPublishOpen(true)
   }
 
   if (!agentId || !projectId) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-900">
-        <p className="text-sm text-gray-600 dark:text-gray-400">Invalid agent or project.</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400">Invalid agent or organization.</p>
       </div>
     )
   }
@@ -295,78 +292,58 @@ function WorkflowPageInner() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      {/* flex-wrap: shadcn Buttons are whitespace-nowrap so they cannot shrink —
-          without it this 10-button row overflows the viewport instead of reflowing. */}
-      <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 shrink-0">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.push(`/${projectId}/agents/${agentId}`)}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{agentRow?.name || 'Workflow'}</h1>
-        {isDirty && <Badge variant="secondary" className="text-[11px]">Unsaved</Badge>}
-
-        <div className="flex-1" />
-
-        {lintIssues.length > 0 && (
-          <Badge
-            variant={errorCount > 0 ? 'destructive' : 'secondary'}
-            className="text-[11px] cursor-help"
-            title={lintIssues.map((i) => `[${i.severity}] ${i.message}`).join('\n')}
-          >
-            {formatLintBadgeLabel(errorCount, warningCount)}
-          </Badge>
-        )}
-
-        <Button
-          variant={chatOpen ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setChatOpen((v) => !v)}
-          className={chatOpen ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
-        >
-          <Sparkles className="h-3.5 w-3.5 mr-1.5" /> Ask Pi
-        </Button>
-        {/* icon-only: the toolbar has no room left for two more labels */}
-        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setImportOpen(true)}
-                title="Paste workflow JSON" aria-label="Paste workflow JSON">
-          <ClipboardPaste className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="outline" size="icon" className="h-8 w-8" onClick={copyJson}
-                title="Copy workflow JSON" aria-label="Copy workflow JSON">
-          <Copy className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setVariablesOpen(true)}>
-          <Braces className="h-3.5 w-3.5 mr-1.5" /> Variables
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
-          <Settings2 className="h-3.5 w-3.5 mr-1.5" /> Agent
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setTalkOpen(true)}
-          disabled={agentLifecycle.status.status !== 'running'}
-          title={agentLifecycle.status.status === 'running' ? undefined : 'Deploy the workflow first to talk to it'}
-        >
-          <PhoneIcon className="h-3.5 w-3.5 mr-1.5" /> Talk to Assistant
-        </Button>
-        <Button variant="outline" size="sm" onClick={handleValidate} disabled={saving}>
-          {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />}
-          Validate
-        </Button>
-        <Button
-          size="sm"
-          onClick={() => handleDeploy()}
-          disabled={deploying || !isDirty}
-          title={deployButtonTitle(isDirty)}
-        >
-          {deploying ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Rocket className="h-3.5 w-3.5 mr-1.5" />}
-          Deploy
-        </Button>
-      </div>
+      <WorkflowHeader
+        name={agentRow?.name || 'Workflow'}
+        onBack={() => router.push(`/${projectId}/agents/${agentId}`)}
+        paletteOpen={paletteOpen}
+        onTogglePalette={() => setPaletteOpen((v) => !v)}
+        serverIssues={serverIssues}
+        issuesOpen={issuesOpen}
+        onIssuesOpenChange={setIssuesOpen}
+        isDirty={isDirty}
+        chatOpen={chatOpen}
+        onToggleChat={() => setChatOpen((v) => !v)}
+        onOpenAgent={() => setSettingsOpen(true)}
+        onOpenVariables={() => setVariablesOpen(true)}
+        onOpenRules={() => setRulesOpen(true)}
+        rulesCount={workflow?.globalRules?.length ?? 0}
+        onOpenKnowledge={() => setKnowledgeOpen(true)}
+        canTest={agentLifecycle.status.status === 'running'}
+        onTest={() => {
+          // The call runs the deployed version, so unsaved edits are not in it.
+          if (isDirty) toast('You have unsaved changes. This test uses the last deployed version. Deploy first to include them.', { duration: 6000 })
+          setTalkOpen(true)
+          setTested(true)
+        }}
+        onValidate={handleValidate}
+        validating={saving}
+        onPaste={() => setImportOpen(true)}
+        onCopy={copyJson}
+        onDeploy={requestDeploy}
+        onOpenHistory={() => setHistoryOpen(true)}
+        onOpenWebhook={() => setWebhookOpen(true)}
+        deploying={deploying}
+        deployTitle={deployButtonTitle(isDirty)}
+      />
 
       <div className="flex-1 flex min-h-0 relative">
-        <CanvasHintBanner />
+        <CanvasHintBanner
+          onAskPi={() => setChatOpen(true)}
+          onShowIssues={() => setIssuesOpen(true)}
+          onOpenAgent={() => { setSettingsOpen(true); setVoiceChecked(true) }}
+          onOpenKnowledge={() => setKnowledgeOpen(true)}
+          onTest={() => {
+            if (agentLifecycle.status.status !== 'running') return toast('Deploy first, then you can test it')
+            setTalkOpen(true)
+            setTested(true)
+          }}
+          deployed={!isDirty && agentLifecycle.status.status === 'running'}
+          tested={tested}
+          voiceChecked={voiceChecked}
+          paletteOpen={paletteOpen}
+        />
         <ReactFlowProvider>
-          <WorkflowPalette />
+          {paletteOpen && <WorkflowPalette />}
           <WorkflowCanvas />
         </ReactFlowProvider>
         <WorkflowChat
@@ -379,6 +356,11 @@ function WorkflowPageInner() {
 
       <Inspector />
       <VariablesPanel open={variablesOpen} onOpenChange={setVariablesOpen} />
+      <GlobalRulesPanel open={rulesOpen} onOpenChange={setRulesOpen} />
+      <PublishDialog open={publishOpen} onOpenChange={setPublishOpen} publishing={deploying} onPublish={async (m) => { if (await deploy(m)) setPublishOpen(false) }} />
+      <WorkflowHistory open={historyOpen} onOpenChange={setHistoryOpen} agentId={agentId} />
+      <WebhookPanel open={webhookOpen} onOpenChange={setWebhookOpen} agentId={agentId} projectId={projectId} />
+      <KnowledgePanel open={knowledgeOpen} onOpenChange={setKnowledgeOpen} agentName={backendAgentName} />
       <ImportJsonSheet open={importOpen} onOpenChange={setImportOpen} />
       <AgentSettingsPanel open={settingsOpen} onOpenChange={setSettingsOpen} />
 

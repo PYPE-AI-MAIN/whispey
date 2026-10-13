@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react'
 import { useUser, SignedIn, useClerk } from '@clerk/nextjs'
-import { useTheme } from 'next-themes'
 import { useHotkeys } from 'react-hotkeys-hook'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -19,8 +18,6 @@ import {
   Users,
   Crown,
   HelpCircle,
-  Sun,
-  Moon,
   LogOut,
   List,
   FileText,
@@ -43,6 +40,9 @@ import {
   PanelRightOpen,
   PanelRightClose,
   BookOpen,
+  MoreHorizontal,
+  Moon,
+  Sun,
   FlaskConical,
   GitBranch,
   Pi
@@ -50,6 +50,9 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import SupportSheet from './SupportPanel'
+import { useTheme } from 'next-themes'
+import NotificationBell from './NotificationBell'
+import { ThemeToggle } from './ThemeToggle'
 import { SidebarConfig } from './SidebarWrapper'
 import OrganizationSwitcher from '../projects/OrganisationSwitcher'
 import ProjectCreationDialog from '../projects/ProjectCreationDialog'
@@ -115,10 +118,10 @@ interface SidebarProps {
 
 // Extended pricing configurations
 const PRICING_CONFIGS: Record<string, { showPricingBox: boolean; plan: string; features: string[]; upgradeText: string; upgradeLink: string }> = {
-  organisations: {
+  organizations: {
     showPricingBox: false,
     plan: 'Free Plan',
-    features: ['5 Organisations', 'Basic Analytics', 'Community Support'],
+    features: ['5 Organizations', 'Basic Analytics', 'Community Support'],
     upgradeText: 'Upgrade to Pro',
     upgradeLink: '/pricing'
   },
@@ -165,7 +168,7 @@ function getUserDisplayName(user: ReturnType<typeof useUser>['user']): string {
 const GROUP_NAME_OVERRIDES: Record<string, string> = {
   'logs': 'LOGS',
   'batch calls': 'Batch Calls',
-  'project settings': 'Project Settings',
+  'organization settings': 'Organization settings',
 }
 
 function formatGroupDisplayName(groupId: string): string {
@@ -200,6 +203,7 @@ function groupNavigationItems(navigation: NavigationItem[]): NavigationGroup[] {
   }
 
   const groupOrder = [
+    'monitor', 'build', 'calls', 'calling',
     'logs', 'agents', 'reports', 'analytics', 'integrations',
     'team', 'settings', 'configuration', 'call configuration', 'batch calls', 'resources',
     'project settings'
@@ -428,6 +432,71 @@ function renderNavigationItem(
   return navItem
 }
 
+type UtilitiesProps = Readonly<{
+  collapsed: boolean
+  mounted: boolean
+  resolvedTheme: string | undefined
+  setTheme: (theme: string) => void
+  onOpenSupport: () => void
+}>
+
+const ICON_BUTTON = 'inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'
+
+/** Docs, help, notifications and theme, always at the top; one menu when the sidebar is collapsed. */
+function SidebarUtilities({ collapsed, mounted, resolvedTheme, setTheme, onOpenSupport }: UtilitiesProps): React.ReactNode {
+  if (collapsed) {
+    const dark = mounted && resolvedTheme === 'dark'
+    const ThemeIcon = dark ? Sun : Moon
+    return (
+      <div className="flex justify-center border-b border-border px-3 py-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" aria-label="Docs, help and theme" className={ICON_BUTTON}>
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="right" align="start">
+            <DropdownMenuItem onClick={() => window.open('https://docs.whispey.pypeai.com', '_blank', 'noopener,noreferrer')}>
+              <BookOpen className="mr-2 h-4 w-4" />Docs
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onOpenSupport}>
+              <HelpCircle className="mr-2 h-4 w-4" />Help Center
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}>
+              <ThemeIcon className="mr-2 h-4 w-4" />{dark ? 'Light mode' : 'Dark mode'}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-1 border-b border-border px-3 py-2">
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <a href="https://docs.whispey.pypeai.com" target="_blank" rel="noopener noreferrer" aria-label="Docs" className={ICON_BUTTON}>
+              <BookOpen className="h-4 w-4" />
+            </a>
+          </TooltipTrigger>
+          <TooltipContent side="bottom"><p>Docs</p></TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button type="button" onClick={onOpenSupport} aria-label="Help Center" className={ICON_BUTTON}>
+              <HelpCircle className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom"><p>Help Center</p></TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <NotificationBell side="bottom" align="start" />
+      <ThemeToggle plain />
+    </div>
+  )
+}
+
 export default function Sidebar({
   config,
   currentPath,
@@ -441,8 +510,8 @@ export default function Sidebar({
   const { user, isLoaded } = useUser()
   const { signOut } = useClerk()
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { resolvedTheme, setTheme } = useTheme()
+  const searchParams = useSearchParams()
   const [mounted, setMounted] = useState(false)
   const [isSupportOpen, setIsSupportOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
@@ -658,6 +727,14 @@ export default function Sidebar({
           {renderContextHeader(config, isCollapsed, isMobile, onMobileClose)}
         </div>
 
+        <SidebarUtilities
+          collapsed={isCollapsed && !isMobile}
+          mounted={mounted}
+          resolvedTheme={resolvedTheme}
+          setTheme={setTheme}
+          onOpenSupport={() => setIsSupportOpen(true)}
+        />
+
         {/* Navigation with Groups */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           <OrganizationSwitcher
@@ -707,8 +784,6 @@ export default function Sidebar({
           isCollapsed={isCollapsed}
           isMobile={isMobile}
           user={user}
-          resolvedTheme={resolvedTheme}
-          setTheme={setTheme}
           isSuperAdmin={isSuperAdmin}
           projectId={projectId}
           router={router}
@@ -716,27 +791,6 @@ export default function Sidebar({
           onSignOut={handleSignOut}
         />
 
-        {/* Help Center */}
-        <div className="border-t border-gray-100 dark:border-gray-800 p-3">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => setIsSupportOpen(true)}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 w-full ${
-                    isCollapsed && !isMobile ? 'justify-center' : ''
-                  }`}
-                >
-                  <HelpCircle className="w-4 h-4 flex-shrink-0" />
-                  {(!isCollapsed || isMobile) && <span>Help Center</span>}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                <p>Help Center</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
       </aside>
 
       {/* Support Sheet */}
@@ -810,8 +864,6 @@ function SidebarUserMenu({
   isCollapsed,
   isMobile,
   user,
-  resolvedTheme,
-  setTheme,
   isSuperAdmin,
   projectId,
   router,
@@ -823,8 +875,6 @@ function SidebarUserMenu({
   isCollapsed: boolean
   isMobile: boolean
   user: ReturnType<typeof useUser>['user']
-  resolvedTheme: ReturnType<typeof useTheme>['resolvedTheme']
-  setTheme: ReturnType<typeof useTheme>['setTheme']
   isSuperAdmin: boolean
   projectId?: string
   router: ReturnType<typeof useRouter>
@@ -860,7 +910,6 @@ function SidebarUserMenu({
                 </p>
               </div>
               <div className="py-1">
-                <ThemeToggleMenuItem mounted={mounted} resolvedTheme={resolvedTheme} setTheme={setTheme} />
                 <SuperAdminSettingsMenuItem isSuperAdmin={isSuperAdmin} projectId={projectId} router={router} />
               </div>
               <DropdownMenuSeparator />
@@ -909,29 +958,6 @@ function UserMenuNameEmail({
         {user?.emailAddresses?.[0]?.emailAddress}
       </p>
     </div>
-  )
-}
-
-function ThemeToggleMenuItem({
-  mounted,
-  resolvedTheme,
-  setTheme
-}: Readonly<{
-  mounted: boolean
-  resolvedTheme: ReturnType<typeof useTheme>['resolvedTheme']
-  setTheme: ReturnType<typeof useTheme>['setTheme']
-}>): React.ReactNode {
-  return (
-    <DropdownMenuItem
-      onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-      className="px-3 py-2 text-xs"
-    >
-      {mounted && resolvedTheme === 'dark' ? (
-        <><Sun className="w-4 h-4 mr-2" />Light Mode</>
-      ) : (
-        <><Moon className="w-4 h-4 mr-2" />Dark Mode</>
-      )}
-    </DropdownMenuItem>
   )
 }
 

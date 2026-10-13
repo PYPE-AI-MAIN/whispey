@@ -93,14 +93,14 @@ const AgentRowSkeleton = () => (
 const AgentSelectionSkeleton = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <main className="max-w-6xl mx-auto px-8 py-8">
+      <div className="max-w-6xl mx-auto px-8 py-8">
         <ToolbarSkeleton />
         <div className="space-y-4">
           {Array.from({ length: 5 }).map((_, index) => (
             <AgentRowSkeleton key={index} />
           ))}
         </div>
-      </main>
+      </div>
     </div>
   )
 }

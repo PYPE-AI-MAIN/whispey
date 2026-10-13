@@ -317,7 +317,7 @@ const STT_PROVIDERS: STTProviders = {
       { id: 'saaras:v4', name: 'Saaras v4', description: 'Supports transcribe, translate, verbatim, translit, codemix' }
     ],
     languages: [
-      { code: 'unknown', name: '🌐 Auto-detect (Saaras only)' },
+      { code: 'unknown', name: 'Auto-detect (Saaras only)' },
       { code: 'hi-IN', name: 'Hindi' },
       { code: 'en-IN', name: 'English' },
       { code: 'bn-IN', name: 'Bengali' },
@@ -337,8 +337,8 @@ const STT_PROVIDERS: STTProviders = {
       { id: 'pulse', name: 'Pulse', description: 'Real-time streaming speech-to-text' }
     ],
     languages: [
-      { code: 'north_indic', name: '🌐 Auto-detect — North Indic (Hindi, Gujarati, Marathi, Bengali, Oriya, English)' },
-      { code: 'multi-south-indic', name: '🌐 Auto-detect — South Indic (Tamil, Telugu, Kannada, Malayalam, English)' },
+      { code: 'north_indic', name: 'Auto-detect — North Indic (Hindi, Gujarati, Marathi, Bengali, Oriya, English)' },
+      { code: 'multi-south-indic', name: 'Auto-detect — South Indic (Tamil, Telugu, Kannada, Malayalam, English)' },
       { code: 'en', name: 'English' },
       { code: 'hi', name: 'Hindi' },
       { code: 'de', name: 'German' },
@@ -979,7 +979,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
         {activeProvider === 'sarvam' && currentModel === 'saaras:v2.5' && (
           <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
             <div className="flex items-start gap-2">
-              <span className="text-lg">🌐</span>
+              
               <div>
                 <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Auto-detects Language</p>
                 <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">

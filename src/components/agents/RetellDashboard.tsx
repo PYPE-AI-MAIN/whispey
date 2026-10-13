@@ -142,7 +142,7 @@ const RetellDashboard: React.FC<RetellDashboardProps> = ({ agentId }) => {
 
               <div>
                 <div className="flex items-center gap-3">
-                  <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  <h1 className="text-2xl font-semibold tracking-tight text-foreground">
                     {retellAgent.agent_name || 'Unnamed Agent'}
                   </h1>
                   {isConnected ? (

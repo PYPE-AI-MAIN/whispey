@@ -342,7 +342,7 @@ const AgentList: React.FC<AgentListProps> = ({
 
   if (viewMode === 'list') {
     return (
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden">
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
         {agents.map((agent, index) => renderAgentItem(agent, index, 'list'))}
       </div>
     )

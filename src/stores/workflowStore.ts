@@ -2,6 +2,11 @@ import { create } from 'zustand'
 import type { Workflow, WorkflowNode, Edge, AgentConfig, VarType } from '@/lib/workflow/schema'
 import { lintWorkflow, type LintIssue, collectAllVarRefs, knownVariableNames } from '@/lib/workflow/linter'
 
+/** A deleted step can no longer be the target of a global rule or one of its listed sources. */
+function withoutNode(rules: Workflow['globalRules'], nodeId: string): Workflow['globalRules'] {
+  return rules.filter((r) => r.target !== nodeId).map((r) => ({ ...r, sources: r.sources.filter((id) => id !== nodeId) }))
+}
+
 interface WorkflowState {
   workflow: Workflow | null
   isDirty: boolean
@@ -121,6 +126,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         ...s.workflow,
         nodes: remaining,
         edges: s.workflow.edges.filter((e) => e.source !== nodeId && e.target !== nodeId),
+        globalRules: withoutNode(s.workflow.globalRules ?? [], nodeId),
         start: s.workflow.start === nodeId ? (remaining[0]?.id ?? '') : s.workflow.start,
       }
       return { ...undo, workflow, isDirty: true, lintIssues: relint(workflow), selectedNodeId: s.selectedNodeId === nodeId ? null : s.selectedNodeId }

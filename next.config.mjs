@@ -1,7 +1,4 @@
-import { createMDX } from 'fumadocs-mdx/next';
 import path from 'path';
-
-const withMDX = createMDX();
 
 /** @type {import('next').NextConfig} */
 const config = {
@@ -30,6 +27,9 @@ const config = {
     removeConsole: false
   },
   skipTrailingSlashRedirect: true,
+  async redirects() {
+    return [{ source: '/docs/:path*', destination: 'https://docs.whispey.pypeai.com/:path*', permanent: true }];
+  },
 };
 
-export default withMDX(config);
+export default config;

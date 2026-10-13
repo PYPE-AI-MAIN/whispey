@@ -1,0 +1,58 @@
+---
+title: Languages
+description: Let the agent switch language in the middle of a call.
+---
+
+Each agent starts a call in one language. That language comes from the STT **Language** and the TTS language you picked in [Voice and models](./voice-and-models).
+
+A **language switch** lets the agent move to another language during the call. For example, a caller may begin in English and ask to continue in Kannada. When the switch fires, Whispey can change the speech-to-text and the voice together.
+
+## Add a language switch
+
+1. In **Advanced Settings**, open **Tools & Actions**.
+2. Click **Add Tool**, then **Language Switcher**.
+3. Fill in the **Add Language Switch** window.
+4. Click **Add Language Switch**.
+
+The switch then appears in the Tools list with its name and language code. Use the pencil to edit it and the bin to delete it.
+
+### Basic
+
+| Field | What to put |
+|---|---|
+| **Tool Name** | A unique name such as `switch_to_kn`. It must start with a letter, use only letters, numbers and underscores, and be at most 30 characters. Spaces become underscores. |
+| **Description (LLM trigger condition)** | When the agent should switch. At least 10 characters. For example "Switch to Kannada when user speaks 3+ Kannada words". |
+| **System Message** | Required. A note added to the model's context after the switch, for example "Language switched to Kannada. Respond ONLY in Kannada." |
+
+The agent's language model reads the description to decide when to use the switch. Write it like a rule.
+
+### STT Configuration
+
+Choose the speech-to-text provider, model and language for the new language. The window offers the same picker you use on the main screen.
+
+The **Switch STT** toggle decides whether this setting is applied when the switch fires. Its help text reads "Apply the STT config when this switch fires".
+
+### TTS Configuration
+
+Choose the voice for the new language. The picker shows your choice, for example the provider, model and language.
+
+The **Switch TTS** toggle decides whether the voice changes when the switch fires.
+
+### Interruption
+
+| Setting | What it does |
+|---|---|
+| **Allow interruptions after switch** | Whether the caller can interrupt the agent after the switch. If you turn it off, the screen warns "Agent cannot be interrupted after language switch". |
+| **Use adaptive interruption detection** | Uses the adaptive method described in [Interruptions and speech](./interruptions-and-speech). |
+| **Flush Signal** | Sends a flush signal at the end of an utterance. |
+
+## Tips
+
+- Add one switch for each language you support. Give each its own name and description.
+- The tool name must be different from every other tool on the agent, including custom tools.
+- Test with [Talk to Assistant](./phone-and-web-calls) by speaking the second language.
+
+## Related
+
+- [Tools and actions](./tools-and-actions)
+- [TTS Switcher](./voice-and-models), which changes only the voice

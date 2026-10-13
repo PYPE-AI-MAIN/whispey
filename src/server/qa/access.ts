@@ -4,8 +4,8 @@
  * Customers see the flagged calls and weekly reviews of agents they can already
  * see (same project role and `visibleAgentIds` check as the rest of the app).
  * Only the QA team changes anything: ticket status, resolution notes and the
- * weekly sheet link. The QA team is the emails in QA_TEAM_EMAILS plus the
- * platform admins in PYPE_ADMINS, and works across every project.
+ * weekly sheet link. The QA team is the 'qa' people on the super admin roster, the
+ * emails in QA_TEAM_EMAILS and the platform admins in PYPE_ADMINS, and works across every project.
  */
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
@@ -21,6 +21,8 @@ export type QaAccess = {
   projectId: string
   /** QA team: may update tickets and attach the weekly sheet. */
   canManage: boolean
+  /** Pype staff (@pypeai.com): may see the internal sheet and assignee. */
+  internal: boolean
   userId: string
   email: string
 }
@@ -29,10 +31,12 @@ export function isQaDenied<T extends { denied: boolean }>(x: T): x is T & QaDeni
   return x.denied === true
 }
 
-function isQaTeamEmail(email: string | null | undefined): boolean {
+async function isQaTeamEmail(email: string | null | undefined): Promise<boolean> {
   if (!email) return false
   const team = process.env.QA_TEAM_EMAILS?.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean) || []
-  return team.includes(email.toLowerCase()) || isPlatformAdmin(email)
+  if (team.includes(email.toLowerCase()) || isPlatformAdmin(email)) return true
+  const { data } = await supabase.from('qa_team_members').select('id').eq('role', 'qa').eq('email', email.toLowerCase()).limit(1)
+  return !!data?.length
 }
 
 /**
@@ -56,7 +60,7 @@ export async function resolveAgentAccess(agentId: string): Promise<QaAccess | Qa
     .maybeSingle()
   if (error || !agent) return { denied: true, status: 404, error: 'Agent not found' }
 
-  const canManage = isQaTeamEmail(email)
+  const canManage = await isQaTeamEmail(email)
   if (!canManage) {
     const access = await getProjectRoleForApi(agent.project_id)
     if (!access?.role) return { denied: true, status: 403, error: 'You do not have access to this project' }
@@ -67,7 +71,8 @@ export async function resolveAgentAccess(agentId: string): Promise<QaAccess | Qa
     }
   }
 
-  return { denied: false, agent, projectId: agent.project_id, canManage, userId, email }
+  const internal = canManage || email.toLowerCase().endsWith('@pypeai.com')
+  return { denied: false, agent, projectId: agent.project_id, canManage, internal, userId, email }
 }
 
 export { supabase as qaDb }

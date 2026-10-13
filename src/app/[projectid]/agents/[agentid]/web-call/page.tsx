@@ -347,21 +347,21 @@ export default function WebCallPage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
               <div className="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <div className="text-2xl mb-2">1️⃣</div>
+                <div className="text-2xl mb-2">1</div>
                 <h4 className="font-medium mb-1">Browser Request</h4>
                 <p className="text-gray-600 dark:text-gray-400">
                   User clicks "Start Call" in the browser
                 </p>
               </div>
               <div className="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <div className="text-2xl mb-2">2️⃣</div>
+                <div className="text-2xl mb-2">2</div>
                 <h4 className="font-medium mb-1">Direct Connection</h4>
                 <p className="text-gray-600 dark:text-gray-400">
                   Browser connects directly to Vapi using public key
                 </p>
               </div>
               <div className="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <div className="text-2xl mb-2">3️⃣</div>
+                <div className="text-2xl mb-2">3</div>
                 <h4 className="font-medium mb-1">Real-time Voice</h4>
                 <p className="text-gray-600 dark:text-gray-400">
                   Voice conversation happens in real-time in the browser

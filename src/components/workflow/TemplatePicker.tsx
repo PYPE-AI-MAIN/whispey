@@ -21,6 +21,13 @@ const COLORS: Record<string, string> = {
   'ortho-triage': 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400',
 }
 
+const EXAMPLES = [
+  'Book appointments for a clinic',
+  'Call leads and ask if they want a demo',
+  'Remind patients about a health checkup',
+  'Answer questions from our FAQ',
+]
+
 export function TemplatePicker({
   onPick,
   onStartWithPrompt,
@@ -67,6 +74,19 @@ export function TemplatePicker({
           >
             <ArrowUp className="w-4 h-4" />
           </Button>
+        </div>
+
+        <div className="-mt-5 mb-8 flex flex-wrap gap-2">
+          {EXAMPLES.map((e) => (
+            <button
+              key={e}
+              type="button"
+              onClick={() => setPrompt(e)}
+              className="rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              {e}
+            </button>
+          ))}
         </div>
 
         <div className="flex items-center gap-3 mb-4">

@@ -176,17 +176,14 @@ export default function SimplifiedSipManagement() {
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800">
+      <div className="px-6 py-4 border-border bg-background border-b">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
               <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">Phone Settings</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Manage phone numbers and assignments
-              </p>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">Phone Settings</h1>
             </div>
           </div>
           

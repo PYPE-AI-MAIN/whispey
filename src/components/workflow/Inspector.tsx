@@ -15,6 +15,8 @@ import type { WorkflowNode, Edge, EdgeKind, Workflow } from '@/lib/workflow/sche
 import { lintWorkflow } from '@/lib/workflow/linter'
 import { NODE_REGISTRY } from './nodeRegistry'
 import { LogicConditionField } from './LogicConditionField'
+import { BranchEditor, StepGuide } from './StepGuide'
+import { explainIssue } from '@/lib/workflow/plainIssues'
 import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
 import SelectTTS from '@/components/agents/AgentConfig/SelectTTSDialog'
 
@@ -35,7 +37,10 @@ function OutboundTrunkHint({ workflow }: Readonly<{ workflow: Workflow | null }>
 /** Caller turns a speaking node may take without finding a way forward before it moves to its catch-all edge. */
 function MaxTurnsField({ value, onChange }: Readonly<{ value?: number | null; onChange: (v: number | undefined) => void }>) {
   return (
-    <Field label="Max caller turns before moving on (default 8)">
+    <details>
+      <summary className="cursor-pointer text-xs text-gray-500 dark:text-gray-400">Advanced</summary>
+      <div className="pt-2">
+    <Field label="Give up after this many replies (default 8)" hint="If the caller never gives an answer that moves the call on, the agent takes the default next step.">
       <Input
         type="number"
         min={1}
@@ -48,6 +53,8 @@ function MaxTurnsField({ value, onChange }: Readonly<{ value?: number | null; on
         className="h-7 text-xs"
       />
     </Field>
+      </div>
+    </details>
   )
 }
 
@@ -76,11 +83,12 @@ function JsonField({ label, value, onChange }: Readonly<{ label: string; value: 
   )
 }
 
-function Field({ label, children }: Readonly<{ label: string; children: React.ReactNode }>) {
+function Field({ label, hint, children }: Readonly<{ label: string; hint?: string; children: React.ReactNode }>) {
   return (
     <div className="space-y-1.5">
       <Label className="text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</Label>
       {children}
+      {hint && <p className="text-[11px] text-gray-500 dark:text-gray-400">{hint}</p>}
     </div>
   )
 }
@@ -92,10 +100,10 @@ function ToolsField({
 }: Readonly<{ workflow: Workflow | null; functions: string[]; onChange: (fns: string[]) => void }>) {
   const functionNodes = (workflow?.nodes ?? []).filter((n) => n.type === 'function')
   return (
-    <Field label="Tools this step can call">
+    <Field label="Actions the agent can take here">
       {functionNodes.length === 0 ? (
         <p className="text-[11px] text-gray-500 dark:text-gray-400">
-          No Function nodes in this workflow yet — add one, then check it here to make it callable.
+          No "Call an API" steps yet. Add one from More nodes, then tick it here so the agent can use it during this step.
         </p>
       ) : (
         <div className="space-y-1.5">
@@ -125,25 +133,25 @@ function NodeFields({
     case 'conversation':
       return (
         <>
-          <Field label="Prompt">
+          <Field label="What the agent should do here" hint="Write it like instructions to a new colleague: what to say, what to find out, when to move on.">
             <Textarea value={node.prompt ?? ''} onChange={(e) => patch({ prompt: e.target.value } as any)} className="min-h-[120px]" />
           </Field>
-          <Field label="Static text (optional — skips the LLM)">
+          <Field label="Exact words to say (optional)" hint="If you fill this in, the agent says exactly this and does not improvise.">
             <Textarea value={node.staticText ?? ''} onChange={(e) => patch({ staticText: e.target.value } as any)} />
           </Field>
-          <div className="flex items-center justify-between">
-            <Label className="text-xs">Skip user response</Label>
+          <div className="flex items-center justify-between gap-3">
+            <Label className="text-xs">Move on without waiting for a reply</Label>
             <Switch checked={!!node.skipUserResponse} onCheckedChange={(v) => patch({ skipUserResponse: v } as any)} />
           </div>
-          <div className="flex items-center justify-between">
-            <Label className="text-xs">Block interruptions</Label>
+          <div className="flex items-center justify-between gap-3">
+            <Label className="text-xs">Do not let the caller interrupt</Label>
             <Switch checked={!!node.blockInterruptions} onCheckedChange={(v) => patch({ blockInterruptions: v } as any)} />
           </div>
           <MaxTurnsField value={node.maxTurns} onChange={(v) => patch({ maxTurns: v } as any)} />
           <ToolsField workflow={workflow} functions={node.functions ?? []} onChange={(fns) => patch({ functions: fns } as any)} />
-          <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
-            <Label className="text-xs text-gray-500 dark:text-gray-400">Per-node overrides (optional)</Label>
-            <Field label="LLM override">
+          <details className="space-y-2 border-t border-gray-100 pt-2 dark:border-gray-800">
+            <summary className="cursor-pointer text-xs text-gray-500 dark:text-gray-400">Different voice or model for this step only (optional)</summary>
+            <Field label="Model">
               <ModelSelector
                 selectedProvider={node.model?.name ?? ''}
                 selectedModel={node.model?.model ?? ''}
@@ -153,7 +161,7 @@ function NodeFields({
                 onTemperatureChange={(temperature) => patch({ model: { ...node.model, name: node.model?.name || 'openai', temperature } } as any)}
               />
             </Field>
-            <Field label="Voice override">
+            <Field label="Voice">
               <SelectTTS
                 selectedVoice={node.voice?.voice_id ?? ''}
                 initialProvider={node.voice?.name ?? undefined}
@@ -164,32 +172,32 @@ function NodeFields({
                 }
               />
             </Field>
-          </div>
+          </details>
         </>
       )
     case 'extract_variable': {
       const extractions = node.extractions ?? []
       return (
         <>
-          <Field label="Prompt">
+          <Field label="What to ask" hint="The agent asks for these details, then moves on once it has all of them.">
             <Textarea value={node.prompt ?? ''} onChange={(e) => patch({ prompt: e.target.value } as any)} />
           </Field>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs">Extractions</Label>
+              <Label className="text-xs">Details to collect</Label>
               <Button
                 size="sm"
                 variant="outline"
                 className="h-7 text-[11px]"
                 onClick={() => patch({ extractions: [...extractions, { variable: '', type: 'string' }] } as any)}
               >
-                + Add
+                + Add detail
               </Button>
             </div>
             {extractions.map((ex, i) => (
               <div key={`${ex.variable}-${i}`} className="flex gap-1 items-start">
                 <Input
-                  placeholder="variable"
+                  placeholder="name, e.g. phone_number"
                   value={ex.variable}
                   onChange={(e) => {
                     const next = [...extractions]
@@ -199,7 +207,7 @@ function NodeFields({
                   className="h-7 text-xs"
                 />
                 <Input
-                  placeholder="description"
+                  placeholder="what to listen for"
                   value={ex.description ?? ''}
                   onChange={(e) => {
                     const next = [...extractions]
@@ -208,6 +216,17 @@ function NodeFields({
                   }}
                   className="h-7 text-xs"
                 />
+                <label className="flex h-7 shrink-0 items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400" title="If off, the agent will not hold the call back waiting for this detail">
+                  <Checkbox
+                    checked={ex.required !== false}
+                    onCheckedChange={(v) => {
+                      const next = [...extractions]
+                      next[i] = { ...ex, required: v === true }
+                      patch({ extractions: next } as any)
+                    }}
+                  />
+                  Needed
+                </label>
                 <Button
                   size="icon"
                   variant="ghost"
@@ -224,16 +243,12 @@ function NodeFields({
       )
     }
     case 'logic_split':
-      return (
-        <p className="text-xs text-gray-500 dark:text-gray-400">
-          No fields here — add outgoing edges of kind &quot;condition&quot; or &quot;logic&quot; from the edge inspector to define branches.
-        </p>
-      )
+      return workflow ? <BranchEditor node={node} workflow={workflow} /> : null
     case 'function':
       return (
         <>
           <div className="grid grid-cols-3 gap-2">
-            <Field label="Method">
+            <Field label="Request type">
               <Select value={node.method} onValueChange={(v) => patch({ method: v as typeof node.method })}>
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -244,17 +259,17 @@ function NodeFields({
               </Select>
             </Field>
             <div className="col-span-2">
-              <Field label="URL">
+              <Field label="Web address (URL)">
                 <Input value={node.url} onChange={(e) => patch({ url: e.target.value } as any)} placeholder="https://... or ${ENV_NAME}" />
               </Field>
             </div>
           </div>
-          <JsonField label="Headers (JSON)" value={node.headers} onChange={(v) => patch({ headers: v } as any)} />
-          <JsonField label="Body (JSON)" value={node.body} onChange={(v) => patch({ body: v } as any)} />
-          <Field label="Wait message (spoken while the call runs)">
+          <JsonField label="Headers (advanced, JSON)" value={node.headers} onChange={(v) => patch({ headers: v } as any)} />
+          <JsonField label="Data to send (JSON)" value={node.body} onChange={(v) => patch({ body: v } as any)} />
+          <Field label="Say this while waiting (optional)">
             <Input value={node.waitMessage ?? ''} onChange={(e) => patch({ waitMessage: e.target.value } as any)} />
           </Field>
-          <Field label="Save result to variable">
+          <Field label="Remember the result as (optional)" hint="Give it a name, then use {{name}} in later steps.">
             <Input value={node.saveAs ?? ''} onChange={(e) => patch({ saveAs: e.target.value } as any)} />
           </Field>
         </>
@@ -262,50 +277,51 @@ function NodeFields({
     case 'knowledge':
       return (
         <>
-          <Field label="Query"><Input value={node.query ?? ''} onChange={(e) => patch({ query: e.target.value } as any)} placeholder="{{var}} or blank = last user message" /></Field>
-          <Field label="Knowledge base agent ID (blank = this agent)"><Input value={node.knowledgeBase ?? ''} onChange={(e) => patch({ knowledgeBase: e.target.value } as any)} placeholder="this agent" /></Field>
-          <Field label="Top K"><Input type="number" value={node.topK} onChange={(e) => patch({ topK: Number(e.target.value) } as any)} /></Field>
-          <Field label="Save result to variable"><Input value={node.saveAs ?? ''} onChange={(e) => patch({ saveAs: e.target.value } as any)} /></Field>
+          <p className="text-xs text-muted-foreground">Looks things up in your documents. Most flows do not need this step: upload documents under Setup, then Knowledge base, and the agent can use them on any step.</p>
+          <Field label="What to search for" hint="Leave blank to search for what the caller just said."><Input value={node.query ?? ''} onChange={(e) => patch({ query: e.target.value } as any)} placeholder="{{var}} or blank = last user message" /></Field>
+          <Field label="Use another agent's documents (leave blank for this agent)"><Input value={node.knowledgeBase ?? ''} onChange={(e) => patch({ knowledgeBase: e.target.value } as any)} placeholder="this agent" /></Field>
+          <Field label="How many results to use"><Input type="number" value={node.topK} onChange={(e) => patch({ topK: Number(e.target.value) } as any)} /></Field>
+          <Field label="Remember the result as (optional)" hint="Give it a name, then use {{name}} in later steps."><Input value={node.saveAs ?? ''} onChange={(e) => patch({ saveAs: e.target.value } as any)} /></Field>
         </>
       )
     case 'call_transfer':
       return (
         <>
-          <Field label="Transfer to"><Input value={node.transferTo} onChange={(e) => patch({ transferTo: e.target.value } as any)} placeholder="+1..." /></Field>
-          <Field label="Mode">
+          <Field label="Phone number to hand the call to"><Input value={node.transferTo} onChange={(e) => patch({ transferTo: e.target.value } as any)} placeholder="e.g. +91 98765 43210" /></Field>
+          <Field label="How to hand over">
             <Select value={node.mode} onValueChange={(v) => patch({ mode: v as typeof node.mode })}>
               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="cold">Cold (ends call)</SelectItem>
-                <SelectItem value="warm">Warm (stays connected)</SelectItem>
+                <SelectItem value="cold">Hand over and leave the call</SelectItem>
+                <SelectItem value="warm">Stay on the line until they answer</SelectItem>
               </SelectContent>
             </Select>
           </Field>
-          <Field label="Message before transfer"><Textarea value={node.message ?? ''} onChange={(e) => patch({ message: e.target.value } as any)} /></Field>
+          <Field label="Say this before handing over"><Textarea value={node.message ?? ''} onChange={(e) => patch({ message: e.target.value } as any)} /></Field>
           <OutboundTrunkHint workflow={workflow} />
         </>
       )
     case 'press_digit':
       return (
         <>
-          <Field label="Mode">
+          <Field label="What to do">
             <Select value={node.mode} onValueChange={(v) => patch({ mode: v as typeof node.mode })}>
               <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="send">Send digits</SelectItem>
-                <SelectItem value="collect">Collect digits</SelectItem>
+                <SelectItem value="send">Press keys for the caller</SelectItem>
+                <SelectItem value="collect">Collect keys the caller types</SelectItem>
               </SelectContent>
             </Select>
           </Field>
           {node.mode === 'send' ? (
-            <Field label="Digits to send"><Input value={node.digits ?? ''} onChange={(e) => patch({ digits: e.target.value } as any)} /></Field>
+            <Field label="Keys to press"><Input value={node.digits ?? ''} onChange={(e) => patch({ digits: e.target.value } as any)} /></Field>
           ) : (
             <>
-              <Field label="Number of digits to collect"><Input type="number" value={node.numDigits ?? ''} onChange={(e) => patch({ numDigits: Number(e.target.value) } as any)} /></Field>
+              <Field label="How many keys to collect"><Input type="number" value={node.numDigits ?? ''} onChange={(e) => patch({ numDigits: Number(e.target.value) } as any)} /></Field>
               <Field label="Timeout (seconds)"><Input type="number" value={node.timeout ?? 15} onChange={(e) => patch({ timeout: Number(e.target.value) } as any)} /></Field>
             </>
           )}
-          <Field label="Save result to variable"><Input value={node.saveAs ?? ''} onChange={(e) => patch({ saveAs: e.target.value } as any)} /></Field>
+          <Field label="Remember the result as (optional)" hint="Give it a name, then use {{name}} in later steps."><Input value={node.saveAs ?? ''} onChange={(e) => patch({ saveAs: e.target.value } as any)} /></Field>
         </>
       )
     case 'sms':
@@ -329,14 +345,14 @@ function NodeFields({
     case 'subagent':
       return (
         <>
-          <Field label="Prompt">
+          <Field label="Who this is and what to do" hint="Same as a conversation step, but with its own personality, voice and instructions.">
             <Textarea value={node.prompt} onChange={(e) => patch({ prompt: e.target.value } as any)} className="min-h-[140px]" />
           </Field>
           <MaxTurnsField value={node.maxTurns} onChange={(v) => patch({ maxTurns: v } as any)} />
           <ToolsField workflow={workflow} functions={node.functions ?? []} onChange={(fns) => patch({ functions: fns } as any)} />
-          <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
-            <Label className="text-xs text-gray-500 dark:text-gray-400">Per-node overrides (optional)</Label>
-            <Field label="LLM override">
+          <details className="space-y-2 border-t border-gray-100 pt-2 dark:border-gray-800">
+            <summary className="cursor-pointer text-xs text-gray-500 dark:text-gray-400">Different voice or model for this step only (optional)</summary>
+            <Field label="Model">
               <ModelSelector
                 selectedProvider={node.model?.name ?? ''}
                 selectedModel={node.model?.model ?? ''}
@@ -346,7 +362,7 @@ function NodeFields({
                 onTemperatureChange={(temperature) => patch({ model: { ...node.model, name: node.model?.name || 'openai', temperature } } as any)}
               />
             </Field>
-            <Field label="Voice override">
+            <Field label="Voice">
               <SelectTTS
                 selectedVoice={node.voice?.voice_id ?? ''}
                 initialProvider={node.voice?.name ?? undefined}
@@ -357,16 +373,16 @@ function NodeFields({
                 }
               />
             </Field>
-          </div>
+          </details>
         </>
       )
     case 'mcp':
       return (
         <>
-          <Field label="Server"><Input value={node.server} onChange={(e) => patch({ server: e.target.value } as any)} /></Field>
+          <Field label="Tool server"><Input value={node.server} onChange={(e) => patch({ server: e.target.value } as any)} /></Field>
           <Field label="Tool"><Input value={node.tool} onChange={(e) => patch({ tool: e.target.value } as any)} /></Field>
-          <JsonField label="Args (JSON)" value={node.args} onChange={(v) => patch({ args: v } as any)} />
-          <Field label="Save result to variable"><Input value={node.saveAs ?? ''} onChange={(e) => patch({ saveAs: e.target.value } as any)} /></Field>
+          <JsonField label="Inputs for the tool (JSON)" value={node.args} onChange={(v) => patch({ args: v } as any)} />
+          <Field label="Remember the result as (optional)" hint="Give it a name, then use {{name}} in later steps."><Input value={node.saveAs ?? ''} onChange={(e) => patch({ saveAs: e.target.value } as any)} /></Field>
         </>
       )
     case 'code':
@@ -381,21 +397,21 @@ function NodeFields({
               </SelectContent>
             </Select>
           </Field>
-          <Field label="Source">
+          <Field label="Code" hint="Collected details are available as variables.name.">
             <Textarea value={node.source} onChange={(e) => patch({ source: e.target.value } as any)} className="font-mono text-xs min-h-[160px]" />
           </Field>
-          <Field label="Save result to variable"><Input value={node.saveAs ?? ''} onChange={(e) => patch({ saveAs: e.target.value } as any)} /></Field>
+          <Field label="Remember the result as (optional)" hint="Give it a name, then use {{name}} in later steps."><Input value={node.saveAs ?? ''} onChange={(e) => patch({ saveAs: e.target.value } as any)} /></Field>
         </>
       )
     case 'ending':
       return (
-        <Field label="Farewell message">
+        <Field label="Last thing to say (optional)">
           <Textarea value={node.message ?? ''} onChange={(e) => patch({ message: e.target.value } as any)} />
         </Field>
       )
     case 'note':
       return (
-        <Field label="Note text">
+        <Field label="Note (only people editing see this)">
           <Textarea value={node.text} onChange={(e) => patch({ text: e.target.value } as any)} />
         </Field>
       )
@@ -404,29 +420,40 @@ function NodeFields({
   }
 }
 
+const EDGE_KINDS: Record<EdgeKind, { label: string; help: string }> = {
+  always: { label: 'Next step', help: 'Go here as soon as the caller has replied to this step. To wait for something specific, use "When the caller says something" instead.' },
+  condition: { label: 'When the caller says something', help: 'Go here when what the caller says matches the description below.' },
+  logic: { label: 'When a saved value matches', help: 'Go here when a variable matches a rule, like age > 18. No AI involved.' },
+  fallback: { label: 'Otherwise (automatic)', help: 'Used when none of the other connections apply. The system handles this for you, so you rarely need to touch it.' },
+}
+
 function EdgeFields({ edge, workflow, patch }: Readonly<{ edge: Edge; workflow: Workflow; patch: (p: Partial<Edge>) => void }>) {
+  const nameOf = (id: string) => workflow.nodes.find((n) => n.id === id)?.name || id
   return (
     <>
-      <Field label="Kind">
+      <p className="text-sm text-foreground">
+        From <strong>{nameOf(edge.source)}</strong> to <strong>{nameOf(edge.target)}</strong>
+      </p>
+      <Field label="When does the call go here?">
         <Select value={edge.kind} onValueChange={(v) => patch({ kind: v as EdgeKind })}>
           <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="always">Always</SelectItem>
-            <SelectItem value="condition">Condition (LLM-judged)</SelectItem>
-            <SelectItem value="logic">Logic (expression)</SelectItem>
-            <SelectItem value="fallback">Fallback (on error)</SelectItem>
+            {(Object.keys(EDGE_KINDS) as EdgeKind[]).filter((k) => k !== 'fallback' || edge.kind === 'fallback').map((k) => (
+              <SelectItem key={k} value={k}>{EDGE_KINDS[k].label}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
+        <p className="mt-1 text-xs text-muted-foreground">{EDGE_KINDS[edge.kind].help}</p>
       </Field>
-      {edge.kind === 'condition' && (
-        <Field label="Condition">
+      {(edge.kind === 'condition' || edge.kind === 'fallback') && (
+        <Field label={edge.kind === 'condition' ? 'Describe when' : 'Describe when (optional)'}>
           <Textarea value={edge.condition ?? ''} onChange={(e) => patch({ condition: e.target.value })} placeholder="e.g. the caller wants to cancel" />
         </Field>
       )}
       {edge.kind === 'logic' && (
         <LogicConditionField key={edge.id} workflow={workflow} value={edge.expression ?? ''} onChange={(expression) => patch({ expression })} />
       )}
-      <Field label="Label (optional)">
+      <Field label="Short name on the canvas (optional)">
         <Input value={edge.label ?? ''} onChange={(e) => patch({ label: e.target.value })} />
       </Field>
     </>
@@ -473,10 +500,11 @@ export function Inspector() {
                 {NODE_REGISTRY[node.type]?.label}
                 {node.id === workflow?.start && <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />}
               </SheetTitle>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Node settings — id &ldquo;{node.id}&rdquo;</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{NODE_REGISTRY[node.type]?.useCase}</p>
             </SheetHeader>
             <div className="p-4">
               <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/[0.03] p-4 space-y-4">
+                {workflow && <StepGuide node={node} workflow={workflow} />}
                 {nodeIssues.length > 0 && (
                   <div className="space-y-1">
                     {nodeIssues.map((iss) => (
@@ -488,14 +516,17 @@ export function Inspector() {
                             : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
                         }`}
                       >
-                        {iss.severity === 'error' ? '⛔ ' : '⚠️ '}
-                        {iss.message}
+                        {iss.severity === 'error' ? 'Fix: ' : 'Check: '}
+                        {explainIssue(iss, workflow)}
                       </p>
                     ))}
                   </div>
                 )}
                 <Field label="Name">
                   <Input value={node.name ?? ''} onChange={(e) => updateNode(node.id, { name: e.target.value })} placeholder={node.type} />
+                </Field>
+                <Field label="Stage (optional, groups steps in the Outline)">
+                  <Input value={node.stage ?? ''} onChange={(e) => updateNode(node.id, { stage: e.target.value })} placeholder="e.g. Greeting, Pitch, Close" />
                 </Field>
                 {/* key=node.id: JsonField's internal text state must reset when
                     switching selected nodes, or it shows the previous node's JSON. */}
@@ -505,11 +536,11 @@ export function Inspector() {
             <SheetFooter className="flex-row justify-between border-t border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/[0.02]">
               {node.id !== workflow?.start && (
                 <Button variant="outline" size="sm" onClick={() => setStart(node.id)}>
-                  Set as start
+                  Make this the first step
                 </Button>
               )}
               <Button variant="destructive" size="sm" onClick={() => removeNode(node.id)}>
-                <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete node
+                <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete step
               </Button>
             </SheetFooter>
           </>
@@ -517,10 +548,8 @@ export function Inspector() {
         {edge && workflow && (
           <>
             <SheetHeader className="border-b border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/[0.02] gap-0.5">
-              <SheetTitle className="text-base">Edge</SheetTitle>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Controls when the workflow takes this path from &ldquo;{edge.source}&rdquo; to &ldquo;{edge.target}&rdquo;
-              </p>
+              <SheetTitle className="text-base">Connection</SheetTitle>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Decides when the call moves from one step to the next.</p>
             </SheetHeader>
             <div className="p-4">
               <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/[0.03] p-4 space-y-4">
@@ -529,7 +558,7 @@ export function Inspector() {
             </div>
             <SheetFooter className="border-t border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/[0.02]">
               <Button variant="destructive" size="sm" onClick={() => removeEdge(edge.id)}>
-                <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete edge
+                <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete connection
               </Button>
             </SheetFooter>
           </>

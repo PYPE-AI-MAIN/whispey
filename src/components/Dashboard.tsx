@@ -30,10 +30,11 @@ import {
 } from 'lucide-react'
 import AnalyticsCanvas from './analytics/AnalyticsCanvas'
 import CallLogs from './calls/CallLogs'
+import CallLogsV2 from './calls/v2/CallLogsV2'
 import CampaignLogs from './campaigns/CampaignLogs'
-import Header from '@/components/shared/Header'
 import { useSupabaseQuery } from '../hooks/useSupabase'
 import FieldExtractorDialog from './FieldExtractorLogs'
+import { modelChange } from '@/config/fieldExtractorModels'
 import MetricsDialog from './MetricsDialog'
 import { AlertTriangle, Link as LinkIcon } from 'lucide-react'
 import QuickStartGuide from './QuickStartGuide'
@@ -43,7 +44,9 @@ import { canShowOrgSection } from '@/types/visibility'
 import { useAgentById } from '@/hooks/useAgentById'
 import AgentHeaderIdentity from './agents/AgentHeaderIdentity'
 import { agentDisplayName } from '@/lib/agentDisplayName'
-import { useCallLogsStore, DEFAULT_DATE_FILTER } from '@/stores/callLogsStore'
+import { useCallLogsStore, DEFAULT_DATE_FILTER, scopeCallLogsStoreToUser } from '@/stores/callLogsStore'
+import { useUser } from '@clerk/nextjs'
+import { useCallLogsViewMode } from '@/hooks/useCallLogsViewMode'
 
 interface DashboardProps {
   agentId: string
@@ -106,7 +109,7 @@ const periodMobilePillClass = (active: boolean, locked: boolean) => {
   return 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
 }
 
-const PERIOD_LOCKED_MESSAGE = 'Clear the manual filter to use Period'
+const PERIOD_LOCKED_MESSAGE = 'Clear the date filter to use Period'
 
 interface PeriodOptionButtonProps {
   readonly onClick: () => void
@@ -161,7 +164,17 @@ function NoCallsMessage() {
   )
 }
 
+// Renders the legacy or the redesigned Call Logs page, per the user's saved choice.
+// Both take the same props, so switching never changes what data is loaded.
+function CallLogsForMode(props: React.ComponentProps<typeof CallLogs>) {
+  const [viewMode] = useCallLogsViewMode()
+  return viewMode === 'new' ? <CallLogsV2 {...props} /> : <CallLogs {...props} />
+}
+
 const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
+  // Call Logs preferences (filters, columns, view) are saved per signed-in person.
+  const { user } = useUser()
+  useEffect(() => { if (user?.id) scopeCallLogsStoreToUser(user.id) }, [user?.id])
   const router = useRouter()
   const searchParams = useSearchParams()
   // projectid comes from the URL path — always available, no async needed
@@ -214,7 +227,8 @@ const Dashboard: React.FC<DashboardProps> = ({ agentId }) => {
   // act independently (see useCallLogsData). While a manual filter is active on the
   // Logs tab, lock Period so it can't be changed there — Overview is unaffected since
   // this only engages for activeTab === 'logs'.
-  const isPeriodLocked = activeTab === 'logs' && (filtersByAgent[agentId]?.length ?? 0) > 0
+  // Period still applies alongside filters; only a filter on the date itself takes its place.
+  const isPeriodLocked = activeTab === 'logs' && (filtersByAgent[agentId] ?? []).some((f) => f.type === 'filter' && f.column === 'call_started_at')
   
   const quickFilters = [
     { id: '1d', label: '1D', days: 1 },
@@ -297,14 +311,14 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
     
     if (agent && !agent.project_id) {
       return {
-        project: 'No Project',
+        project: 'No Organization',
         item: agentDisplayName(agent)
       }
     }
     
     if (agent && !project) {
       return {
-        project: 'Unknown Project',
+        project: 'Unknown Organization',
         item: agentDisplayName(agent)
       }
     }
@@ -531,7 +545,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
 
         <div className={activeTab === 'logs' ? 'flex flex-col h-full' : 'hidden'}>
           {agent && (
-            <CallLogs
+            <CallLogsForMode
               project={project}
               agent={agent}
               onBack={handleBack}
@@ -771,19 +785,21 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                     
                     {/* Field Extractor & Metrics - skeleton while agent loading; visibility-controlled */}
                     <div className="flex gap-2">
-                      {agentLoading ? (
+                      {agentLoading && (
                         <>
                           <Skeleton className="h-9 w-32 rounded-lg" />
                           <Skeleton className="h-9 w-24 rounded-lg" />
                         </>
-                      ) : agent && (canSeeFieldExtractor || canSeeMetrics) ? (
+                      )}
+                      {!agentLoading && agent && (canSeeFieldExtractor || canSeeMetrics) && (
                         <>
                           {canSeeFieldExtractor && (
                           <FieldExtractorDialog
                             initialData={JSON.parse(agent?.field_extractor_prompt || '[]')}
                             initialVariables={(agent as any)?.field_extractor_variables || {}}
                             isEnabled={!!agent?.field_extractor}
-                            onSave={async (data, enabled, variables) => {
+                            initialModel={agent?.field_extractor_model}
+                            onSave={async (data, enabled, variables, model) => {
                               const res = await fetch(`/api/agents/${agent.id}`, {
                                 method: 'PATCH',
                                 headers: { 'Content-Type': 'application/json' },
@@ -791,6 +807,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                                   field_extractor_prompt: JSON.stringify(data),
                                   field_extractor: enabled,
                                   field_extractor_variables: variables,
+                                  ...modelChange(agent?.field_extractor_model, model),
                                 }),
                               })
                               const j = (await res.json()) as { error?: string }
@@ -823,7 +840,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                           />
                           )}
                         </>
-                      ) : null}
+                      )}
                     </div>
                   </>
                 )}
@@ -951,7 +968,8 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                     initialData={JSON.parse(agent?.field_extractor_prompt || '[]')}
                     initialVariables={(agent as any)?.field_extractor_variables || {}}
                     isEnabled={!!agent?.field_extractor}
-                    onSave={async (data, enabled, variables) => {
+                    initialModel={agent?.field_extractor_model}
+                    onSave={async (data, enabled, variables, model) => {
                       const res = await fetch(`/api/agents/${agent.id}`, {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
@@ -959,6 +977,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                           field_extractor_prompt: JSON.stringify(data),
                           field_extractor: enabled,
                           field_extractor_variables: variables,
+                          ...modelChange(agent?.field_extractor_model, model),
                         }),
                       })
                       const j = (await res.json()) as { error?: string }

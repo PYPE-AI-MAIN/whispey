@@ -7,6 +7,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { SessionsList } from './SessionsList'
 
+// Placeholder rows while access is checked; static ids so they key stably.
+const SKELETON_ROWS = ['row-1', 'row-2', 'row-3', 'row-4']
+
 export function SessionsGuard() {
   const params = useParams()
   const router = useRouter()
@@ -59,8 +62,8 @@ function GuardSkeleton() {
         <div className="max-w-4xl mx-auto px-8 h-9" />
       </div>
       <div className="max-w-4xl mx-auto px-8 py-8 flex flex-col gap-2">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="flex items-center gap-4 px-4 py-3.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl">
+        {SKELETON_ROWS.map(id => (
+          <div key={id} className="flex items-center gap-4 px-4 py-3.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl">
             <Skeleton className="w-9 h-9 rounded-lg" />
             <div className="flex-1">
               <Skeleton className="h-3.5 w-48 mb-2" />

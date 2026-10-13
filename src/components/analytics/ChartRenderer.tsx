@@ -243,6 +243,13 @@ function Kpi({ rows, spec, short, compact }: Readonly<{ rows: ResultRow[]; spec:
   )
 }
 
+// What the first column holds: the time bucket, or the category that was split on.
+function firstColumnLabel(axis: string, bucket?: string, field?: string): string {
+  if (axis === 'time') return bucket ? bucket.charAt(0).toUpperCase() + bucket.slice(1) : 'Time'
+  const name = field?.split('.').pop()?.replaceAll('_', ' ').trim()
+  return name ? name.charAt(0).toUpperCase() + name.slice(1) : 'Category'
+}
+
 function Table({
   shaped, spec, bucket, onSelect,
 }: Readonly<{
@@ -254,6 +261,16 @@ function Table({
   return (
     <div className="h-full overflow-auto">
       <table className="w-full text-sm">
+        <thead className="sticky top-0 z-10 bg-card text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          <tr className="border-b border-gray-200 dark:border-gray-800">
+            <th className="whitespace-nowrap py-1.5 pr-3 text-left font-medium">{firstColumnLabel(shaped.axis, bucket, spec.dimension?.field?.col)}</th>
+            {shaped.seriesKeys.map((key) => (
+              <th key={key} className="max-w-[10rem] truncate whitespace-nowrap py-1.5 pl-3 text-right font-medium" title={key}>
+                {key === 'value' ? 'Value' : shortLabel(key, 18)}
+              </th>
+            ))}
+          </tr>
+        </thead>
         <tbody>
           {shaped.points.map((p) => (
             <tr

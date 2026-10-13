@@ -66,7 +66,6 @@ const isPublicRoute = createRouteMatcher([
   '/sign-up(.*)',
   "/terms-of-service(.*)",
   "/privacy-policy(.*)",
-  '/docs(.*)',
   '/playground(.*)',
   '/invite(.*)',
   // Public API routes (external callers — no Clerk session)
