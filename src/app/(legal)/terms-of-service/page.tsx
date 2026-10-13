@@ -156,7 +156,7 @@ export default function TermsOfService() {
                 Specifically, you agree NOT to:
               </p>
               <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4 space-y-2">
-                <p className="font-medium text-red-900 mb-2">Prohibited Activities:</p>
+                <p className="font-medium text-destructive mb-2">Prohibited Activities:</p>
                 <ul className="space-y-2 text-sm text-destructive">
                   <li className="flex items-start gap-2">
                     <span className="text-destructive mt-0.5">•</span>
@@ -296,7 +296,7 @@ export default function TermsOfService() {
             </div>
             <div className="p-6 space-y-4">
               <div className="bg-warning/10 border border-warning/30 rounded-lg p-4">
-                <p className="font-medium text-yellow-900 mb-2">Important Notice:</p>
+                <p className="font-medium text-warning mb-2">Important Notice:</p>
                 <p className="text-warning text-sm">
                   The Service is provided "AS IS" without warranties of any kind, either express or implied. 
                   We do not guarantee uninterrupted, secure, or error-free operation of the Service.

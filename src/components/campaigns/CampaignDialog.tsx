@@ -523,30 +523,30 @@ const CampaignDialog: React.FC<CampaignDialogProps> = ({
               {/* Campaign Details */}
               {campaignResult?.campaign && (
                 <div className="p-3 bg-primary/10 border border-primary/30 rounded-lg">
-                  <h4 className="font-medium text-blue-900 text-sm mb-2 flex items-center gap-2">
+                  <h4 className="font-medium text-primary text-sm mb-2 flex items-center gap-2">
                     <Rocket className="w-4 h-4" />
                     Campaign Details
                   </h4>
                   <div className="space-y-1 text-xs">
                     <div className="flex justify-between">
                       <span className="text-primary">Period:</span>
-                      <span className="text-blue-900">
+                      <span className="text-primary">
                         {campaignResult.campaign.start_date} to {campaignResult.campaign.end_date}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-primary">Time:</span>
-                      <span className="text-blue-900">
+                      <span className="text-primary">
                         {campaignResult.campaign.start_time} - {campaignResult.campaign.end_time}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-primary">Calls:</span>
-                      <span className="text-blue-900">{campaignResult.campaign.call_count} contacts</span>
+                      <span className="text-primary">{campaignResult.campaign.call_count} contacts</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-primary">Concurrency:</span>
-                      <span className="text-blue-900">{campaignResult.campaign.concurrency} simultaneous</span>
+                      <span className="text-primary">{campaignResult.campaign.concurrency} simultaneous</span>
                     </div>
                   </div>
                 </div>

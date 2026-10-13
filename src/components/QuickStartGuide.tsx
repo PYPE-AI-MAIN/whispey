@@ -182,7 +182,7 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-medium ${
-                      completedSteps.has(step.id) ? 'text-green-700' : 'text-foreground'
+                      completedSteps.has(step.id) ? 'text-success' : 'text-foreground'
                     }`}>
                       {step.title}
                     </p>

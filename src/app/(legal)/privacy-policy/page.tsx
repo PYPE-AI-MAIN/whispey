@@ -89,7 +89,7 @@ export default function PrivacyPolicy() {
                 how we protect it.
               </p>
               <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
-                <p className="text-sm font-medium text-blue-900 mb-2">Key Principles:</p>
+                <p className="text-sm font-medium text-primary mb-2">Key Principles:</p>
                 <ul className="space-y-1 text-sm text-primary">
                   <li className="flex items-center gap-2">
                     <CheckCircle weight="fill" className="w-4 h-4 text-primary" />
@@ -163,7 +163,7 @@ export default function PrivacyPolicy() {
                     <li>• Custom metadata you choose to send</li>
                   </ul>
                   <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 mt-3">
-                    <p className="text-xs font-medium text-yellow-900">
+                    <p className="text-xs font-medium text-warning">
                       Note: Audio content is processed in real-time for analytics purposes and is not 
                       permanently stored unless you explicitly enable recording features.
                     </p>
@@ -355,7 +355,7 @@ export default function PrivacyPolicy() {
               </div>
 
               <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
-                <p className="text-sm text-blue-900">
+                <p className="text-sm text-primary">
                   <strong>Data Deletion:</strong> You can request immediate deletion of your data at any time through 
                   your account settings or by contacting support. For self-hosted instances, you have complete 
                   control over data retention policies.
@@ -376,7 +376,7 @@ export default function PrivacyPolicy() {
             </div>
             <div className="p-6 space-y-4">
               <div className="bg-success/10 border border-success/30 rounded-lg p-4 mb-4">
-                <p className="text-green-900 font-medium">
+                <p className="text-success font-medium">
                    We NEVER sell, rent, or trade your personal data
                 </p>
               </div>
@@ -461,7 +461,7 @@ export default function PrivacyPolicy() {
               </div>
 
               <div className="bg-warning/10 border border-warning/30 rounded-lg p-4">
-                <p className="text-sm text-yellow-900">
+                <p className="text-sm text-warning">
                   <strong>Security Incidents:</strong> In the unlikely event of a data breach, we'll notify affected 
                   users within 72 hours and provide guidance on protective measures.
                 </p>
@@ -545,7 +545,7 @@ export default function PrivacyPolicy() {
               </div>
 
               <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
-                <p className="text-sm text-blue-900">
+                <p className="text-sm text-primary">
                   <strong>Exercise Your Rights:</strong> Contact us at privacy@pypeai.com to exercise any of these 
                   rights. We'll respond within 30 days.
                 </p>
