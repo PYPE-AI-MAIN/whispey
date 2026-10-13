@@ -2135,7 +2135,7 @@ function AskPiSwitch({ on, onChange }: Readonly<{ on: boolean; onChange: (on: bo
       className={cn('inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors',
         on ? 'border-violet-400 bg-violet-500 text-white' : 'border-border text-muted-foreground hover:border-violet-300 hover:text-violet-600 dark:hover:text-violet-300')}
     >
-      <span className={cn('relative inline-block h-3 w-5 rounded-full transition-colors', on ? 'bg-white/40' : 'bg-muted-foreground/30')}>
+      <span className={cn('relative inline-block h-3 w-5 rounded-full transition-colors', on ? 'bg-white/40' : 'bg-gray-300 dark:bg-gray-600')}>
         <span className={cn('absolute top-0.5 h-2 w-2 rounded-full bg-card transition-all', on ? 'left-2.5' : 'left-0.5')} />
       </span>
       <PiGlyph className="w-3 h-3" />Ask Pi

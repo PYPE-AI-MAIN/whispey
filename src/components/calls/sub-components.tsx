@@ -14,7 +14,7 @@ import ReanalyzeCallLogs from "../reprocess/ReprocessCallLogs"
 // ============================================
 
 export const FilterHeaderSkeleton = memo(() => (
-  <div className="flex-none p-4 border-b border-border bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+  <div className="flex-none p-4 border-b border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-gray-900/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-gray-900/60">
     <div className="flex items-center justify-between">
       <Skeleton className="h-8 w-48" />
       <div className="flex items-center gap-2">
@@ -32,7 +32,7 @@ export const TableSkeleton = memo(() => (
     <div className="h-full overflow-x-auto overflow-y-hidden">
       <div className="h-full overflow-y-auto" style={{ minWidth: "1020px" }}>
         <table className="w-full">
-          <thead className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b-2">
+          <thead className="sticky top-0 z-10 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b-2">
             <tr className="bg-muted/80 hover:bg-muted/80">
               <th className="p-3 font-semibold text-foreground min-w-[120px]">Customer Number</th>
               <th className="p-3 font-semibold text-foreground min-w-[120px]">Call ID</th>

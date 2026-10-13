@@ -553,7 +553,7 @@ export default function PhoneCallConfig() {
           wide on a real phone screen — this is a dialer, not a data table,
           so half-width panels are unusable rather than just cramped */}
       <div className="flex flex-col sm:flex-row h-screen">
-        <div className="w-full sm:w-[45%] h-1/2 sm:h-auto border-r-0 sm:border-r border-b sm:border-b-0 border-border bg-white/50 backdrop-blur-xl overflow-hidden flex flex-col">
+        <div className="w-full sm:w-[45%] h-1/2 sm:h-auto border-r-0 sm:border-r border-b sm:border-b-0 border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl overflow-hidden flex flex-col">
           <div className="p-4 sm:p-8 flex-1 flex flex-col overflow-y-auto">
             <div className="mb-6 flex items-center gap-4">
               <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-xl shadow-lg shadow-blue-500/20">
@@ -646,8 +646,8 @@ export default function PhoneCallConfig() {
         </div>
 
         {/* ── Right Panel ──────────────────────────────────────────────────────── */}
-        <div className="w-full sm:w-[55%] h-1/2 sm:h-auto flex flex-col bg-white/30 backdrop-blur-sm">
-          <div className="p-4 sm:p-8 pb-4 sm:pb-6 border-b border-border bg-white/50 backdrop-blur-xl">
+        <div className="w-full sm:w-[55%] h-1/2 sm:h-auto flex flex-col bg-white/30 dark:bg-gray-900/30 backdrop-blur-sm">
+          <div className="p-4 sm:p-8 pb-4 sm:pb-6 border-b border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
                 <History className="w-6 h-6 text-foreground" />
