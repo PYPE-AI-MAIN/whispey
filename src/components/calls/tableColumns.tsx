@@ -296,7 +296,7 @@ function renderMetricCell(call: CallLog, metricId: string) {
       <TooltipContent className="max-w-md bg-gray-900 dark:bg-gray-800 border-gray-700 p-0">
         <div className="text-sm p-4">
           <div className="font-semibold mb-2 text-white">{metricId.replaceAll('_', ' ').replaceAll(/\b\w/g, l => l.toUpperCase())}</div>
-          <div className="text-xs text-foreground whitespace-pre-wrap leading-relaxed max-h-[200px] overflow-y-auto pr-2">
+          <div className="text-xs text-gray-100 whitespace-pre-wrap leading-relaxed max-h-[200px] overflow-y-auto pr-2">
             {tooltipContent}
           </div>
         </div>

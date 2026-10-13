@@ -260,7 +260,7 @@ const DynamicTTSSwitch: React.FC<Readonly<DynamicTTSSwitchProps>> = ({
       <div className="space-y-2">
         {dynamicTTSList.length === 0 ? (
           <div className="text-center py-8 text-sm text-muted-foreground">
-            <Sparkles className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+            <Sparkles className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
             <p>No dynamic TTS configurations</p>
             <p className="text-xs mt-1">Click "Add" to create a new TTS switch</p>
           </div>

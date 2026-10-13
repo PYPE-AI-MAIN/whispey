@@ -246,7 +246,7 @@ export function LogsOverlay({
                       </td>
                     )}
                     <td className="py-2 text-right">
-                      <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
+                      <ArrowUpRight className="h-3.5 w-3.5 text-gray-300 opacity-0 transition group-hover:opacity-100 dark:text-gray-600" />
                     </td>
                   </tr>
                 ))}

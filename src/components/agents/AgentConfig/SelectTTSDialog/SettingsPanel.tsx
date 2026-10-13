@@ -467,7 +467,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         {!providerTitle(normalizedProvider) && (
           <div className="flex items-center justify-center h-full">
             <div className="text-center space-y-3">
-              <Settings className="w-12 h-12 text-muted-foreground mx-auto" />
+              <Settings className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto" />
               <h3 className="text-sm font-medium text-foreground">Select a Voice</h3>
               <p className="text-xs text-muted-foreground">
                 Choose a voice from the left panel to configure settings

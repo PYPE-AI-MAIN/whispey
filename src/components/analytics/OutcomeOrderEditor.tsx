@@ -206,7 +206,7 @@ function OutcomeRow({ value, rank, isBest, isWorst }: Readonly<{ value: string; 
         s.isDragging && 'opacity-70 shadow-md'
       )}
     >
-      <button {...s.attributes} {...s.listeners} aria-label={`Move ${value}`} className="cursor-grab text-muted-foreground">
+      <button {...s.attributes} {...s.listeners} aria-label={`Move ${value}`} className="cursor-grab text-gray-300 dark:text-gray-600">
         <GripVertical className="h-3.5 w-3.5" />
       </button>
       <span className="w-5 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{rank}</span>

@@ -277,7 +277,7 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                                     </div>
                                     <Terminal className="w-3 h-3 text-muted-foreground ml-1" />
                                   </div>
-                                  <pre className="text-foreground text-xs font-mono overflow-x-auto">
+                                  <pre className="text-gray-100 text-xs font-mono overflow-x-auto">
                                     <code>{integrationStep.code}</code>
                                   </pre>
                                   <button
@@ -287,7 +287,7 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                                     {copiedStep === `${step.id}-${stepIndex}` ? (
                                       <Check className="w-3 h-3 text-green-400" />
                                     ) : (
-                                      <Copy className="w-3 h-3 text-muted-foreground" />
+                                      <Copy className="w-3 h-3 text-gray-300" />
                                     )}
                                   </button>
                                 </div>
@@ -317,7 +317,7 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                                     <Terminal className="w-3 h-3 text-muted-foreground ml-1" />
                                     <span className="text-xs text-muted-foreground ml-2">complete_agent.py</span>
                                   </div>
-                                  <pre className="text-foreground text-xs font-mono overflow-x-auto max-h-96 overflow-y-auto">
+                                  <pre className="text-gray-100 text-xs font-mono overflow-x-auto max-h-96 overflow-y-auto">
                                     <code>{fullExampleCode}</code>
                                   </pre>
                                   <button
@@ -327,7 +327,7 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                                     {copiedStep === 'full-example' ? (
                                       <Check className="w-3 h-3 text-green-400" />
                                     ) : (
-                                      <Copy className="w-3 h-3 text-muted-foreground" />
+                                      <Copy className="w-3 h-3 text-gray-300" />
                                     )}
                                   </button>
                                 </div>
@@ -352,7 +352,7 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                               </div>
                               <Terminal className="w-3 h-3 text-muted-foreground ml-1" />
                             </div>
-                            <pre className="text-foreground text-xs font-mono overflow-x-auto">
+                            <pre className="text-gray-100 text-xs font-mono overflow-x-auto">
                               <code>{step.code}</code>
                             </pre>
                             <button
@@ -362,7 +362,7 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                               {copiedStep === step.id ? (
                                 <Check className="w-3 h-3 text-green-400" />
                               ) : (
-                                <Copy className="w-3 h-3 text-muted-foreground" />
+                                <Copy className="w-3 h-3 text-gray-300" />
                               )}
                             </button>
                           </div>

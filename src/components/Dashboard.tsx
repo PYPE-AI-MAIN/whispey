@@ -95,7 +95,7 @@ const formatShort = (date: Date) =>
 const periodPillClass = (active: boolean, locked: boolean) => {
   if (locked) return 'text-muted-foreground'
   if (active) return 'bg-card text-foreground shadow-sm'
-  return 'text-muted-foreground hover:text-foreground hover:bg-card/50'
+  return 'text-muted-foreground hover:text-foreground hover:bg-white/50'
 }
 
 const periodCustomPillClass = (active: boolean, locked: boolean) => {

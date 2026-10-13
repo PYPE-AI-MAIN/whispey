@@ -367,7 +367,7 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
               <h2 className="text-xl font-semibold">
                 {displaySpan.name?.replace(/_/g, ' ').toUpperCase() || 'Unknown Operation'}
               </h2>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-slate-300 dark:text-slate-400 text-sm">
                 {getSpanDescription()}
               </p>
             </div>

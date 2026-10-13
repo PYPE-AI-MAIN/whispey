@@ -1160,14 +1160,14 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                 placeholder="Search contacts..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-card/80 backdrop-blur-sm border-border"
+                className="pl-10 bg-white/80 backdrop-blur-sm border-border"
               />
             </div>
 
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 text-sm border border-border rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none bg-card/80 backdrop-blur-sm text-foreground"
+              className="px-3 py-2 text-sm border border-border rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none bg-white/80 backdrop-blur-sm text-foreground"
             >
               {CALL_STATUS_OPTIONS.map(option => (
                 <option key={option.value} value={option.value}>
@@ -1180,7 +1180,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
               placeholder="Filter by source file..."
               value={sourceFileFilter}
               onChange={(e) => setSourceFileFilter(e.target.value)}
-              className="bg-card/80 backdrop-blur-sm border-border"
+              className="bg-white/80 backdrop-blur-sm border-border"
             />
 
             <select
@@ -1190,7 +1190,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                 setSortBy(field as 'createdAt' | 'phoneNumber' | 'call_status')
                 setSortOrder(order as 'asc' | 'desc')
               }}
-              className="px-3 py-2 text-sm border border-border rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none bg-card/80 backdrop-blur-sm text-foreground"
+              className="px-3 py-2 text-sm border border-border rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none bg-white/80 backdrop-blur-sm text-foreground"
             >
               {SORT_OPTIONS.map(option => (
                 <React.Fragment key={option.value}>
@@ -1207,7 +1207,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
             <Button 
               variant="outline" 
               onClick={clearFilters}
-              className="bg-card/80 backdrop-blur-sm border-border hover:bg-muted/50"
+              className="bg-white/80 backdrop-blur-sm border-border hover:bg-muted/50"
             >
               <Filter className="h-4 w-4 mr-2" />
               Clear Filters
@@ -1228,7 +1228,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
         ) : logs.length === 0 ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <Building2 className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">No campaign logs found</h3>
               <p className="text-muted-foreground mb-6">
                 {searchQuery || statusFilter !== 'all' || sourceFileFilter 

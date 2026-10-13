@@ -591,7 +591,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
             {/* ── Vapi fields ──────────────────────────────────────────────── */}
             {selectedPlatform === 'vapi' && (
               <div className="space-y-4">
-                <div className="flex items-center text-xs text-teal-600 dark:text-teal-400 bg-card/60 rounded-lg p-3 border border-teal-200 dark:border-teal-800">
+                <div className="flex items-center text-xs text-teal-600 dark:text-teal-400 bg-white/60 rounded-lg p-3 border border-teal-200 dark:border-teal-800">
                   <div className="flex items-center gap-2">
                     <div className="w-5 h-5 bg-teal-600 text-white rounded-full flex items-center justify-center font-medium">1</div>
                     <span className="font-medium">Connect Vapi Account</span>
@@ -639,7 +639,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
                 </div>
 
                 {vapiData.availableAssistants.length > 0 && (
-                  <div ref={assistantSectionRef} className="space-y-2 bg-card/60 rounded-lg p-4 border border-teal-200 dark:border-teal-800 -mx-2">
+                  <div ref={assistantSectionRef} className="space-y-2 bg-white/60 rounded-lg p-4 border border-teal-200 dark:border-teal-800 -mx-2">
                     <label className="block text-sm font-medium text-foreground">
                       Select Assistant to Monitor
                       <Badge variant="outline" className="ml-2 text-xs bg-success/10 text-success border-success/30">
@@ -674,7 +674,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
             {/* ── Retell fields ─────────────────────────────────────────────── */}
             {selectedPlatform === 'retell' && (
               <div className="space-y-4">
-                <div className="flex items-center text-xs text-purple-600 dark:text-purple-400 bg-card/60 rounded-lg p-3 border border-purple-200 dark:border-purple-800">
+                <div className="flex items-center text-xs text-purple-600 dark:text-purple-400 bg-white/60 rounded-lg p-3 border border-purple-200 dark:border-purple-800">
                   <div className="flex items-center gap-2">
                     <div className="w-5 h-5 bg-purple-600 text-white rounded-full flex items-center justify-center font-medium">1</div>
                     <span className="font-medium">Connect Retell Account</span>
@@ -722,7 +722,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
                 </div>
 
                 {retellData.availableAgents.length > 0 && (
-                  <div ref={assistantSectionRef} className="space-y-2 bg-card/60 rounded-lg p-4 border border-purple-200 dark:border-purple-800 -mx-2">
+                  <div ref={assistantSectionRef} className="space-y-2 bg-white/60 rounded-lg p-4 border border-purple-200 dark:border-purple-800 -mx-2">
                     <label className="block text-sm font-medium text-foreground">
                       Select Agent to Monitor
                       <Badge variant="outline" className="ml-2 text-xs bg-success/10 text-success border-success/30">

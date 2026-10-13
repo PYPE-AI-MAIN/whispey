@@ -206,7 +206,7 @@ function EmptyState({ creating, onNewSession }: { creating: boolean; onNewSessio
   return (
     <div className="flex flex-col items-center justify-center py-28 text-center">
       <div className="w-14 h-14 rounded-2xl bg-card border border-border flex items-center justify-center mb-5">
-        <FlaskConical className="w-6 h-6 text-muted-foreground" />
+        <FlaskConical className="w-6 h-6 text-gray-300 dark:text-gray-600" />
       </div>
       <h3 className="text-sm font-semibold text-foreground mb-2">No sessions yet</h3>
       <p className="text-xs text-muted-foreground mb-6 max-w-[300px] leading-relaxed">

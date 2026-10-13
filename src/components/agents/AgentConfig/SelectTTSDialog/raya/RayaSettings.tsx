@@ -160,7 +160,7 @@ export default function RayaSettings({ config, setConfig }: Readonly<RayaSetting
             </div>
           </div>
           <div className="flex items-start gap-2">
-            <code className="flex-1 rounded bg-card/70 dark:bg-black/20 p-2 text-[11px] leading-relaxed text-foreground">
+            <code className="flex-1 rounded bg-white/70 dark:bg-black/20 p-2 text-[11px] leading-relaxed text-foreground">
               {RAYA_PROMPT_SNIPPET}
             </code>
             <Button variant="outline" size="sm" className="h-8 flex-shrink-0" onClick={copySnippet}>

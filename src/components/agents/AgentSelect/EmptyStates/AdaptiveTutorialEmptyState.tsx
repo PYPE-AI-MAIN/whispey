@@ -102,7 +102,7 @@ function CopyButton({ text, codeId, copiedCode, onCopy, className, iconSize = 'w
       {copiedCode === codeId ? (
         <div className={`${iconSize} text-green-400`}>✓</div>
       ) : (
-        <Copy className={`${iconSize} text-muted-foreground`} />
+        <Copy className={`${iconSize} text-gray-300`} />
       )}
     </button>
   )
@@ -309,7 +309,7 @@ function BeginnerTutorial({
               <h3 className="text-sm font-medium text-foreground mb-2">2. Install LiveKit</h3>
               <div className="relative">
                 <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-2.5">
-                  <pre className={`text-foreground font-mono ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                  <pre className={`text-gray-100 font-mono ${isMobile ? 'text-xs' : 'text-sm'}`}>
 {isMobile ?
 `pip install livekit-agents livekit-plugins-openai
 livekit-plugins-elevenlabs livekit-plugins-silero` :
@@ -329,7 +329,7 @@ pip install livekit-plugins-silero`}
               <h3 className="text-sm font-medium text-foreground mb-2">3. Install Whispey</h3>
               <div className="relative">
                 <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-2.5">
-                  <pre className={`text-foreground font-mono ${isMobile ? 'text-xs' : 'text-sm'}`}>pip install whispey</pre>
+                  <pre className={`text-gray-100 font-mono ${isMobile ? 'text-xs' : 'text-sm'}`}>pip install whispey</pre>
                   <CopyButton text="pip install whispey" codeId="install-whispey" copiedCode={copiedCode} onCopy={onCopy} />
                 </div>
               </div>
@@ -363,7 +363,7 @@ pip install livekit-plugins-silero`}
                       <Terminal className="w-2.5 h-2.5 text-muted-foreground" />
                       <span className="text-xs text-muted-foreground">agent.py</span>
                     </div>
-                    <pre className={`text-foreground font-mono overflow-x-auto ${isMobile ? 'text-xs max-h-48' : 'text-xs max-h-64'} overflow-y-auto`}>
+                    <pre className={`text-gray-100 font-mono overflow-x-auto ${isMobile ? 'text-xs max-h-48' : 'text-xs max-h-64'} overflow-y-auto`}>
                       {COMPLETE_AGENT_CODE}
                     </pre>
                     <CopyButton text={COMPLETE_AGENT_CODE} codeId="complete-example" copiedCode={copiedCode} onCopy={onCopy} />
@@ -416,7 +416,7 @@ function ExperiencedGuide({
             <h3 className="font-medium text-foreground text-sm">1. Install Whispey</h3>
             <div className="relative">
               <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-2">
-                <pre className="text-foreground text-xs font-mono">pip install whispey</pre>
+                <pre className="text-gray-100 text-xs font-mono">pip install whispey</pre>
                 <CopyButton
                   text="pip install whispey" codeId="quick-install" copiedCode={copiedCode} onCopy={onCopy}
                   className="absolute top-1.5 right-1.5 p-0.5 bg-gray-800 hover:bg-gray-700 rounded"
@@ -429,7 +429,7 @@ function ExperiencedGuide({
             <h3 className="font-medium text-foreground text-sm">2. Import & Initialize</h3>
             <div className="relative">
               <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-2">
-                <pre className="text-foreground text-xs font-mono">
+                <pre className="text-gray-100 text-xs font-mono">
 {`from whispey import LivekitObserve
 
 whispey = LivekitObserve(
@@ -449,7 +449,7 @@ whispey = LivekitObserve(
             <h3 className="font-medium text-foreground text-sm">3. Add to Session</h3>
             <div className="relative">
               <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-2">
-                <pre className="text-foreground text-xs font-mono">
+                <pre className="text-gray-100 text-xs font-mono">
 {`session_id = whispey.start_session(session)
 
 async def shutdown():

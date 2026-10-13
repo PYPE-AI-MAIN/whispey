@@ -467,7 +467,7 @@ function Campaigns() {
 
             {/* Subtle loading overlay when fetching next page */}
             {isFetching && (
-              <div className="absolute inset-0 rounded-lg bg-card/40" />
+              <div className="absolute inset-0 rounded-lg bg-white/40" />
             )}
           </div>
         ))}

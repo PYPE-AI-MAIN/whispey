@@ -75,7 +75,7 @@ export default function ProviderRail({ providers, counts, appliedProvider, activ
               key={provider.key}
               value={provider.key}
               aria-label={count === undefined ? provider.label : `${provider.label}, ${count} voices`}
-              className="group h-auto flex-none md:w-full shrink-0 justify-start gap-3 rounded-lg border border-transparent px-3 py-2.5 text-left font-normal text-foreground hover:bg-card/70 data-[state=active]:bg-card data-[state=active]:border-border data-[state=active]:shadow-sm data-[state=active]:text-foreground"
+              className="group h-auto flex-none md:w-full shrink-0 justify-start gap-3 rounded-lg border border-transparent px-3 py-2.5 text-left font-normal text-foreground hover:bg-white/70 data-[state=active]:bg-card data-[state=active]:border-border data-[state=active]:shadow-sm data-[state=active]:text-foreground"
             >
               <span
                 aria-hidden

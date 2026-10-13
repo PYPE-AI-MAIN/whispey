@@ -23,7 +23,7 @@ export function RecipientsPreview({ csvData, dncBlocked }: Readonly<RecipientsPr
         </div>
         <div className="flex-1 flex items-center justify-center p-4">
           <div className="text-center">
-            <Upload className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+            <Upload className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
             <p className="text-xs text-muted-foreground">
               Upload recipients CSV to preview
             </p>

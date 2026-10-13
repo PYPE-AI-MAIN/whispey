@@ -683,7 +683,7 @@ function CustomChartBuilder({
       {saved.isLoading && <Skel className="h-48" />}
       {!saved.isLoading && charts.length === 0 && (
         <div className={cn(CARD, 'flex flex-col items-center gap-1 border-dashed py-12 text-center')}>
-          <BarChart3 className="h-6 w-6 text-muted-foreground" />
+          <BarChart3 className="h-6 w-6 text-gray-300 dark:text-gray-600" />
           <p className={cn('text-sm font-medium', INK)}>No charts yet</p>
           <p className={cn('max-w-sm text-xs', MUTED)}>{canEdit ? 'Tap a quick-add suggestion above or create your own with New chart. Charts are saved for everyone on this project.' : 'Nobody has added a chart to this campaign yet.'}</p>
         </div>

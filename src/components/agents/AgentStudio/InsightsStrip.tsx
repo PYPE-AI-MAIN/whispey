@@ -71,11 +71,11 @@ function InsightValue({
       </span>
     )
   }
-  if (loading) return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+  if (loading) return <Loader2 className="h-4 w-4 animate-spin text-gray-300 dark:text-gray-600" />
   if (failure) {
     return <span className="text-xs text-muted-foreground">Unavailable — refresh to retry</span>
   }
-  return <span className="text-2xl font-semibold text-muted-foreground">—</span>
+  return <span className="text-2xl font-semibold text-gray-300 dark:text-gray-700">—</span>
 }
 
 /** Why a card has no number: the whole query failed, or just this widget did. */
@@ -102,14 +102,14 @@ function InsightCard({
               <button
                 type="button"
                 aria-label={`How ${def.title} is calculated`}
-                className="shrink-0 cursor-pointer text-muted-foreground transition hover:text-muted-foreground"
+                className="shrink-0 cursor-pointer text-gray-300 transition hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400"
               >
                 <Info className="h-3 w-3" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="bottom" sideOffset={6} className="max-w-[220px] text-xs">
               <p className="font-medium">{def.definition}</p>
-              <p className="mt-1 text-muted-foreground">{def.help}</p>
+              <p className="mt-1 text-gray-300 dark:text-gray-500">{def.help}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -147,7 +147,7 @@ export default function InsightsStrip({ agentId }: Readonly<{ agentId: string }>
     <div>
       <div className="mb-2 flex items-center justify-between px-0.5">
         <span className="text-[11px] text-muted-foreground">Overall</span>
-        {isFetching && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+        {isFetching && <Loader2 className="h-3 w-3 animate-spin text-gray-300 dark:text-gray-600" />}
       </div>
       <div className="grid grid-cols-2 gap-3">
         {INSIGHTS.map((def) => {

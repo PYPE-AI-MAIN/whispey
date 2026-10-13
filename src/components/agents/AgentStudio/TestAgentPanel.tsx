@@ -366,7 +366,7 @@ function ComingSoonStage({
         onChange={(e) => onPhoneChange(e.target.value)}
         placeholder="+91 98765 43210"
         style={{ maxWidth: 260 }}
-        className="h-10 w-full rounded-lg border border-border bg-card px-3 text-center text-sm tabular-nums text-foreground outline-none transition placeholder:text-muted-foreground focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+        className="h-10 w-full rounded-lg border border-border bg-card px-3 text-center text-sm tabular-nums text-foreground outline-none transition placeholder:text-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
       />
     </EmptyStage>
   )
@@ -419,7 +419,7 @@ function SetupDrawer({
             <span className="truncate">{currentVoice?.name ?? 'Voice'}</span>
             {varKeys.length > 0 && (
               <>
-                <span className="text-muted-foreground">|</span>
+                <span className="text-gray-300 dark:text-gray-700">|</span>
                 <span className="shrink-0 font-mono">{`{} ${varsSet}/${varKeys.length}`}</span>
               </>
             )}

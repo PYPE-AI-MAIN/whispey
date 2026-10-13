@@ -389,7 +389,7 @@ function CallPreview({ selectedId, loading, turns }: Readonly<{ selectedId: stri
   if (!selectedId) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-2 text-center px-6">
-        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center"><Phone className="w-4 h-4 text-muted-foreground" /></div>
+        <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center"><Phone className="w-4 h-4 text-gray-300 dark:text-gray-600" /></div>
         <p className="text-xs text-muted-foreground">Select a call to preview</p>
       </div>
     )
@@ -851,8 +851,8 @@ function ImportLogDialog({ open, onClose, agentId, onImport, transcriptionFields
                     </p>
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                       <span className="text-[10px] text-muted-foreground">{formatRelative(log.created_at)}</span>
-                      {log.duration_seconds > 0 && <><span className="text-muted-foreground">·</span><span className="text-[10px] text-muted-foreground">{formatDuration(log.duration_seconds)}</span></>}
-                      {log.call_ended_reason && <><span className="text-muted-foreground">·</span><span className="text-[10px] text-muted-foreground capitalize">{log.call_ended_reason.replaceAll('_', ' ')}</span></>}
+                      {log.duration_seconds > 0 && <><span className="text-gray-300 dark:text-gray-700">·</span><span className="text-[10px] text-gray-400 dark:text-gray-600">{formatDuration(log.duration_seconds)}</span></>}
+                      {log.call_ended_reason && <><span className="text-gray-300 dark:text-gray-700">·</span><span className="text-[10px] text-gray-400 dark:text-gray-600 capitalize">{log.call_ended_reason.replaceAll('_', ' ')}</span></>}
                     </div>
                   </div>
                 </button>
@@ -1518,7 +1518,7 @@ function MessageComposer({ inputRef, value, onChange, onSend, busy, blockedReaso
             onClick={e => { e.stopPropagation(); onSend() }}
             disabled={!canSend}
             className={cn('w-7 h-7 flex items-center justify-center rounded-lg transition-colors',
-              canSend ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300' : 'bg-muted text-muted-foreground cursor-not-allowed')}
+              canSend ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300' : 'bg-muted text-gray-300 cursor-not-allowed')}
           >
             <Send className="w-3.5 h-3.5" />
           </button>
@@ -1930,8 +1930,8 @@ function ForgeUI({
               <FlaskConical className="w-3.5 h-3.5 text-primary" />
             </div>
             <span className="text-sm font-semibold text-foreground shrink-0">Prompt Forge</span>
-            {agentName && <><ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" /><span className="text-sm text-muted-foreground shrink-0 hidden sm:block truncate max-w-[120px]">{agentName}</span></>}
-            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            {agentName && <><ChevronRight className="w-3.5 h-3.5 text-gray-300 dark:text-gray-700 shrink-0" /><span className="text-sm text-gray-400 dark:text-gray-500 shrink-0 hidden sm:block truncate max-w-[120px]">{agentName}</span></>}
+            <ChevronRight className="w-3.5 h-3.5 text-gray-300 dark:text-gray-700 shrink-0" />
             {readOnly
               ? <span className="text-sm font-medium text-foreground truncate max-w-[200px]">{sessionName}</span>
               : <SessionNameEditor name={sessionName} onSave={handleNameSave} />}
@@ -2135,7 +2135,7 @@ function AskPiSwitch({ on, onChange }: Readonly<{ on: boolean; onChange: (on: bo
       className={cn('inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors',
         on ? 'border-violet-400 bg-violet-500 text-white' : 'border-border text-muted-foreground hover:border-violet-300 hover:text-violet-600 dark:hover:text-violet-300')}
     >
-      <span className={cn('relative inline-block h-3 w-5 rounded-full transition-colors', on ? 'bg-card/40' : 'bg-muted-foreground/30')}>
+      <span className={cn('relative inline-block h-3 w-5 rounded-full transition-colors', on ? 'bg-white/40' : 'bg-muted-foreground/30')}>
         <span className={cn('absolute top-0.5 h-2 w-2 rounded-full bg-card transition-all', on ? 'left-2.5' : 'left-0.5')} />
       </span>
       <PiGlyph className="w-3 h-3" />Ask Pi
@@ -2255,7 +2255,7 @@ function ChatEmptyState({ hasTools, hasVariables, onGenerateGreeting }: Readonly
   return (
     <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-4 select-none px-6 text-center">
       <div className="w-12 h-12 rounded-2xl bg-muted/50 border border-border flex items-center justify-center">
-        <FlaskConical className="w-5 h-5 text-muted-foreground" />
+        <FlaskConical className="w-5 h-5 text-gray-300 dark:text-gray-600" />
       </div>
       <div>
         <p className="text-sm font-medium text-muted-foreground">Start the conversation</p>
@@ -2305,7 +2305,7 @@ function MessageBubble({ message, onReplay }: { message: Message; onReplay?: () 
   const ordered = !isUser && hasTools && (message.parts?.length ?? 0) > 0
   const textBubble = (text: string, key?: string, streaming?: boolean) => (
     <div key={key} className={cn('rounded-2xl px-4 py-2.5 text-sm leading-relaxed w-full',
-      isUser ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-tr-sm' : 'bg-muted/50 text-foreground border border-border rounded-tl-sm')}>
+      isUser ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-tr-sm' : 'bg-muted/50 text-gray-900 border border-border rounded-tl-sm')}>
       <p className="whitespace-pre-wrap break-words">
         {text}
         {streaming && <span className="inline-block w-0.5 h-3.5 bg-current ml-0.5 align-middle animate-pulse" />}
@@ -2333,7 +2333,7 @@ function MessageBubble({ message, onReplay }: { message: Message; onReplay?: () 
         )}
         {!ordered && (message.content || !hasTools) && (
           <div className={cn('rounded-2xl px-4 py-2.5 text-sm leading-relaxed w-full',
-            isUser ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-tr-sm' : 'bg-muted/50 text-foreground border border-border rounded-tl-sm')}>
+            isUser ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-tr-sm' : 'bg-muted/50 text-gray-900 border border-border rounded-tl-sm')}>
             <p className="whitespace-pre-wrap break-words">
               {message.content}
               {!message.isFinal && message.content && <span className="inline-block w-0.5 h-3.5 bg-current ml-0.5 align-middle animate-pulse" />}
@@ -2345,7 +2345,7 @@ function MessageBubble({ message, onReplay }: { message: Message; onReplay?: () 
       {message.isFinal && onReplay && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <button onClick={onReplay} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-muted-foreground hover:bg-muted mt-1">
+            <button onClick={onReplay} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-gray-300 dark:text-gray-700 hover:text-gray-500 dark:hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 mt-1">
               <RotateCcw className="w-3.5 h-3.5" />
             </button>
           </TooltipTrigger>

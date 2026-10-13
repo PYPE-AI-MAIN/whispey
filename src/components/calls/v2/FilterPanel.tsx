@@ -200,7 +200,7 @@ export function FilterPanel({ activeFilters, distinctConfig, onApply, metadataFi
                     onClick={() => togglePin(row)}
                     disabled={!row.column}
                     title={isPinned ? "Unpin from Quick add" : "Pin this field to Quick add"}
-                    className="grid h-6 w-6 shrink-0 place-items-center rounded text-muted-foreground hover:text-warning disabled:opacity-30"
+                    className="grid h-6 w-6 shrink-0 place-items-center rounded text-gray-300 hover:text-amber-500 disabled:opacity-30 dark:text-gray-600"
                   >
                     <Star className={cn("h-3.5 w-3.5", isPinned && "fill-amber-400 text-amber-400")} />
                   </button>

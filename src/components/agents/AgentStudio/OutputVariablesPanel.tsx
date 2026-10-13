@@ -21,7 +21,7 @@ function DispositionsBody({
   if (!configured) {
     return (
       <div className="flex flex-col items-center gap-1.5 rounded-xl border border-dashed border-border px-4 py-5 text-center">
-        <Settings2 className="h-4 w-4 text-muted-foreground" />
+        <Settings2 className="h-4 w-4 text-gray-300 dark:text-gray-600" />
         <p className="text-xs font-medium text-muted-foreground">Nothing extracted yet</p>
         <p className="text-[11px] leading-relaxed text-muted-foreground">
           Define the dispositions to pull out of each call and they&apos;ll be computed
@@ -56,8 +56,8 @@ function DispositionsBody({
 }
 
 function DispositionValue({ loading, value }: Readonly<{ loading: boolean; value: string | undefined }>) {
-  if (loading) return <Loader2 className="ml-auto h-3 w-3 animate-spin text-muted-foreground" />
-  return value ?? <span className="text-muted-foreground">—</span>
+  if (loading) return <Loader2 className="ml-auto h-3 w-3 animate-spin text-gray-300 dark:text-gray-600" />
+  return value ?? <span className="text-gray-300 dark:text-gray-600">—</span>
 }
 
 export default function OutputVariablesPanel({
@@ -127,7 +127,7 @@ export default function OutputVariablesPanel({
       <div className="mb-2 flex items-center justify-between px-0.5">
         <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           Dispositions
-          {configured && loading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+          {configured && loading && <Loader2 className="h-3 w-3 animate-spin text-gray-300 dark:text-gray-600" />}
         </span>
         {/* Same trigger the full config page uses for this exact dialog — left
             as-is rather than re-skinned, so it stays visually consistent with

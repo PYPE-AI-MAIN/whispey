@@ -319,7 +319,7 @@ const EmptyState = ({
 }) => (
   <div className="flex items-center justify-center h-full">
     <div className="text-center space-y-4 max-w-sm">
-      <Icon className="w-12 h-12 text-muted-foreground mx-auto" />
+      <Icon className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto" />
       <div>
         <h3 className="font-medium text-sm text-foreground mb-2">{title}</h3>
         <p className="text-muted-foreground text-xs leading-relaxed">{description}</p>

@@ -341,7 +341,7 @@ export default function PipecatPhoneCallConfig({
       <div className="flex h-screen">
 
         {/* ── Left Panel ─────────────────────────────────────────────────────── */}
-        <div className="w-[45%] border-r border-border bg-card/50 backdrop-blur-xl overflow-hidden flex flex-col">
+        <div className="w-[45%] border-r border-border bg-white/50 backdrop-blur-xl overflow-hidden flex flex-col">
           <div className="p-8 flex-1 flex flex-col overflow-y-auto">
 
             {/* Header */}
@@ -571,8 +571,8 @@ export default function PipecatPhoneCallConfig({
         </div>
 
         {/* ── Right Panel — Call History ──────────────────────────────────────── */}
-        <div className="w-[55%] flex flex-col bg-card/30 backdrop-blur-sm">
-          <div className="p-8 pb-6 border-b border-border bg-card/50 backdrop-blur-xl">
+        <div className="w-[55%] flex flex-col bg-white/30 backdrop-blur-sm">
+          <div className="p-8 pb-6 border-b border-border bg-white/50 backdrop-blur-xl">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
                 <History className="w-6 h-6 text-foreground" />

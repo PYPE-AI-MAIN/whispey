@@ -748,7 +748,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
           />
 
           {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-card/80 rounded">
+            <div className="absolute inset-0 flex items-center justify-center bg-white/80 rounded">
               <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
             </div>
           )}

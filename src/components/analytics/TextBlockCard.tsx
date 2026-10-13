@@ -82,7 +82,7 @@ export function TextBlockCard({
             <button
               type="button"
               aria-label="Move this text block"
-              className={cn(DRAG_HANDLE_CLASS, 'pointer-events-auto cursor-grab rounded p-1 text-muted-foreground hover:text-muted-foreground')}
+              className={cn(DRAG_HANDLE_CLASS, 'pointer-events-auto cursor-grab rounded p-1 text-gray-300 hover:text-gray-500 dark:text-gray-600')}
             >
               <GripVertical className="h-3.5 w-3.5" />
             </button>

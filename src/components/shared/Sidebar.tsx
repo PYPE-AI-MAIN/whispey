@@ -342,7 +342,7 @@ function navItemTone(disabled: boolean | undefined, isActive: boolean): string {
 }
 
 function navIconTone(disabled: boolean | undefined, isActive: boolean): string {
-  if (disabled) return 'text-muted-foreground'
+  if (disabled) return 'text-gray-300 dark:text-gray-700'
   return isActive ? 'text-primary' : 'text-muted-foreground'
 }
 

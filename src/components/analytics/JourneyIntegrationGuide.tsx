@@ -109,11 +109,11 @@ function Snippet({ lang, setLang, code }: Readonly<{ lang: Lang; setLang: (l: La
         ))}
       </div>
       <div className="relative">
-        <pre className="max-h-64 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words rounded-lg bg-gray-900 p-3 text-[11px] leading-relaxed text-foreground">{code}</pre>
+        <pre className="max-h-64 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words rounded-lg bg-gray-900 p-3 text-[11px] leading-relaxed text-gray-100">{code}</pre>
         <button
           type="button"
           onClick={copy}
-          className="absolute right-2 top-2 rounded-md border border-gray-700 bg-gray-800 p-1.5 text-muted-foreground hover:bg-gray-700"
+          className="absolute right-2 top-2 rounded-md border border-gray-700 bg-gray-800 p-1.5 text-gray-300 hover:bg-gray-700"
           title="Copy"
           aria-label="Copy snippet"
         >

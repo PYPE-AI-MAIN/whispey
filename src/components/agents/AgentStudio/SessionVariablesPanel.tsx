@@ -65,7 +65,7 @@ export default function SessionVariablesPanel({
             value={values[key] ?? ''}
             onChange={(e) => update(key, e.target.value)}
             placeholder="Not set"
-            className="h-8 w-full rounded-md border border-border bg-card px-2.5 text-xs text-foreground outline-none transition placeholder:text-muted-foreground focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+            className="h-8 w-full rounded-md border border-border bg-card px-2.5 text-xs text-foreground outline-none transition placeholder:text-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
           />
         </label>
       ))}

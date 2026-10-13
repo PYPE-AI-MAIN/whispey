@@ -369,7 +369,7 @@ function VoiceList(props: Readonly<VoiceListProps>) {
   if (visible.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center gap-2 text-sm text-muted-foreground">
-        <Mic className="w-10 h-10 text-muted-foreground" />
+        <Mic className="w-10 h-10 text-gray-300 dark:text-gray-600" />
         No voices match your filters.
       </div>
     )

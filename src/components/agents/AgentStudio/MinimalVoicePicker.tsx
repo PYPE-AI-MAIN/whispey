@@ -213,7 +213,7 @@ function PlayOrb({
           : 'bg-gradient-to-br from-violet-500 to-indigo-500'
       )}
     >
-      {playing && <span className="absolute inset-0 animate-ping rounded-full bg-card/20" />}
+      {playing && <span className="absolute inset-0 animate-ping rounded-full bg-white/20" />}
       <span style={{ opacity: showControl ? 0 : 1, transition: 'opacity 150ms ease' }}>
         {voice.name[0]?.toUpperCase()}
       </span>

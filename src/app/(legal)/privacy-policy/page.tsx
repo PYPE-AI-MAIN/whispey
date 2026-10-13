@@ -718,7 +718,7 @@ export default function PrivacyPolicy() {
             <Link href="/terms" className="text-muted-foreground hover:text-primary transition-colors">
               Terms of Service
             </Link>
-            <span className="text-muted-foreground">•</span>
+            <span className="text-gray-300">•</span>
             <a
               href="https://github.com/PYPE-AI-MAIN/whispey"
               target="_blank"
@@ -727,7 +727,7 @@ export default function PrivacyPolicy() {
             >
               Open Source (GitHub)
             </a>
-            <span className="text-muted-foreground">•</span>
+            <span className="text-gray-300">•</span>
             <Link href="https://docs.whispey.pypeai.com" className="text-muted-foreground hover:text-primary transition-colors">
               Documentation
             </Link>

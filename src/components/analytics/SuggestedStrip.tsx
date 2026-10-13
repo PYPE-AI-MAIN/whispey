@@ -82,7 +82,7 @@ export function SuggestedStrip({
               <button
                 onClick={() => setDismissed((d) => [...d, s.title])}
                 aria-label={`Dismiss ${s.title}`}
-                className="rounded p-1 text-muted-foreground opacity-0 transition hover:bg-muted hover:text-muted-foreground group-hover/suggestion:opacity-100 focus:opacity-100"
+                className="rounded p-1 text-gray-300 opacity-0 transition hover:bg-gray-200 hover:text-gray-600 group-hover/suggestion:opacity-100 focus:opacity-100 dark:text-gray-600 dark:hover:bg-gray-800"
               >
                 <X className="h-3.5 w-3.5" />
               </button>

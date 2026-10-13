@@ -112,7 +112,7 @@ export function ChartCard({
                 // feature nobody finds
                 className={cn(
                   DRAG_HANDLE_CLASS,
-                  'pointer-events-auto -ml-1 cursor-grab rounded p-0.5 text-muted-foreground opacity-40 transition hover:text-muted-foreground group-hover:opacity-100 focus:opacity-100'
+                  'pointer-events-auto -ml-1 cursor-grab rounded p-0.5 text-gray-300 opacity-40 transition hover:text-gray-500 group-hover:opacity-100 focus:opacity-100 dark:text-gray-600'
                 )}
               >
                 <GripVertical className="h-3.5 w-3.5" />
@@ -131,7 +131,7 @@ export function ChartCard({
                     <button
                       type="button"
                       aria-label={`How "${calc.label}" is calculated`}
-                      className="pointer-events-auto shrink-0 text-muted-foreground outline-none transition hover:text-muted-foreground focus-visible:text-muted-foreground"
+                      className="pointer-events-auto shrink-0 text-gray-300 outline-none transition hover:text-gray-500 focus-visible:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400"
                     >
                       <Info className="h-3 w-3" />
                     </button>

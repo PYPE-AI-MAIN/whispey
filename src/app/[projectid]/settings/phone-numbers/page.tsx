@@ -135,7 +135,7 @@ function PhoneNumberForm({
 
   return (
     <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-      <h3 className="text-sm font-semibold text-foreground">
+      <h3 className="text-sm font-semibold text-gray-100">
         {isEdit ? 'Edit Phone Number' : 'Add Phone Number'}
       </h3>
 
