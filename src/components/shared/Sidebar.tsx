@@ -432,6 +432,71 @@ function renderNavigationItem(
   return navItem
 }
 
+type UtilitiesProps = Readonly<{
+  collapsed: boolean
+  mounted: boolean
+  resolvedTheme: string | undefined
+  setTheme: (theme: string) => void
+  onOpenSupport: () => void
+}>
+
+const ICON_BUTTON = 'inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'
+
+/** Docs, help, notifications and theme, always at the top; one menu when the sidebar is collapsed. */
+function SidebarUtilities({ collapsed, mounted, resolvedTheme, setTheme, onOpenSupport }: UtilitiesProps): React.ReactNode {
+  if (collapsed) {
+    const dark = mounted && resolvedTheme === 'dark'
+    const ThemeIcon = dark ? Sun : Moon
+    return (
+      <div className="flex justify-center border-b border-border px-3 py-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" aria-label="Docs, help and theme" className={ICON_BUTTON}>
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="right" align="start">
+            <DropdownMenuItem onClick={() => window.open('https://docs.whispey.pypeai.com', '_blank', 'noopener,noreferrer')}>
+              <BookOpen className="mr-2 h-4 w-4" />Docs
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onOpenSupport}>
+              <HelpCircle className="mr-2 h-4 w-4" />Help Center
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}>
+              <ThemeIcon className="mr-2 h-4 w-4" />{dark ? 'Light mode' : 'Dark mode'}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-1 border-b border-border px-3 py-2">
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <a href="https://docs.whispey.pypeai.com" target="_blank" rel="noopener noreferrer" aria-label="Docs" className={ICON_BUTTON}>
+              <BookOpen className="h-4 w-4" />
+            </a>
+          </TooltipTrigger>
+          <TooltipContent side="bottom"><p>Docs</p></TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button type="button" onClick={onOpenSupport} aria-label="Help Center" className={ICON_BUTTON}>
+              <HelpCircle className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom"><p>Help Center</p></TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <NotificationBell side="bottom" align="start" />
+      <ThemeToggle plain />
+    </div>
+  )
+}
+
 export default function Sidebar({
   config,
   currentPath,
@@ -662,68 +727,13 @@ export default function Sidebar({
           {renderContextHeader(config, isCollapsed, isMobile, onMobileClose)}
         </div>
 
-        {/* Utilities: docs, help, notifications and theme, always at the top; one menu when collapsed */}
-        {isCollapsed && !isMobile ? (
-          <div className="flex justify-center border-b border-border px-3 py-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="Docs, help and theme"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent side="right" align="start">
-                <DropdownMenuItem onClick={() => window.open('https://docs.whispey.pypeai.com', '_blank', 'noopener,noreferrer')}>
-                  <BookOpen className="mr-2 h-4 w-4" />Docs
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setIsSupportOpen(true)}>
-                  <HelpCircle className="mr-2 h-4 w-4" />Help Center
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}>
-                  {mounted && resolvedTheme === 'dark' ? <Sun className="mr-2 h-4 w-4" /> : <Moon className="mr-2 h-4 w-4" />}
-                  {mounted && resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        ) : (
-        <div className="flex items-center justify-between gap-1 border-b border-border px-3 py-2">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <a
-                  href="https://docs.whispey.pypeai.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Docs"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <BookOpen className="h-4 w-4" />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent side="bottom"><p>Docs</p></TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => setIsSupportOpen(true)}
-                  aria-label="Help Center"
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <HelpCircle className="h-4 w-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom"><p>Help Center</p></TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <NotificationBell side="bottom" align="start" />
-          <ThemeToggle plain />
-        </div>
-        )}
+        <SidebarUtilities
+          collapsed={isCollapsed && !isMobile}
+          mounted={mounted}
+          resolvedTheme={resolvedTheme}
+          setTheme={setTheme}
+          onOpenSupport={() => setIsSupportOpen(true)}
+        />
 
         {/* Navigation with Groups */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
