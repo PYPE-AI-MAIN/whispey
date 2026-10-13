@@ -156,7 +156,7 @@ export function FilterPanel({ activeFilters, distinctConfig, onApply, metadataFi
       <PopoverContent align="start" sideOffset={6} className={cn("w-auto min-w-[520px] max-w-[95vw] rounded-xl border-[var(--cl-border2)] bg-[var(--cl-raised)] p-0 text-[var(--cl-text)] shadow-[0_16px_40px_rgba(0,0,0,.35)]", V2_THEME)}>
         {quickAdd.length > 0 && (
           <div className="border-b border-[var(--cl-border2)] px-4 py-3">
-            <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-wider text-gray-400">
+            <p className="mb-2 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground">
               Quick add <span className="font-normal normal-case tracking-normal">· star a filter to pin its field here</span>
             </p>
             <div className="flex flex-wrap gap-1.5">
@@ -177,7 +177,7 @@ export function FilterPanel({ activeFilters, distinctConfig, onApply, metadataFi
 
         <div className="max-h-[50vh] space-y-2 overflow-y-auto p-3">
           {rows.length === 0 ? (
-            <p className="py-4 text-center text-sm text-gray-500">
+            <p className="py-4 text-center text-sm text-muted-foreground">
               No filters, so every call in the selected period is shown.
             </p>
           ) : (
@@ -200,7 +200,7 @@ export function FilterPanel({ activeFilters, distinctConfig, onApply, metadataFi
                     onClick={() => togglePin(row)}
                     disabled={!row.column}
                     title={isPinned ? "Unpin from Quick add" : "Pin this field to Quick add"}
-                    className="grid h-6 w-6 shrink-0 place-items-center rounded text-gray-300 hover:text-amber-500 disabled:opacity-30 dark:text-gray-600"
+                    className="grid h-6 w-6 shrink-0 place-items-center rounded text-muted-foreground hover:text-amber-500 disabled:opacity-30"
                   >
                     <Star className={cn("h-3.5 w-3.5", isPinned && "fill-amber-400 text-amber-400")} />
                   </button>
@@ -225,11 +225,11 @@ export function FilterPanel({ activeFilters, distinctConfig, onApply, metadataFi
         </div>
 
         <div className="flex items-center justify-between border-t border-[var(--cl-border2)] px-4 py-2.5">
-          <button type="button" onClick={clearAll} className="text-xs text-gray-500 hover:text-red-500">
+          <button type="button" onClick={clearAll} className="text-xs text-muted-foreground hover:text-red-500">
             Clear all
           </button>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-muted-foreground">
               {readyLabel(complete.length, rows.length)}
             </span>
             <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setOpen(false)}>

@@ -22,8 +22,8 @@ function RetellDashboardContent() {
 export default function RetellDashboardPage() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
-        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+      <div className="flex items-center justify-center h-screen bg-muted/50">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     }>
       <RetellDashboardContent />

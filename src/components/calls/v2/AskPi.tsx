@@ -161,7 +161,7 @@ export function AskPi(props: Readonly<AskPiProps>) {
           open && "shadow-[0_0_0_3px_var(--cl-violet-soft),0_8px_24px_rgba(124,58,237,.35)]"
         )}
       >
-        <span className="grid h-7 w-7 place-items-center rounded-full bg-white/20"><PiMark className="h-3.5 w-3.5" /></span>
+        <span className="grid h-7 w-7 place-items-center rounded-full bg-card/20"><PiMark className="h-3.5 w-3.5" /></span>
         <span>Ask Pi</span>
       </button>
 

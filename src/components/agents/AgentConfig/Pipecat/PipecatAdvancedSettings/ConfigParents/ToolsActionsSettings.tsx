@@ -99,10 +99,10 @@ const WEBHOOK_FIELD_OPTIONS = [
 const ALL_WEBHOOK_FIELDS = WEBHOOK_FIELD_OPTIONS.map(f => f.key)
 
 const TOOL_ICONS: Record<string, React.ReactNode> = {
-  end_call: <PhoneOffIcon className="w-3 h-3 text-gray-400" />,
-  transfer_call: <PhoneForwardedIcon className="w-3 h-3 text-gray-400" />,
-  switch_stt_model: <LanguagesIcon className="w-3 h-3 text-gray-400" />,
-  switch_tts_model: <Volume2Icon className="w-3 h-3 text-gray-400" />,
+  end_call: <PhoneOffIcon className="w-3 h-3 text-muted-foreground" />,
+  transfer_call: <PhoneForwardedIcon className="w-3 h-3 text-muted-foreground" />,
+  switch_stt_model: <LanguagesIcon className="w-3 h-3 text-muted-foreground" />,
+  switch_tts_model: <Volume2Icon className="w-3 h-3 text-muted-foreground" />,
 }
 
 // ── Tool Config Editor ────────────────────────────────────────────────────────
@@ -127,7 +127,7 @@ function ToolConfigEditor({
           const selected = (currentValue as string[]) ?? []
           return (
             <div key={key} className="space-y-1.5">
-              <Label className="text-xs text-gray-600 dark:text-gray-400">{schema.label}</Label>
+              <Label className="text-xs text-muted-foreground">{schema.label}</Label>
               <div className="space-y-1">
                 {schema.options.map(opt => (
                   <label key={opt.value} className="flex items-start gap-2 cursor-pointer">
@@ -141,13 +141,13 @@ function ToolConfigEditor({
                       }}
                       className="h-3 w-3 mt-0.5 flex-shrink-0"
                     />
-                    <span className="text-xs text-gray-600 dark:text-gray-400 font-mono leading-tight">
+                    <span className="text-xs text-muted-foreground font-mono leading-tight">
                       {opt.label}
                     </span>
                   </label>
                 ))}
               </div>
-              {schema.hint && <p className="text-xs text-gray-400">{schema.hint}</p>}
+              {schema.hint && <p className="text-xs text-muted-foreground">{schema.hint}</p>}
             </div>
           )
         }
@@ -155,7 +155,7 @@ function ToolConfigEditor({
         if (schema.type === 'select' && schema.options) {
           return (
             <div key={key} className="space-y-1">
-              <Label className="text-xs text-gray-600 dark:text-gray-400">{schema.label}</Label>
+              <Label className="text-xs text-muted-foreground">{schema.label}</Label>
               <Select
                 value={(currentValue as string) ?? ''}
                 onValueChange={v => onChange({ ...config, [key]: v })}
@@ -171,7 +171,7 @@ function ToolConfigEditor({
                   ))}
                 </SelectContent>
               </Select>
-              {schema.hint && <p className="text-xs text-gray-400">{schema.hint}</p>}
+              {schema.hint && <p className="text-xs text-muted-foreground">{schema.hint}</p>}
             </div>
           )
         }
@@ -179,14 +179,14 @@ function ToolConfigEditor({
         if (schema.type === 'text') {
           return (
             <div key={key} className="space-y-1">
-              <Label className="text-xs text-gray-600 dark:text-gray-400">{schema.label}</Label>
+              <Label className="text-xs text-muted-foreground">{schema.label}</Label>
               <Input
                 value={(currentValue as string) ?? ''}
                 onChange={e => onChange({ ...config, [key]: e.target.value })}
                 placeholder={schema.placeholder ?? ''}
                 className="h-7 text-xs"
               />
-              {schema.hint && <p className="text-xs text-gray-400">{schema.hint}</p>}
+              {schema.hint && <p className="text-xs text-muted-foreground">{schema.hint}</p>}
             </div>
           )
         }
@@ -194,7 +194,7 @@ function ToolConfigEditor({
         if (schema.type === 'number') {
           return (
             <div key={key} className="space-y-1">
-              <Label className="text-xs text-gray-600 dark:text-gray-400">{schema.label}</Label>
+              <Label className="text-xs text-muted-foreground">{schema.label}</Label>
               <Input
                 type="number"
                 value={(currentValue as number) ?? ''}
@@ -203,7 +203,7 @@ function ToolConfigEditor({
                 onChange={e => onChange({ ...config, [key]: parseFloat(e.target.value) })}
                 className="h-7 text-xs"
               />
-              {schema.hint && <p className="text-xs text-gray-400">{schema.hint}</p>}
+              {schema.hint && <p className="text-xs text-muted-foreground">{schema.hint}</p>}
             </div>
           )
         }
@@ -214,7 +214,7 @@ function ToolConfigEditor({
             : (schema.default !== undefined ? JSON.stringify(schema.default, null, 2) : '')
           return (
             <div key={key} className="space-y-1">
-              <Label className="text-xs text-gray-600 dark:text-gray-400">{schema.label}</Label>
+              <Label className="text-xs text-muted-foreground">{schema.label}</Label>
               <Textarea
                 value={rawValue}
                 onChange={e => {
@@ -228,7 +228,7 @@ function ToolConfigEditor({
                 className="text-xs font-mono min-h-[100px] resize-y"
                 rows={4}
               />
-              {schema.hint && <p className="text-xs text-gray-400">{schema.hint}</p>}
+              {schema.hint && <p className="text-xs text-muted-foreground">{schema.hint}</p>}
             </div>
           )
         }
@@ -346,19 +346,19 @@ export default function ToolsActionsSettings({
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-gray-500 dark:text-gray-400">
+      <p className="text-xs text-muted-foreground">
         Configure actions your assistant can perform during conversations.
       </p>
 
       {/* ── Built-in Tools ──────────────────────────────────────────────── */}
       <div className="space-y-1">
         <div className="flex items-center gap-2 mb-2">
-          <Label className="text-xs text-gray-500 dark:text-gray-400">Built-in Tools</Label>
-          {toolsLoading && <RefreshCwIcon className="w-3 h-3 text-gray-400 animate-spin" />}
+          <Label className="text-xs text-muted-foreground">Built-in Tools</Label>
+          {toolsLoading && <RefreshCwIcon className="w-3 h-3 text-muted-foreground animate-spin" />}
         </div>
 
         {backendTools.length === 0 && !toolsLoading && (
-          <p className="text-xs text-gray-400 italic">No tools available</p>
+          <p className="text-xs text-muted-foreground italic">No tools available</p>
         )}
 
         {backendTools.map(tool => {
@@ -371,12 +371,12 @@ export default function ToolsActionsSettings({
               {/* Tool row */}
               <div className="flex items-center justify-between py-1.5">
                 <div className="flex items-center gap-2">
-                  {TOOL_ICONS[tool.name] ?? <WrenchIcon className="w-3 h-3 text-gray-400" />}
+                  {TOOL_ICONS[tool.name] ?? <WrenchIcon className="w-3 h-3 text-muted-foreground" />}
                   <div>
-                    <span className="text-xs font-mono text-gray-700 dark:text-gray-300">
+                    <span className="text-xs font-mono text-foreground">
                       {tool.name}
                     </span>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">{tool.description}</p>
+                    <p className="text-xs text-muted-foreground">{tool.description}</p>
                   </div>
                 </div>
                 <Switch
@@ -390,7 +390,7 @@ export default function ToolsActionsSettings({
               {isTransferTool && enabled && (
                 <div className="ml-5 mt-1 mb-3 space-y-3">
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
                       <PhoneIcon className="w-3 h-3" />
                       Transfer Target
                     </Label>
@@ -398,47 +398,47 @@ export default function ToolsActionsSettings({
                       value={transferNumber}
                       onChange={e => onTransferNumberChange(e.target.value)}
                       placeholder="+91XXXXXXXXXX"
-                      className="h-7 text-xs border-gray-200 dark:border-gray-700"
+                      className="h-7 text-xs border-border"
                     />
-                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       Plivo / web: full phone number e.g. <span className="font-mono">+919876543210</span><br />
                       Acefone: intercom / extension ID e.g. <span className="font-mono">8001</span> or hunt group <span className="font-mono">8001,8002</span>
                     </p>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-gray-600 dark:text-gray-400">
-                      Acefone Token <span className="text-gray-400 font-normal">(leave blank if using global env)</span>
+                    <Label className="text-xs text-muted-foreground">
+                      Acefone Token <span className="text-muted-foreground font-normal">(leave blank if using global env)</span>
                     </Label>
                     <Input
                       value={acefoneToken}
                       onChange={e => onAcefoneTokenChange(e.target.value)}
                       placeholder="Bearer eyJ..."
                       type="password"
-                      className="h-7 text-xs border-gray-200 dark:border-gray-700"
+                      className="h-7 text-xs border-border"
                     />
-                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       Per-agent Acefone API token. Overrides the server-level <span className="font-mono">ACEFONE_TOKEN</span> env var.
                     </p>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-gray-600 dark:text-gray-400">
-                      Acefone Click-to-Call API Key <span className="text-gray-400 font-normal">(leave blank if using global env)</span>
+                    <Label className="text-xs text-muted-foreground">
+                      Acefone Click-to-Call API Key <span className="text-muted-foreground font-normal">(leave blank if using global env)</span>
                     </Label>
                     <Input
                       value={acefoneApiKeyC2C}
                       onChange={e => onAcefoneApiKeyC2CChange(e.target.value)}
                       placeholder="5f0d3b62-c206-42dd-..."
                       type="password"
-                      className="h-7 text-xs border-gray-200 dark:border-gray-700"
+                      className="h-7 text-xs border-border"
                     />
-                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       UUID API key for outbound click-to-call. Overrides the server-level <span className="font-mono">ACEFONE_API_KEY</span> env var.
                     </p>
                   </div>
                   {/* Pre-transfer webhook */}
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-gray-600 dark:text-gray-400">
-                      Pre-Transfer Webhook URL <span className="text-gray-400 font-normal">(optional)</span>
+                    <Label className="text-xs text-muted-foreground">
+                      Pre-Transfer Webhook URL <span className="text-muted-foreground font-normal">(optional)</span>
                     </Label>
                     <Input
                       value={(toolConfigs['transfer_call'] as any)?.pre_transfer_webhook_url ?? ''}
@@ -447,15 +447,15 @@ export default function ToolsActionsSettings({
                         pre_transfer_webhook_url: e.target.value,
                       })}
                       placeholder="https://your-api.com/webhook"
-                      className="h-7 text-xs border-gray-200 dark:border-gray-700"
+                      className="h-7 text-xs border-border"
                     />
-                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       Called before the transfer is dialed. Receives call ID, customer number, metadata, and more.
                     </p>
                   </div>
                   {(toolConfigs['transfer_call'] as any)?.pre_transfer_webhook_url && (
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-gray-600 dark:text-gray-400">Fields to include in webhook payload</Label>
+                      <Label className="text-xs text-muted-foreground">Fields to include in webhook payload</Label>
                       <div className="grid grid-cols-2 gap-y-1.5 gap-x-3 mt-1">
                         {WEBHOOK_FIELD_OPTIONS.map(({ key, label }) => {
                           const fields: string[] = (toolConfigs['transfer_call'] as any)?.pre_transfer_webhook_fields ?? ALL_WEBHOOK_FIELDS
@@ -474,7 +474,7 @@ export default function ToolsActionsSettings({
                                 }}
                                 className="h-3 w-3"
                               />
-                              <label htmlFor={`ptw-${key}`} className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer select-none">{label}</label>
+                              <label htmlFor={`ptw-${key}`} className="text-xs text-muted-foreground cursor-pointer select-none">{label}</label>
                             </div>
                           )
                         })}
@@ -507,12 +507,12 @@ export default function ToolsActionsSettings({
         })}
       </div>
 
-      <div className="h-px bg-gray-100 dark:bg-gray-700" />
+      <div className="h-px bg-muted" />
 
       {/* ── Custom HTTP Tools ───────────────────────────────────────────── */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label className="text-xs text-gray-500 dark:text-gray-400">
+          <Label className="text-xs text-muted-foreground">
             Custom HTTP Tools
             {customTools.length > 0 && (
               <Badge variant="outline" className="ml-2 text-xs px-1 py-0 h-4">
@@ -526,7 +526,7 @@ export default function ToolsActionsSettings({
         </div>
 
         {customTools.length === 0 && (
-          <div className="text-xs text-gray-400 text-center py-3 bg-gray-50 dark:bg-gray-900 rounded border border-dashed border-gray-300 dark:border-gray-700">
+          <div className="text-xs text-muted-foreground text-center py-3 bg-muted/50 rounded border border-dashed border-border">
             No custom tools configured
           </div>
         )}
@@ -534,15 +534,15 @@ export default function ToolsActionsSettings({
         {customTools.map((tool, i) => (
           <div
             key={i}
-            className="flex items-center justify-between gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700"
+            className="flex items-center justify-between gap-2 p-2 bg-muted/50 rounded border border-border"
           >
             <div className="flex items-center gap-2 min-w-0 flex-1">
-              <CodeIcon className="w-3 h-3 text-gray-400 flex-shrink-0" />
+              <CodeIcon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
               <div className="min-w-0">
-                <span className="text-xs font-mono text-gray-700 dark:text-gray-300 truncate block">
+                <span className="text-xs font-mono text-foreground truncate block">
                   {tool.name || 'unnamed'}
                 </span>
-                <span className="text-xs text-gray-400 truncate block">{tool.url}</span>
+                <span className="text-xs text-muted-foreground truncate block">{tool.url}</span>
               </div>
               <Badge variant="outline" className="text-xs px-1 py-0 h-4 flex-shrink-0">
                 {tool.method}
@@ -552,7 +552,7 @@ export default function ToolsActionsSettings({
               <Button
                 variant="ghost" size="sm"
                 onClick={() => openEditDialog(i)}
-                className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700"
+                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
               >
                 <EditIcon className="w-3 h-3" />
               </Button>
@@ -570,7 +570,7 @@ export default function ToolsActionsSettings({
 
       {/* ── Custom Tool Dialog ──────────────────────────────────────────── */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto bg-card border-border">
           <DialogHeader>
             <DialogTitle className="text-sm">
               {editingIndex !== null ? 'Edit' : 'Add'} Custom HTTP Tool
@@ -585,7 +585,7 @@ export default function ToolsActionsSettings({
                 placeholder="check_slot"
                 className="h-7 text-xs font-mono"
               />
-              <p className="text-xs text-gray-500">snake_case name — the LLM calls it by this name</p>
+              <p className="text-xs text-muted-foreground">snake_case name — the LLM calls it by this name</p>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Description</Label>
@@ -631,7 +631,7 @@ export default function ToolsActionsSettings({
                 className="text-xs font-mono min-h-[100px] resize-none"
                 rows={4}
               />
-              <p className="text-xs text-gray-500">GET → query string. POST → JSON body.</p>
+              <p className="text-xs text-muted-foreground">GET → query string. POST → JSON body.</p>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Headers (JSON)</Label>
@@ -644,11 +644,11 @@ export default function ToolsActionsSettings({
               />
             </div>
             {/* ── Filler Words ────────────────────────────────────────────── */}
-            <div className="border border-gray-200 dark:border-gray-700 rounded-md p-3 space-y-3">
+            <div className="border border-border rounded-md p-3 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Tool Call Filler Words</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500">Speak phrases while this tool is running</p>
+                  <p className="text-xs font-medium text-foreground">Tool Call Filler Words</p>
+                  <p className="text-xs text-muted-foreground">Speak phrases while this tool is running</p>
                 </div>
                 <Switch
                   checked={editingTool.filler_config?.enabled ?? false}
@@ -727,7 +727,7 @@ export default function ToolsActionsSettings({
                     <Label className="text-xs">Filler messages</Label>
 
                     {(editingTool.filler_config.messages ?? []).length === 0 && (
-                      <p className="text-xs text-gray-400 italic">No messages added yet.</p>
+                      <p className="text-xs text-muted-foreground italic">No messages added yet.</p>
                     )}
 
                     {(editingTool.filler_config.messages ?? []).map((msg, i) => (

@@ -583,7 +583,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
   }
 
   return (
-    <Card className={cn("p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700", className)}>
+    <Card className={cn("p-4 bg-card border border-border", className)}>
       <audio ref={audioRef} preload="metadata" />
 
       <div className="flex items-center gap-3">
@@ -619,9 +619,9 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
             </Button>
           </DialogTrigger>
           
-          <DialogContent className="sm:max-w-md bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <DialogContent className="sm:max-w-md bg-card border-border">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
+              <DialogTitle className="flex items-center gap-2 text-foreground">
                 <Download className="w-5 h-5" />
                 Download Audio File
               </DialogTitle>
@@ -630,15 +630,15 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
             <div className="space-y-4">
               {/* File Name Input */}
               <div className="space-y-2">
-                <Label htmlFor="filename" className="text-gray-700 dark:text-gray-300">File Name</Label>
+                <Label htmlFor="filename" className="text-foreground">File Name</Label>
                 <Input
                   id="filename"
                   value={downloadFileName}
                   onChange={(e) => setDownloadFileName(e.target.value)}
                   placeholder="Enter file name..."
-                  className="font-mono text-sm bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400"
+                  className="font-mono text-sm bg-card border-border text-foreground placeholder:text-muted-foreground"
                 />
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-muted-foreground">
                   File will be downloaded as MP3 format
                 </p>
               </div>
@@ -646,12 +646,12 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
               {/* URL Preview */}
               {downloadUrl && (
                 <div className="space-y-2">
-                  <Label className="text-gray-700 dark:text-gray-300">Download Source</Label>
-                  <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-md border border-gray-200 dark:border-gray-600">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 break-all">
+                  <Label className="text-foreground">Download Source</Label>
+                  <div className="p-3 bg-muted/50 rounded-md border border-border">
+                    <p className="text-xs text-muted-foreground break-all">
                       {downloadUrl.includes('amazonaws.com') ? 'AWS S3 URL' : 'Direct URL'}
                     </p>
-                    <p className="text-xs font-mono break-all mt-1 text-gray-600 dark:text-gray-300">
+                    <p className="text-xs font-mono break-all mt-1 text-muted-foreground">
                       {downloadUrl.length > 50 ? `${downloadUrl.substring(0, 50)}...` : downloadUrl}
                     </p>
                   </div>
@@ -721,13 +721,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
               <span className="text-xs font-medium">{playbackSpeed}x</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <DropdownMenuContent align="start" className="bg-card border-border">
             {PLAYBACK_SPEEDS.map((speed) => (
               <DropdownMenuItem
                 key={speed}
                 onClick={() => handleSpeedChange(speed)}
                 className={cn(
-                  "cursor-pointer text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700",
+                  "cursor-pointer text-foreground hover:bg-muted",
                   playbackSpeed === speed && "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400"
                 )}
               >
@@ -743,19 +743,19 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
             ref={canvasRef}
             width={600}
             height={40}
-            className="w-full h-10 cursor-pointer rounded bg-gray-50 dark:bg-gray-700"
+            className="w-full h-10 cursor-pointer rounded bg-muted/50"
             onClick={handleWaveformClick}
           />
 
           {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-800/80 rounded">
-              <Loader2 className="w-4 h-4 animate-spin text-gray-500 dark:text-gray-400" />
+            <div className="absolute inset-0 flex items-center justify-center bg-card/80 rounded">
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
             </div>
           )}
         </div>
 
         {/* Time Display */}
-        <div className="text-xs text-gray-500 dark:text-gray-400 font-mono flex-shrink-0 min-w-[35px]">
+        <div className="text-xs text-muted-foreground font-mono flex-shrink-0 min-w-[35px]">
           {formatTime(currentTime)}
         </div>
       </div>

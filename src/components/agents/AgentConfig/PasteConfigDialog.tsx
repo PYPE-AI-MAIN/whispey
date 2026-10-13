@@ -132,7 +132,7 @@ export default function PasteConfigDialog({
 
           {/* Validation Status */}
           {isValidating && (
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>Validating configuration...</span>
             </div>
@@ -165,7 +165,7 @@ export default function PasteConfigDialog({
 
           {/* Actions */}
           <div className="flex items-center justify-between pt-2 border-t">
-            <span className="text-[11px] text-gray-400 dark:text-gray-500">
+            <span className="text-[11px] text-muted-foreground">
               {pastedJson.length.toLocaleString()} characters
             </span>
             

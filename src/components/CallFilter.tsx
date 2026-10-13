@@ -448,7 +448,7 @@ const CallFilter: React.FC<CallFilterProps> = ({
           <Filter className="h-3 w-3" />
           Filter
           {activeCount > 0 && (
-            <span className="h-4 min-w-[16px] rounded-full bg-white/20 text-[10px] font-semibold px-1 flex items-center justify-center">
+            <span className="h-4 min-w-[16px] rounded-full bg-card/20 text-[10px] font-semibold px-1 flex items-center justify-center">
               {activeCount}
             </span>
           )}

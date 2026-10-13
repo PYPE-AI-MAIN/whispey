@@ -41,9 +41,9 @@ export class ChartErrorBoundary extends React.Component<Props, State> {
   render() {
     if (!this.state.error) return this.props.children
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white p-4 text-center dark:border-gray-800 dark:bg-gray-900">
-        <AlertTriangle className="h-4 w-4 text-gray-400" />
-        <p className="text-xs text-gray-500 dark:text-gray-400">
+      <div className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-xl border border-border bg-card p-4 text-center">
+        <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+        <p className="text-xs text-muted-foreground">
           This chart could not be drawn.{this.props.label ? ` (${this.props.label})` : ''}
         </p>
         <button

@@ -102,7 +102,7 @@ function CopyButton({ text, codeId, copiedCode, onCopy, className, iconSize = 'w
       {copiedCode === codeId ? (
         <div className={`${iconSize} text-green-400`}>✓</div>
       ) : (
-        <Copy className={`${iconSize} text-gray-300`} />
+        <Copy className={`${iconSize} text-muted-foreground`} />
       )}
     </button>
   )
@@ -111,19 +111,19 @@ function CopyButton({ text, codeId, copiedCode, onCopy, className, iconSize = 'w
 /** Shown when a search filters out every agent. */
 function NoResultsState({ isMobile, onClearSearch }: Readonly<{ isMobile: boolean; onClearSearch: () => void }>) {
   return (
-    <div className={`text-center py-12 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm ${isMobile ? 'px-4' : ''}`}>
-      <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center mx-auto mb-4">
-        <Eye className="h-6 w-6 text-gray-400 dark:text-gray-500" />
+    <div className={`text-center py-12 bg-card rounded-xl border border-border shadow-sm ${isMobile ? 'px-4' : ''}`}>
+      <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center mx-auto mb-4">
+        <Eye className="h-6 w-6 text-muted-foreground" />
       </div>
-      <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-2">No Results Found</h3>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 max-w-sm mx-auto">
+      <h3 className="text-base font-medium text-foreground mb-2">No Results Found</h3>
+      <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
         No monitoring setups match your search criteria.
       </p>
       <Button
         variant="outline"
         onClick={onClearSearch}
         size="sm"
-        className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300"
+        className="border-border text-foreground"
       >
         Clear Search
       </Button>
@@ -134,15 +134,15 @@ function NoResultsState({ isMobile, onClearSearch }: Readonly<{ isMobile: boolea
 /** Initial "which are you" chooser between the beginner tutorial and the experienced quick guide. */
 function ExperienceChooser({ isMobile, onSelect }: Readonly<{ isMobile: boolean; onSelect: (level: 'beginner' | 'experienced') => void }>) {
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+    <div className="bg-card rounded-xl border border-border shadow-sm">
       <div className={`text-center py-6 ${isMobile ? 'px-4' : 'px-6'}`}>
         <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center mx-auto mb-4">
           <Eye className="h-6 w-6 text-blue-600 dark:text-blue-400" />
         </div>
-        <h2 className={`font-semibold text-gray-900 dark:text-gray-100 mb-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
+        <h2 className={`font-semibold text-foreground mb-2 ${isMobile ? 'text-base' : 'text-lg'}`}>
           Start Monitoring Your Voice Agents
         </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-lg mx-auto">
+        <p className="text-sm text-muted-foreground mb-6 max-w-lg mx-auto">
           Add intelligent observability to your voice AI agents
         </p>
 
@@ -150,13 +150,13 @@ function ExperienceChooser({ isMobile, onSelect }: Readonly<{ isMobile: boolean;
           <button
             type="button"
             onClick={() => onSelect('beginner')}
-            className="group w-full text-left appearance-none bg-transparent p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 cursor-pointer transition-all"
+            className="group w-full text-left appearance-none bg-transparent p-4 border-2 border-border rounded-xl hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 cursor-pointer transition-all"
           >
             <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center mx-auto mb-3">
               <Terminal className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             </div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">New to LiveKit?</h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-3 text-xs leading-relaxed">
+            <h3 className="text-sm font-semibold text-foreground mb-2">New to LiveKit?</h3>
+            <p className="text-muted-foreground mb-3 text-xs leading-relaxed">
               Complete walkthrough from installation to your first monitored voice agent
             </p>
             <div className="inline-flex items-center text-blue-600 dark:text-blue-400 font-medium text-xs">
@@ -168,13 +168,13 @@ function ExperienceChooser({ isMobile, onSelect }: Readonly<{ isMobile: boolean;
           <button
             type="button"
             onClick={() => onSelect('experienced')}
-            className="group w-full text-left appearance-none bg-transparent p-4 border-2 border-gray-200 dark:border-gray-700 rounded-xl hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50/50 dark:hover:bg-green-900/10 cursor-pointer transition-all"
+            className="group w-full text-left appearance-none bg-transparent p-4 border-2 border-border rounded-xl hover:border-green-400 dark:hover:border-green-500 hover:bg-green-50/50 dark:hover:bg-green-900/10 cursor-pointer transition-all"
           >
             <div className="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mx-auto mb-3">
               <Play className="h-4 w-4 text-green-600 dark:text-green-400" />
             </div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Have Existing Agents?</h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-3 text-xs leading-relaxed">
+            <h3 className="text-sm font-semibold text-foreground mb-2">Have Existing Agents?</h3>
+            <p className="text-muted-foreground mb-3 text-xs leading-relaxed">
               Quick integration guide to add monitoring to your current setup
             </p>
             <div className="inline-flex items-center text-green-600 dark:text-green-400 font-medium text-xs">
@@ -193,10 +193,10 @@ function TutorialHeader({ isMobile, title, subtitle, onBack }: Readonly<{ isMobi
   return (
     <div className={`flex items-center justify-between mb-4 ${isMobile ? 'flex-col gap-3' : ''}`}>
       <div className={isMobile ? 'text-center' : ''}>
-        <h2 className={`font-semibold text-gray-900 dark:text-gray-100 mb-1 ${isMobile ? 'text-base' : 'text-lg'}`}>
+        <h2 className={`font-semibold text-foreground mb-1 ${isMobile ? 'text-base' : 'text-lg'}`}>
           {title}
         </h2>
-        <p className="text-gray-600 dark:text-gray-400 text-sm">{subtitle}</p>
+        <p className="text-muted-foreground text-sm">{subtitle}</p>
       </div>
       <div className={`flex items-center gap-2 ${isMobile ? 'flex-col w-full' : ''}`}>
         <a
@@ -212,7 +212,7 @@ function TutorialHeader({ isMobile, title, subtitle, onBack }: Readonly<{ isMobi
           variant="outline"
           onClick={onBack}
           size="sm"
-          className={`text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 text-xs ${isMobile ? 'w-full' : ''}`}
+          className={`text-muted-foreground border-border text-xs ${isMobile ? 'w-full' : ''}`}
         >
           ← Back
         </Button>
@@ -240,7 +240,7 @@ function BeginnerTutorial({
   const installLivekitCmd = 'pip install livekit-agents livekit-plugins-openai livekit-plugins-elevenlabs livekit-plugins-silero'
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+    <div className="bg-card rounded-xl border border-border shadow-sm">
       <div className={isMobile ? 'p-4' : 'p-6'}>
         <TutorialHeader
           isMobile={isMobile}
@@ -271,18 +271,18 @@ function BeginnerTutorial({
           {/* Condensed Steps for Mobile */}
           <div className="space-y-3">
             {/* Step 1 - Prerequisites */}
-            <div className={`border-l-2 border-gray-200 dark:border-gray-700 pl-3 ${isMobile ? '' : 'pl-4'}`}>
+            <div className={`border-l-2 border-border pl-3 ${isMobile ? '' : 'pl-4'}`}>
               <div className="absolute -ml-5 mt-0.5 w-2.5 h-2.5 bg-blue-500 dark:bg-blue-400 rounded-full"></div>
-              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">1. Prerequisites</h3>
+              <h3 className="text-sm font-medium text-foreground mb-2">1. Prerequisites</h3>
               {isMobile ? (
-                <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                <div className="text-xs text-muted-foreground space-y-1">
                   <p>• Python 3.8+ installed</p>
                   <p>• OpenAI/LLM API keys</p>
                   <p>• TTS service credentials</p>
                   <p className="text-red-600 dark:text-red-400 font-medium">• Your Whispey Project API key</p>
                 </div>
               ) : (
-                <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                <ul className="space-y-1 text-sm text-muted-foreground">
                   <li className="flex items-start gap-1.5">
                     <div className="w-1 h-1 bg-blue-500 dark:bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
                     Python 3.8+ installed on your system
@@ -304,12 +304,12 @@ function BeginnerTutorial({
             </div>
 
             {/* Step 2 - Install LiveKit */}
-            <div className={`border-l-2 border-gray-200 dark:border-gray-700 pl-3 ${isMobile ? '' : 'pl-4'} relative`}>
+            <div className={`border-l-2 border-border pl-3 ${isMobile ? '' : 'pl-4'} relative`}>
               <div className="absolute -ml-5 mt-0.5 w-2.5 h-2.5 bg-blue-500 dark:bg-blue-400 rounded-full"></div>
-              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">2. Install LiveKit</h3>
+              <h3 className="text-sm font-medium text-foreground mb-2">2. Install LiveKit</h3>
               <div className="relative">
                 <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-2.5">
-                  <pre className={`text-gray-100 font-mono ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                  <pre className={`text-foreground font-mono ${isMobile ? 'text-xs' : 'text-sm'}`}>
 {isMobile ?
 `pip install livekit-agents livekit-plugins-openai
 livekit-plugins-elevenlabs livekit-plugins-silero` :
@@ -324,22 +324,22 @@ pip install livekit-plugins-silero`}
             </div>
 
             {/* Step 3 - Install Whispey */}
-            <div className={`border-l-2 border-gray-200 dark:border-gray-700 pl-3 ${isMobile ? '' : 'pl-4'} relative`}>
+            <div className={`border-l-2 border-border pl-3 ${isMobile ? '' : 'pl-4'} relative`}>
               <div className="absolute -ml-5 mt-0.5 w-2.5 h-2.5 bg-blue-500 dark:bg-blue-400 rounded-full"></div>
-              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">3. Install Whispey</h3>
+              <h3 className="text-sm font-medium text-foreground mb-2">3. Install Whispey</h3>
               <div className="relative">
                 <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-2.5">
-                  <pre className={`text-gray-100 font-mono ${isMobile ? 'text-xs' : 'text-sm'}`}>pip install whispey</pre>
+                  <pre className={`text-foreground font-mono ${isMobile ? 'text-xs' : 'text-sm'}`}>pip install whispey</pre>
                   <CopyButton text="pip install whispey" codeId="install-whispey" copiedCode={copiedCode} onCopy={onCopy} />
                 </div>
               </div>
             </div>
 
             {/* Step 4 - Code Example (Expandable on mobile) */}
-            <div className={`border-l-2 border-gray-200 dark:border-gray-700 pl-3 ${isMobile ? '' : 'pl-4'} relative`}>
+            <div className={`border-l-2 border-border pl-3 ${isMobile ? '' : 'pl-4'} relative`}>
               <div className="absolute -ml-5 mt-0.5 w-2.5 h-2.5 bg-blue-500 dark:bg-blue-400 rounded-full"></div>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">4. Complete Example</h3>
+                <h3 className="text-sm font-medium text-foreground">4. Complete Example</h3>
                 {isMobile && (
                   <button
                     onClick={onToggleExample}
@@ -360,10 +360,10 @@ pip install livekit-plugins-silero`}
                         <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full"></div>
                         <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
                       </div>
-                      <Terminal className="w-2.5 h-2.5 text-gray-400" />
-                      <span className="text-xs text-gray-400">agent.py</span>
+                      <Terminal className="w-2.5 h-2.5 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">agent.py</span>
                     </div>
-                    <pre className={`text-gray-100 font-mono overflow-x-auto ${isMobile ? 'text-xs max-h-48' : 'text-xs max-h-64'} overflow-y-auto`}>
+                    <pre className={`text-foreground font-mono overflow-x-auto ${isMobile ? 'text-xs max-h-48' : 'text-xs max-h-64'} overflow-y-auto`}>
                       {COMPLETE_AGENT_CODE}
                     </pre>
                     <CopyButton text={COMPLETE_AGENT_CODE} codeId="complete-example" copiedCode={copiedCode} onCopy={onCopy} />
@@ -374,9 +374,9 @@ pip install livekit-plugins-silero`}
           </div>
         </div>
 
-        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-800">
+        <div className="mt-6 pt-4 border-t border-border">
           <div className="text-center">
-            <p className="text-gray-600 dark:text-gray-400 mb-3 text-sm">
+            <p className="text-muted-foreground mb-3 text-sm">
               Ready to set up monitoring for your agent?
             </p>
             <Button
@@ -401,7 +401,7 @@ function ExperiencedGuide({
   const sessionCode = `session_id = whispey.start_session(session)\n\nasync def shutdown():\n    await whispey.export(session_id)\nctx.add_shutdown_callback(shutdown)`
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+    <div className="bg-card rounded-xl border border-border shadow-sm">
       <div className={isMobile ? 'p-4' : 'p-6'}>
         <TutorialHeader
           isMobile={isMobile}
@@ -413,10 +413,10 @@ function ExperiencedGuide({
         {/* Quick steps - Stack vertically on mobile */}
         <div className={`${isMobile ? 'space-y-4' : 'grid md:grid-cols-3 gap-4'} mb-4`}>
           <div className="space-y-2">
-            <h3 className="font-medium text-gray-900 dark:text-gray-100 text-sm">1. Install Whispey</h3>
+            <h3 className="font-medium text-foreground text-sm">1. Install Whispey</h3>
             <div className="relative">
               <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-2">
-                <pre className="text-gray-100 text-xs font-mono">pip install whispey</pre>
+                <pre className="text-foreground text-xs font-mono">pip install whispey</pre>
                 <CopyButton
                   text="pip install whispey" codeId="quick-install" copiedCode={copiedCode} onCopy={onCopy}
                   className="absolute top-1.5 right-1.5 p-0.5 bg-gray-800 hover:bg-gray-700 rounded"
@@ -426,10 +426,10 @@ function ExperiencedGuide({
           </div>
 
           <div className="space-y-2">
-            <h3 className="font-medium text-gray-900 dark:text-gray-100 text-sm">2. Import & Initialize</h3>
+            <h3 className="font-medium text-foreground text-sm">2. Import & Initialize</h3>
             <div className="relative">
               <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-2">
-                <pre className="text-gray-100 text-xs font-mono">
+                <pre className="text-foreground text-xs font-mono">
 {`from whispey import LivekitObserve
 
 whispey = LivekitObserve(
@@ -446,10 +446,10 @@ whispey = LivekitObserve(
           </div>
 
           <div className="space-y-2">
-            <h3 className="font-medium text-gray-900 dark:text-gray-100 text-sm">3. Add to Session</h3>
+            <h3 className="font-medium text-foreground text-sm">3. Add to Session</h3>
             <div className="relative">
               <div className="bg-gray-900 dark:bg-gray-950 rounded-lg p-2">
-                <pre className="text-gray-100 text-xs font-mono">
+                <pre className="text-foreground text-xs font-mono">
 {`session_id = whispey.start_session(session)
 
 async def shutdown():
@@ -466,7 +466,7 @@ ctx.add_shutdown_callback(shutdown)`}
         </div>
 
         <div className="text-center">
-          <p className="text-gray-600 dark:text-gray-400 mb-3 text-sm">
+          <p className="text-muted-foreground mb-3 text-sm">
             Ready to configure your monitoring dashboard?
           </p>
           <Button

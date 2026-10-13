@@ -165,13 +165,13 @@ const getStatusIndicator = (agent: Agent, runningAgents?: RunningAgent[], size: 
 
   if (!runningStatus) {
     return (
-      <div className={`${dotSize} rounded-full border border-white dark:border-gray-900 bg-gray-300 dark:bg-gray-600`}></div>
+      <div className={`${dotSize} rounded-full border border-white dark:border-gray-900 bg-muted-foreground/30`}></div>
     )
   }
   
   if (runningStatus.status === 'loading') {
     return (
-      <div className={`${dotSize} rounded-full border border-white dark:border-gray-900 bg-gray-400 dark:bg-gray-500`}></div>
+      <div className={`${dotSize} rounded-full border border-white dark:border-gray-900 bg-muted-foreground/40`}></div>
     )
   }
   
@@ -327,7 +327,7 @@ const MonitoringToggleMenuItem: React.FC<MonitoringToggleMenuItemProps> = ({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            {monitoringToggleLoading && <Loader2 className="w-4 h-4 animate-spin text-gray-500" />}
+            {monitoringToggleLoading && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
             <Switch
               aria-label="Enable monitoring"
               checked={monitoringEnabled}
@@ -438,7 +438,7 @@ const MobileAgentCard: React.FC<AgentViewProps> = ({
                 e.stopPropagation()
                 onCopyId(e)
               }}
-              className="ml-2 w-10 h-10 p-0 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg"
+              className="ml-2 w-10 h-10 p-0 text-muted-foreground hover:text-muted-foreground hover:bg-muted rounded-lg"
             >
               <Copy className="w-4 h-4" />
             </Button>
@@ -471,7 +471,7 @@ const MobileAgentCard: React.FC<AgentViewProps> = ({
                   setCopiedNumber(true)
                   setTimeout(() => setCopiedNumber(false), 2000)
                 }}
-                className="ml-2 w-10 h-10 p-0 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg"
+                className="ml-2 w-10 h-10 p-0 text-muted-foreground hover:text-muted-foreground hover:bg-muted rounded-lg"
               >
                 <Copy className="w-4 h-4" />
               </Button>
@@ -496,7 +496,7 @@ const MobileAgentCard: React.FC<AgentViewProps> = ({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="w-9 h-9 p-0 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                  className="w-9 h-9 p-0 text-muted-foreground hover:text-muted-foreground"
                   onClick={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
@@ -623,7 +623,7 @@ const ListAgentRow: React.FC<AgentViewWithMobileProps> = ({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="opacity-0 group-hover:opacity-100 w-7 h-7 p-0 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
+                    className="opacity-0 group-hover:opacity-100 w-7 h-7 p-0 text-muted-foreground hover:text-muted-foreground hover:bg-muted transition-all"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <MoreHorizontal className="h-4 w-4" />
@@ -728,7 +728,7 @@ return (
               <Button
                 variant="ghost"
                 size="sm"
-                className="opacity-0 group-hover:opacity-100 w-8 h-8 p-0 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                className="opacity-0 group-hover:opacity-100 w-8 h-8 p-0 text-muted-foreground hover:text-muted-foreground"
                 onClick={(e) => e.stopPropagation()}
               >
                 <MoreHorizontal className="h-4 w-4" />
@@ -786,7 +786,7 @@ return (
                 e.stopPropagation()
                 onCopyId(e)
               }}
-              className="w-7 h-7 p-0 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+              className="w-7 h-7 p-0 text-muted-foreground hover:text-muted-foreground"
             >
               <Copy className="w-3.5 h-3.5" />
             </Button>
@@ -816,7 +816,7 @@ return (
                   setCopiedNumber(true)
                   setTimeout(() => setCopiedNumber(false), 2000)
                 }}
-                className="w-7 h-7 p-0 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                className="w-7 h-7 p-0 text-muted-foreground hover:text-muted-foreground"
               >
                 <Copy className="w-3.5 h-3.5" />
               </Button>

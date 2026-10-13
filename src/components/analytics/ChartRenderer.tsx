@@ -224,7 +224,7 @@ function Kpi({ rows, spec, short, compact }: Readonly<{ rows: ResultRow[]; spec:
     <div className="flex h-full flex-col justify-center overflow-hidden">
       <div
         className={cn(
-          'truncate font-semibold tabular-nums text-gray-900 dark:text-gray-50',
+          'truncate font-semibold tabular-nums text-foreground',
           // `short` (h <= 2) alone isn't enough of a signal: on a NARROW card
           // too, the header's grain-label + definition line wraps onto a
           // second line (deliberately — it's allowed to wrap rather than
@@ -234,7 +234,7 @@ function Kpi({ rows, spec, short, compact }: Readonly<{ rows: ResultRow[]; spec:
           // `overflow-hidden` above. One size further down guarantees room
           // even when that second header line shows up.
           sizeClass(short, compact),
-          value === null && 'text-gray-400 dark:text-gray-500'
+          value === null && 'text-muted-foreground'
         )}
       >
         {value === null ? '—' : formatValue(value, spec)}
@@ -261,8 +261,8 @@ function Table({
   return (
     <div className="h-full overflow-auto">
       <table className="w-full text-sm">
-        <thead className="sticky top-0 z-10 bg-card text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">
-          <tr className="border-b border-gray-200 dark:border-gray-800">
+        <thead className="sticky top-0 z-10 bg-card text-[11px] uppercase tracking-wide text-muted-foreground">
+          <tr className="border-b border-border">
             <th className="whitespace-nowrap py-1.5 pr-3 text-left font-medium">{firstColumnLabel(shaped.axis, bucket, spec.dimension?.field?.col)}</th>
             {shaped.seriesKeys.map((key) => (
               <th key={key} className="max-w-[10rem] truncate whitespace-nowrap py-1.5 pl-3 text-right font-medium" title={key}>
@@ -276,16 +276,16 @@ function Table({
             <tr
               key={p.x}
               className={cn(
-                'border-b border-gray-100 last:border-0 dark:border-gray-800',
-                onSelect && 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/60'
+                'border-b border-border/60 last:border-0',
+                onSelect && 'cursor-pointer hover:bg-muted/50'
               )}
               onClick={() => onSelect?.(p.x === '(empty)' ? null : p.x)}
             >
-              <td className="py-1.5 pr-3 text-gray-700 dark:text-gray-300" title={p.x}>
+              <td className="py-1.5 pr-3 text-foreground" title={p.x}>
                 {shaped.axis === 'time' ? formatBucket(p.x, bucket) : shortLabel(p.x, 40)}
               </td>
               {shaped.seriesKeys.map((key) => (
-                <td key={key} className="py-1.5 text-right tabular-nums text-gray-900 dark:text-gray-100">
+                <td key={key} className="py-1.5 text-right tabular-nums text-foreground">
                   {formatValue(typeof p[key] === 'number' ? p[key] : null, spec)}
                 </td>
               ))}
@@ -299,7 +299,7 @@ function Table({
 
 function Notice({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <div className="flex h-full items-center justify-center px-4 text-center text-xs text-gray-500 dark:text-gray-400">
+    <div className="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground">
       {children}
     </div>
   )

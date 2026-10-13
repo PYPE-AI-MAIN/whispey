@@ -82,14 +82,14 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex flex-col h-screen bg-muted/50">
       
       <div className="px-6 py-4 border-border bg-background border-b shadow-sm">
         <div className="px-4 py-2">
           <div className="flex items-center gap-2">
             <button
               onClick={() => router.back()}
-              className="w-7 h-7 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
+              className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-muted-foreground hover:bg-muted/50 rounded-lg transition-all duration-200"
             >
               <ArrowLeft className="h-4 w-4" />
             </button>
@@ -105,8 +105,8 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
 
       {/* Audio Player - show if we have a recording URL */}
       {recordingUrl && !callLoading && (
-        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
-          <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">Call Recording</h3>
+        <div className="px-4 py-2 border-b border-border bg-muted/50">
+          <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">Call Recording</h3>
           <AudioPlayer
             s3Key={extractS3Key(recordingUrl)}
             url={recordingUrl}
@@ -118,7 +118,7 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
 
       {/* Telephony (Acefone) recording — opens the Acefone console recording link */}
       {acefoneCallId && !callLoading && (
-        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
+        <div className="px-4 py-2 border-b border-border bg-muted/50">
           <button
             onClick={openTelephonyRecording}
             className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
@@ -138,8 +138,8 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
       /> */}
 
       {agentLoading ? (
-        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
-          <div className="animate-pulse text-xs text-gray-600 dark:text-gray-400">Loading agent data...</div>
+        <div className="px-4 py-2 border-b border-border bg-muted/50">
+          <div className="animate-pulse text-xs text-muted-foreground">Loading agent data...</div>
         </div>
       ) : (
         <ObservabilityStats

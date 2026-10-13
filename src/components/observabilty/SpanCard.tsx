@@ -32,7 +32,7 @@ import {
         return { icon: <Database className="w-4 h-4" />, color: 'text-orange-600', bg: 'bg-orange-100', category: 'Database' };
       if (name?.includes('http') || attributes?.['http.method']) 
         return { icon: <Network className="w-4 h-4" />, color: 'text-indigo-600', bg: 'bg-indigo-100', category: 'HTTP' };
-      return { icon: <Activity className="w-4 h-4" />, color: 'text-gray-600', bg: 'bg-gray-100', category: 'Other' };
+      return { icon: <Activity className="w-4 h-4" />, color: 'text-muted-foreground', bg: 'bg-muted', category: 'Other' };
     };
   
     const getStatusInfo = (status: any) => {
@@ -66,7 +66,7 @@ import {
     return (
       <button
         type="button"
-        className={`w-full appearance-none text-left border rounded-lg p-4 bg-white hover:shadow-md cursor-pointer transition-all ${isGrouped ? 'ml-4 border-l-4' : ''}`}
+        className={`w-full appearance-none text-left border rounded-lg p-4 bg-card hover:shadow-md cursor-pointer transition-all ${isGrouped ? 'ml-4 border-l-4' : ''}`}
         style={isGrouped ? { borderLeftColor: typeInfo.color.replace('text-', '#').replace('600', '') } : {}}
         onClick={onClick}
       >
@@ -76,8 +76,8 @@ import {
               <div className={typeInfo.color}>{typeInfo.icon}</div>
             </div>
             <div>
-              <div className="font-medium text-gray-900 dark:text-gray-100">{span.name || 'Unknown Operation'}</div>
-              <div className="text-sm text-gray-500">
+              <div className="font-medium text-foreground">{span.name || 'Unknown Operation'}</div>
+              <div className="text-sm text-muted-foreground">
                 {span.attributes?.['service.name'] || 'Unknown Service'}
               </div>
             </div>
@@ -85,10 +85,10 @@ import {
           <div className="flex items-center gap-3">
             <div className="text-right">
               <div className="flex items-center gap-1">
-                <Clock className="w-3 h-3 text-gray-400" />
+                <Clock className="w-3 h-3 text-muted-foreground" />
                 <span className="text-sm font-mono">{formatDuration(span.duration_ns)}</span>
               </div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-muted-foreground">
                 {formatTimestamp(span.start_time_ns)}
               </div>
             </div>
@@ -98,7 +98,7 @@ import {
                 {typeInfo.category}
               </Badge>
             </div>
-            <ChevronRight className="w-4 h-4 text-gray-400" />
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
           </div>
         </div>
         

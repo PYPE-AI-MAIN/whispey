@@ -623,13 +623,13 @@ function ViewCampaign() {
       case 'in_progress':
         return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
       default:
-        return 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+        return 'bg-muted text-foreground'
     }
   }
 
   if (loading) {
     return (
-      <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
+      <div className="flex flex-col h-screen bg-card">
         {/* Header */}
         <div className="px-6 py-4 border-border bg-background border-b shadow-sm">
           <div className="flex items-center gap-3">
@@ -651,7 +651,7 @@ function ViewCampaign() {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-3" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">Loading campaign...</p>
+            <p className="text-sm text-muted-foreground">Loading campaign...</p>
           </div>
         </div>
       </div>
@@ -660,8 +660,8 @@ function ViewCampaign() {
 
   if (!campaignDetails) {
     return (
-      <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
-        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+      <div className="flex flex-col h-screen bg-card">
+        <div className="px-4 py-3 border-b border-border">
           <Button
             variant="ghost"
             size="sm"
@@ -672,7 +672,7 @@ function ViewCampaign() {
           </Button>
         </div>
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-sm text-gray-600 dark:text-gray-400">Campaign not found</p>
+          <p className="text-sm text-muted-foreground">Campaign not found</p>
         </div>
       </div>
     )
@@ -694,7 +694,7 @@ function ViewCampaign() {
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">
               {campaignDetails.campaignName}
             </h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-muted-foreground">
               Campaign ID: {campaignDetails.campaignId}
             </p>
           </div>
@@ -725,13 +725,13 @@ function ViewCampaign() {
             </Button>
           )}
           {/* Download Section with Status Filter */}
-          <div className="flex items-center gap-2 px-3 py-1 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
-            <Filter className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" />
+          <div className="flex items-center gap-2 px-3 py-1 bg-muted/50 rounded-lg border border-border">
+            <Filter className="w-3.5 h-3.5 text-muted-foreground" />
             <select
               value={downloadStatusFilter}
               onChange={(e) => setDownloadStatusFilter(e.target.value)}
               disabled={isDownloading}
-              className="h-7 px-2 text-xs border-0 focus:ring-0 focus:outline-none bg-transparent text-gray-700 dark:text-gray-300 font-medium cursor-pointer"
+              className="h-7 px-2 text-xs border-0 focus:ring-0 focus:outline-none bg-transparent text-foreground font-medium cursor-pointer"
             >
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
@@ -739,7 +739,7 @@ function ViewCampaign() {
               <option value="failed">Failed</option>
               <option value="in_progress">In Progress</option>
             </select>
-            <div className="h-4 w-px bg-gray-300 dark:bg-gray-600"></div>
+            <div className="h-4 w-px bg-muted-foreground/30"></div>
             <button
               onClick={handleDownloadContacts}
               disabled={isDownloading || logs.length === 0}
@@ -779,13 +779,13 @@ function ViewCampaign() {
     logsSection = (
       <div className="p-4 sm:p-8 text-center">
         <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-2" />
-        <p className="text-sm text-gray-600 dark:text-gray-400">Loading logs...</p>
+        <p className="text-sm text-muted-foreground">Loading logs...</p>
       </div>
     )
   } else if (logs.length === 0) {
     logsSection = (
       <div className="p-4 sm:p-8 text-center">
-        <p className="text-sm text-gray-600 dark:text-gray-400">No logs found</p>
+        <p className="text-sm text-muted-foreground">No logs found</p>
       </div>
     )
   } else {
@@ -793,7 +793,7 @@ function ViewCampaign() {
       <>
         <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-gray-900/50 sticky top-0 z-10">
+            <thead className="bg-muted/50 sticky top-0 z-10">
               <tr>
                 {columns.map((column) => {
                   // Map column names to display labels
@@ -811,7 +811,7 @@ function ViewCampaign() {
                   return (
                     <th
                       key={column}
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap"
+                      className="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap"
                     >
                       {label}
                     </th>
@@ -819,11 +819,11 @@ function ViewCampaign() {
                 })}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody className="divide-y divide-border">
               {logs.map((log, index) => (
                 <tr
                   key={log.contactId || log.id || index}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-900/50"
+                  className="hover:bg-muted/50"
                 >
                   {columns.map((column) => {
                     const value = getValue(log, column)
@@ -835,11 +835,11 @@ function ViewCampaign() {
                         <Badge className={getStatusColor(value)}>
                           {value}
                         </Badge>
-                      ) : <span className="text-gray-400">-</span>
+                      ) : <span className="text-muted-foreground">-</span>
                     } else if (column === 'retryCount') {
                       displayValue = value !== undefined && value !== null ? value : 0
                     } else if (column === 'phoneNumber' || column === 'phone') {
-                      displayValue = value ? <span className="font-mono text-xs">{value}</span> : <span className="text-gray-400">-</span>
+                      displayValue = value ? <span className="font-mono text-xs">{value}</span> : <span className="text-muted-foreground">-</span>
                     } else if (column === 'lastCallAt') {
                       if (value) {
                         try {
@@ -848,7 +848,7 @@ function ViewCampaign() {
                           displayValue = value
                         }
                       } else {
-                        displayValue = <span className="text-gray-400">-</span>
+                        displayValue = <span className="text-muted-foreground">-</span>
                       }
                     } else {
                       // Format phone numbers
@@ -897,18 +897,18 @@ function ViewCampaign() {
                       }
                       // Handle null/undefined
                       else if (value === null || value === undefined) {
-                        displayValue = <span className="text-gray-400">-</span>
+                        displayValue = <span className="text-muted-foreground">-</span>
                       }
                       // Handle objects
                       else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-                        displayValue = <span className="text-xs text-gray-500">{JSON.stringify(value)}</span>
+                        displayValue = <span className="text-xs text-muted-foreground">{JSON.stringify(value)}</span>
                       }
                     }
 
                     return (
                       <td
                         key={column}
-                        className="px-4 py-3 text-xs text-gray-900 dark:text-gray-100"
+                        className="px-4 py-3 text-xs text-foreground"
                       >
                         {displayValue}
                       </td>
@@ -922,7 +922,7 @@ function ViewCampaign() {
 
         {/* Load More Button */}
         {hasMoreLogs && (
-          <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 text-center">
+          <div className="px-4 py-3 border-t border-border text-center">
             <Button
               variant="outline"
               size="sm"
@@ -946,7 +946,7 @@ function ViewCampaign() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
+    <div className="flex flex-col h-screen bg-card">
       {/* Header */}
       {renderHeader()}
 
@@ -955,50 +955,50 @@ function ViewCampaign() {
         <div className="max-w-7xl mx-auto p-4 space-y-4">
           {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
+            <div className="rounded-xl border border-border bg-card shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Users className="w-4 h-4 text-gray-400" />
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Total Contacts</span>
+                <Users className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total Contacts</span>
               </div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              <p className="text-2xl font-bold text-foreground">
                 {campaignDetails.callStats?.total ?? campaignDetails.totalContacts}
               </p>
             </div>
 
-            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
+            <div className="rounded-xl border border-border bg-card shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Phone className="w-4 h-4 text-purple-400" />
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Processed</span>
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Processed</span>
               </div>
               <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                 {campaignDetails.processedContacts}
               </p>
             </div>
 
-            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
+            <div className="rounded-xl border border-border bg-card shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Phone className="w-4 h-4 text-green-400" />
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Success</span>
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Success</span>
               </div>
               <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                 {campaignDetails.callStats?.completed ?? campaignDetails.successCalls}
               </p>
             </div>
 
-            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
+            <div className="rounded-xl border border-border bg-card shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Phone className="w-4 h-4 text-red-400" />
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Failed</span>
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Failed</span>
               </div>
               <p className="text-2xl font-bold text-red-600 dark:text-red-400">
                 {campaignDetails.callStats?.failed ?? campaignDetails.failedCalls}
               </p>
             </div>
 
-            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
+            <div className="rounded-xl border border-border bg-card shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Phone className="w-4 h-4 text-blue-400" />
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Pending</span>
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Pending</span>
               </div>
               <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {campaignDetails.callStats?.pending ?? 0}
@@ -1007,54 +1007,54 @@ function ViewCampaign() {
           </div>
 
           {/* Campaign Info */}
-          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
-            <h2 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
+          <div className="rounded-xl border border-border bg-card shadow-sm p-4">
+            <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-3">
               Campaign Information
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Status</p>
+                <p className="text-xs text-muted-foreground mb-1">Status</p>
                 <Badge className={getStatusColor(campaignDetails.status)}>
                   {campaignDetails.status}
                 </Badge>
               </div>
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Agent</p>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <p className="text-xs text-muted-foreground mb-1">Agent</p>
+                <p className="text-sm font-medium text-foreground">
                   {displayCampaignAgentName}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Provider</p>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <p className="text-xs text-muted-foreground mb-1">Provider</p>
+                <p className="text-sm font-medium text-foreground">
                   {campaignDetails.callConfig.provider}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                <p className="text-xs text-muted-foreground mb-1">
                   <Calendar className="w-3 h-3 inline mr-1" />
                   Schedule
                 </p>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <p className="text-sm font-medium text-foreground">
                   {campaignDetails.schedule?.days && Array.isArray(campaignDetails.schedule.days) 
                     ? campaignDetails.schedule.days.join(', ')
                     : 'Not scheduled'}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                <p className="text-xs text-muted-foreground mb-1">
                   <Clock className="w-3 h-3 inline mr-1" />
                   Time Window
                 </p>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <p className="text-sm font-medium text-foreground">
                   {campaignDetails.schedule?.startTime && campaignDetails.schedule?.endTime
                     ? `${campaignDetails.schedule.startTime} - ${campaignDetails.schedule.endTime}`
                     : 'Not set'}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Timezone</p>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <p className="text-xs text-muted-foreground mb-1">Timezone</p>
+                <p className="text-sm font-medium text-foreground">
                   {campaignDetails.schedule?.timezone || 'Not set'}
                 </p>
               </div>
@@ -1062,8 +1062,8 @@ function ViewCampaign() {
 
             {/* Retry Configuration */}
             {campaignDetails.schedule?.retryConfig && Array.isArray(campaignDetails.schedule.retryConfig) && campaignDetails.schedule.retryConfig.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-1.5">
+              <div className="mt-4 pt-4 border-t border-border">
+                <h3 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-3 flex items-center gap-1.5">
                   <RefreshCw className="w-3 h-3" />
                   Retry Configuration
                 </h3>
@@ -1094,26 +1094,26 @@ function ViewCampaign() {
                     return (
                       <div
                         key={configKey}
-                        className="p-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-md"
+                        className="p-3 bg-muted/50 border border-border rounded-md"
                       >
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">
+                          <span className="text-xs font-semibold text-foreground">
                             {config.type === 'sipCode' && config.errorCodes?.[0] ? config.errorCodes[0] : config.type || 'Retry'}
                           </span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                          <span className="text-xs text-muted-foreground">
                             {label}
                           </span>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div>
-                            <span className="text-gray-500 dark:text-gray-400">Delay:</span>
-                            <span className="ml-1 font-medium text-gray-900 dark:text-gray-100">
+                            <span className="text-muted-foreground">Delay:</span>
+                            <span className="ml-1 font-medium text-foreground">
                               {config.delayMinutes} min
                             </span>
                           </div>
                           <div>
-                            <span className="text-gray-500 dark:text-gray-400">Retries:</span>
-                            <span className="ml-1 font-medium text-gray-900 dark:text-gray-100">
+                            <span className="text-muted-foreground">Retries:</span>
+                            <span className="ml-1 font-medium text-foreground">
                               {config.maxRetries}
                             </span>
                           </div>
@@ -1127,9 +1127,9 @@ function ViewCampaign() {
           </div>
 
           {/* Campaign Logs Table */}
-          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-              <h2 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-border">
+              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Campaign Logs ({logs.length})
               </h2>
             </div>

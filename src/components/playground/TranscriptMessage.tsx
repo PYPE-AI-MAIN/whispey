@@ -23,11 +23,11 @@ export function TranscriptMessage({ speaker, text, timestamp, agentName }: Trans
       >
         <div className="flex items-center gap-2 mb-1.5">
           <span className={`text-xs font-medium uppercase tracking-wide ${
-            isUser ? 'text-blue-400' : 'text-gray-400'
+            isUser ? 'text-blue-400' : 'text-muted-foreground'
           }`}>
             {isUser ? 'You' : agentName}
           </span>
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-muted-foreground">
             {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </span>
         </div>

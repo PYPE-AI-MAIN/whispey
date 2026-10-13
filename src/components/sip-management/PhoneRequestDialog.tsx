@@ -102,18 +102,18 @@ const PhoneRequestDialog: React.FC<PhoneRequestDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg w-[90vw] sm:w-full p-0 gap-0 rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xl bg-white dark:bg-gray-900">
+      <DialogContent className="max-w-lg w-[90vw] sm:w-full p-0 gap-0 rounded-xl border border-border shadow-2xl bg-card">
         {/* Header */}
-        <DialogHeader className={`${isMobile ? 'px-4 pt-4 pb-3' : 'px-6 pt-6 pb-4'} border-b border-gray-200 dark:border-gray-800`}>
+        <DialogHeader className={`${isMobile ? 'px-4 pt-4 pb-3' : 'px-6 pt-6 pb-4'} border-b border-border`}>
           <div className="flex items-center gap-3">
             <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-blue-100 dark:bg-blue-900/20 rounded-xl flex items-center justify-center`}>
               <Phone className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} text-blue-600 dark:text-blue-400`} />
             </div>
             <div>
-              <DialogTitle className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100`}>
+              <DialogTitle className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-foreground`}>
                 Request Phone Number
               </DialogTitle>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+              <p className="text-sm text-muted-foreground mt-0.5">
                 Tell us why you need a phone number
               </p>
             </div>
@@ -127,17 +127,17 @@ const PhoneRequestDialog: React.FC<PhoneRequestDialogProps> = ({
               <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-3">
                 <Send className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
-              <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1">
+              <h3 className="text-base font-medium text-foreground mb-1">
                 Request Sent Successfully!
               </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-muted-foreground">
                 We'll review your request and assign a phone number once approved.
               </p>
             </div>
           ) : (
             <>
               <div className="space-y-2">
-                <Label htmlFor="reason" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <Label htmlFor="reason" className="text-sm font-medium text-foreground">
                   Why do you need a phone number?
                 </Label>
                 <Textarea
@@ -172,7 +172,7 @@ const PhoneRequestDialog: React.FC<PhoneRequestDialogProps> = ({
 
         {/* Footer */}
         {!success && (
-          <div className={`${isMobile ? 'px-4 py-3' : 'px-6 py-4'} bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-800 flex gap-3`}>
+          <div className={`${isMobile ? 'px-4 py-3' : 'px-6 py-4'} bg-muted/50 border-t border-border flex gap-3`}>
             <Button
               variant="outline"
               onClick={handleClose}

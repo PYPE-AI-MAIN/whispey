@@ -70,7 +70,7 @@ const localDay = (d: string) => fmtDate(`${d}T00:00:00`)
 const fmtWeek = (start: string, end: string) => `${localDay(start)} – ${localDay(end)}`
 
 const fieldClass =
-  'h-9 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:border-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'
+  'h-9 w-full rounded-md border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-border'
 function StatusPill({ status }: Readonly<{ status: string }>) {
   const tone = STATUS_TONE[status]
   return (
@@ -97,8 +97,8 @@ async function load<T>(url: string, what: string): Promise<T> {
 function Section({ title, hint, action, children }: Readonly<{ title: string; hint: string; action?: ReactNode; children: ReactNode }>) {
   return (
     <div className="w-full max-w-4xl">
-      <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
-      <p className="mt-1 max-w-xl text-sm leading-relaxed text-gray-500 dark:text-gray-400">{hint}</p>
+      <h2 className="text-base font-semibold text-foreground">{title}</h2>
+      <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground">{hint}</p>
       {action && <div className="mt-5">{action}</div>}
       <div className="mt-8">{children}</div>
     </div>
@@ -107,7 +107,7 @@ function Section({ title, hint, action, children }: Readonly<{ title: string; hi
 
 function Empty({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <div className="rounded-xl border border-dashed border-gray-300 px-6 py-10 text-sm leading-relaxed text-gray-600 dark:border-gray-700 dark:text-gray-400">
+    <div className="rounded-xl border border-dashed border-border px-6 py-10 text-sm leading-relaxed text-muted-foreground">
       {children}
     </div>
   )
@@ -116,7 +116,7 @@ function Empty({ children }: Readonly<{ children: ReactNode }>) {
 /** One bordered list; rows are separated by hairlines instead of each being a card. */
 function RowList({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <ul className="divide-y divide-gray-200 overflow-hidden rounded-xl border border-gray-200 bg-white dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900">
+    <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
       {children}
     </ul>
   )
@@ -124,7 +124,7 @@ function RowList({ children }: Readonly<{ children: ReactNode }>) {
 
 function Editor({ children, onSave, saving, error }: Readonly<{ children: ReactNode; onSave: () => void; saving: boolean; error?: string }>) {
   return (
-    <div className="mt-3 space-y-3 rounded-lg bg-gray-50 p-3 dark:bg-gray-800/50">
+    <div className="mt-3 space-y-3 rounded-lg bg-muted/50 p-3">
       {children}
       <div className="flex items-center gap-3">
         <Button size="sm" onClick={onSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
@@ -137,7 +137,7 @@ function Editor({ children, onSave, saving, error }: Readonly<{ children: ReactN
 function Labelled({ label, children }: Readonly<{ label: string; children: ReactNode }>) {
   return (
     <label className="block space-y-1">
-      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{label}</span>
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
       {children}
     </label>
   )
@@ -152,7 +152,7 @@ export default function QaAuditPanel({ agentId, projectId }: Readonly<{ agentId:
   const [tab, setTab] = useState<(typeof TABS)[number]['id']>('flagged')
   return (
     <div className="flex h-full flex-col">
-      <div role="tablist" className="flex flex-none items-end gap-8 border-b border-gray-200 bg-white px-6 dark:border-gray-800 dark:bg-gray-900 md:px-8">
+      <div role="tablist" className="flex flex-none items-end gap-8 border-b border-border bg-card px-6 md:px-8">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -162,8 +162,8 @@ export default function QaAuditPanel({ agentId, projectId }: Readonly<{ agentId:
             onClick={() => setTab(t.id)}
             className={`-mb-px border-b-2 py-3.5 text-sm font-medium transition-colors ${
               tab === t.id
-                ? 'border-gray-900 text-gray-900 dark:border-gray-100 dark:text-gray-100'
-                : 'border-transparent text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'
+                ? 'border-gray-900 text-foreground dark:border-gray-100'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
             {t.label}
@@ -223,7 +223,7 @@ function FlaggedCalls({ agentId, projectId }: Readonly<{ agentId: string; projec
         {all === 0 ? (
           <>
             Nothing has been flagged for this agent. Open{' '}
-            <a href={`/${projectId}/agents/${agentId}?tab=logs`} className="font-medium text-gray-900 underline underline-offset-2 dark:text-gray-100">Call Logs</a>{' '}
+            <a href={`/${projectId}/agents/${agentId}?tab=logs`} className="font-medium text-foreground underline underline-offset-2">Call Logs</a>{' '}
             and flag a call, and it shows up here for the QA team.
           </>
         ) : 'No tickets with this status.'}
@@ -231,10 +231,10 @@ function FlaggedCalls({ agentId, projectId }: Readonly<{ agentId: string; projec
     )
   } else {
     body = (
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
         <div className="max-h-[65vh] overflow-auto">
           <table className="w-full text-left text-sm">
-            <thead className="sticky top-0 z-10 bg-gray-50 text-xs font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+            <thead className="sticky top-0 z-10 bg-muted/50 text-xs font-medium text-muted-foreground">
               <tr>
                 <th className="px-4 py-2.5">Flag</th>
                 <th className="px-4 py-2.5">Flagged by</th>
@@ -244,14 +244,14 @@ function FlaggedCalls({ agentId, projectId }: Readonly<{ agentId: string; projec
                 <th className="w-8" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+            <tbody className="divide-y divide-border">
               {tickets.map((t) => (
                 <TicketRow key={t.id} ticket={t} canManage={!!data?.canManage} internal={!!data?.internal} engineers={team?.engineers ?? []} agentId={agentId} projectId={projectId} />
               ))}
             </tbody>
           </table>
         </div>
-        <div className="flex items-center justify-between border-t border-gray-200 px-4 py-2.5 text-xs text-gray-500 dark:border-gray-800 dark:text-gray-400">
+        <div className="flex items-center justify-between border-t border-border px-4 py-2.5 text-xs text-muted-foreground">
           <span className="tabular-nums">{from}–{from + tickets.length - 1} of {data?.total}</span>
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}>Previous</Button>
@@ -271,9 +271,9 @@ function FlaggedCalls({ agentId, projectId }: Readonly<{ agentId: string; projec
             key={s}
             type="button"
             onClick={() => pick(s)}
-            className={filter === s ? 'font-medium text-gray-900 dark:text-gray-100' : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'}
+            className={filter === s ? 'font-medium text-foreground' : 'text-muted-foreground hover:text-foreground'}
           >
-            {s === 'all' ? 'All' : STATUS_LABEL[s]} <span className="tabular-nums text-gray-400">{s === 'all' ? all : (counts?.[s] ?? 0)}</span>
+            {s === 'all' ? 'All' : STATUS_LABEL[s]} <span className="tabular-nums text-muted-foreground">{s === 'all' ? all : (counts?.[s] ?? 0)}</span>
           </button>
         ))}
       </div>
@@ -288,18 +288,18 @@ function TicketRow({ ticket, canManage, internal, engineers, agentId, projectId 
 
   return (
     <>
-      <tr onClick={() => setOpen(!open)} className="cursor-pointer align-top hover:bg-gray-50 dark:hover:bg-gray-800/50">
-        <td className="max-w-xs px-4 py-3 font-medium text-gray-900 dark:text-gray-100"><span className="line-clamp-2">{ticket.reason}</span></td>
-        <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">{ticket.flagged_by_email ?? '—'}</td>
-        <td className="whitespace-nowrap px-4 py-3 text-xs text-gray-500 dark:text-gray-400">{fmtDate(ticket.flagged_at)}</td>
+      <tr onClick={() => setOpen(!open)} className="cursor-pointer align-top hover:bg-muted/50">
+        <td className="max-w-xs px-4 py-3 font-medium text-foreground"><span className="line-clamp-2">{ticket.reason}</span></td>
+        <td className="px-4 py-3 text-xs text-muted-foreground">{ticket.flagged_by_email ?? '—'}</td>
+        <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">{fmtDate(ticket.flagged_at)}</td>
         <td className="px-4 py-3"><StatusPill status={ticket.status} /></td>
-        {internal && <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">{engineerName(ticket.assignee_email) ?? '—'}</td>}
-        <td className="px-2 py-3 text-gray-400"><ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} /></td>
+        {internal && <td className="px-4 py-3 text-xs text-muted-foreground">{engineerName(ticket.assignee_email) ?? '—'}</td>}
+        <td className="px-2 py-3 text-muted-foreground"><ChevronDown className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} /></td>
       </tr>
       {open && (
-        <tr className="bg-gray-50/50 dark:bg-gray-800/20">
+        <tr className="bg-muted/50">
           <td colSpan={internal ? 6 : 5} className="px-4 pb-4 pt-1">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <a
                 href={`/${projectId}/agents/${agentId}/observability?session_id=${ticket.call_log_id}`}
                 className="inline-flex items-center gap-1 font-medium text-blue-600 hover:underline dark:text-blue-400"
@@ -313,7 +313,7 @@ function TicketRow({ ticket, canManage, internal, engineers, agentId, projectId 
               )}
             </div>
             {ticket.status === 'resolved' && ticket.resolution_note && !ticket.comments.some((c) => c.body === ticket.resolution_note) && (
-              <p className="mt-3 border-l-2 border-emerald-500 pl-3 text-sm text-gray-700 dark:text-gray-300">{ticket.resolution_note}</p>
+              <p className="mt-3 border-l-2 border-emerald-500 pl-3 text-sm text-foreground">{ticket.resolution_note}</p>
             )}
             <Thread ticket={ticket} />
             {canManage && <Composer ticket={ticket} engineers={engineers} agentId={agentId} />}
@@ -342,24 +342,24 @@ function Thread({ ticket }: Readonly<{ ticket: Ticket }>) {
   return (
     <div className="mt-3 space-y-3">
       {journey.map(({ event, comment: c }) => event ? (
-        <p key={event.id} className="text-xs text-gray-500 dark:text-gray-400">
-          <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-gray-400" />
+        <p key={event.id} className="text-xs text-muted-foreground">
+          <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
           {eventText(event)} · {fmtDate(event.created_at)}
         </p>
       ) : c && (
-        <div key={c.id} className="border-l-2 border-blue-500 pl-3 text-sm text-gray-700 dark:text-gray-300">
+        <div key={c.id} className="border-l-2 border-blue-500 pl-3 text-sm text-foreground">
           {c.body && <p className="whitespace-pre-wrap">{c.body}</p>}
           {c.attachments.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-2">
               {c.attachments.map((a) => (
                 <a key={a.key} href={imageSrc(a.key)} target="_blank" rel="noreferrer">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={imageSrc(a.key)} alt={a.name} className="h-24 rounded-md border border-gray-200 object-cover dark:border-gray-700" />
+                  <img src={imageSrc(a.key)} alt={a.name} className="h-24 rounded-md border border-border object-cover" />
                 </a>
               ))}
             </div>
           )}
-          <p className="mt-1 text-xs text-gray-400">QA team · {fmtDate(c.created_at)}</p>
+          <p className="mt-1 text-xs text-muted-foreground">QA team · {fmtDate(c.created_at)}</p>
         </div>
       ))}
     </div>
@@ -431,15 +431,15 @@ function Composer({ ticket, engineers, agentId }: Readonly<{ ticket: Ticket; eng
   else if (!hasMessage) label = 'Save changes'
 
   return (
-    <div className="mt-4 space-y-3 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+    <div className="mt-4 space-y-3 rounded-lg border border-border bg-card p-3">
       <Textarea
         rows={3}
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder={status === 'resolved' ? 'What was done? (required, the customer sees this)' : 'Write a comment (the customer sees it)'}
       />
-      {images.length > 0 && <p className="text-xs text-gray-500">Attached: {images.map((i) => i.name).join(', ')}</p>}
-      <label className="inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-gray-600 hover:underline dark:text-gray-400">
+      {images.length > 0 && <p className="text-xs text-muted-foreground">Attached: {images.map((i) => i.name).join(', ')}</p>}
+      <label className="inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-muted-foreground hover:underline">
         <ImagePlus className="h-3.5 w-3.5" /> {uploading ? 'Uploading…' : 'Attach image'}
         <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple className="hidden" onChange={(e) => { void upload(e.target.files); e.target.value = '' }} />
       </label>
@@ -468,7 +468,7 @@ function Composer({ ticket, engineers, agentId }: Readonly<{ ticket: Ticket; eng
           {submit.isPending ? 'Sending…' : label}
         </Button>
       </div>
-      <p className="text-xs text-gray-500 dark:text-gray-400">{STATUS_HINT[status]}</p>
+      <p className="text-xs text-muted-foreground">{STATUS_HINT[status]}</p>
       {(err || submit.isError) && <p className="text-xs text-red-600">{err || (submit.error as Error).message}</p>}
     </div>
   )
@@ -530,10 +530,10 @@ function ReviewRow({ review, canManage, agentId }: Readonly<{ review: Review; ca
   return (
     <li className="px-5 py-4">
       <div className="flex items-start justify-between gap-4">
-        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{fmtWeek(review.week_start, review.week_end)}</p>
+        <p className="text-sm font-medium text-foreground">{fmtWeek(review.week_start, review.week_end)}</p>
         <StatusPill status={review.status} />
       </div>
-      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
         <span>Requested {fmtDate(review.requested_at)}{review.requested_by_email ? ` by ${review.requested_by_email}` : ''}</span>
         {review.status === 'ready' && review.sheet_url && (
           <a
@@ -546,12 +546,12 @@ function ReviewRow({ review, canManage, agentId }: Readonly<{ review: Review; ca
           </a>
         )}
         {canManage && !editing && (
-          <button type="button" onClick={() => setEditing(true)} className="font-medium text-gray-700 hover:underline dark:text-gray-300">
+          <button type="button" onClick={() => setEditing(true)} className="font-medium text-foreground hover:underline">
             Update
           </button>
         )}
       </div>
-      {review.note && <p className="mt-3 border-l-2 border-gray-300 pl-3 text-sm text-gray-700 dark:border-gray-600 dark:text-gray-300">{review.note}</p>}
+      {review.note && <p className="mt-3 border-l-2 border-border pl-3 text-sm text-foreground">{review.note}</p>}
       {canManage && editing && (
         <Editor onSave={() => save.mutate()} saving={save.isPending} error={save.isError ? (save.error as Error).message : undefined}>
           <Labelled label="Status">

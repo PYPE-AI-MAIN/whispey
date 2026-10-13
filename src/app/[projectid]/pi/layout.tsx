@@ -69,7 +69,7 @@ function SessionRowItem({
           if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
           if (e.key === 'Escape') { setTitle(session.title); setRenaming(false) }
         }}
-        className="w-full text-[13px] px-2.5 py-2 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 focus:outline-none"
+        className="w-full text-[13px] px-2.5 py-2 rounded-md border border-border bg-card focus:outline-none"
       />
     )
   }
@@ -78,7 +78,7 @@ function SessionRowItem({
     <div className={`group flex items-center gap-0.5 rounded-md ${isActive ? 'bg-gray-200/80 dark:bg-gray-800' : 'hover:bg-gray-100 dark:hover:bg-gray-800/60'}`}>
       <Link href={`/${projectId}/pi/${session.id}`} className="flex-1 min-w-0 px-2.5 py-2">
         <div className={`text-[13px] truncate ${isActive ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-700 dark:text-gray-300'}`}>{session.title}</div>
-        <div className="text-[11px] text-gray-400 dark:text-gray-500 truncate mt-0.5">
+        <div className="text-[11px] text-muted-foreground truncate mt-0.5">
           {showEmail ? `${session.user_email} · ` : ''}
           {relativeTime(session.updated_at)}
         </div>
@@ -86,8 +86,8 @@ function SessionRowItem({
       {canManage && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="opacity-0 group-hover:opacity-100 p-1.5 mr-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="Session options">
-              <MoreHorizontal className="w-3.5 h-3.5 text-gray-500" />
+            <button className="opacity-0 group-hover:opacity-100 p-1.5 mr-1 rounded hover:bg-muted" aria-label="Session options">
+              <MoreHorizontal className="w-3.5 h-3.5 text-muted-foreground" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -165,39 +165,39 @@ export default function PiLayout({ children }: Readonly<{ children: React.ReactN
   const visible = filtered.slice(0, visibleCount)
 
   return (
-    <div className="h-full min-h-0 flex bg-gray-50 dark:bg-gray-950">
+    <div className="h-full min-h-0 flex bg-muted/50">
       {collapsed ? (
-        <div className="w-11 shrink-0 border-r border-gray-200 dark:border-gray-800 flex flex-col items-center py-3 gap-2 bg-white dark:bg-gray-900">
+        <div className="w-11 shrink-0 border-r border-border flex flex-col items-center py-3 gap-2 bg-card">
           <button
             onClick={toggleCollapsed}
-            className="p-2 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="p-2 rounded-md text-muted-foreground hover:bg-muted"
             aria-label="Show chat history"
           >
             <PanelLeft className="w-4 h-4" />
           </button>
           <button
             onClick={openNewChat}
-            className="p-2 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="p-2 rounded-md text-muted-foreground hover:bg-muted"
             aria-label="New chat"
           >
             <Plus className="w-4 h-4" />
           </button>
         </div>
       ) : (
-        <div className="w-[240px] sm:w-[260px] shrink-0 border-r border-gray-200 dark:border-gray-800 flex flex-col bg-white dark:bg-gray-900">
+        <div className="w-[240px] sm:w-[260px] shrink-0 border-r border-border flex flex-col bg-card">
           <div className="px-3 pt-3 pb-2 flex items-center justify-between">
-            <span className="text-[13px] font-medium text-gray-900 dark:text-gray-100">Chats</span>
+            <span className="text-[13px] font-medium text-foreground">Chats</span>
             <div className="flex items-center gap-0.5">
               <button
                 onClick={openNewChat}
-                className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="p-1.5 rounded-md text-muted-foreground hover:bg-muted"
                 aria-label="New chat"
               >
                 <Plus className="w-4 h-4" />
               </button>
               <button
                 onClick={toggleCollapsed}
-                className="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="p-1.5 rounded-md text-muted-foreground hover:bg-muted"
                 aria-label="Hide chat history"
               >
                 <PanelLeftClose className="w-4 h-4" />
@@ -207,12 +207,12 @@ export default function PiLayout({ children }: Readonly<{ children: React.ReactN
 
           <div className="px-3 pb-2 space-y-2">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search"
-                className="w-full text-[13px] pl-8 pr-2 py-1.5 rounded-md bg-gray-50 dark:bg-gray-900 border border-transparent focus:border-gray-200 dark:focus:border-gray-700 focus:outline-none"
+                className="w-full text-[13px] pl-8 pr-2 py-1.5 rounded-md bg-muted/50 border border-transparent focus:border-border focus:outline-none"
               />
             </div>
           </div>
@@ -220,7 +220,7 @@ export default function PiLayout({ children }: Readonly<{ children: React.ReactN
           <div className="flex-1 overflow-y-auto px-2 pb-3 space-y-0.5">
             {isLoading && <PiLoading compact />}
             {!isLoading && filtered.length === 0 && (
-              <div className="text-[12px] text-gray-400 px-2 py-6 text-center">No chats yet</div>
+              <div className="text-[12px] text-muted-foreground px-2 py-6 text-center">No chats yet</div>
             )}
             {visible.map((s) => (
               <SessionRowItem
@@ -235,7 +235,7 @@ export default function PiLayout({ children }: Readonly<{ children: React.ReactN
             {filtered.length > visible.length && (
               <button
                 onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-                className="w-full text-[12px] text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 py-2 text-center"
+                className="w-full text-[12px] text-muted-foreground hover:text-foreground py-2 text-center"
               >
                 Show more
               </button>

@@ -13,7 +13,7 @@ interface CheckboxRowProps {
 // per column group.
 export default function CheckboxRow({ checked, onToggle, label }: Readonly<CheckboxRowProps>) {
   return (
-    <label className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer px-1 py-0.5">
+    <label className="flex items-center gap-2 text-xs text-foreground cursor-pointer px-1 py-0.5">
       <Checkbox checked={checked} onCheckedChange={onToggle} />
       {label}
     </label>

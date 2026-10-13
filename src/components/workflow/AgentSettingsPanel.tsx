@@ -169,9 +169,9 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
             />
           </div>
 
-          <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+          <div className="space-y-2 pt-2 border-t border-border/60">
             <div className="flex items-center justify-between">
-              <Label className="text-xs text-gray-500 dark:text-gray-400">
+              <Label className="text-xs text-muted-foreground">
                 Languages — lets any conversation node switch language mid-call instead of duplicating nodes
               </Label>
               <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => { setEditingLSIndex(null); setIsLSOpen(true) }}>
@@ -179,11 +179,11 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
               </Button>
             </div>
             {languages.map((ls, idx) => (
-              <div key={`${ls.tool_name}-${idx}`} className="flex items-center justify-between gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
+              <div key={`${ls.tool_name}-${idx}`} className="flex items-center justify-between gap-2 p-2 bg-muted/50 rounded border border-border">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <LanguagesIcon className="h-3 w-3 text-purple-500 shrink-0" />
                   <span className="text-xs font-mono truncate">{ls.tool_name}</span>
-                  <span className="text-xs text-gray-400">{ls.language_code}</span>
+                  <span className="text-xs text-muted-foreground">{ls.language_code}</span>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditingLSIndex(idx); setIsLSOpen(true) }}>
@@ -209,8 +209,8 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
             />
           </div>
 
-          <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
-            <Label className="text-xs text-gray-500 dark:text-gray-400">Transports</Label>
+          <div className="space-y-2 pt-2 border-t border-border/60">
+            <Label className="text-xs text-muted-foreground">Transports</Label>
             <div className="flex items-center justify-between">
               <Label className="text-xs">Web calls</Label>
               <Switch
@@ -233,13 +233,13 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
                   <Phone className="w-3 h-3" /> Outbound number
                 </Label>
                 {loadingPhoneNumbers && (
-                  <div className="w-full h-8 flex items-center justify-center border border-gray-300 dark:border-gray-700 rounded-lg mt-1">
-                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                  <div className="w-full h-8 flex items-center justify-center border border-border rounded-lg mt-1">
+                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                   </div>
                 )}
                 {!loadingPhoneNumbers && phoneNumbers.length === 0 && (
-                  <div className="w-full h-8 flex items-center px-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 mt-1">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">No active outbound numbers on this project</span>
+                  <div className="w-full h-8 flex items-center px-3 border border-border rounded-lg bg-muted/50 mt-1">
+                    <span className="text-xs text-muted-foreground">No active outbound numbers on this project</span>
                   </div>
                 )}
                 {!loadingPhoneNumbers && phoneNumbers.length > 0 && (
@@ -263,20 +263,20 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none__">
-                        <span className="text-xs text-gray-400">None — use the server&apos;s default trunk</span>
+                        <span className="text-xs text-muted-foreground">None — use the server&apos;s default trunk</span>
                       </SelectItem>
                       {phoneNumbers.map((phone) => (
                         <SelectItem key={phone.id} value={phone.id}>
                           <div className="flex items-center gap-2">
                             <span className="font-mono text-xs">{phone.phone_number}</span>
-                            {phone.provider && <span className="text-gray-500 text-xs">({phone.provider})</span>}
+                            {phone.provider && <span className="text-muted-foreground text-xs">({phone.provider})</span>}
                           </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 )}
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Used by this agent&apos;s Call Transfer and SMS nodes. Leave as &quot;None&quot; to share the
                   deployment&apos;s default trunk/number with every other agent.
                 </p>

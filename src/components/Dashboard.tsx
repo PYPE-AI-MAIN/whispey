@@ -93,20 +93,20 @@ const formatShort = (date: Date) =>
 // always renders in its plain/unselected look so it never appears chosen or
 // interactive, regardless of which period is actually active underneath.
 const periodPillClass = (active: boolean, locked: boolean) => {
-  if (locked) return 'text-gray-400 dark:text-gray-600'
-  if (active) return 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-  return 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-white/50 dark:hover:bg-gray-700/50'
+  if (locked) return 'text-muted-foreground'
+  if (active) return 'bg-card text-foreground shadow-sm'
+  return 'text-muted-foreground hover:text-foreground hover:bg-card/50'
 }
 
 const periodCustomPillClass = (active: boolean, locked: boolean) => {
-  if (locked) return 'text-gray-400 dark:text-gray-600'
+  if (locked) return 'text-muted-foreground'
   if (active) return 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/30'
-  return 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800'
+  return 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
 }
 
 const periodMobilePillClass = (active: boolean, locked: boolean) => {
   if (!locked && active) return 'bg-blue-500 text-white'
-  return 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
+  return 'bg-card text-foreground border border-border'
 }
 
 const PERIOD_LOCKED_MESSAGE = 'Clear the date filter to use Period'
@@ -152,11 +152,11 @@ function NoCallsMessage() {
   return (
     <div className="flex-1 flex items-center justify-center h-full">
       <div className="text-center">
-        <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4`}>
-          <Bot className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} text-gray-400 dark:text-gray-500`} />
+        <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-muted rounded-full flex items-center justify-center mx-auto mb-4`}>
+          <Bot className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} text-muted-foreground`} />
         </div>
-        <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-medium text-gray-900 dark:text-gray-100 mb-2`}>No calls yet</h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
+        <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-medium text-foreground mb-2`}>No calls yet</h3>
+        <p className="text-sm text-muted-foreground max-w-sm mx-auto">
           Your VAPI agent is ready. Calls will appear here once you start receiving them.
         </p>
       </div>
@@ -495,11 +495,11 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
   // Handle errors without blocking entire dashboard
   if (agentError) {
     return (
-      <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+      <div className="h-screen flex flex-col bg-muted/50">
+        <div className="bg-card border-b border-border shadow-sm">
           <div className={`${isMobile ? 'px-4 py-3' : 'px-8 py-3'}`}>
             <div className="flex items-center gap-4">
-              <button onClick={handleBack} className={`${isMobile ? 'w-8 h-8' : 'w-9 h-9'} flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-all duration-200`}>
+              <button onClick={handleBack} className={`${isMobile ? 'w-8 h-8' : 'w-9 h-9'} flex items-center justify-center text-muted-foreground hover:text-muted-foreground hover:bg-muted/50 rounded-xl transition-all duration-200`}>
                 <ChevronLeft className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
               </button>
               <div className={`${isMobile ? 'h-7' : 'h-8'} bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-3 rounded-lg flex items-center`}>
@@ -510,13 +510,13 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
           </div>
         </div>
         <div className="flex-1 flex items-center justify-center">
-          <div className={`bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 ${isMobile ? 'mx-4' : 'max-w-md'} text-center`}>
+          <div className={`bg-card rounded-2xl border border-border shadow-sm p-6 ${isMobile ? 'mx-4' : 'max-w-md'} text-center`}>
             <div className="w-12 h-12 bg-red-50 dark:bg-red-900/20 rounded-xl flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-6 h-6 text-red-500 dark:text-red-400" />
             </div>
-            <h2 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100 mb-2`}>Agent not found</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{agentError.message}</p>
-            <Button onClick={handleBack} variant="outline" className="w-full border-gray-200 dark:border-gray-700">
+            <h2 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-foreground mb-2`}>Agent not found</h2>
+            <p className="text-sm text-muted-foreground mb-4">{agentError.message}</p>
+            <Button onClick={handleBack} variant="outline" className="w-full border-border">
               <ChevronLeft className="h-4 w-4 mr-2" />
               Go Back
             </Button>
@@ -573,16 +573,16 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="h-screen flex flex-col bg-muted/50">
       {/* Header - Mobile optimized */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+      <div className="bg-card border-b border-border shadow-sm">
         <div className={`${isMobile ? 'px-4 py-3' : 'px-8 py-3'}`}>
           <div className="flex items-center justify-between flex-wrap gap-y-2">
             {/* Left: Navigation & Identity */}
             <div className="flex items-center gap-4">
               <button 
                 onClick={handleBack}
-                className={`${isMobile ? 'w-8 h-8' : 'w-9 h-9'} flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-all duration-200`}
+                className={`${isMobile ? 'w-8 h-8' : 'w-9 h-9'} flex items-center justify-center text-muted-foreground hover:text-muted-foreground hover:bg-muted/50 rounded-xl transition-all duration-200`}
               >
                 <ChevronLeft className={`${isMobile ? 'h-4 w-4' : 'h-5 w-5'}`} />
               </button>
@@ -600,7 +600,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
 
               {/* Tab Navigation — header pills only for extra tabs (e.g. Campaign Logs) */}
               {!isMobile && agent && tabs.length > 0 && (
-                <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 ml-6">
+                <div className="flex items-center gap-1 bg-muted rounded-xl p-1 ml-6">
                   {tabs.map((tab) => {
                     const Icon = tab.icon
                     return (
@@ -609,8 +609,8 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                         onClick={() => handleTabChange(tab.id)}
                         className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
                           activeTab === tab.id
-                            ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                            : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                            ? 'bg-card text-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground'
                         }`}
                       >
                         <Icon className="h-4 w-4" />
@@ -718,7 +718,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                   /* Mobile Menu Button */
                   <button
                     onClick={() => setShowMobileMenu(!showMobileMenu)}
-                    className="w-8 h-8 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-all"
+                    className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-muted-foreground hover:bg-muted/50 rounded-xl transition-all"
                   >
                     {showMobileMenu ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
                   </button>
@@ -727,8 +727,8 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                   <>
                     {/* Period Filters */}
                     <div className="flex items-center gap-4">
-                      <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Period</span>
-                      <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                      <span className="text-sm font-medium text-muted-foreground">Period</span>
+                      <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
                         {quickFilters.map((filter) => (
                           <PeriodOptionButton
                             key={filter.id}
@@ -748,7 +748,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                               variant="outline"
                               size="sm"
                               aria-disabled="true"
-                              className={`px-4 py-2 text-sm font-medium rounded-lg border-gray-200 dark:border-gray-700 transition-all duration-200 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed ${periodCustomPillClass(isCustomRange, true)}`}
+                              className={`px-4 py-2 text-sm font-medium rounded-lg border-border transition-all duration-200 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed ${periodCustomPillClass(isCustomRange, true)}`}
                             >
                               <CalendarDays className="mr-2 h-4 w-4 shrink-0" />
                               {customRangeLabel}
@@ -762,13 +762,13 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                             <Button
                               variant="outline"
                               size="sm"
-                              className={`px-4 py-2 text-sm font-medium rounded-lg border-gray-200 dark:border-gray-700 transition-all duration-200 ${periodCustomPillClass(isCustomRange, false)}`}
+                              className={`px-4 py-2 text-sm font-medium rounded-lg border-border transition-all duration-200 ${periodCustomPillClass(isCustomRange, false)}`}
                             >
                               <CalendarDays className="mr-2 h-4 w-4 shrink-0" />
                               {customRangeLabel}
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0 border-gray-200 dark:border-gray-700 shadow-xl rounded-xl" align="end">
+                          <PopoverContent className="w-auto p-0 border-border shadow-xl rounded-xl" align="end">
                             <Calendar
                               initialFocus
                               mode="range"
@@ -851,12 +851,12 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
 
         {/* Mobile Menu Dropdown */}
         {isMobile && showMobileMenu && !showQuickStart && !showNoCallsMessage && (
-          <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="border-t border-border bg-muted/50">
             <div className="px-4 py-3 space-y-3">
               {/* Tab Navigation */}
               {agent && (
                 <div>
-                  <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Sections</div>
+                  <div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Sections</div>
                   <div className="space-y-1">
                     {mobileTabs.map((tab) => {
                       const Icon = tab.icon
@@ -870,7 +870,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                           className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
                             activeTab === tab.id
                               ? 'bg-blue-500 text-white'
-                              : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
+                              : 'bg-card text-foreground border border-border'
                           }`}
                         >
                           <Icon className="h-4 w-4" />
@@ -884,7 +884,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
 
               {/* Period Filters */}
               <div>
-                <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Period</div>
+                <div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Period</div>
                 <div className="flex flex-wrap gap-2">
                   {quickFilters.map((filter) => (
                     <PeriodOptionButton
@@ -938,7 +938,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
 
               {/* Tabs */}
               {/* <div>
-                <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Sections</div>
+                <div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Sections</div>
                 <div className="space-y-1">
                   {tabs.map((tab) => {
                     const Icon = tab.icon
@@ -949,7 +949,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
                         className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-all ${
                           activeTab === tab.id
                             ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                            : 'text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700'
+                            : 'text-foreground hover:bg-card'
                         }`}
                       >
                         <Icon className="h-4 w-4" />
@@ -963,7 +963,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
               {/* Field Extractor for mobile (visibility-controlled) */}
               {agent && canSeeFieldExtractor && (
                 <div>
-                  <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">Tools</div>
+                  <div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Tools</div>
                   <FieldExtractorDialog
                     initialData={JSON.parse(agent?.field_extractor_prompt || '[]')}
                     initialVariables={(agent as any)?.field_extractor_variables || {}}

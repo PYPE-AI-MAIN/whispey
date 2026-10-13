@@ -233,7 +233,7 @@ export default function DncPage() {
   if (roleLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-6 h-6 animate-spin text-gray-500 dark:text-gray-400" />
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     )
   }
@@ -241,8 +241,8 @@ export default function DncPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <ShieldBan className="w-8 h-8 mx-auto mb-3 text-gray-500 dark:text-gray-400" />
-          <p className="text-gray-900 dark:text-gray-100 mb-1">DNC management is restricted to superadmins.</p>
+          <ShieldBan className="w-8 h-8 mx-auto mb-3 text-muted-foreground" />
+          <p className="text-foreground mb-1">DNC management is restricted to superadmins.</p>
           <Button variant="link" onClick={() => router.back()}>Go back</Button>
         </div>
       </div>
@@ -273,13 +273,13 @@ export default function DncPage() {
     if (listLoading) {
       return (
         <div className="p-10 flex justify-center">
-          <Loader2 className="h-5 w-5 animate-spin text-gray-500 dark:text-gray-400" />
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       )
     }
     if (filteredEntries.length === 0) {
       const emptyMsg = scope === 'project' && !selectedProject ? 'Select an organization above.' : 'No numbers on the DNC list.'
-      return <div className="p-10 text-center text-sm text-gray-500 dark:text-gray-400">{emptyMsg}</div>
+      return <div className="p-10 text-center text-sm text-muted-foreground">{emptyMsg}</div>
     }
     return (
       <Table>
@@ -296,11 +296,11 @@ export default function DncPage() {
         <TableBody>
           {filteredEntries.map((e) => (
             <TableRow key={e.id}>
-              <TableCell className="font-mono font-medium text-gray-900 dark:text-gray-100">{e.phone_e164}</TableCell>
-              <TableCell className="text-gray-500 dark:text-gray-400">{e.reason || '—'}</TableCell>
+              <TableCell className="font-mono font-medium text-foreground">{e.phone_e164}</TableCell>
+              <TableCell className="text-muted-foreground">{e.reason || '—'}</TableCell>
               <TableCell><Badge variant="outline" className="capitalize">{e.source}</Badge></TableCell>
-              <TableCell className="text-gray-500 dark:text-gray-400 max-w-[180px] truncate" title={e.added_by}>{e.added_by}</TableCell>
-              <TableCell className="text-gray-500 dark:text-gray-400 whitespace-nowrap">{new Date(e.created_at).toLocaleDateString()}</TableCell>
+              <TableCell className="text-muted-foreground max-w-[180px] truncate" title={e.added_by}>{e.added_by}</TableCell>
+              <TableCell className="text-muted-foreground whitespace-nowrap">{new Date(e.created_at).toLocaleDateString()}</TableCell>
               <TableCell>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -328,7 +328,7 @@ export default function DncPage() {
   // ── Render ──────────────────────────────────────────────────────────────
   return (
     <TooltipProvider>
-      <div className="min-h-full bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-full bg-muted/50">
         {/* Navbar */}
         <div className="border-b border-border sticky top-0 z-10 bg-background/85 backdrop-blur">
           <div className="max-w-5xl mx-auto px-6 py-4 flex items-center gap-3">
@@ -337,7 +337,7 @@ export default function DncPage() {
               size="icon"
               onClick={() => router.push(`/${projectId}/settings/phone-numbers`)}
               aria-label="Back"
-              className="text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="text-muted-foreground hover:bg-muted"
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
@@ -346,24 +346,24 @@ export default function DncPage() {
             </div>
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-foreground">Do Not Call (DNC) List</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Listed numbers are never dialed — blocked at upload, single-call, and dispatch.</p>
+              <p className="text-xs text-muted-foreground">Listed numbers are never dialed — blocked at upload, single-call, and dispatch.</p>
             </div>
           </div>
         </div>
 
         <div className="max-w-5xl mx-auto px-6 py-6 space-y-6">
           {/* Add card */}
-          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/50 shadow-sm">
-            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
-              <Plus className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-              <h2 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Add numbers</h2>
+          <div className="rounded-xl border border-border bg-card shadow-sm">
+            <div className="px-5 py-4 border-b border-border/60 flex items-center gap-2">
+              <Plus className="h-4 w-4 text-muted-foreground" />
+              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Add numbers</h2>
             </div>
 
             <div className="p-5 grid gap-4">
               {/* Scope + project */}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="grid gap-1.5">
-                  <span className="block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Scope</span>
+                  <span className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">Scope</span>
                   <Select value={scope} onValueChange={(v) => { setScope(v as Scope); setSelectedProject(null) }}>
                     <SelectTrigger>
                       <SelectValue />
@@ -381,7 +381,7 @@ export default function DncPage() {
 
                 {scope === 'project' && (
                   <div className="grid gap-1.5">
-                    <span className="block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Organization</span>
+                    <span className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">Organization</span>
                     <Popover open={projectOpen} onOpenChange={setProjectOpen}>
                       <PopoverTrigger asChild>
                         <Button
@@ -422,7 +422,7 @@ export default function DncPage() {
               {/* Numbers: manual entry or CSV upload */}
               <div className="grid gap-2">
                 <div className="flex items-center justify-between">
-                  <span className="block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Phone numbers</span>
+                  <span className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">Phone numbers</span>
                   {parsedCount > 0 && (
                     <Badge variant="secondary">{parsedCount} ready</Badge>
                   )}
@@ -438,7 +438,7 @@ export default function DncPage() {
                   <TabsContent value="manual" className="mt-3 space-y-1.5">
                     <div className="flex">
                       <Select value={countryCode} onValueChange={setCountryCode}>
-                        <SelectTrigger className="w-[104px] shrink-0 rounded-r-none border-r-0 bg-gray-50 dark:bg-gray-800 focus:ring-0 focus:ring-offset-0">
+                        <SelectTrigger className="w-[104px] shrink-0 rounded-r-none border-r-0 bg-muted/50 focus:ring-0 focus:ring-offset-0">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -460,7 +460,7 @@ export default function DncPage() {
                         className="rounded-l-none font-mono focus-visible:ring-blue-500/30 focus-visible:border-blue-500"
                       />
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-xs text-muted-foreground">
                       {country.prefix} is applied to bare numbers · numbers starting with “+” are kept as-is
                     </p>
                   </TabsContent>
@@ -468,9 +468,9 @@ export default function DncPage() {
                   {/* CSV upload */}
                   <TabsContent value="csv" className="mt-3 space-y-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500 dark:text-gray-400">Bare numbers get</span>
+                      <span className="text-xs text-muted-foreground">Bare numbers get</span>
                       <Select value={countryCode} onValueChange={setCountryCode}>
-                        <SelectTrigger className="w-[96px] h-8 bg-gray-50 dark:bg-gray-800">
+                        <SelectTrigger className="w-[96px] h-8 bg-muted/50">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -501,10 +501,10 @@ export default function DncPage() {
                       <div className="flex items-center justify-between rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-3 py-2.5">
                         <div className="flex items-center gap-2 min-w-0">
                           <FileSpreadsheet className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                          <span className="text-sm text-gray-900 dark:text-gray-100 truncate">{csvFileName}</span>
+                          <span className="text-sm text-foreground truncate">{csvFileName}</span>
                           <Badge variant="secondary" className="shrink-0">{csvNumbers.length} numbers</Badge>
                         </div>
-                        <button onClick={clearCsv} aria-label="Remove file" className="text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 shrink-0">
+                        <button onClick={clearCsv} aria-label="Remove file" className="text-muted-foreground hover:text-foreground shrink-0">
                           <X className="h-4 w-4" />
                         </button>
                       </div>
@@ -512,12 +512,12 @@ export default function DncPage() {
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="w-full flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40 hover:bg-gray-100 dark:hover:bg-gray-800 hover:border-blue-400 dark:hover:border-blue-600 transition-colors py-6 px-4"
+                        className="w-full flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted/50 hover:bg-muted hover:border-blue-400 dark:hover:border-blue-600 transition-colors py-6 px-4"
                       >
-                        <Upload className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Choose CSV file</span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          Must have a column named <code className="font-mono text-gray-700 dark:text-gray-300">phone</code> — one number per row
+                        <Upload className="h-5 w-5 text-muted-foreground" />
+                        <span className="text-sm font-medium text-foreground">Choose CSV file</span>
+                        <span className="text-xs text-muted-foreground">
+                          Must have a column named <code className="font-mono text-foreground">phone</code> — one number per row
                         </span>
                       </button>
                     )}
@@ -530,7 +530,7 @@ export default function DncPage() {
               {/* Reason + submit */}
               <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
                 <div className="grid gap-1.5 flex-1">
-                  <span className="block text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Reason (optional)</span>
+                  <span className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">Reason (optional)</span>
                   <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. customer opt-out" />
                 </div>
                 <Button onClick={() => addMutation.mutate()} disabled={!canSubmit} className="bg-blue-600 hover:bg-blue-700 text-white">
@@ -543,9 +543,9 @@ export default function DncPage() {
                 <p className="text-xs text-amber-600 dark:text-amber-500">Select an organization first.</p>
               )}
               {feedback && (
-                <div className="flex items-center justify-between text-sm rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 px-3 py-2 text-gray-700 dark:text-gray-300">
+                <div className="flex items-center justify-between text-sm rounded-lg border border-border bg-muted/50 px-3 py-2 text-foreground">
                   <span>{feedback}</span>
-                  <button onClick={() => setFeedback(null)} aria-label="Dismiss" className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">
+                  <button onClick={() => setFeedback(null)} aria-label="Dismiss" className="text-muted-foreground hover:text-foreground">
                     <X className="h-4 w-4" />
                   </button>
                 </div>
@@ -554,9 +554,9 @@ export default function DncPage() {
           </div>
 
           {/* List card */}
-          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/50 shadow-sm">
-            <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+          <div className="rounded-xl border border-border bg-card shadow-sm">
+            <div className="px-5 py-4 border-b border-border/60 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 {scope === 'global' ? <Globe className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
                 <span>{listScopeLabel}</span>
                 {!listLoading && (scope === 'global' || selectedProject) && (
@@ -564,7 +564,7 @@ export default function DncPage() {
                 )}
               </div>
               <div className="relative">
-                <Search className="h-4 w-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
+                <Search className="h-4 w-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}

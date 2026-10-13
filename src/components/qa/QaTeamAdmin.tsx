@@ -37,14 +37,14 @@ export function QaTeamAdmin() {
 
   return (
     <div className="max-w-3xl space-y-6">
-      <p className="text-sm text-gray-500 dark:text-gray-400">
+      <p className="text-sm text-muted-foreground">
         QA team members can update flagged calls. Prompt engineers can be assigned a flag, and are emailed and tagged on Slack when it goes in review.
         Slack ID: Slack profile → More → Copy member ID.
       </p>
       <div className="grid gap-2 sm:grid-cols-[1fr_1.4fr_auto_1fr_auto]">
         <Input placeholder="Name" value={form.name} onChange={set('name')} />
         <Input placeholder="Email" value={form.email} onChange={set('email')} />
-        <select className="h-9 rounded-md border border-gray-200 bg-white px-2 text-sm dark:border-gray-700 dark:bg-gray-900" value={form.role} onChange={set('role')}>
+        <select className="h-9 rounded-md border border-border bg-card px-2 text-sm" value={form.role} onChange={set('role')}>
           <option value="prompt_engineer">Prompt engineer</option>
           <option value="qa">QA team</option>
         </select>
@@ -52,16 +52,16 @@ export function QaTeamAdmin() {
         <Button onClick={() => add.mutate()} disabled={add.isPending}>Add</Button>
       </div>
       {add.isError && <p className="text-xs text-red-600">{(add.error as Error).message}</p>}
-      <ul className="divide-y divide-gray-200 rounded-xl border border-gray-200 bg-white dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900">
-        {isLoading && <li className="px-4 py-3 text-sm text-gray-500">Loading…</li>}
-        {data?.members.length === 0 && <li className="px-4 py-3 text-sm text-gray-500">No one added yet.</li>}
+      <ul className="divide-y divide-border rounded-xl border border-border bg-card">
+        {isLoading && <li className="px-4 py-3 text-sm text-muted-foreground">Loading…</li>}
+        {data?.members.length === 0 && <li className="px-4 py-3 text-sm text-muted-foreground">No one added yet.</li>}
         {data?.members.map((m) => (
           <li key={m.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
             <div className="min-w-0">
-              <p className="font-medium text-gray-900 dark:text-gray-100">{m.name} <span className="ml-2 text-xs font-normal text-gray-500">{ROLE_LABEL[m.role]}</span></p>
-              <p className="truncate text-xs text-gray-500 dark:text-gray-400">{m.email} · {m.slack_id ?? 'no Slack ID'}</p>
+              <p className="font-medium text-foreground">{m.name} <span className="ml-2 text-xs font-normal text-muted-foreground">{ROLE_LABEL[m.role]}</span></p>
+              <p className="truncate text-xs text-muted-foreground">{m.email} · {m.slack_id ?? 'no Slack ID'}</p>
             </div>
-            <button type="button" aria-label={`Remove ${m.name}`} onClick={() => remove.mutate(m.id)} className="text-gray-400 hover:text-red-600">
+            <button type="button" aria-label={`Remove ${m.name}`} onClick={() => remove.mutate(m.id)} className="text-muted-foreground hover:text-red-600">
               <Trash2 className="h-4 w-4" />
             </button>
           </li>

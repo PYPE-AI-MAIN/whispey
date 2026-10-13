@@ -26,8 +26,8 @@ const STATUS_STYLES: Record<string, string> = {
   running:   'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
   scheduled: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
   paused:    'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-  completed: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
-  draft:     'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+  completed: 'bg-muted text-muted-foreground',
+  draft:     'bg-muted text-muted-foreground',
 }
 
 const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000

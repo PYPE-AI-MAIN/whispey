@@ -45,8 +45,8 @@ export const VariableValidationIndicator: React.FC<VariableValidationIndicatorPr
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-80 p-0" align="start">
-            <div className="p-3 border-b border-gray-200 dark:border-gray-700">
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <div className="p-3 border-b border-border">
+              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-red-500" />
                 Variable Validation Errors
               </h4>
@@ -75,8 +75,8 @@ export const VariableValidationIndicator: React.FC<VariableValidationIndicatorPr
                 ))}
               </div>
             </div>
-            <div className="p-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-              <p className="text-xs text-gray-600 dark:text-gray-400">
+            <div className="p-2 border-t border-border bg-muted/50">
+              <p className="text-xs text-muted-foreground">
                 Fix these errors to enable config updates
               </p>
             </div>
@@ -94,8 +94,8 @@ export const VariableValidationIndicator: React.FC<VariableValidationIndicatorPr
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-80 p-0" align="start">
-            <div className="p-3 border-b border-gray-200 dark:border-gray-700">
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <div className="p-3 border-b border-border">
+              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-green-500" />
                 Detected Variables
               </h4>
@@ -112,8 +112,8 @@ export const VariableValidationIndicator: React.FC<VariableValidationIndicatorPr
                 ))}
               </div>
             </div>
-            <div className="p-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-              <p className="text-xs text-gray-600 dark:text-gray-400">
+            <div className="p-2 border-t border-border bg-muted/50">
+              <p className="text-xs text-muted-foreground">
                 These variables will be available in your agent
               </p>
             </div>

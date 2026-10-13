@@ -103,14 +103,14 @@ function Issues({ open, onOpenChange, serverIssues }: Readonly<{ open: boolean; 
 
 export function WorkflowHeader(p: HeaderProps) {
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-2 border-b border-gray-200 bg-white px-4 py-2.5 dark:border-gray-800 dark:bg-gray-900">
+    <div className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-2 border-b border-border bg-card px-4 py-2.5">
       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={p.onBack} aria-label="Back to the agent">
         <ArrowLeft className="h-4 w-4" />
       </Button>
       <Button variant={p.paletteOpen ? 'secondary' : 'ghost'} size="icon" className="h-8 w-8" onClick={p.onTogglePalette} aria-label="Steps list" title="List of steps, and all step types">
         <PanelLeft className="h-4 w-4" />
       </Button>
-      <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{p.name}</h1>
+      <h1 className="text-sm font-semibold text-foreground">{p.name}</h1>
       {p.isDirty && <Badge variant="secondary" className="text-[11px]">Unsaved</Badge>}
 
       <div className="flex-1" />

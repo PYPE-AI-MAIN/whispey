@@ -131,48 +131,48 @@ ctx.add_shutdown_callback(whispey_shutdown)`
     const completedCount = completedSteps.size
   
     return (
-      <div className="h-full flex bg-gray-50 dark:bg-gray-800">
+      <div className="h-full flex bg-muted/50">
         {/* Left Panel - Simple & Clean */}
-        <div className="w-96 bg-white border-r border-gray-200 flex flex-col dark:bg-gray-900 dark:border-gray-800">
+        <div className="w-96 bg-card border-r border-border flex flex-col">
           {/* Header */}
-          <div className="p-6 border-b border-gray-100 dark:border-gray-800">
-            <h1 className="text-xl font-bold text-gray-900 mb-2 dark:text-gray-100">
+          <div className="p-6 border-b border-border/60">
+            <h1 className="text-xl font-bold text-foreground mb-2">
               Get Your Agent Live
             </h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-muted-foreground">
               Transform your LiveKit sessions with intelligent voice monitoring in just 4 simple steps.
             </p>
           </div>
   
           {/* Progress */}
-          <div className="p-6 border-b border-gray-100 dark:border-gray-800">
+          <div className="p-6 border-b border-border/60">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Progress</span>
+              <span className="text-sm font-medium text-foreground">Progress</span>
               <span className="text-sm font-medium text-purple-600">{completedCount}/{steps.length} completed</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full bg-muted rounded-full h-2">
               <div 
                 className="h-full bg-purple-600 rounded-full transition-all duration-700"
                 style={{ width: `${(completedCount / steps.length) * 100}%` }}
               ></div>
             </div>
-            <p className="text-xs text-gray-500 mt-2">Complete all steps to activate your agent</p>
+            <p className="text-xs text-muted-foreground mt-2">Complete all steps to activate your agent</p>
           </div>
   
           {/* Setup Steps */}
           <div className="p-4 flex-1">
-            <h3 className="text-sm font-medium text-gray-900 mb-4 dark:text-gray-100">Setup Steps</h3>
+            <h3 className="text-sm font-medium text-foreground mb-4">Setup Steps</h3>
             <div className="space-y-2">
               {steps.map((step, index) => (
                 <div key={step.id} className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
                   completedSteps.has(step.id) 
                     ? 'bg-green-50 border-green-200' 
-                    : 'bg-gray-50 border-gray-200'
+                    : 'bg-muted/50 border-border'
                 }`}>
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-medium ${
                     completedSteps.has(step.id)
                       ? 'bg-green-500 text-white'
-                      : 'bg-gray-300 text-gray-600'
+                      : 'bg-muted-foreground/30 text-muted-foreground'
                   }`}>
                     {completedSteps.has(step.id) ? (
                       <Check className="w-4 h-4" />
@@ -182,11 +182,11 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-medium ${
-                      completedSteps.has(step.id) ? 'text-green-700' : 'text-gray-900'
+                      completedSteps.has(step.id) ? 'text-green-700' : 'text-foreground'
                     }`}>
                       {step.title}
                     </p>
-                    <p className="text-xs text-gray-500">{step.subtitle}</p>
+                    <p className="text-xs text-muted-foreground">{step.subtitle}</p>
                   </div>
                   
                 </div>
@@ -200,14 +200,14 @@ ctx.add_shutdown_callback(whispey_shutdown)`
           <div className="p-8">
             <div className="space-y-8">
               {steps.map((step, index) => (
-                <div key={step.id} className="bg-white rounded-xl border border-gray-200 p-6 relative dark:bg-gray-900 dark:border-gray-800">
+                <div key={step.id} className="bg-card rounded-xl border border-border p-6 relative">
                   {/* Completion Toggle */}
                   <button
                     onClick={() => toggleStepComplete(step.id)}
                     className={`absolute top-6 right-6 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
                       completedSteps.has(step.id)
                         ? 'bg-green-500 border-green-500 text-white'
-                        : 'border-gray-300 hover:border-gray-400 bg-white'
+                        : 'border-border hover:border-border bg-card'
                     }`}
                   >
                     {completedSteps.has(step.id) && <Check className="w-3 h-3" />}
@@ -216,15 +216,15 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                   <div className="flex items-start gap-4">
                     {/* Icon & Number */}
                     <div className="flex flex-col items-center">
-                      <div className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium text-gray-700 dark:text-gray-300 dark:bg-gray-800">
+                      <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center text-xs font-medium text-foreground">
                         {index + 1}
                       </div>
                     </div>
   
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1 dark:text-gray-100">{step.title}</h3>
-                      <p className="text-gray-600 text-sm mb-4 dark:text-gray-400">{step.subtitle}</p>
+                      <h3 className="text-lg font-semibold text-foreground mb-1">{step.title}</h3>
+                      <p className="text-muted-foreground text-sm mb-4">{step.subtitle}</p>
   
                       {/* Items */}
                       {step.items && (
@@ -243,16 +243,16 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                                   <Play className="w-2 h-2 text-white" />
                                 )}
                               </div>
-                              <span className="text-sm text-gray-700 flex-1 dark:text-gray-300">{item.text}</span>
+                              <span className="text-sm text-foreground flex-1">{item.text}</span>
                               {item.copyable && (
                                 <button
                                   onClick={() => copyToClipboard(item.copyable, `${step.id}-${itemIndex}`)}
-                                  className="p-1 hover:bg-gray-100 rounded"
+                                  className="p-1 hover:bg-muted rounded"
                                 >
                                   {copiedStep === `${step.id}-${itemIndex}` ? (
                                     <Check className="w-3 h-3 text-green-500" />
                                   ) : (
-                                    <Copy className="w-3 h-3 text-gray-400" />
+                                    <Copy className="w-3 h-3 text-muted-foreground" />
                                   )}
                                 </button>
                               )}
@@ -265,8 +265,8 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                       {step.integrationSteps && (
                         <div className="space-y-4 mb-6">
                           {step.integrationSteps.map((integrationStep, stepIndex) => (
-                            <div key={integrationStep.title} className="border border-gray-100 rounded-lg p-4 dark:border-gray-800">
-                              <h4 className="text-sm font-medium text-gray-900 mb-3 dark:text-gray-100">{integrationStep.title}</h4>
+                            <div key={integrationStep.title} className="border border-border/60 rounded-lg p-4">
+                              <h4 className="text-sm font-medium text-foreground mb-3">{integrationStep.title}</h4>
                               <div className="relative">
                                 <div className="bg-gray-900 rounded-lg p-4">
                                   <div className="flex items-center gap-2 mb-2">
@@ -275,9 +275,9 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                                       <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
                                       <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                                     </div>
-                                    <Terminal className="w-3 h-3 text-gray-400 ml-1" />
+                                    <Terminal className="w-3 h-3 text-muted-foreground ml-1" />
                                   </div>
-                                  <pre className="text-gray-100 text-xs font-mono overflow-x-auto">
+                                  <pre className="text-foreground text-xs font-mono overflow-x-auto">
                                     <code>{integrationStep.code}</code>
                                   </pre>
                                   <button
@@ -287,7 +287,7 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                                     {copiedStep === `${step.id}-${stepIndex}` ? (
                                       <Check className="w-3 h-3 text-green-400" />
                                     ) : (
-                                      <Copy className="w-3 h-3 text-gray-300" />
+                                      <Copy className="w-3 h-3 text-muted-foreground" />
                                     )}
                                   </button>
                                 </div>
@@ -296,7 +296,7 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                           ))}
                           
                           {/* Full Example Toggle */}
-                          <div className="mt-6 border-t border-gray-100 pt-6 dark:border-gray-800">
+                          <div className="mt-6 border-t border-border/60 pt-6">
                             <button
                               onClick={() => setExpandedExample(!expandedExample)}
                               className="flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium mb-4"
@@ -314,10 +314,10 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                                       <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
                                       <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                                     </div>
-                                    <Terminal className="w-3 h-3 text-gray-400 ml-1" />
-                                    <span className="text-xs text-gray-400 ml-2">complete_agent.py</span>
+                                    <Terminal className="w-3 h-3 text-muted-foreground ml-1" />
+                                    <span className="text-xs text-muted-foreground ml-2">complete_agent.py</span>
                                   </div>
-                                  <pre className="text-gray-100 text-xs font-mono overflow-x-auto max-h-96 overflow-y-auto">
+                                  <pre className="text-foreground text-xs font-mono overflow-x-auto max-h-96 overflow-y-auto">
                                     <code>{fullExampleCode}</code>
                                   </pre>
                                   <button
@@ -327,11 +327,11 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                                     {copiedStep === 'full-example' ? (
                                       <Check className="w-3 h-3 text-green-400" />
                                     ) : (
-                                      <Copy className="w-3 h-3 text-gray-300" />
+                                      <Copy className="w-3 h-3 text-muted-foreground" />
                                     )}
                                   </button>
                                 </div>
-                                <p className="text-xs text-gray-500 mt-2">
+                                <p className="text-xs text-muted-foreground mt-2">
                                    This is a complete working example. Copy and modify for your needs.
                                 </p>
                               </div>
@@ -350,9 +350,9 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                                 <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
                                 <div className="w-2 h-2 bg-green-400 rounded-full"></div>
                               </div>
-                              <Terminal className="w-3 h-3 text-gray-400 ml-1" />
+                              <Terminal className="w-3 h-3 text-muted-foreground ml-1" />
                             </div>
-                            <pre className="text-gray-100 text-xs font-mono overflow-x-auto">
+                            <pre className="text-foreground text-xs font-mono overflow-x-auto">
                               <code>{step.code}</code>
                             </pre>
                             <button
@@ -362,7 +362,7 @@ ctx.add_shutdown_callback(whispey_shutdown)`
                               {copiedStep === step.id ? (
                                 <Check className="w-3 h-3 text-green-400" />
                               ) : (
-                                <Copy className="w-3 h-3 text-gray-300" />
+                                <Copy className="w-3 h-3 text-muted-foreground" />
                               )}
                             </button>
                           </div>

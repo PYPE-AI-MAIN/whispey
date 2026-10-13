@@ -105,15 +105,15 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px] bg-white dark:bg-gray-900 p-0 gap-0 rounded-xl border border-gray-200 dark:border-gray-800 shadow-2xl">
+      <DialogContent className="sm:max-w-[500px] bg-card p-0 gap-0 rounded-xl border border-border shadow-2xl">
         {currentStep === 'form' ? (
           <>
             {/* Header */}
             <DialogHeader className="px-6 pt-6 pb-4 text-center">
-              <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">
+              <DialogTitle className="text-xl font-semibold text-foreground mb-1">
                 Create New Organization
               </DialogTitle>
-              <p className="text-sm text-gray-600 dark:text-gray-400 font-normal">
+              <p className="text-sm text-muted-foreground font-normal">
                 Set up your organization with automatic API token generation
               </p>
             </DialogHeader>
@@ -123,7 +123,7 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Project Name */}
                 <div>
-                  <label htmlFor="project-name" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                  <label htmlFor="project-name" className="block text-sm font-medium text-foreground mb-2">
                     Organization Name
                   </label>
                   <Input
@@ -132,15 +132,15 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     disabled={loading}
-                    className="h-11 px-4 text-sm bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 rounded-lg focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 transition-all"
+                    className="h-11 px-4 text-sm bg-card border-border text-foreground placeholder:text-muted-foreground rounded-lg focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 transition-all"
                   />
                 </div>
 
                 {/* Description */}
                 <div>
-                  <label htmlFor="project-description" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                  <label htmlFor="project-description" className="block text-sm font-medium text-foreground mb-2">
                     Description
-                    <span className="text-gray-400 dark:text-gray-500 font-normal ml-1">(optional)</span>
+                    <span className="text-muted-foreground font-normal ml-1">(optional)</span>
                   </label>
                   <textarea
                     id="project-description"
@@ -149,7 +149,7 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     disabled={loading}
                     rows={3}
-                    className="w-full px-4 py-3 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 rounded-lg focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:outline-none resize-none transition-all"
+                    className="w-full px-4 py-3 text-sm bg-card border border-border text-foreground placeholder:text-muted-foreground rounded-lg focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:outline-none resize-none transition-all"
                   />
                 </div>
 
@@ -167,14 +167,14 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
                     variant="outline"
                     onClick={handleClose}
                     disabled={loading}
-                    className="flex-1 h-11 font-medium cursor-pointer bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 rounded-lg transition-all"
+                    className="flex-1 h-11 font-medium cursor-pointer bg-card text-foreground border-border hover:bg-muted/50 hover:text-foreground rounded-lg transition-all"
                   >
                     Cancel
                   </Button>
                   <Button 
                     type="submit"
                     disabled={loading || !formData.name.trim()}
-                    className="flex-1 h-11 cursor-pointer bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white disabled:text-gray-500 dark:disabled:text-gray-400 rounded-lg font-medium shadow-sm transition-all"
+                    className="flex-1 h-11 cursor-pointer bg-blue-600 hover:bg-blue-700 disabled:bg-muted-foreground/30 text-white disabled:text-muted-foreground rounded-lg font-medium shadow-sm transition-all"
                   >
                     {loading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -193,10 +193,10 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
               <div className="w-12 h-12 mx-auto mb-4 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
                 <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
-              <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-1">
+              <DialogTitle className="text-xl font-semibold text-foreground mb-1">
                 Organization Created Successfully!
               </DialogTitle>
-              <p className="text-sm text-gray-600 dark:text-gray-400 font-normal">
+              <p className="text-sm text-muted-foreground font-normal">
                 Your organization "{createdProjectData?.name}" has been created
               </p>
             </DialogHeader>
@@ -204,16 +204,16 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
             {/* Success Content */}
             <div className="px-6 pb-6 space-y-4">
               {/* Project Details */}
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-                <h4 className="font-medium text-gray-900 dark:text-gray-100 text-sm mb-2">Organization Details</h4>
+              <div className="p-3 bg-muted/50 border border-border rounded-lg">
+                <h4 className="font-medium text-foreground text-sm mb-2">Organization Details</h4>
                 <div className="space-y-1 text-xs">
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">ID:</span>
-                    <span className="font-mono text-gray-800 dark:text-gray-200">{createdProjectData?.id}</span>
+                    <span className="text-muted-foreground">ID:</span>
+                    <span className="font-mono text-foreground">{createdProjectData?.id}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Environment:</span>
-                    <span className="text-gray-800 dark:text-gray-200">{createdProjectData?.environment}</span>
+                    <span className="text-muted-foreground">Environment:</span>
+                    <span className="text-foreground">{createdProjectData?.environment}</span>
                   </div>
                 </div>
               </div>

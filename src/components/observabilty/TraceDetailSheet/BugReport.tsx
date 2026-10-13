@@ -68,11 +68,11 @@ function BugReport({ trace }: { trace: any }) {
     return (
         <div className="flex items-center justify-center h-full">
         <div className="text-center">
-            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertTriangle className="w-8 h-8 text-gray-400 dark:text-gray-500" />
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-8 h-8 text-muted-foreground" />
             </div>
-            <h3 className="font-medium text-gray-900 dark:text-gray-100 mb-2">No Bug Report</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">This turn was not flagged for any reported bugs.</p>
+            <h3 className="font-medium text-foreground mb-2">No Bug Report</h3>
+            <p className="text-sm text-muted-foreground max-w-sm">This turn was not flagged for any reported bugs.</p>
         </div>
         </div>
     )
@@ -138,9 +138,9 @@ function BugReport({ trace }: { trace: any }) {
                 <Badge variant="outline" className="text-xs">
                     User Input
                 </Badge>
-                <span className="text-xs text-gray-500 dark:text-gray-400">{formatTimestamp(trace.unix_timestamp)}</span>
+                <span className="text-xs text-muted-foreground">{formatTimestamp(trace.unix_timestamp)}</span>
                 </div>
-                <blockquote className="text-gray-900 dark:text-gray-100 leading-relaxed">
+                <blockquote className="text-foreground leading-relaxed">
                 "{parseBugReportText(trace.user_transcript)}"
                 </blockquote>
             </div>
@@ -185,7 +185,7 @@ function BugReport({ trace }: { trace: any }) {
     {/* Bug Reports from Users */}
     {currentTurnBugReports.length > 0 && (
         <div className="space-y-4">
-        <h3 className="text-lg font-semibold flex items-center gap-2 text-gray-900 dark:text-gray-100">
+        <h3 className="text-lg font-semibold flex items-center gap-2 text-foreground">
             <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
             User Bug Reports ({currentTurnBugReports.length})
         </h3>
@@ -199,7 +199,7 @@ function BugReport({ trace }: { trace: any }) {
             <div key={`${report.timestamp}-${index}`} className="space-y-4">
                 {/* Initial Bug Report */}
                 {initialReport && (
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-amber-200 dark:border-amber-800 overflow-hidden shadow-sm">
+                <div className="bg-card rounded-xl border border-amber-200 dark:border-amber-800 overflow-hidden shadow-sm">
                     <div className="px-6 py-4 border-b border-amber-100 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20">
                     <div className="flex items-center gap-3">
                         <div className="w-7 h-7 rounded-full bg-amber-100 dark:bg-amber-800 text-amber-700 dark:text-amber-300 flex items-center justify-center text-sm font-semibold">
@@ -218,7 +218,7 @@ function BugReport({ trace }: { trace: any }) {
                     <div className="relative">
                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-amber-400 to-amber-300 rounded-full"></div>
                         <div className="pl-6">
-                        <blockquote className="text-gray-900 dark:text-gray-100 leading-relaxed text-base">
+                        <blockquote className="text-foreground leading-relaxed text-base">
                             "{parseBugReportText(initialReport)}"
                         </blockquote>
                         </div>
@@ -229,10 +229,10 @@ function BugReport({ trace }: { trace: any }) {
 
                 {/* Additional Details */}
                 {additionalDetails.length > 0 && (
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
-                    <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
+                <div className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
+                    <div className="px-6 py-4 border-b border-border bg-muted/50">
                     <div className="flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 flex items-center justify-center text-sm font-semibold">
+                        <div className="w-7 h-7 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-sm font-semibold">
                         
                         </div>
                         <div className="flex items-center gap-2">
@@ -250,7 +250,7 @@ function BugReport({ trace }: { trace: any }) {
                         <div key={`${report.timestamp}-detail-${detailIndex}`} className="relative">
                             <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-200 to-blue-100 rounded-full"></div>
                             <div className="pl-6">
-                            <blockquote className="text-gray-900 dark:text-gray-100 leading-relaxed">
+                            <blockquote className="text-foreground leading-relaxed">
                                 "{parseBugReportText(detail)}"
                             </blockquote>
                             </div>
@@ -268,26 +268,26 @@ function BugReport({ trace }: { trace: any }) {
 
     {/* Flagged Turn Metadata */}
     {currentFlaggedTurn && (
-        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 shadow-sm p-4">
-        <h4 className="font-medium text-sm mb-3 flex items-center gap-2 text-gray-900 dark:text-gray-100">
-            <Settings className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+        <div className="rounded-xl border border-border bg-muted/50 shadow-sm p-4">
+        <h4 className="font-medium text-sm mb-3 flex items-center gap-2 text-foreground">
+            <Settings className="w-4 h-4 text-muted-foreground" />
             Flagged Turn Details
         </h4>
         <div className="grid grid-cols-1 gap-3">
-            <div className="flex justify-between items-center p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded">
-            <span className="text-gray-600 dark:text-gray-400">Turn ID:</span>
-            <code className="text-sm bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2 py-1 rounded">{currentFlaggedTurn.turn_id}</code>
+            <div className="flex justify-between items-center p-3 bg-card border border-border rounded">
+            <span className="text-muted-foreground">Turn ID:</span>
+            <code className="text-sm bg-muted text-foreground px-2 py-1 rounded">{currentFlaggedTurn.turn_id}</code>
             </div>
-            <div className="flex justify-between items-center p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded">
-            <span className="text-gray-600 dark:text-gray-400">Flagged At:</span>
-            <span className="text-sm text-gray-900 dark:text-gray-100">
+            <div className="flex justify-between items-center p-3 bg-card border border-border rounded">
+            <span className="text-muted-foreground">Flagged At:</span>
+            <span className="text-sm text-foreground">
                 {currentFlaggedTurn.flagged_at ? formatTimestamp(currentFlaggedTurn.flagged_at) : "Unknown"}
             </span>
             </div>
             {currentFlaggedTurn.reason && (
-            <div className="flex justify-between items-center p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded">
-                <span className="text-gray-600 dark:text-gray-400">Reason:</span>
-                <span className="text-sm text-gray-900 dark:text-gray-100">{currentFlaggedTurn.reason}</span>
+            <div className="flex justify-between items-center p-3 bg-card border border-border rounded">
+                <span className="text-muted-foreground">Reason:</span>
+                <span className="text-sm text-foreground">{currentFlaggedTurn.reason}</span>
             </div>
             )}
         </div>
@@ -295,12 +295,12 @@ function BugReport({ trace }: { trace: any }) {
     )}
 
     {/* Debug Information */}
-    <details className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 shadow-sm p-4">
-        <summary className="cursor-pointer font-medium text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100">
+    <details className="rounded-xl border border-border bg-muted/50 shadow-sm p-4">
+        <summary className="cursor-pointer font-medium text-sm text-foreground hover:text-foreground">
         Debug Information
         </summary>
         <div className="mt-3 text-xs">
-        <pre className="bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 p-3 rounded border border-gray-200 dark:border-gray-700 overflow-auto max-h-64">
+        <pre className="bg-card text-foreground p-3 rounded border border-border overflow-auto max-h-64">
             {JSON.stringify(
             {
                 turn_id: trace.turn_id,

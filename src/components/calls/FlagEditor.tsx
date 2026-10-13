@@ -195,7 +195,7 @@ function flaggedTriggerLook({ quiet, saving, flags }: FlagTriggerState): FlagTri
         {/* The quiet pill names what was flagged; the full list is in the tooltip. */}
         <span className={cn(quiet && 'truncate')}>{quiet ? (flags[0]?.text || 'Flagged') : 'Flagged'}</span>
         {flags.length > 1 && (
-          <span className="absolute -top-1.5 -right-1.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-white px-1 text-[9px] font-bold text-rose-600 shadow-sm ring-1 ring-rose-700/20 dark:bg-gray-900">
+          <span className="absolute -top-1.5 -right-1.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-card px-1 text-[9px] font-bold text-rose-600 shadow-sm ring-1 ring-rose-700/20">
             {flags.length}
           </span>
         )}
@@ -216,8 +216,8 @@ function unflaggedTriggerLook({ quiet, saving }: FlagTriggerState): FlagTriggerL
           )
         : cn(
             'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] font-medium select-none transition-all cursor-pointer',
-            'border border-dashed border-gray-300 dark:border-gray-600',
-            'text-gray-400 dark:text-gray-500',
+            'border border-dashed border-border',
+            'text-muted-foreground',
             'hover:border-rose-400 hover:text-rose-500 dark:hover:border-rose-500 dark:hover:text-rose-400 active:scale-95'
           ),
       saving && 'opacity-40 pointer-events-none'
@@ -476,7 +476,7 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
           </TooltipTrigger>
           <TooltipContent
             side="top"
-            className="pointer-events-auto bg-white text-gray-900 border border-gray-200 shadow-lg dark:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-700"
+            className="pointer-events-auto bg-card text-foreground border border-border shadow-lg"
           >
             {tooltipContent}
           </TooltipContent>
@@ -492,8 +492,8 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
             onClick={(e) => { stop(e); startAdding(); setOpen(true) }}
             className={cn(
               'inline-flex items-center justify-center w-5 h-5 shrink-0 rounded-full select-none transition-all cursor-pointer',
-              'border border-dashed border-gray-300 dark:border-gray-600',
-              'text-gray-400 dark:text-gray-500',
+              'border border-dashed border-border',
+              'text-muted-foreground',
               'hover:border-rose-400 hover:text-rose-500 dark:hover:border-rose-500 dark:hover:text-rose-400 active:scale-95',
               quiet && 'opacity-0 group-hover:opacity-100',
               saving && 'opacity-40 pointer-events-none'

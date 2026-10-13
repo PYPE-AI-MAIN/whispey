@@ -97,14 +97,14 @@ function InterruptionSettings({
   return (
     <TooltipProvider>
     <div className="space-y-3">
-      <div className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+      <div className="text-xs text-muted-foreground mb-3">
         Configure interruption handling settings for your assistant
       </div>
 
       {/* Allow Interruptions Toggle */}
       <div className="flex items-center justify-between">
         <div>
-          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+          <Label className="text-xs font-medium text-foreground">
             Allow Interruptions
           </Label>
         </div>
@@ -119,17 +119,17 @@ function InterruptionSettings({
         <>
           {/* Interruption Mode — segmented control */}
           <div className="space-y-2">
-            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            <Label className="text-xs font-medium text-foreground">
               Interruption Mode
             </Label>
-            <div className="flex rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden w-fit">
+            <div className="flex rounded-md border border-border overflow-hidden w-fit">
               <button
                 type="button"
                 onClick={() => handleModeChange('vad')}
                 className={`px-3 py-1.5 text-xs font-medium transition-colors ${
                   !isAdaptive
                     ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900'
-                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    : 'bg-card text-muted-foreground hover:bg-muted/50'
                 }`}
               >
                 VAD
@@ -140,7 +140,7 @@ function InterruptionSettings({
                 className={`px-3 py-1.5 text-xs font-medium transition-colors border-l border-gray-200 dark:border-gray-700 ${
                   isAdaptive
                     ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900'
-                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    : 'bg-card text-muted-foreground hover:bg-muted/50'
                 }`}
               >
                 Adaptive
@@ -152,10 +152,10 @@ function InterruptionSettings({
           {!isAdaptive && (
             <>
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                <Label className="text-xs font-medium text-foreground">
                   Min Interruption Duration (seconds)
                 </Label>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                <div className="text-xs text-muted-foreground mb-1">
                   Minimum time user must speak to be considered an interruption
                 </div>
                 <Input
@@ -183,10 +183,10 @@ function InterruptionSettings({
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                <Label className="text-xs font-medium text-foreground">
                   Min Interruption Words
                 </Label>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                <div className="text-xs text-muted-foreground mb-1">
                   Minimum number of words required for a valid interruption
                 </div>
                 <Input
@@ -203,10 +203,10 @@ function InterruptionSettings({
               {/* Real Interruption Guard — VAD mode only, conflicts with adaptive's own ML detector */}
               <div className="flex items-center justify-between">
                 <div className="pr-4">
-                  <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  <Label className="text-xs font-medium text-foreground">
                     Real Interruption Guard (Beta)
                   </Label>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  <div className="text-xs text-muted-foreground mt-0.5">
                     Filters out backchannels/false interruptions before cancelling agent speech. Turn Detection recommended "V1 Mini".
                   </div>
                 </div>
@@ -341,10 +341,10 @@ function InterruptionSettings({
       {/* Drop Filler Words */}
       <div className="flex items-center justify-between">
         <div className="pr-4">
-          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+          <Label className="text-xs font-medium text-foreground">
             Drop Filler Words
           </Label>
-          <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+          <div className="text-xs text-muted-foreground mt-0.5">
             Silently drop short words (e.g. "hello", "हेलो", "hmm") spoken while the agent is thinking or speaking — prevents wasted LLM calls and mid-response restarts
           </div>
         </div>
@@ -356,9 +356,9 @@ function InterruptionSettings({
       </div>
 
       {dropFillerWords && (
-        <div className="space-y-2 pl-2 border-l-2 border-gray-200 dark:border-gray-700">
+        <div className="space-y-2 pl-2 border-l-2 border-border">
           <div className="flex items-center justify-between">
-            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            <Label className="text-xs font-medium text-foreground">
               Words to Drop
             </Label>
             <button
@@ -372,20 +372,20 @@ function InterruptionSettings({
 
           <div className="flex flex-wrap gap-1.5">
             {fillerDropList.length === 0 && (
-              <div className="text-xs text-gray-400 dark:text-gray-500 italic">
+              <div className="text-xs text-muted-foreground italic">
                 No words — add one below or restore defaults
               </div>
             )}
             {fillerDropList.map((word) => (
               <span
                 key={word}
-                className="inline-flex items-center gap-1 rounded-md bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-xs text-gray-700 dark:text-gray-200"
+                className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-xs text-foreground"
               >
                 {word}
                 <button
                   type="button"
                   onClick={() => removeWord(word)}
-                  className="text-gray-400 hover:text-red-500 transition-colors"
+                  className="text-muted-foreground hover:text-red-500 transition-colors"
                   aria-label={`Remove ${word}`}
                 >
                   <X size={12} />
@@ -439,11 +439,11 @@ function AdaptiveField({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-1.5">
-        <Label className="text-xs text-gray-600 dark:text-gray-400">{label}</Label>
-        <span className="text-xs text-gray-400 dark:text-gray-500">({unit})</span>
+        <Label className="text-xs text-muted-foreground">{label}</Label>
+        <span className="text-xs text-muted-foreground">({unit})</span>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Info className="w-3 h-3 text-gray-400 cursor-help" />
+            <Info className="w-3 h-3 text-muted-foreground cursor-help" />
           </TooltipTrigger>
           <TooltipContent side="right" className="max-w-xs">
             <p className="text-xs">{tooltip}</p>
@@ -469,10 +469,10 @@ function AdaptiveToggleField({
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-1.5 pr-4">
-        <Label className="text-xs text-gray-600 dark:text-gray-400">{label}</Label>
+        <Label className="text-xs text-muted-foreground">{label}</Label>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Info className="w-3 h-3 text-gray-400 cursor-help" />
+            <Info className="w-3 h-3 text-muted-foreground cursor-help" />
           </TooltipTrigger>
           <TooltipContent side="right" className="max-w-xs">
             <p className="text-xs">{tooltip}</p>

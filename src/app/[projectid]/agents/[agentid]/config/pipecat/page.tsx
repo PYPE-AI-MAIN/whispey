@@ -20,10 +20,10 @@ export default function PipecatConfigPage() {
 
   if (isLoading) {
     return (
-      <div className="h-screen bg-gray-50 dark:bg-gray-900 p-6">
+      <div className="h-screen bg-muted/50 p-6">
         <div className="max-w-7xl mx-auto animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 dark:bg-gray-800 rounded w-64"></div>
-          <div className="h-96 bg-gray-200 dark:bg-gray-800 rounded"></div>
+          <div className="h-8 bg-muted rounded w-64"></div>
+          <div className="h-96 bg-muted rounded"></div>
         </div>
       </div>
     )

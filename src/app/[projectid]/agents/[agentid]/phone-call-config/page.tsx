@@ -85,10 +85,10 @@ function getAgentStatusInfo(
 ): AgentStatusInfo {
   if (isCheckingRunning) {
     return {
-      containerClass: 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700',
+      containerClass: 'bg-muted/50 border-border',
       dotClass: '',
       label: 'Checking...',
-      labelClass: 'text-xs font-medium text-gray-700 dark:text-gray-400',
+      labelClass: 'text-xs font-medium text-foreground',
     }
   }
   const isPypeAgent = agent.agent_type === 'pype_agent'
@@ -128,7 +128,7 @@ function AgentStatusBadge({ agent, runningStatus, isCheckingRunning }: Readonly<
     <div className="mb-5">
       <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ${info.containerClass}`}>
         {isCheckingRunning
-          ? <Loader2 className="w-3 h-3 animate-spin text-gray-500" />
+          ? <Loader2 className="w-3 h-3 animate-spin text-muted-foreground" />
           : <div className={`w-1.5 h-1.5 ${info.dotClass}`} />}
         <span className={info.labelClass}>{info.label}</span>
       </div>
@@ -144,13 +144,13 @@ function DialerPad({ buttons, phoneNumber, onDigit, onBackspace }: Readonly<{
   onBackspace: () => void
 }>) {
   return (
-    <div className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-800/50 dark:to-gray-900/50 rounded-xl p-3 border border-gray-200 dark:border-gray-700 shadow-inner">
+    <div className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-800/50 dark:to-gray-900/50 rounded-xl p-3 border border-border shadow-inner">
       <div className="grid grid-cols-3 gap-2">
         {buttons.map(({ digit, letters }) => (
-          <button key={digit} onClick={() => onDigit(digit)} className="group relative h-11 bg-white dark:bg-gray-800 hover:bg-gradient-to-br hover:from-blue-50 hover:to-blue-100 dark:hover:from-blue-900/30 dark:hover:to-blue-800/30 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-200 shadow-sm hover:shadow-md active:scale-95">
+          <button key={digit} onClick={() => onDigit(digit)} className="group relative h-11 bg-card hover:bg-gradient-to-br hover:from-blue-50 hover:to-blue-100 dark:hover:from-blue-900/30 dark:hover:to-blue-800/30 rounded-lg border border-border hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-200 shadow-sm hover:shadow-md active:scale-95">
             <div className="flex flex-col items-center justify-center h-full">
-              <span className="text-lg font-bold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{digit}</span>
-              {letters && <span className="text-[8px] font-medium text-gray-500 dark:text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 tracking-wide">{letters}</span>}
+              <span className="text-lg font-bold text-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{digit}</span>
+              {letters && <span className="text-[8px] font-medium text-muted-foreground group-hover:text-blue-500 dark:group-hover:text-blue-400 tracking-wide">{letters}</span>}
             </div>
           </button>
         ))}
@@ -177,7 +177,7 @@ function CallHistoryItem({ call, isSelected, isEditing, editingName, setEditingN
   onDelete: (callId: string, e: React.MouseEvent) => void
 }>) {
   return (
-    <div className={`group relative p-5 rounded-xl border transition-all ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 shadow-md' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md'}`}>
+    <div className={`group relative p-5 rounded-xl border transition-all ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 shadow-md' : 'bg-white dark:bg-gray-800 border-border hover:border-border hover:shadow-md'}`}>
       {/* Real button covering the whole card for "click anywhere to redial". A <button> can't
           legally contain the delete/edit buttons below it (nested buttons get mangled by the
           HTML parser on SSR), so instead it sits as a plain sibling and the visible content on
@@ -201,25 +201,25 @@ function CallHistoryItem({ call, isSelected, isEditing, editingName, setEditingN
           <div className="flex items-center gap-2 mb-2 pr-8">
             {isEditing ? (
               <div className="flex items-center gap-1 flex-1 pointer-events-auto">
-                <Input value={editingName || ''} onChange={(e) => setEditingName(e.target.value)} onKeyDown={(e) => onNameKeyDown(call.id, e)} className="h-7 text-sm font-semibold bg-white dark:bg-gray-700 border-blue-300 dark:border-blue-600" placeholder="Enter name" autoFocus />
+                <Input value={editingName || ''} onChange={(e) => setEditingName(e.target.value)} onKeyDown={(e) => onNameKeyDown(call.id, e)} className="h-7 text-sm font-semibold bg-card border-blue-300 dark:border-blue-600" placeholder="Enter name" autoFocus />
                 <button onClick={(e) => onSaveEdit(call.id, e)} className="p-1 hover:bg-green-100 dark:hover:bg-green-900/30 rounded"><Check className="w-4 h-4 text-green-600 dark:text-green-400" /></button>
                 <button onClick={(e) => onCancelEdit(e)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded"><X className="w-4 h-4 text-red-600 dark:text-red-400" /></button>
               </div>
             ) : (
               <>
-                <span className="text-base font-semibold text-gray-900 dark:text-gray-100">{call.name}{call.call_count && call.call_count > 1 && <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">({call.call_count})</span>}</span>
+                <span className="text-base font-semibold text-foreground">{call.name}{call.call_count && call.call_count > 1 && <span className="ml-2 text-sm text-muted-foreground">({call.call_count})</span>}</span>
                 <button onClick={(e) => onStartEdit(call.id, call.name, e)} className="p-1 opacity-0 group-hover:opacity-100 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-opacity pointer-events-auto"><Pencil className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" /></button>
               </>
             )}
           </div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-base font-mono font-medium text-gray-700 dark:text-gray-300">{call.formatted_number}</span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 font-medium">{COUNTRIES.find(c => c.code === call.country_code)?.flag}</span>
+            <span className="text-base font-mono font-medium text-foreground">{call.formatted_number}</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">{COUNTRIES.find(c => c.code === call.country_code)?.flag}</span>
           </div>
           <div className="space-y-1 text-sm">
-            <div className="flex items-center gap-2"><span className="text-gray-500 dark:text-gray-400">From:</span><span className="font-mono text-xs text-gray-700 dark:text-gray-300">{call.from_phone_display}</span></div>
+            <div className="flex items-center gap-2"><span className="text-muted-foreground">From:</span><span className="font-mono text-xs text-foreground">{call.from_phone_display}</span></div>
           </div>
-          <div className="flex items-center gap-2 mt-3 text-xs text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
             <Clock className="w-3.5 h-3.5" /><span>{formatRelativeTime(call.timestamp)}</span>
             <span className="px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium">{call.status}</span>
           </div>
@@ -521,7 +521,7 @@ export default function PhoneCallConfig() {
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900 flex items-center justify-center">
         <div className="flex items-center gap-3">
           <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
-          <span className="text-lg font-medium text-gray-700 dark:text-gray-300">Loading...</span>
+          <span className="text-lg font-medium text-foreground">Loading...</span>
         </div>
       </div>
     )
@@ -532,8 +532,8 @@ export default function PhoneCallConfig() {
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900 flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-2">Agent Not Found</h2>
-          <p className="text-gray-600 dark:text-gray-400">The requested agent could not be loaded.</p>
+          <h2 className="text-2xl font-semibold text-foreground mb-2">Agent Not Found</h2>
+          <p className="text-muted-foreground">The requested agent could not be loaded.</p>
         </div>
       </div>
     )
@@ -553,7 +553,7 @@ export default function PhoneCallConfig() {
           wide on a real phone screen — this is a dialer, not a data table,
           so half-width panels are unusable rather than just cramped */}
       <div className="flex flex-col sm:flex-row h-screen">
-        <div className="w-full sm:w-[45%] h-1/2 sm:h-auto border-r-0 sm:border-r border-b sm:border-b-0 border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl overflow-hidden flex flex-col">
+        <div className="w-full sm:w-[45%] h-1/2 sm:h-auto border-r-0 sm:border-r border-b sm:border-b-0 border-border bg-card/50 backdrop-blur-xl overflow-hidden flex flex-col">
           <div className="p-4 sm:p-8 flex-1 flex flex-col overflow-y-auto">
             <div className="mb-6 flex items-center gap-4">
               <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 rounded-xl shadow-lg shadow-blue-500/20">
@@ -561,7 +561,7 @@ export default function PhoneCallConfig() {
               </div>
               <div>
                 <h1 className="text-2xl font-semibold tracking-tight text-foreground">Dispatch Call</h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400">with <span className="font-semibold text-gray-900 dark:text-gray-100">{agentDisplayName(agent)}</span></p>
+                <p className="text-sm text-muted-foreground">with <span className="font-semibold text-foreground">{agentDisplayName(agent)}</span></p>
               </div>
             </div>
 
@@ -569,17 +569,17 @@ export default function PhoneCallConfig() {
 
             <div className="space-y-5 flex-1 w-full">
               <div className='w-full'>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Calling From <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-semibold text-foreground mb-2">Calling From <span className="text-red-500">*</span></label>
                 {loadingPhoneNumbers ? (
-                  <div className="h-12 w-full flex items-center justify-center border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800"><Loader2 className="w-4 h-4 animate-spin text-gray-400" /></div>
+                  <div className="h-12 w-full flex items-center justify-center border border-border rounded-xl bg-card"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
                 ) : phoneNumbers.length === 0 ? (
-                  <div className="h-12 flex items-center px-4 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800"><span className="text-sm text-gray-500 dark:text-gray-400">No outbound phone numbers available</span></div>
+                  <div className="h-12 flex items-center px-4 border border-border rounded-xl bg-muted/50"><span className="text-sm text-muted-foreground">No outbound phone numbers available</span></div>
                 ) : (
                   <Select value={fromPhoneNumberId} onValueChange={setFromPhoneNumberId}>
-                    <SelectTrigger className="h-12 w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"><SelectValue placeholder="Select your outbound number" /></SelectTrigger>
-                    <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                    <SelectTrigger className="h-12 w-full bg-card border-border hover:border-border transition-colors"><SelectValue placeholder="Select your outbound number" /></SelectTrigger>
+                    <SelectContent className="bg-card border-border">
                       {phoneNumbers.map((phone) => (
-                        <SelectItem key={phone.id} value={phone.id} className="text-gray-900 dark:text-gray-100 focus:bg-gray-100 dark:focus:bg-gray-700">
+                        <SelectItem key={phone.id} value={phone.id} className="text-foreground focus:bg-muted">
                           <span className="font-mono text-sm">{formatNumberLabel(phone)}</span>
                         </SelectItem>
                       ))}
@@ -589,10 +589,10 @@ export default function PhoneCallConfig() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm font-semibold text-foreground mb-2">
                   <div className="flex gap-4 items-center">
                     Calling To <span className="text-red-500">*</span>
-                    <button onClick={() => setShowDialer(!showDialer)} className={`h-7 w-7 flex items-center justify-center rounded-md border transition-all duration-200 active:scale-95 ${showDialer ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-blue-300 dark:hover:border-blue-600 hover:text-blue-600 dark:hover:text-blue-400'}`} title={showDialer ? 'Hide dialer' : 'Show dialer'}>
+                    <button onClick={() => setShowDialer(!showDialer)} className={`h-7 w-7 flex items-center justify-center rounded-md border transition-all duration-200 active:scale-95 ${showDialer ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30' : 'bg-white dark:bg-gray-800 border-border text-muted-foreground hover:border-blue-300 dark:hover:border-blue-600 hover:text-blue-600 dark:hover:text-blue-400'}`} title={showDialer ? 'Hide dialer' : 'Show dialer'}>
                       {showDialer ? <PhoneOff className="w-4 h-4" /> : <PhoneCall className="w-4 h-4" />}
                     </button>
                   </div>
@@ -600,16 +600,16 @@ export default function PhoneCallConfig() {
                 <div className="flex gap-2">
                   <div className="flex h-12 flex-1">
                     <Select value={selectedCountry} onValueChange={setSelectedCountry}>
-                      <SelectTrigger className="w-[100px] h-full bg-gray-100 dark:bg-gray-800 border border-r-0 border-gray-200 dark:border-gray-700 rounded-r-none rounded-l-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"><SelectValue /></SelectTrigger>
-                      <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                      <SelectTrigger className="w-[100px] h-full bg-muted border border-r-0 border-border rounded-r-none rounded-l-xl hover:bg-muted transition-colors"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-card border-border">
                         {COUNTRIES.map((country) => (
-                          <SelectItem key={country.code} value={country.code} className="text-gray-900 dark:text-gray-100 focus:bg-gray-100 dark:focus:bg-gray-700">
+                          <SelectItem key={country.code} value={country.code} className="text-foreground focus:bg-muted">
                             <div className="flex items-center gap-2"><span className="text-base">{country.flag}</span><span className="font-mono text-xs font-semibold">{country.prefix}</span></div>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <Input type="tel" placeholder={currentCountry.placeholder} value={phoneNumber} onChange={handlePhoneChange} className="flex-1 rounded-l-none rounded-r-xl bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-base font-mono focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20" />
+                    <Input type="tel" placeholder={currentCountry.placeholder} value={phoneNumber} onChange={handlePhoneChange} className="flex-1 rounded-l-none rounded-r-xl bg-card border-border text-base font-mono focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20" />
                   </div>
                 </div>
               </div>
@@ -637,7 +637,7 @@ export default function PhoneCallConfig() {
               )}
             </div>
 
-            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-800">
+            <div className="mt-6 pt-6 border-t border-border">
               <Button onClick={handleDispatchCall} disabled={isDispatchDisabled(agent, runningStatus, isCheckingRunning, isLoading, phoneNumber, fromPhoneNumberId)} className="w-full h-13 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 dark:from-blue-600 dark:to-blue-700 dark:hover:from-blue-700 dark:hover:to-blue-800 text-white font-semibold text-base rounded-xl shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all">
                 {isLoading ? (<><Loader2 className="mr-2 h-5 w-5 animate-spin" />Dispatching Call...</>) : (<><PhoneCall className="mr-2 h-5 w-5" />Dispatch Call</>)}
               </Button>
@@ -646,12 +646,12 @@ export default function PhoneCallConfig() {
         </div>
 
         {/* ── Right Panel ──────────────────────────────────────────────────────── */}
-        <div className="w-full sm:w-[55%] h-1/2 sm:h-auto flex flex-col bg-white/30 dark:bg-gray-900/30 backdrop-blur-sm">
-          <div className="p-4 sm:p-8 pb-4 sm:pb-6 border-b border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl">
+        <div className="w-full sm:w-[55%] h-1/2 sm:h-auto flex flex-col bg-card/30 backdrop-blur-sm">
+          <div className="p-4 sm:p-8 pb-4 sm:pb-6 border-b border-border bg-card/50 backdrop-blur-xl">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
-                <History className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Call History</h2>
+                <History className="w-6 h-6 text-foreground" />
+                <h2 className="text-xl font-bold text-foreground">Call History</h2>
               </div>
               {callHistory.length > 0 && (
                 <Button onClick={clearAllHistory} variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20">
@@ -660,26 +660,26 @@ export default function PhoneCallConfig() {
               )}
             </div>
             <div className="flex items-center gap-3 mt-4">
-              <Settings className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-              <span className="text-sm text-gray-600 dark:text-gray-400">Store last</span>
+              <Settings className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Store last</span>
               <Select value={historyLimit.toString()} onValueChange={(v) => updateHistoryLimit(parseInt(v))}>
-                <SelectTrigger className="w-20 h-8 text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"><SelectValue /></SelectTrigger>
-                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <SelectTrigger className="w-20 h-8 text-sm bg-card border-border"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-card border-border">
                   <SelectItem value="5" className="text-sm">5</SelectItem>
                   <SelectItem value="10" className="text-sm">10</SelectItem>
                   <SelectItem value="15" className="text-sm">15</SelectItem>
                 </SelectContent>
               </Select>
-              <span className="text-sm text-gray-600 dark:text-gray-400">calls for 7 days</span>
+              <span className="text-sm text-muted-foreground">calls for 7 days</span>
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 sm:p-8 pt-4 sm:pt-6">
             {callHistory.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
-                <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4"><Phone className="w-10 h-10 text-gray-400 dark:text-gray-600" /></div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">No Call History Yet</h3>
-                <p className="text-gray-600 dark:text-gray-400 max-w-sm">Your recent calls will appear here. Click on any call to quickly redial with the same settings.</p>
+                <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-4"><Phone className="w-10 h-10 text-muted-foreground" /></div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">No Call History Yet</h3>
+                <p className="text-muted-foreground max-w-sm">Your recent calls will appear here. Click on any call to quickly redial with the same settings.</p>
               </div>
             ) : (
               <div className="space-y-3">

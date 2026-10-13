@@ -34,9 +34,9 @@ const PLATFORM_OPTIONS = [
 // Success-view badge styling keyed by creation mode / platform — pulled out of
 // JSX to avoid a nested-ternary pileup in the render.
 function getResultBadgeClass(creationMode: 'single' | 'flow', selectedPlatform: string): string {
-  if (creationMode === 'flow') return 'bg-gray-50 dark:bg-gray-900/30 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
-  if (selectedPlatform === 'vapi') return 'bg-gray-50 dark:bg-gray-900/30 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
-  if (selectedPlatform === 'pipecat') return 'bg-gray-50 dark:bg-gray-900/30 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700'
+  if (creationMode === 'flow') return 'bg-muted/50 text-muted-foreground border-border'
+  if (selectedPlatform === 'vapi') return 'bg-muted/50 text-muted-foreground border-border'
+  if (selectedPlatform === 'pipecat') return 'bg-muted/50 text-muted-foreground border-border'
   return 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800'
 }
 
@@ -290,15 +290,15 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
   if (currentStep === 'creating') {
     return (
       <div className="px-6 py-8 text-center">
-        <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 rounded-2xl flex items-center justify-center border border-gray-100 dark:border-gray-800">
+        <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 rounded-2xl flex items-center justify-center border border-border/60">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
         </div>
         
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+        <h3 className="text-lg font-semibold text-foreground mb-2">
           Creating Agent
         </h3>
         
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+        <p className="text-sm text-muted-foreground mb-6">
           Setting up your new voice agent infrastructure...
         </p>
 
@@ -310,8 +310,8 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
             <span className="font-medium">Creating Infrastructure</span>
           </div>
           
-          <div className="flex items-center gap-3 text-sm text-gray-400 dark:text-gray-600">
-            <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600">
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <div className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium bg-muted text-muted-foreground">
               2
             </div>
             <span>Configuring Platform</span>
@@ -325,55 +325,55 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
     return (
       <>
         {/* Success Header */}
-        <DialogHeader className="px-6 pt-6 pb-4 text-center border-b border-gray-100 dark:border-gray-800">
+        <DialogHeader className="px-6 pt-6 pb-4 text-center border-b border-border/60">
           <div className="w-12 h-12 mx-auto mb-3 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
             <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
           </div>
-          <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+          <DialogTitle className="text-lg font-semibold text-foreground mb-1">
             Agent Created Successfully!
           </DialogTitle>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-muted-foreground">
             "{agentDisplayName(createdAgentData)}" is ready for use
           </p>
         </DialogHeader>
 
         <div className="px-6 py-5 space-y-4">
-          <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-800">
+          <div className="p-4 bg-muted/50 rounded-lg border border-border">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
                 {(() => {
-                  if (creationMode === 'flow') return <GitBranch className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                  if (selectedPlatform === 'vapi') return <Zap className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                  if (selectedPlatform === 'pipecat') return <Radio className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  if (creationMode === 'flow') return <GitBranch className="w-5 h-5 text-muted-foreground" />
+                  if (selectedPlatform === 'vapi') return <Zap className="w-5 h-5 text-muted-foreground" />
+                  if (selectedPlatform === 'pipecat') return <Radio className="w-5 h-5 text-muted-foreground" />
                   return <Activity className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 })()}
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate">
+                <h3 className="font-medium text-foreground truncate">
                   {agentDisplayName(createdAgentData)}
                 </h3>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant="outline" className={`text-xs ${getResultBadgeClass(creationMode, selectedPlatform)}`}>
                     {getResultBadgeLabel(creationMode, selectedPlatform)}
                   </Badge>
-                  <Badge variant="outline" className="text-xs bg-gray-50 dark:bg-gray-900/30 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700">
+                  <Badge variant="outline" className="text-xs bg-muted/50 text-muted-foreground border-border">
                     Ready
                   </Badge>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Agent ID</span>
+            <div className="flex items-center justify-between pt-3 border-t border-border">
+              <span className="text-sm text-muted-foreground">Agent ID</span>
               <div className="flex items-center gap-2">
-                <code className="text-xs font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-800 dark:text-gray-200">
+                <code className="text-xs font-mono bg-muted px-2 py-1 rounded text-foreground">
                   {createdAgentData?.id?.slice(0, 8)}...
                 </code>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={handleCopyId}
-                  className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                  className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
                 >
                   <Copy className="w-3 h-3" />
                 </Button>
@@ -390,7 +390,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
             <Button 
               variant="outline"
               onClick={onClose}
-              className="flex-1 h-10 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+              className="flex-1 h-10 text-foreground border-border hover:bg-muted/50"
             >
               Create Another
             </Button>
@@ -413,13 +413,13 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
       <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
         <div className="flex items-center gap-3 mb-3">
           <div className="text-center flex-1">
-            <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 rounded-xl flex items-center justify-center border border-gray-100 dark:border-gray-800">
-              <Activity className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+            <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 rounded-xl flex items-center justify-center border border-border/60">
+              <Activity className="w-6 h-6 text-foreground" />
             </div>
-            <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+            <DialogTitle className="text-lg font-semibold text-foreground mb-1">
               Create New Agent
             </DialogTitle>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-muted-foreground">
               Build a voice agent from scratch
             </p>
           </div>
@@ -431,7 +431,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
         <div className="space-y-5 pb-6">
           {/* Creation Mode */}
           <div className="space-y-2">
-            <span className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+            <span className="block text-sm font-medium text-foreground">
               What are you building?
             </span>
             <div className="grid grid-cols-2 gap-3">
@@ -441,14 +441,14 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
                 className={`text-left p-3 rounded-lg border transition-all ${
                   creationMode === 'single'
                     ? 'border-blue-500 dark:border-blue-400 bg-blue-50/50 dark:bg-blue-900/20 ring-1 ring-blue-500/20'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    : 'border-border hover:border-border'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-1">
                   <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Single Agent</span>
+                  <span className="text-sm font-medium text-foreground">Single Agent</span>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">One prompt, one persona.</p>
+                <p className="text-xs text-muted-foreground">One prompt, one persona.</p>
               </button>
               <button
                 type="button"
@@ -459,25 +459,25 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
                 className={`text-left p-3 rounded-lg border transition-all ${
                   creationMode === 'flow'
                     ? 'border-blue-500 dark:border-blue-400 bg-blue-50/50 dark:bg-blue-900/20 ring-1 ring-blue-500/20'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                    : 'border-border hover:border-border'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <GitBranch className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Conversation Flow</span>
+                  <GitBranch className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-medium text-foreground">Conversation Flow</span>
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Multi-step canvas: branches, tools, transfers.</p>
+                <p className="text-xs text-muted-foreground">Multi-step canvas: branches, tools, transfers.</p>
               </button>
             </div>
           </div>
 
           {/* Platform Selection */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+            <label className="block text-sm font-medium text-foreground">
               Agent Platform
             </label>
             {creationMode === 'flow' ? (
-              <p className="h-10 flex items-center px-3 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 text-gray-600 dark:text-gray-400">
+              <p className="h-10 flex items-center px-3 text-sm rounded-lg border border-border bg-muted/50 text-muted-foreground">
                 <Activity className="w-4 h-4 mr-2 text-blue-600 dark:text-blue-400" /> LiveKit Agent (required for conversation flows)
               </p>
             ) : (
@@ -517,7 +517,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
             </Select>
             )}
             {creationMode === 'single' && (
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 {PLATFORM_OPTIONS.find(o => o.value === selectedPlatform)?.description}
               </p>
             )}
@@ -526,7 +526,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
           {/* Deploy Target (superadmin only) */}
           {isSuperAdmin && (
             <div className="space-y-2">
-              <label htmlFor="deployment-target-select" className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+              <label htmlFor="deployment-target-select" className="block text-sm font-medium text-foreground">
                 Deploy target (superadmin only)
               </label>
               <Select
@@ -549,13 +549,13 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <label className="block text-sm font-medium text-foreground">
                     Agent Name
                   </label>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button type="button" className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400">
+                        <button type="button" className="text-muted-foreground hover:text-muted-foreground">
                           <Info size={16} />
                         </button>
                       </TooltipTrigger>
@@ -565,7 +565,7 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
                     </Tooltip>
                   </TooltipProvider>
                 </div>
-                <span className="text-xs italic text-gray-400 dark:text-gray-500">
+                <span className="text-xs italic text-muted-foreground">
                   {formData.name.length}/{AGENT_DISPLAY_NAME_MAX}
                 </span>
               </div>
@@ -584,22 +584,22 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
               {nameError ? (
                 <p className="text-xs text-red-600 dark:text-red-400 mt-1">{nameError}</p>
               ) : (
-                <p className="text-[11px] italic text-gray-400 dark:text-gray-500">{nameHint}</p>
+                <p className="text-[11px] italic text-muted-foreground">{nameHint}</p>
               )}
 
             </div>
 
           {/* Description */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
-              Description <span className="text-gray-500 dark:text-gray-400 font-normal">(optional)</span>
+            <label className="block text-sm font-medium text-foreground">
+              Description <span className="text-muted-foreground font-normal">(optional)</span>
             </label>
             <textarea
               placeholder="Brief description of what this agent does..."
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={2}
-              className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-lg focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 focus:outline-none resize-none transition-all placeholder:text-gray-500 dark:placeholder:text-gray-400"
+              className="w-full px-3 py-2 text-sm border border-border bg-card rounded-lg focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:focus:ring-blue-400/20 focus:outline-none resize-none transition-all placeholder:text-muted-foreground"
             />
           </div>
 
@@ -614,13 +614,13 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
       </div>
 
       {/* Footer */}
-      <div className="flex-shrink-0 px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-800">
+      <div className="flex-shrink-0 px-6 py-4 bg-muted/50 border-t border-border">
         <div className="flex gap-3">
           <Button 
             type="button" 
             variant="outline"
             onClick={onBack}
-            className="flex-1 h-10 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"
+            className="flex-1 h-10 text-foreground border-border hover:bg-muted/50"
           >
             Back
           </Button>

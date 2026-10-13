@@ -42,7 +42,7 @@ export { METRICS_LOGS_SELECT } from "@/hooks/useCallTranscript"
 // Extracted so TracesTable's row-render callback doesn't carry this branching itself
 // (keeps that callback's cognitive complexity down).
 function getLatencyColorClass(latency: number): string {
-  if (latency === 0) return "text-gray-400 dark:text-gray-500"
+  if (latency === 0) return "text-muted-foreground"
   if (latency > 5000) return "text-red-600 dark:text-red-400"
   if (latency > 2000) return "text-amber-600 dark:text-amber-400"
   return "text-emerald-600 dark:text-emerald-400"
@@ -78,12 +78,12 @@ function ToolCallLine({ tool, idx }: Readonly<{ tool: any; idx: number }>) {
           {toolName}
         </span>
         {argKeys.length > 0 && (
-          <span className="text-gray-400 dark:text-gray-500 font-mono ml-1">
+          <span className="text-muted-foreground font-mono ml-1">
             ({argKeys.join(', ')})
           </span>
         )}
         {result && (
-          <span className="text-gray-500 dark:text-gray-400 ml-1">
+          <span className="text-muted-foreground ml-1">
             → {result.length > 60 ? result.slice(0, 60) + '…' : result}
           </span>
         )}
@@ -118,7 +118,7 @@ function FallbackEventLine({ fb, idx }: Readonly<{ fb: any; idx: number }>) {
       {icon}
       <span className={textClass}>{summary}</span>
       {!isRecovery && fb.error_reason && (
-        <span className="text-gray-400 dark:text-gray-500">
+        <span className="text-muted-foreground">
           — {fb.error_reason.length > 50 ? fb.error_reason.slice(0, 50) + '…' : fb.error_reason}
         </span>
       )}
@@ -354,15 +354,15 @@ const handleRowClick = (trace: TraceLog) => {
 
   if (traceDataLoading) {
     return (
-      <div className="flex items-center justify-center h-full bg-white dark:bg-gray-900">
-        <div className="text-sm text-gray-500 dark:text-gray-400">Loading traces...</div>
+      <div className="flex items-center justify-center h-full bg-card">
+        <div className="text-sm text-muted-foreground">Loading traces...</div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full bg-white dark:bg-gray-900">
+      <div className="flex items-center justify-center h-full bg-card">
         <div className="text-center text-red-600 dark:text-red-400 text-sm">
           Error loading traces: {error.message}
         </div>
@@ -372,9 +372,9 @@ const handleRowClick = (trace: TraceLog) => {
 
   return (
     <>
-      <div className="flex flex-col h-full bg-white dark:bg-gray-900">
+      <div className="flex flex-col h-full bg-card">
         {/* Tab Navigation */}
-        <div className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 px-3 py-1.5">
+        <div className="border-b border-border bg-muted/50 px-3 py-1.5">
           <div className="flex items-center justify-between">
             <nav className="flex space-x-2">
               <button 
@@ -383,7 +383,7 @@ const handleRowClick = (trace: TraceLog) => {
                   "px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors",
                   activeTab === "turns" 
                     ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800" 
-                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 )}
               >
                 Turns ({enrichedTraces.length})
@@ -396,7 +396,7 @@ const handleRowClick = (trace: TraceLog) => {
                   "px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors",
                   activeTab === "trace" 
                     ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800" 
-                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 )}
               >
                 Trace {spansLoading ? "…" : totalSpansCount > 0 ? `(${totalSpansCount})` : ""}
@@ -407,7 +407,7 @@ const handleRowClick = (trace: TraceLog) => {
                   "px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors",
                   activeTab === "waterfall" 
                     ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800" 
-                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 )}
               >
                 Timeline {spansLoading ? "…" : totalSpansCount > 0 ? `(${totalSpansCount})` : ""}
@@ -421,7 +421,7 @@ const handleRowClick = (trace: TraceLog) => {
                 "px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors",
                 activeTab === "config"
                   ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               )}
             >
               Config
@@ -442,12 +442,12 @@ const handleRowClick = (trace: TraceLog) => {
                 />
                 <Label
                   htmlFor="transcript-view-english"
-                  className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer whitespace-nowrap"
+                  className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap"
                 >
                   English
                 </Label>
                 {isTranslating && (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-500" aria-hidden />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" aria-hidden />
                 )}
               </div>
               <Button
@@ -468,15 +468,15 @@ const handleRowClick = (trace: TraceLog) => {
         {activeTab === "turns" && (
           <>
             {/* Header */}
-            <div className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 px-4 py-2">
-              <div className="grid grid-cols-12 gap-3 text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+            <div className="border-b border-border bg-muted/50 px-4 py-2">
+              <div className="grid grid-cols-12 gap-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 <div className="col-span-3">Trace Info</div>
                 <div className="col-span-4 flex items-center gap-2">
                   Conversation
                   <button
                     onClick={copyTranscript}
                     title="Copy transcript"
-                    className="flex items-center gap-1 text-[11px] font-normal normal-case tracking-normal text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                    className="flex items-center gap-1 text-[11px] font-normal normal-case tracking-normal text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {copied
                       ? <><Check className="w-3 h-3 text-emerald-500" /><span className="text-emerald-500">Copied</span></>
@@ -492,10 +492,10 @@ const handleRowClick = (trace: TraceLog) => {
             </div>
   
             {/* Table Body */}
-            <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-900">
+            <div className="flex-1 overflow-y-auto bg-card">
               {enrichedTraces.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
-                  <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+                  <div className="text-center text-sm text-muted-foreground">
                     <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-50" />
                     <div>No traces found</div>
                     {filters.search || filters.status !== "all" ? (
@@ -506,7 +506,7 @@ const handleRowClick = (trace: TraceLog) => {
                   </div>
                 </div>
               ) : (
-                <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                <div className="divide-y divide-border/60">
                   {enrichedTraces.map((trace: TraceLog) => {
                     const status = getTraceStatus(trace)
                     const toolInfo = getToolCallsInfo(trace.tool_calls)
@@ -537,7 +537,7 @@ const handleRowClick = (trace: TraceLog) => {
                                 (getOperationIcon above) and, for tool calls, its own
                                 neutral badge in the Operations column — a colored
                                 icon here too would just compete for attention. */}
-                            <div className="text-sm text-gray-600 dark:text-gray-400">
+                            <div className="text-sm text-muted-foreground">
                               {getOperationIcon(mainOp)}
                             </div>
                             <div className="font-mono text-xs text-blue-600 dark:text-blue-400 font-semibold">
@@ -552,7 +552,7 @@ const handleRowClick = (trace: TraceLog) => {
                               </div>
                             )}
                           </div>
-                          <div className="text-xs text-gray-400 dark:text-gray-500 space-y-0.5">
+                          <div className="text-xs text-muted-foreground space-y-0.5">
                             <div>Session: {trace.session_id.slice(-8)}</div>
                             {trace.phone_number && (
                               <div>{trace.phone_number.slice(-4)}</div>
@@ -565,7 +565,7 @@ const handleRowClick = (trace: TraceLog) => {
                           {trace.user_transcript && (
                             <div className="text-xs">
                               <span className="text-blue-600 dark:text-blue-400 font-medium">→</span>
-                              <span className="ml-1 text-gray-800 dark:text-gray-200">
+                              <span className="ml-1 text-foreground">
                                 {formatTranscript(trace.user_transcript)}
                               </span>
                             </div>
@@ -587,11 +587,11 @@ const handleRowClick = (trace: TraceLog) => {
                             )}>
                               <span className={cn(
                                 "font-medium",
-                                hasBugReport ? "text-red-600 dark:text-red-400" : "text-gray-500 dark:text-gray-400"
+                                hasBugReport ? "text-red-600 dark:text-red-400" : "text-muted-foreground"
                               )}>←</span>
                               <span className={cn(
                                 "ml-1",
-                                hasBugReport ? "text-red-800 dark:text-red-300" : "text-gray-600 dark:text-gray-300"
+                                hasBugReport ? "text-red-800 dark:text-red-300" : "text-muted-foreground"
                               )}>{formatTranscript(trace.agent_response)}</span>
                               {hasBugReport && (
                                 <span className="ml-2 text-red-600 dark:text-red-400 font-medium">[REPORTED]</span>
@@ -610,7 +610,7 @@ const handleRowClick = (trace: TraceLog) => {
                           )}
 
                           {!trace.user_transcript && !trace.agent_response && (!trace.tool_calls || trace.tool_calls.length === 0) && (
-                            <div className="text-xs text-gray-400 dark:text-gray-500 italic">
+                            <div className="text-xs text-muted-foreground italic">
                               {trace.lesson_day ? `Lesson Day ${trace.lesson_day}` : 'System operation'}
                             </div>
                           )}
@@ -623,7 +623,7 @@ const handleRowClick = (trace: TraceLog) => {
                               <div className="flex items-center gap-1 text-xs">
                                 <Wrench className="w-3 h-3 text-amber-500 dark:text-amber-400" />
                                 <span className="font-medium text-amber-700 dark:text-amber-400">{toolInfo.total}</span>
-                                <span className="text-gray-400 dark:text-gray-500">
+                                <span className="text-muted-foreground">
                                   ({toolInfo.successful}✓)
                                 </span>
                               </div>
@@ -631,7 +631,7 @@ const handleRowClick = (trace: TraceLog) => {
                             {metrics.length > 0 && (
                               <div className="flex gap-1">
                                 {metrics.map((metric) => (
-                                  <Badge key={metric.type} variant="outline" className="text-[11px] px-1 py-0 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800">
+                                  <Badge key={metric.type} variant="outline" className="text-[11px] px-1 py-0 border-border text-foreground bg-card">
                                     {metric.type}
                                   </Badge>
                                 ))}
@@ -644,7 +644,7 @@ const handleRowClick = (trace: TraceLog) => {
                               </div>
                             )}
                           </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                          <div className="text-xs text-muted-foreground">
                             {spansLength > 0 ? `${spansLength} spans` : ""}
                           </div>
                         </div>
@@ -661,7 +661,7 @@ const handleRowClick = (trace: TraceLog) => {
                         {/* Cost — plain like Turns/Duration in the stats row above; a
                             number doesn't need its own hue unless it's signaling status */}
                         <div className="col-span-1">
-                          <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                          <span className="text-xs font-semibold text-foreground">
                             {trace.trace_cost_usd ? formatCost(parseFloat(trace.trace_cost_usd.toString())) : "N/A"}
                           </span>
                         </div>

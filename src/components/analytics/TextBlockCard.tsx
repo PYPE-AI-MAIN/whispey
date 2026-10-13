@@ -18,21 +18,21 @@ import { DRAG_HANDLE_CLASS } from './ChartCard'
 function renderLine(line: string, i: number) {
   if (line.startsWith('## ')) {
     return (
-      <h4 key={i} className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+      <h4 key={i} className="text-sm font-semibold text-foreground">
         {line.slice(3)}
       </h4>
     )
   }
   if (line.startsWith('# ')) {
     return (
-      <h3 key={i} className="text-xl font-semibold text-gray-900 dark:text-gray-50">
+      <h3 key={i} className="text-xl font-semibold text-foreground">
         {line.slice(2)}
       </h3>
     )
   }
   if (!line.trim()) return <div key={i} className="h-2" />
   return (
-    <p key={i} className="text-sm italic text-gray-500 dark:text-gray-400">
+    <p key={i} className="text-sm italic text-muted-foreground">
       {line}
     </p>
   )
@@ -53,10 +53,10 @@ export function TextBlockCard({
   return (
     <div
       className={cn(
-        'group relative flex h-full flex-col overflow-hidden rounded-xl border bg-white p-4 shadow-sm transition-colors dark:bg-gray-900',
+        'group relative flex h-full flex-col overflow-hidden rounded-xl border bg-card p-4 shadow-sm transition-colors',
         selected
           ? 'border-blue-500 ring-1 ring-blue-500/30 dark:border-blue-400'
-          : 'border-transparent hover:border-gray-200 dark:hover:border-gray-800'
+          : 'border-transparent hover:border-border'
       )}
     >
       <button
@@ -70,7 +70,7 @@ export function TextBlockCard({
         {text.trim() ? (
           text.split('\n').map((line, i) => renderLine(line, i))
         ) : (
-          <span className="flex items-center gap-1.5 text-sm text-gray-400 dark:text-gray-500">
+          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <Type className="h-3.5 w-3.5" /> Click to write a heading or a note
           </span>
         )}
@@ -82,7 +82,7 @@ export function TextBlockCard({
             <button
               type="button"
               aria-label="Move this text block"
-              className={cn(DRAG_HANDLE_CLASS, 'pointer-events-auto cursor-grab rounded p-1 text-gray-300 hover:text-gray-500 dark:text-gray-600')}
+              className={cn(DRAG_HANDLE_CLASS, 'pointer-events-auto cursor-grab rounded p-1 text-muted-foreground hover:text-muted-foreground')}
             >
               <GripVertical className="h-3.5 w-3.5" />
             </button>
@@ -91,7 +91,7 @@ export function TextBlockCard({
             type="button"
             aria-label="Remove text block"
             onClick={onRemove}
-            className="pointer-events-auto rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-red-600 dark:hover:bg-gray-800"
+            className="pointer-events-auto rounded p-1 text-muted-foreground hover:bg-muted hover:text-red-600"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>

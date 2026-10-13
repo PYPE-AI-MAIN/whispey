@@ -87,22 +87,22 @@ export default function KnowledgeBasePage() {
 
   if (!agentId || !projectId) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
-        <p className="text-sm text-gray-600 dark:text-gray-400">Invalid agent or organization.</p>
+      <div className="min-h-screen bg-muted/50 flex items-center justify-center p-4">
+        <p className="text-sm text-muted-foreground">Invalid agent or organization.</p>
       </div>
     )
   }
 
   if (agentLoading || (agentId && !backendAgentName)) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      <div className="min-h-screen bg-muted/50 flex items-center justify-center p-4">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
+    <div className="min-h-screen bg-muted/50 flex flex-col">
       {/* Header */}
       <div className="px-6 py-4 border-border bg-background border-b flex-shrink-0">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4">
@@ -124,7 +124,7 @@ export default function KnowledgeBasePage() {
                 <h1 className="text-2xl font-semibold tracking-tight text-foreground">
                   Knowledge Base
                 </h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-sm text-muted-foreground">
                   Upload documents or URLs so your voice agent can use them in conversation.
                 </p>
               </div>
@@ -137,7 +137,7 @@ export default function KnowledgeBasePage() {
       <div className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-6">
         <div className="space-y-8">
           <section>
-            <h2 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
+            <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-3">
               Add content
             </h2>
             <KnowledgeBaseUploadZone
@@ -148,7 +148,7 @@ export default function KnowledgeBasePage() {
           </section>
 
           <section>
-            <h2 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">
+            <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-3">
               Documents in this knowledge base
             </h2>
             <KnowledgeBaseDocumentList

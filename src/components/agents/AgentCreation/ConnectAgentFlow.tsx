@@ -355,13 +355,13 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
   if (currentStep === 'creating' || currentStep === 'connecting') {
     return (
       <div className="px-6 py-8 text-center">
-        <div className="w-16 h-16 mx-auto mb-4 bg-linear-to-br from-blue-50 to-teal-50 dark:from-blue-900/20 dark:to-teal-900/20 rounded-2xl flex items-center justify-center border border-gray-100 dark:border-gray-800">
+        <div className="w-16 h-16 mx-auto mb-4 bg-linear-to-br from-blue-50 to-teal-50 dark:from-blue-900/20 dark:to-teal-900/20 rounded-2xl flex items-center justify-center border border-border/60">
           <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+        <h3 className="text-lg font-semibold text-foreground mb-2">
           {currentStep === 'creating' ? 'Setting Up Monitoring' : 'Connecting Monitoring'}
         </h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+        <p className="text-sm text-muted-foreground mb-6">
           {currentStep === 'creating' ? 'Configuring observability for your agent...' : 'Establishing monitoring connection...'}
         </p>
 
@@ -381,7 +381,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
               <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
                 currentStep === 'connecting'
                   ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600'
+                  : 'bg-muted text-muted-foreground'
               }`}>
                 {currentStep === 'connecting' ? <Loader2 className="w-3 h-3 animate-spin" /> : '2'}
               </div>
@@ -402,31 +402,31 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
       'LiveKit'
     return (
       <>
-        <DialogHeader className="px-6 pt-6 pb-4 text-center border-b border-gray-100 dark:border-gray-800">
+        <DialogHeader className="px-6 pt-6 pb-4 text-center border-b border-border/60">
           <div className="w-12 h-12 mx-auto mb-3 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
             <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
           </div>
-          <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+          <DialogTitle className="text-lg font-semibold text-foreground mb-1">
             Monitoring Setup Complete!
           </DialogTitle>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-muted-foreground">
             "{createdAgentData?.name}" is now being observed
           </p>
         </DialogHeader>
 
         <div className="px-6 py-5 space-y-4">
-          <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-800">
+          <div className="p-4 bg-muted/50 rounded-lg border border-border">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
                 <Eye className="w-5 h-5 text-teal-600 dark:text-teal-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate">{createdAgentData?.name}</h3>
+                <h3 className="font-medium text-foreground truncate">{createdAgentData?.name}</h3>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant="outline" className="text-xs bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 border-teal-200 dark:border-teal-800">
                     {platformLabel} Monitoring
                   </Badge>
-                  <Badge variant="outline" className="text-xs bg-gray-50 dark:bg-gray-900/30 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700">
+                  <Badge variant="outline" className="text-xs bg-muted/50 text-muted-foreground border-border">
                     Development
                   </Badge>
                 </div>
@@ -454,10 +454,10 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
               </div>
             )}
 
-            <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Monitoring ID</span>
+            <div className="flex items-center justify-between pt-3 border-t border-border">
+              <span className="text-sm text-muted-foreground">Monitoring ID</span>
               <div className="flex items-center gap-2">
-                <code className="text-xs font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-800 dark:text-gray-200">
+                <code className="text-xs font-mono bg-muted px-2 py-1 rounded text-foreground">
                   {createdAgentData?.id?.slice(0, 8)}...
                 </code>
                 <Button variant="ghost" size="sm" onClick={handleCopyId} className="h-6 w-6 p-0">
@@ -501,13 +501,13 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
     <>
       <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
         <div className="text-center">
-          <div className="w-12 h-12 mx-auto mb-3 bg-linear-to-br from-blue-50 to-teal-50 dark:from-blue-900/20 dark:to-teal-900/20 rounded-xl flex items-center justify-center border border-gray-100 dark:border-gray-800">
-            <Eye className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+          <div className="w-12 h-12 mx-auto mb-3 bg-linear-to-br from-blue-50 to-teal-50 dark:from-blue-900/20 dark:to-teal-900/20 rounded-xl flex items-center justify-center border border-border/60">
+            <Eye className="w-6 h-6 text-foreground" />
           </div>
-          <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
+          <DialogTitle className="text-lg font-semibold text-foreground mb-1">
             Connect Existing Agent
           </DialogTitle>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Add monitoring to your existing voice agent</p>
+          <p className="text-sm text-muted-foreground">Add monitoring to your existing voice agent</p>
         </div>
       </DialogHeader>
 
@@ -516,7 +516,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
 
           {/* Platform Selection */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">Agent Platform</label>
+            <label className="block text-sm font-medium text-foreground">Agent Platform</label>
             <Select
               value={selectedPlatform}
               onValueChange={(v) => { setSelectedPlatform(v); setError(null) }}
@@ -529,7 +529,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
                     const Icon = p.icon
                     return (
                       <div className="flex items-center gap-2">
-                        <Icon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                        <Icon className="w-4 h-4 text-muted-foreground" />
                         <span>{p.label}</span>
                       </div>
                     )
@@ -542,7 +542,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
                   return (
                     <SelectItem key={platform.value} value={platform.value}>
                       <div className="flex items-center gap-2">
-                        <Icon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                        <Icon className="w-4 h-4 text-muted-foreground" />
                         <span>{platform.label}</span>
                       </div>
                     </SelectItem>
@@ -557,7 +557,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
 
             {/* Agent name — always shown */}
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+              <label className="block text-sm font-medium text-foreground">
                 Agent Name
               </label>
               <Input
@@ -575,15 +575,15 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
             {/* LiveKit notes */}
             {selectedPlatform === 'livekit' && (
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
-                  Notes <span className="text-gray-500 font-normal">(optional)</span>
+                <label className="block text-sm font-medium text-foreground">
+                  Notes <span className="text-muted-foreground font-normal">(optional)</span>
                 </label>
                 <textarea
                   placeholder="Brief description of what this agent does..."
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={2}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 rounded-lg focus:outline-none resize-none"
+                  className="w-full px-3 py-2 text-sm border border-border bg-card rounded-lg focus:outline-none resize-none"
                 />
               </div>
             )}
@@ -591,7 +591,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
             {/* ── Vapi fields ──────────────────────────────────────────────── */}
             {selectedPlatform === 'vapi' && (
               <div className="space-y-4">
-                <div className="flex items-center text-xs text-teal-600 dark:text-teal-400 bg-white/60 dark:bg-gray-900/30 rounded-lg p-3 border border-teal-200 dark:border-teal-800">
+                <div className="flex items-center text-xs text-teal-600 dark:text-teal-400 bg-card/60 rounded-lg p-3 border border-teal-200 dark:border-teal-800">
                   <div className="flex items-center gap-2">
                     <div className="w-5 h-5 bg-teal-600 text-white rounded-full flex items-center justify-center font-medium">1</div>
                     <span className="font-medium">Connect Vapi Account</span>
@@ -608,7 +608,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <label className="block text-sm font-medium text-foreground">
                     Vapi Private Key
                     <Badge variant="outline" className="ml-2 text-xs bg-teal-50 text-teal-600 border-teal-200">Secure</Badge>
                   </label>
@@ -630,7 +630,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
                       {vapiData.connectLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Connect'}
                     </Button>
                   </div>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     Get your key from{' '}
                     <a href="https://dashboard.vapi.ai" target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline font-medium">
                       Vapi Dashboard
@@ -639,8 +639,8 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
                 </div>
 
                 {vapiData.availableAssistants.length > 0 && (
-                  <div ref={assistantSectionRef} className="space-y-2 bg-white/60 dark:bg-gray-900/30 rounded-lg p-4 border border-teal-200 dark:border-teal-800 -mx-2">
-                    <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <div ref={assistantSectionRef} className="space-y-2 bg-card/60 rounded-lg p-4 border border-teal-200 dark:border-teal-800 -mx-2">
+                    <label className="block text-sm font-medium text-foreground">
                       Select Assistant to Monitor
                       <Badge variant="outline" className="ml-2 text-xs bg-green-50 text-green-700 border-green-200">
                         {vapiData.availableAssistants.length} found
@@ -659,7 +659,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
                               </div>
                               <div>
                                 <div className="font-medium text-sm">{a.name}</div>
-                                {a.voice?.provider && <div className="text-xs text-gray-500">Voice: {a.voice.provider}</div>}
+                                {a.voice?.provider && <div className="text-xs text-muted-foreground">Voice: {a.voice.provider}</div>}
                               </div>
                             </div>
                           </SelectItem>
@@ -674,7 +674,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
             {/* ── Retell fields ─────────────────────────────────────────────── */}
             {selectedPlatform === 'retell' && (
               <div className="space-y-4">
-                <div className="flex items-center text-xs text-purple-600 dark:text-purple-400 bg-white/60 dark:bg-gray-900/30 rounded-lg p-3 border border-purple-200 dark:border-purple-800">
+                <div className="flex items-center text-xs text-purple-600 dark:text-purple-400 bg-card/60 rounded-lg p-3 border border-purple-200 dark:border-purple-800">
                   <div className="flex items-center gap-2">
                     <div className="w-5 h-5 bg-purple-600 text-white rounded-full flex items-center justify-center font-medium">1</div>
                     <span className="font-medium">Connect Retell Account</span>
@@ -691,7 +691,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <label className="block text-sm font-medium text-foreground">
                     Retell API Key
                     <Badge variant="outline" className="ml-2 text-xs bg-purple-50 text-purple-600 border-purple-200">Secure</Badge>
                   </label>
@@ -713,7 +713,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
                       {retellData.connectLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Connect'}
                     </Button>
                   </div>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     Get your key from{' '}
                     <a href="https://dashboard.retellai.com" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline font-medium">
                       Retell Dashboard → API Keys
@@ -722,8 +722,8 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
                 </div>
 
                 {retellData.availableAgents.length > 0 && (
-                  <div ref={assistantSectionRef} className="space-y-2 bg-white/60 dark:bg-gray-900/30 rounded-lg p-4 border border-purple-200 dark:border-purple-800 -mx-2">
-                    <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
+                  <div ref={assistantSectionRef} className="space-y-2 bg-card/60 rounded-lg p-4 border border-purple-200 dark:border-purple-800 -mx-2">
+                    <label className="block text-sm font-medium text-foreground">
                       Select Agent to Monitor
                       <Badge variant="outline" className="ml-2 text-xs bg-green-50 text-green-700 border-green-200">
                         {retellData.availableAgents.length} found
@@ -750,7 +750,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
                               </div>
                               <div>
                                 <div className="font-medium text-sm">{a.agent_name}</div>
-                                {a.language && <div className="text-xs text-gray-500">{a.language} · {a.voice_id}</div>}
+                                {a.language && <div className="text-xs text-muted-foreground">{a.language} · {a.voice_id}</div>}
                               </div>
                             </div>
                           </SelectItem>
@@ -773,7 +773,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
       </div>
 
       {/* Footer */}
-      <div className="shrink-0 px-6 py-4 bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-800">
+      <div className="shrink-0 px-6 py-4 bg-muted/50 border-t border-border">
         <div className="flex gap-3">
           <Button
             type="button"

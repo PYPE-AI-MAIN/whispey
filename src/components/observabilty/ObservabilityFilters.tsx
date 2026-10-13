@@ -65,9 +65,9 @@ const ObservabilityFilters: React.FC<ObservabilityFiltersProps> = ({
   }
 
   return (
-    <div className="flex-shrink-0 border-b bg-gray-50/50 dark:bg-gray-800">
+    <div className="flex-shrink-0 border-b bg-muted/50">
       {/* Quick Stats Bar */}
-      <div className="px-6 py-4 border-b bg-white dark:bg-gray-900">
+      <div className="px-6 py-4 border-b bg-card">
         <div className="flex items-center gap-8">
           <div className="flex items-center gap-2">
             <BarChart3 className="w-4 h-4 text-blue-600" />

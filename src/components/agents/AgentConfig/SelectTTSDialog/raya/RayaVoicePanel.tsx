@@ -64,7 +64,7 @@ function CopyId({ id }: Readonly<{ id: string }>) {
         }
       }}
     >
-      {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5 text-gray-400" />}
+      {copied ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
     </Button>
   )
 }
@@ -83,13 +83,13 @@ function Notice({
   const toneClass =
     tone === 'warn'
       ? 'border-amber-300/70 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/20'
-      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/40'
+      : 'border-border bg-muted/50'
   return (
     <div className={`rounded-lg border p-4 ${toneClass}`}>
       <div className="flex items-start gap-3">
         <Icon className={`w-5 h-5 mt-0.5 flex-shrink-0 ${tone === 'warn' ? 'text-amber-500' : 'text-gray-400'}`} />
-        <div className="space-y-2 text-xs leading-relaxed text-gray-600 dark:text-gray-300 min-w-0">
-          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">{title}</h3>
+        <div className="space-y-2 text-xs leading-relaxed text-muted-foreground min-w-0">
+          <h3 className="text-sm font-medium text-foreground">{title}</h3>
           {children}
         </div>
       </div>
@@ -168,10 +168,10 @@ function VoiceCard({
 }>) {
   const cardClass = isSelected
     ? 'border-teal-300 dark:border-teal-600 bg-teal-50 dark:bg-teal-900/10'
-    : 'border-gray-200 dark:border-gray-700 hover:border-teal-200 dark:hover:border-teal-700 hover:bg-teal-50/50 dark:hover:bg-teal-900/5'
+    : 'border-border hover:border-teal-200 dark:hover:border-teal-700 hover:bg-teal-50/50 dark:hover:bg-teal-900/5'
   const previewClass = isPlaying
     ? 'opacity-100 text-teal-500'
-    : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 text-gray-400 hover:text-teal-500'
+    : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 text-muted-foreground hover:text-teal-500'
   const previewLabel = isPlaying ? 'Stop preview' : `Preview ${voice.name}`
 
   return (
@@ -187,14 +187,14 @@ function VoiceCard({
         </span>
         <span className="flex-1 min-w-0">
           <span className="flex items-center gap-2">
-            <span className="font-medium text-xs text-gray-900 dark:text-gray-100 truncate">{voice.name}</span>
+            <span className="font-medium text-xs text-foreground truncate">{voice.name}</span>
             {isSelected && <CheckCircle className="w-3 h-3 text-green-600 flex-shrink-0" />}
           </span>
           <span className="flex items-center gap-1.5 mt-0.5">
-            <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-600 dark:text-gray-300">
+            <span className="text-xs px-1.5 py-0.5 bg-muted rounded text-muted-foreground">
               {languageLabel(voice.language)}
             </span>
-            <code className="text-[11px] text-gray-400 truncate max-w-[12rem]">{voice.id}</code>
+            <code className="text-[11px] text-muted-foreground truncate max-w-[12rem]">{voice.id}</code>
           </span>
         </span>
       </button>
@@ -220,12 +220,12 @@ function ModelSwitch({ model, onChange }: Readonly<{ model: string; onChange: (m
   return (
     <div className="flex-shrink-0 space-y-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Model</span>
-        <span className="text-[11px] text-gray-500 dark:text-gray-400">
+        <span className="text-xs font-medium text-foreground">Model</span>
+        <span className="text-[11px] text-muted-foreground">
           {RAYA_MODELS.find((m) => m.value === model)?.hint}
         </span>
       </div>
-      <div role="radiogroup" aria-label="Raya model" className="grid grid-cols-2 gap-1 rounded-lg bg-gray-100 dark:bg-gray-800 p-1">
+      <div role="radiogroup" aria-label="Raya model" className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1">
         {RAYA_MODELS.map((m) => (
           <button
             key={m.value}
@@ -235,8 +235,8 @@ function ModelSwitch({ model, onChange }: Readonly<{ model: string; onChange: (m
             onClick={() => onChange(m.value)}
             className={`rounded-md py-1.5 text-xs font-medium transition-colors ${
               model === m.value
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-50 shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                ? 'bg-card text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             {m.label}
@@ -274,7 +274,7 @@ function LanguageChips({
               className={`flex-shrink-0 rounded-full border px-2.5 py-1 text-xs transition-colors ${
                 active
                   ? 'border-teal-300 dark:border-teal-600 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300'
-                  : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                  : 'border-border text-muted-foreground hover:bg-muted/50'
               }`}
             >
               {code === 'all' ? 'All' : languageLabel(code)} <span className="tabular-nums opacity-70">{count}</span>
@@ -289,13 +289,13 @@ function LanguageChips({
 function ManualVoiceEntry({ model, onUse }: Readonly<{ model: string; onUse: (id: string) => void }>) {
   const [manualId, setManualId] = useState('')
   return (
-    <details className="group rounded-lg border border-gray-200 dark:border-gray-700 flex-shrink-0">
-      <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 list-none flex items-center justify-between">
+    <details className="group rounded-lg border border-border flex-shrink-0">
+      <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium text-muted-foreground list-none flex items-center justify-between">
         Have a voice ID?
-        <ChevronDown className="w-4 h-4 text-gray-400 group-open:rotate-180 transition-transform" />
+        <ChevronDown className="w-4 h-4 text-muted-foreground group-open:rotate-180 transition-transform" />
       </summary>
       <div className="px-3 pb-3 space-y-2">
-        <p className="text-xs text-gray-500 dark:text-gray-400">
+        <p className="text-xs text-muted-foreground">
           Use an ID from your Raya account that isn&apos;t listed. It must belong to the <b>{model}</b> model.
         </p>
         <div className="flex gap-2">
@@ -344,7 +344,7 @@ function VoiceList(props: Readonly<VoiceListProps>) {
 
   if ((catalogue.status === 'loading' || catalogue.status === 'idle') && !hasCatalogue) {
     return (
-      <div className="flex items-center justify-center h-full text-sm text-gray-500 dark:text-gray-400 gap-2">
+      <div className="flex items-center justify-center h-full text-sm text-muted-foreground gap-2">
         <Loader2 className="w-4 h-4 animate-spin" /> Loading Raya voices…
       </div>
     )
@@ -368,8 +368,8 @@ function VoiceList(props: Readonly<VoiceListProps>) {
   }
   if (visible.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-        <Mic className="w-10 h-10 text-gray-300 dark:text-gray-600" />
+      <div className="flex flex-col items-center justify-center h-full text-center gap-2 text-sm text-muted-foreground">
+        <Mic className="w-10 h-10 text-muted-foreground" />
         No voices match your filters.
       </div>
     )
@@ -482,7 +482,7 @@ export default function RayaVoicePanel({
     <div className="h-full p-6 flex flex-col gap-4 overflow-hidden">
       <div className="flex gap-3 flex-shrink-0">
         <div className="flex-1 relative">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search by name, language or ID…"
             aria-label="Search Raya voices"

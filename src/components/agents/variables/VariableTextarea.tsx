@@ -10,8 +10,8 @@ import { AskPiPopover } from './AskPiPopover';
 const Editor = dynamic(() => import('@monaco-editor/react'), { 
   ssr: false,
   loading: () => (
-    <div className="w-full h-full flex items-center justify-center bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
-      <p className="text-sm text-gray-500 dark:text-gray-400">Loading editor...</p>
+    <div className="w-full h-full flex items-center justify-center bg-card border border-border rounded-lg">
+      <p className="text-sm text-muted-foreground">Loading editor...</p>
     </div>
   )
 });
@@ -143,7 +143,7 @@ export const VariableTextarea: React.FC<VariableTextareaProps> = ({
 
   return (
     <div 
-      className={`var-editor-monaco relative border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 ${className}`}
+      className={`var-editor-monaco relative border border-border rounded-lg bg-card ${className}`}
       style={{ ...style, minHeight: style?.minHeight || '200px' }}
     >
       {/* Padding wrapper for left/right spacing */}

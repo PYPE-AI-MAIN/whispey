@@ -347,9 +347,9 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
                     <th
                       key={h.id}
                       className={cn(
-                        "px-4 truncate py-1.5 text-left font-semibold border-b-2 border-gray-200 dark:border-gray-800 text-sm leading-tight",
+                        "px-4 truncate py-1.5 text-left font-semibold border-b-2 border-border text-sm leading-tight",
                         h.id.startsWith('transcription-')
-                          ? "text-gray-600 dark:text-gray-400 bg-gray-50/60 dark:bg-gray-800/40"
+                          ? "text-muted-foreground bg-muted/50"
                           : h.id.startsWith('metrics-')
                             ? "text-blue-600 dark:text-blue-400 bg-blue-50/60 dark:bg-blue-900/10"
                             : "text-foreground dark:text-gray-100"
@@ -435,7 +435,7 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
       </div>
 
       {/* Pagination bar */}
-      <div className="flex-none flex items-center justify-between px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-background/95 dark:bg-gray-900/95">
+      <div className="flex-none flex items-center justify-between px-4 py-2 border-t border-border bg-background/95 dark:bg-gray-900/95">
         <span className="text-sm text-muted-foreground min-w-[100px]">
           {rows.length > 0 ? `${pageStart}–${pageEnd}` : '—'}
         </span>

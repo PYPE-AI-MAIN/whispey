@@ -5,9 +5,9 @@ import { Check, Copy, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const DOCS_URL = 'https://docs.whispey.pypeai.com/analytics/send-events/'
-const INK = 'text-gray-900 dark:text-gray-100'
-const MUTED = 'text-gray-500 dark:text-gray-400'
-const CODE = 'rounded bg-gray-100 px-1 dark:bg-gray-800'
+const INK = 'text-foreground'
+const MUTED = 'text-muted-foreground'
+const CODE = 'rounded bg-muted px-1'
 
 type Lang = 'curl' | 'python' | 'javascript'
 const LANGS: { id: Lang; label: string }[] = [
@@ -102,18 +102,18 @@ function Snippet({ lang, setLang, code }: Readonly<{ lang: Lang; setLang: (l: La
             key={l.id}
             type="button"
             onClick={() => setLang(l.id)}
-            className={cn('rounded-md px-2 py-1 text-xs font-medium', lang === l.id ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900' : cn(MUTED, 'hover:bg-gray-100 dark:hover:bg-gray-800'))}
+            className={cn('rounded-md px-2 py-1 text-xs font-medium', lang === l.id ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900' : cn(MUTED, 'hover:bg-muted'))}
           >
             {l.label}
           </button>
         ))}
       </div>
       <div className="relative">
-        <pre className="max-h-64 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words rounded-lg bg-gray-900 p-3 text-[11px] leading-relaxed text-gray-100">{code}</pre>
+        <pre className="max-h-64 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words rounded-lg bg-gray-900 p-3 text-[11px] leading-relaxed text-foreground">{code}</pre>
         <button
           type="button"
           onClick={copy}
-          className="absolute right-2 top-2 rounded-md border border-gray-700 bg-gray-800 p-1.5 text-gray-300 hover:bg-gray-700"
+          className="absolute right-2 top-2 rounded-md border border-gray-700 bg-gray-800 p-1.5 text-muted-foreground hover:bg-gray-700"
           title="Copy"
           aria-label="Copy snippet"
         >
@@ -171,7 +171,7 @@ export function JourneyIntegrationGuide({ campaignKey, projectId, scroll }: Read
 
       <div>
         <p className={cn('mb-1.5 text-xs font-medium uppercase tracking-wide', MUTED)}>What to send</p>
-        <dl className="divide-y divide-gray-100 rounded-lg border border-gray-200 text-xs dark:divide-gray-800 dark:border-gray-800">
+        <dl className="divide-y divide-border/60 rounded-lg border border-border text-xs">
           {FIELDS.map((f) => (
             <div key={f.name} className="grid grid-cols-[7.5rem_1fr] gap-2 px-3 py-2">
               <dt>
@@ -186,7 +186,7 @@ export function JourneyIntegrationGuide({ campaignKey, projectId, scroll }: Read
 
       <div>
         <p className={cn('mb-1.5 text-xs font-medium uppercase tracking-wide', MUTED)}>What comes back</p>
-        <dl className="divide-y divide-gray-100 rounded-lg border border-gray-200 text-xs dark:divide-gray-800 dark:border-gray-800">
+        <dl className="divide-y divide-border/60 rounded-lg border border-border text-xs">
           {REPLIES.map((r) => (
             <div key={r.code} className="grid grid-cols-[3rem_1fr] gap-2 px-3 py-2">
               <dt className="font-mono font-semibold">{r.code}</dt>

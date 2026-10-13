@@ -59,7 +59,7 @@ export function FilterBar({
 
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-gray-500">
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground">
             {filters.length ? <Plus className="mr-1 h-3 w-3" /> : <Filter className="mr-1 h-3 w-3" />}
             Filter
           </Button>
@@ -117,7 +117,7 @@ export function FilterEditor({ fields, onAdd }: Readonly<{ fields: CatalogField[
       {/* what the field holds, in the values it holds: "is yes" on a column
           full of 1 and 0 is how somebody stops trusting the dashboard */}
       {field && (
-        <p className="px-0.5 text-[11px] leading-snug text-gray-400">
+        <p className="px-0.5 text-[11px] leading-snug text-muted-foreground">
           {field.description ? `${field.description} ` : ''}
           <FieldShape field={field} />
         </p>
@@ -157,7 +157,7 @@ export function FilterEditor({ fields, onAdd }: Readonly<{ fields: CatalogField[
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="Value"
-            className="h-8 w-full rounded-md border border-gray-200 bg-transparent px-2 text-sm outline-none focus:border-blue-400 dark:border-gray-800"
+            className="h-8 w-full rounded-md border border-border bg-transparent px-2 text-sm outline-none focus:border-blue-400"
           />
         )
       )}
@@ -224,7 +224,7 @@ export function ChartFilters({
       )}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="sm" disabled={disabled} className="h-6 px-2 text-xs text-gray-500">
+          <Button variant="ghost" size="sm" disabled={disabled} className="h-6 px-2 text-xs text-muted-foreground">
             <Plus className="mr-1 h-3 w-3" />
             {filters.length ? 'Add' : 'Only where…'}
           </Button>

@@ -32,7 +32,7 @@ function environmentColor(environment: string): string {
     case 'dev':
       return 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-800'
     default:
-      return 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700'
+      return 'bg-muted/50 text-foreground border border-border/60'
   }
 }
 

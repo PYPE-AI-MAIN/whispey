@@ -231,16 +231,16 @@ export default function DownloadDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-lg bg-card border-border max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">Download call logs</DialogTitle>
+          <DialogTitle className="text-base font-semibold text-foreground">Download call logs</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Date range + timezone */}
-          <div className="rounded-xl border border-gray-200 dark:border-gray-800 p-3 space-y-3">
+          <div className="rounded-xl border border-border p-3 space-y-3">
             <div>
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 block">Date range</span>
+              <span className="text-xs font-medium text-muted-foreground mb-1.5 block">Date range</span>
               <div className="flex items-center gap-2">
                 <Popover>
                   <PopoverTrigger asChild>
@@ -253,7 +253,7 @@ export default function DownloadDialog({
                     <Calendar mode="single" selected={from} onSelect={setFrom} initialFocus />
                   </PopoverContent>
                 </Popover>
-                <span className="text-xs text-gray-500 dark:text-gray-400">to</span>
+                <span className="text-xs text-muted-foreground">to</span>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 flex-1 justify-start">
@@ -269,9 +269,9 @@ export default function DownloadDialog({
             </div>
 
             <div>
-              <label htmlFor="download-timezone" className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 block">Timestamp timezone</label>
+              <label htmlFor="download-timezone" className="text-xs font-medium text-muted-foreground mb-1.5 block">Timestamp timezone</label>
               <Select value={timezone} onValueChange={(v: 'IST' | 'UTC') => setTimezone(v)}>
-                <SelectTrigger id="download-timezone" className="h-8 text-xs w-40 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
+                <SelectTrigger id="download-timezone" className="h-8 text-xs w-40 bg-card border-border text-foreground">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -287,7 +287,7 @@ export default function DownloadDialog({
             className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 ${
               isLarge
                 ? 'border-amber-300 dark:border-amber-400/30 bg-amber-50 dark:bg-amber-400/10'
-                : 'border-gray-200 dark:border-gray-800'
+                : 'border-border'
             }`}
           >
             <div className="flex items-start gap-2">
@@ -313,19 +313,19 @@ export default function DownloadDialog({
             <CollapsibleTrigger asChild>
               <button
                 type="button"
-                className="w-full flex items-center justify-between rounded-xl border border-gray-200 dark:border-gray-800 px-3 py-2 text-left"
+                className="w-full flex items-center justify-between rounded-xl border border-border px-3 py-2 text-left"
               >
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                <span className="text-xs font-medium text-foreground flex items-center gap-2">
                   Columns
                   <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                     {selectedColumnCount}/{totalColumnCount} selected
                   </Badge>
                 </span>
-                <ChevronDown className={`h-3.5 w-3.5 text-gray-400 transition-transform ${columnsOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${columnsOpen ? 'rotate-180' : ''}`} />
               </button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="rounded-xl border border-t-0 border-gray-200 dark:border-gray-800 rounded-t-none max-h-48 overflow-y-auto p-2 space-y-1 mt-[-1px]">
+              <div className="rounded-xl border border-t-0 border-border rounded-t-none max-h-48 overflow-y-auto p-2 space-y-1 mt-[-1px]">
                 {allowedBasic.map(col => (
                   <CheckboxRow
                     key={col.key}
@@ -382,7 +382,7 @@ export default function DownloadDialog({
               )}
             </Button>
             {disabledReason && (
-              <p className="text-[11px] text-center text-gray-500 dark:text-gray-400">{disabledReason}</p>
+              <p className="text-[11px] text-center text-muted-foreground">{disabledReason}</p>
             )}
           </div>
         </div>

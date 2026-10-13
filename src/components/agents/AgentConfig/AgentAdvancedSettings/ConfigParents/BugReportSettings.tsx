@@ -57,13 +57,13 @@ function BugReportSettings({
 
   return (
     <div className="space-y-4">
-      <div className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+      <div className="text-xs text-muted-foreground mb-3">
         Configure bug reporting functionality for your assistant
       </div>
       
       {/* Enable Bug Report System Toggle */}
       <div className="flex items-center justify-between">
-        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+        <Label className="text-xs font-medium text-foreground">
           Enable Bug Report System
         </Label>
         <Switch
@@ -78,7 +78,7 @@ function BugReportSettings({
           {/* Bug Start Commands */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+              <Label className="text-xs font-medium text-foreground">
                 Bug Start Commands
               </Label>
               <Button
@@ -112,7 +112,7 @@ function BugReportSettings({
                 </div>
               ))}
               {bugStartCommands.length === 0 && (
-                <div className="text-xs text-gray-400 italic py-2 text-center">
+                <div className="text-xs text-muted-foreground italic py-2 text-center">
                   No start commands added yet
                 </div>
               )}
@@ -122,7 +122,7 @@ function BugReportSettings({
           {/* Bug End Commands */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+              <Label className="text-xs font-medium text-foreground">
                 Bug End Commands
               </Label>
               <Button
@@ -156,7 +156,7 @@ function BugReportSettings({
                 </div>
               ))}
               {bugEndCommands.length === 0 && (
-                <div className="text-xs text-gray-400 italic py-2 text-center">
+                <div className="text-xs text-muted-foreground italic py-2 text-center">
                   No end commands added yet
                 </div>
               )}
@@ -165,7 +165,7 @@ function BugReportSettings({
 
           {/* Initial Response */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            <Label className="text-xs font-medium text-foreground">
               Initial Response
             </Label>
             <Textarea
@@ -178,7 +178,7 @@ function BugReportSettings({
 
           {/* Collection Prompt */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            <Label className="text-xs font-medium text-foreground">
               Collection Prompt
             </Label>
             <Textarea

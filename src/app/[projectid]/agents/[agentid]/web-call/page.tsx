@@ -121,10 +121,10 @@ export default function WebCallPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-muted/50 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-gray-600 dark:text-gray-400">Loading agent configuration...</p>
+          <p className="text-muted-foreground">Loading agent configuration...</p>
         </div>
       </div>
     )
@@ -132,7 +132,7 @@ export default function WebCallPage() {
 
   if (error || !agentData) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-muted/50 flex items-center justify-center">
         <Card className="max-w-md mx-auto">
           <CardHeader>
             <CardTitle className="text-red-600">Error Loading Agent</CardTitle>
@@ -167,7 +167,7 @@ export default function WebCallPage() {
 
   if (!vapiAssistantId) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-muted/50 flex items-center justify-center">
         <Card className="max-w-md mx-auto">
           <CardHeader>
             <CardTitle className="text-amber-600">Configuration Missing</CardTitle>
@@ -194,15 +194,15 @@ export default function WebCallPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
+    <div className="min-h-screen bg-muted/50 p-4">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-2xl font-bold text-foreground">
               Web Call - {agentData.name}
             </h1>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-muted-foreground">
               Browser-based voice conversation using Vapi web SDK
             </p>
           </div>
@@ -234,13 +234,13 @@ export default function WebCallPage() {
           <CardContent className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Agent Name
                 </p>
-                <p className="text-gray-900 dark:text-white">{agentData.name}</p>
+                <p className="text-foreground">{agentData.name}</p>
               </div>
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Vapi Assistant ID
                 </p>
                 <div className="flex items-center gap-2">
@@ -251,14 +251,14 @@ export default function WebCallPage() {
                 </div>
               </div>
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   API Key Type
                 </p>
                 <div className="flex items-center gap-2">
                   <Badge className="bg-green-100 text-green-700 text-xs">
                     Public Key
                   </Badge>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-muted-foreground">
                     {VAPI_PUBLIC_KEY.slice(0, 8)}...{VAPI_PUBLIC_KEY.slice(-8)}
                   </span>
                 </div>
@@ -270,7 +270,7 @@ export default function WebCallPage() {
         {/* Web Call Widget */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div>
-            <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+            <h2 className="text-lg font-semibold mb-4 text-foreground">
               Live Web Call
             </h2>
             <WebCallWidget
@@ -286,13 +286,13 @@ export default function WebCallPage() {
 
           {/* Call History */}
           <div>
-            <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+            <h2 className="text-lg font-semibold mb-4 text-foreground">
               Call History
             </h2>
             {callHistory.length === 0 ? (
               <Card>
-                <CardContent className="p-6 text-center text-gray-500">
-                  <MessageSquare className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                <CardContent className="p-6 text-center text-muted-foreground">
+                  <MessageSquare className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                   <p>No calls yet</p>
                   <p className="text-sm">Start a web call to see history here</p>
                 </CardContent>
@@ -307,7 +307,7 @@ export default function WebCallPage() {
                           <Badge variant="outline" className="text-xs font-mono">
                             {call.id.slice(0, 8)}...
                           </Badge>
-                          <span className="text-sm text-gray-600 dark:text-gray-400">
+                          <span className="text-sm text-muted-foreground">
                             {call.startTime.toLocaleTimeString()}
                           </span>
                         </div>
@@ -319,7 +319,7 @@ export default function WebCallPage() {
                       </div>
                       
                       {call.messages.length > 0 && (
-                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                        <div className="text-sm text-muted-foreground">
                           <p><strong>Messages:</strong> {call.messages.length}</p>
                           <p><strong>Duration:</strong> {
                             call.endTime 
@@ -346,24 +346,24 @@ export default function WebCallPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div className="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div className="text-center p-3 bg-muted/50 rounded-lg">
                 <div className="text-2xl mb-2">1</div>
                 <h4 className="font-medium mb-1">Browser Request</h4>
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-muted-foreground">
                   User clicks "Start Call" in the browser
                 </p>
               </div>
-              <div className="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div className="text-center p-3 bg-muted/50 rounded-lg">
                 <div className="text-2xl mb-2">2</div>
                 <h4 className="font-medium mb-1">Direct Connection</h4>
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-muted-foreground">
                   Browser connects directly to Vapi using public key
                 </p>
               </div>
-              <div className="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div className="text-center p-3 bg-muted/50 rounded-lg">
                 <div className="text-2xl mb-2">3</div>
                 <h4 className="font-medium mb-1">Real-time Voice</h4>
-                <p className="text-gray-600 dark:text-gray-400">
+                <p className="text-muted-foreground">
                   Voice conversation happens in real-time in the browser
                 </p>
               </div>

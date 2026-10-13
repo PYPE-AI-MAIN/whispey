@@ -26,7 +26,7 @@ export default function SettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="flex items-center justify-center min-h-screen bg-muted/50">
         <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400" />
       </div>
     )
@@ -34,7 +34,7 @@ export default function SettingsPage() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="flex items-center justify-center min-h-screen bg-muted/50">
         <div className="text-center">
           <p className="text-red-600 dark:text-red-400 mb-2">Failed to load organization</p>
           <button 
@@ -50,9 +50,9 @@ export default function SettingsPage() {
 
   if (!organization) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="flex items-center justify-center min-h-screen bg-muted/50">
         <div className="text-center">
-          <p className="text-gray-500 dark:text-gray-400 mb-2">Organization not found</p>
+          <p className="text-muted-foreground mb-2">Organization not found</p>
           <Link
             href="/projects"
             className="text-sm text-blue-600 dark:text-blue-400 hover:underline"

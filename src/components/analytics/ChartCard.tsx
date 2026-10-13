@@ -83,10 +83,10 @@ export function ChartCard({
     <div
       className={cn(
         // the grid owns the rectangle; the card fills whatever it is given
-        'group relative flex h-full flex-col overflow-hidden rounded-xl border bg-white shadow-sm transition-colors dark:bg-gray-900',
+        'group relative flex h-full flex-col overflow-hidden rounded-xl border bg-card shadow-sm transition-colors',
         selected
           ? 'border-blue-500 ring-1 ring-blue-500/30 dark:border-blue-400'
-          : 'border-gray-200 hover:border-gray-300 dark:border-gray-800 dark:hover:border-gray-700'
+          : 'border-border hover:border-border'
       )}
     >
       {/* Selecting the card is a real <button> so it's keyboard-reachable —
@@ -112,14 +112,14 @@ export function ChartCard({
                 // feature nobody finds
                 className={cn(
                   DRAG_HANDLE_CLASS,
-                  'pointer-events-auto -ml-1 cursor-grab rounded p-0.5 text-gray-300 opacity-40 transition hover:text-gray-500 group-hover:opacity-100 focus:opacity-100 dark:text-gray-600'
+                  'pointer-events-auto -ml-1 cursor-grab rounded p-0.5 text-muted-foreground opacity-40 transition hover:text-muted-foreground group-hover:opacity-100 focus:opacity-100'
                 )}
               >
                 <GripVertical className="h-3.5 w-3.5" />
               </button>
             )}
             {/* a real button, pointer-events-auto, so the browser can show the full title on hover when it is cut off; clicking still selects the card */}
-            <h3 className="min-w-0 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            <h3 className="min-w-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               <button type="button" title={widget.title} onClick={onSelect} className="pointer-events-auto block max-w-full cursor-pointer truncate text-left uppercase">
                 {widget.title}
               </button>
@@ -131,7 +131,7 @@ export function ChartCard({
                     <button
                       type="button"
                       aria-label={`How "${calc.label}" is calculated`}
-                      className="pointer-events-auto shrink-0 text-gray-300 outline-none transition hover:text-gray-500 focus-visible:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400"
+                      className="pointer-events-auto shrink-0 text-muted-foreground outline-none transition hover:text-muted-foreground focus-visible:text-muted-foreground"
                     >
                       <Info className="h-3 w-3" />
                     </button>
@@ -144,11 +144,11 @@ export function ChartCard({
             )}
           </div>
 
-          <div className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-1.5 text-[11px] text-gray-400">
+          <div className="mt-0.5 flex min-w-0 flex-wrap items-baseline gap-x-1.5 text-[11px] text-muted-foreground">
             {/* it changes what the number means, so it is never hidden in a dialog */}
             {canEdit && (
               <button
-                className="pointer-events-auto shrink-0 underline-offset-2 hover:text-gray-600 hover:underline dark:hover:text-gray-300"
+                className="pointer-events-auto shrink-0 underline-offset-2 hover:text-muted-foreground hover:underline"
                 onClick={() => onChangeGrain(grain === 'entity' ? 'interaction' : 'entity')}
               >
                 {grainLabel}
@@ -159,7 +159,7 @@ export function ChartCard({
                 same as no definition */}
             <button
               type="button"
-              className={cn('pointer-events-auto cursor-pointer text-left text-gray-400/80 dark:text-gray-500', isKpi ? 'line-clamp-1' : 'line-clamp-2')}
+              className={cn('pointer-events-auto cursor-pointer text-left text-muted-foreground/80', isKpi ? 'line-clamp-1' : 'line-clamp-2')}
               title={definition}
               onClick={onSelect}
             >
@@ -173,7 +173,7 @@ export function ChartCard({
           <DropdownMenuTrigger asChild className="pointer-events-auto">
             <button
               aria-label={`Options for ${widget.title}`}
-              className="rounded p-1 text-gray-400 opacity-0 transition hover:bg-gray-100 group-hover:opacity-100 focus:opacity-100 dark:hover:bg-gray-800"
+              className="rounded p-1 text-muted-foreground opacity-0 transition hover:bg-muted group-hover:opacity-100 focus:opacity-100"
             >
               <MoreVertical className="h-3.5 w-3.5" />
             </button>
@@ -212,7 +212,7 @@ export function ChartCard({
         <CardBody widget={widget} result={result} isLoading={isLoading} rows={rows} categories={categories} fieldMissing={fieldMissing} short={short} onSelect={onOpenLogs} />
       </div>
 
-            <div className="relative z-10 pointer-events-none flex shrink-0 items-center justify-between gap-2 px-4 pb-3 text-[11px] text-gray-400 dark:text-gray-500">
+            <div className="relative z-10 pointer-events-none flex shrink-0 items-center justify-between gap-2 px-4 pb-3 text-[11px] text-muted-foreground">
         <span />
         {result?.meta?.lookbackDays ? <span>Best of 90 days</span> : null}
       </div>
@@ -285,11 +285,11 @@ function CardBody({
 
 function State({ icon, text, tone = 'warn' }: Readonly<{ icon?: React.ReactNode; text: string; tone?: 'warn' | 'muted' }>) {
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-1.5 px-3 text-center text-xs text-gray-500 dark:text-gray-400">
+    <div className="flex h-full flex-col items-center justify-center gap-1.5 px-3 text-center text-xs text-muted-foreground">
       {/* only the icon carries the warning color — a whole card in solid
           amber (icon and text both) reads as loud, especially with several
           cards failing at once; the icon alone is enough of a signal */}
-      {icon && <span className={tone === 'warn' ? 'text-amber-500 dark:text-amber-400' : 'text-gray-400 dark:text-gray-500'}>{icon}</span>}
+      {icon && <span className={tone === 'warn' ? 'text-amber-500 dark:text-amber-400' : 'text-muted-foreground'}>{icon}</span>}
       <span className="leading-snug">{text}</span>
     </div>
   )

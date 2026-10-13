@@ -70,9 +70,9 @@ function Pagination({
   }
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-1 py-3 border-t border-gray-100 dark:border-gray-800">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-1 py-3 border-t border-border/60">
       {/* Count label */}
-      <p className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+      <p className="text-xs text-muted-foreground whitespace-nowrap">
         {total === 0 ? 'No campaigns' : `Showing ${from}–${to} of ${total} campaign${total !== 1 ? 's' : ''}`}
       </p>
 
@@ -109,7 +109,7 @@ function Pagination({
               p === '...' ? (
                 <span
                   key={`ellipsis-${i}`}
-                  className="px-1 text-xs text-gray-400 dark:text-gray-500 select-none"
+                  className="px-1 text-xs text-muted-foreground select-none"
                 >
                   …
                 </span>
@@ -121,7 +121,7 @@ function Pagination({
                   className={`h-7 min-w-[28px] rounded-md px-2 text-xs font-medium transition-colors
                     ${p === currentPage
                       ? 'bg-blue-600 text-white shadow-sm cursor-default'
-                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50'
+                      : 'text-muted-foreground hover:bg-muted disabled:opacity-50'
                     }`}
                 >
                   {p}
@@ -217,7 +217,7 @@ function Campaigns() {
       completed: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800',
       scheduled: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border-purple-200 dark:border-purple-800',
       failed:    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800',
-      draft:     'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400 border-gray-200 dark:border-gray-800',
+      draft:     'bg-muted text-foreground border-border',
       ready:     'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800',
     }
     const cls = map[status.toLowerCase()] ?? map.active
@@ -331,10 +331,10 @@ function Campaigns() {
           </div>
           {search ? (
             <>
-              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+              <h3 className="text-sm font-medium text-foreground mb-1">
                 No results for "{search}"
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 max-w-xs">
+              <p className="text-xs text-muted-foreground mb-3 max-w-xs">
                 Try a different name or clear the search.
               </p>
               <Button variant="outline" size="sm" onClick={() => setSearchInput('')} className="text-xs h-7">
@@ -343,10 +343,10 @@ function Campaigns() {
             </>
           ) : (
             <>
-              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+              <h3 className="text-sm font-medium text-foreground mb-1">
                 No campaigns yet
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 max-w-xs">
+              <p className="text-xs text-muted-foreground mb-3 max-w-xs">
                 Create your first campaign to start managing calls.
               </p>
               <Button onClick={() => router.push(`/${projectId}/campaigns/create`)} size="sm" className="h-9 text-xs gap-2">
@@ -377,37 +377,37 @@ function Campaigns() {
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-2">
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                  <h3 className="text-sm font-semibold text-foreground truncate">
                     {campaign.campaignName}
                   </h3>
                   {getStatusBadge(campaign.status)}
                 </div>
 
                 <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
-                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                    <span className="font-medium text-gray-500 dark:text-gray-500">ID:</span>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <span className="font-medium text-muted-foreground">ID:</span>
                     <span className="font-mono truncate">{campaign.campaignId}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                  <div className="flex items-center gap-2 text-muted-foreground">
                     <Phone className="w-3 h-3 flex-shrink-0" />
                     <span className="truncate">{campaign.callConfig.provider}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                  <div className="flex items-center gap-2 text-muted-foreground">
                     <User className="w-3 h-3 flex-shrink-0" />
                     <span className="truncate">{resolveStoredAgentName(agents, campaign.callConfig.agentName)}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                  <div className="flex items-center gap-2 text-muted-foreground">
                     <Calendar className="w-3 h-3 flex-shrink-0" />
                     <span className="truncate">{formatDate(campaign.createdAt)}</span>
                   </div>
                 </div>
 
                 {/* Stats row */}
-                <div className="flex items-center gap-4 mt-3 pt-2.5 border-t border-gray-100 dark:border-gray-700">
+                <div className="flex items-center gap-4 mt-3 pt-2.5 border-t border-border/60">
                   <Stat label="Total"   value={campaign.callStats?.total     ?? campaign.totalContacts}  />
                   <Stat label="Success" value={campaign.callStats?.completed ?? campaign.successCalls}   color="text-green-600 dark:text-green-400" />
                   <Stat label="Failed"  value={campaign.callStats?.failed    ?? campaign.failedCalls}    color="text-red-600 dark:text-red-400" />
-                  <Stat label="Pending" value={campaign.callStats?.pending   ?? 0}                       color="text-gray-500 dark:text-gray-400" />
+                  <Stat label="Pending" value={campaign.callStats?.pending   ?? 0}                       color="text-muted-foreground" />
                 </div>
               </div>
 
@@ -416,7 +416,7 @@ function Campaigns() {
                 <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
                   <Button
                     variant="ghost" size="sm"
-                    className="h-8 w-8 p-0 opacity-60 group-hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    className="h-8 w-8 p-0 opacity-60 group-hover:opacity-100 hover:bg-muted"
                   >
                     <MoreVertical className="h-4 w-4" />
                   </Button>
@@ -467,7 +467,7 @@ function Campaigns() {
 
             {/* Subtle loading overlay when fetching next page */}
             {isFetching && (
-              <div className="absolute inset-0 rounded-lg bg-white/40 dark:bg-gray-800/40" />
+              <div className="absolute inset-0 rounded-lg bg-card/40" />
             )}
           </div>
         ))}
@@ -517,7 +517,7 @@ function Campaigns() {
       {/* ── Search ── */}
       <div className="px-6 pb-4 bg-background flex-shrink-0">
         <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search campaigns by name or ID…"
             value={searchInput}
@@ -527,7 +527,7 @@ function Campaigns() {
           {searchInput && (
             <button
               onClick={() => setSearchInput('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground text-xs"
             >
               ✕
             </button>
@@ -552,7 +552,7 @@ function Campaigns() {
 
       {/* ── Pagination bar ── */}
       {!isLoading && !isError && pagination && (
-        <div className="px-4 pb-2 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex-shrink-0">
+        <div className="px-4 pb-2 bg-card border-t border-border/60 flex-shrink-0">
           <Pagination
             currentPage={pagination.currentPage}
             totalPages={pagination.totalPages}
@@ -566,21 +566,21 @@ function Campaigns() {
 
       {/* ── Detail sheet ── */}
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetContent className="w-full sm:max-w-xl overflow-y-auto bg-gray-50 dark:bg-gray-900 p-0">
-          <div className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900 px-6 py-5 border-b border-gray-200 dark:border-gray-800">
-            <SheetTitle className="text-xl font-bold text-gray-900 dark:text-gray-100">Campaign Details</SheetTitle>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto bg-muted/50 p-0">
+          <div className="sticky top-0 z-10 bg-muted/50 px-6 py-5 border-b border-border">
+            <SheetTitle className="text-xl font-bold text-foreground">Campaign Details</SheetTitle>
           </div>
 
           {selectedCampaign && (
             <div className="p-4 sm:p-6 space-y-6">
               {/* Header */}
-              <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 sm:p-6">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+              <div className="rounded-xl border border-border bg-card shadow-sm p-4 sm:p-6">
+                <h3 className="text-xl font-bold text-foreground mb-4">
                   {selectedCampaign.campaignName}
                 </h3>
                 <div className="flex items-center gap-3 flex-wrap">
                   {getStatusBadge(selectedCampaign.status)}
-                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="w-4 h-4" />
                     <span>{formatDate(selectedCampaign.createdAt)}</span>
                   </div>
@@ -588,28 +588,28 @@ function Campaigns() {
               </div>
 
               {/* Info */}
-              <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 sm:p-6">
-                <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-4">Campaign Information</h4>
+              <div className="rounded-xl border border-border bg-card shadow-sm p-4 sm:p-6">
+                <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-4">Campaign Information</h4>
                 <InfoRow label="Campaign ID"  value={<span className="font-mono">{selectedCampaign.campaignId}</span>} />
                 <InfoRow label="Organization ID"   value={<span className="font-mono">{selectedCampaign.projectId}</span>} />
                 <InfoRow label="Provider"     value={selectedCampaign.callConfig.provider} />
               </div>
 
               {/* Agent */}
-              <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 sm:p-6">
-                <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-4">Agent Details</h4>
+              <div className="rounded-xl border border-border bg-card shadow-sm p-4 sm:p-6">
+                <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-4">Agent Details</h4>
                 <InfoRow label="Agent Name"  value={resolveStoredAgentName(agents, selectedCampaign.callConfig.agentName)} />
                 <InfoRow label="SIP Trunk"   value={<span className="font-mono">{selectedCampaign.callConfig.sipTrunkId}</span>} />
               </div>
 
               {/* Metrics */}
-              <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 sm:p-6">
-                <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-5">Performance Metrics</h4>
+              <div className="rounded-xl border border-border bg-card shadow-sm p-4 sm:p-6">
+                <h4 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-5">Performance Metrics</h4>
                 <div className="space-y-4">
                   <MetricRow label="Total Contacts" value={selectedCampaign.callStats?.total   ?? selectedCampaign.totalContacts} />
                   <MetricRow label="Successful"      value={selectedCampaign.callStats?.completed ?? selectedCampaign.successCalls} color="text-green-600 dark:text-green-400" />
                   <MetricRow label="Failed"          value={selectedCampaign.callStats?.failed    ?? selectedCampaign.failedCalls}  color="text-red-600 dark:text-red-400" />
-                  <MetricRow label="Pending"         value={selectedCampaign.callStats?.pending   ?? 0}                             color="text-gray-500 dark:text-gray-400" />
+                  <MetricRow label="Pending"         value={selectedCampaign.callStats?.pending   ?? 0}                             color="text-muted-foreground" />
                 </div>
 
                 {/* Progress bar */}
@@ -618,12 +618,12 @@ function Campaigns() {
                   const completed = selectedCampaign.callStats?.completed ?? selectedCampaign.successCalls
                   const rate      = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0
                   return (
-                    <div className="mt-5 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <div className="mt-5 pt-4 border-t border-border/60">
                       <div className="flex justify-between mb-2">
-                        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Completion Rate</span>
-                        <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{rate}%</span>
+                        <span className="text-sm font-semibold text-foreground">Completion Rate</span>
+                        <span className="text-sm font-bold text-foreground">{rate}%</span>
                       </div>
-                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                      <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
                         <div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${rate}%` }} />
                       </div>
                     </div>
@@ -647,10 +647,10 @@ function Campaigns() {
 
 // ─── Tiny shared sub-components ───────────────────────────────────────────────
 
-function Stat({ label, value, color = 'text-gray-900 dark:text-gray-100' }: { label: string; value: number; color?: string }) {
+function Stat({ label, value, color = 'text-foreground' }: { label: string; value: number; color?: string }) {
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-xs text-gray-500 dark:text-gray-500">{label}:</span>
+      <span className="text-xs text-muted-foreground">{label}:</span>
       <span className={`text-xs font-semibold ${color}`}>{value}</span>
     </div>
   )
@@ -658,17 +658,17 @@ function Stat({ label, value, color = 'text-gray-900 dark:text-gray-100' }: { la
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-700 last:border-0">
-      <span className="text-sm text-gray-500 dark:text-gray-400">{label}</span>
-      <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{value}</span>
+    <div className="flex items-center justify-between py-3 border-b border-border/60 last:border-0">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="text-sm font-semibold text-foreground">{value}</span>
     </div>
   )
 }
 
-function MetricRow({ label, value, color = 'text-gray-900 dark:text-gray-100' }: { label: string; value: number; color?: string }) {
+function MetricRow({ label, value, color = 'text-foreground' }: { label: string; value: number; color?: string }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-sm text-gray-600 dark:text-gray-400">{label}</span>
+      <span className="text-sm text-muted-foreground">{label}</span>
       <span className={`text-3xl font-bold ${color}`}>{value}</span>
     </div>
   )

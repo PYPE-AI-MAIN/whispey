@@ -139,9 +139,9 @@ function ProviderModelItems({
       <>
         {provider.groups?.map((group, groupIndex) => (
           <React.Fragment key={group.name}>
-            {groupIndex > 0 && <DropdownMenuSeparator className="bg-gray-200 dark:bg-slate-700" />}
-            <div className="px-2 py-1.5 bg-gray-50 dark:bg-slate-800 sticky top-0 z-10">
-              <h4 className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide truncate">
+            {groupIndex > 0 && <DropdownMenuSeparator className="bg-muted" />}
+            <div className="px-2 py-1.5 bg-muted/50 sticky top-0 z-10">
+              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
                 {group.name}
               </h4>
             </div>
@@ -220,7 +220,7 @@ function MobileGroupModelItems({
           className={`flex items-center justify-between px-6 py-2 ${
             selectedProvider === providerKey && selectedModel === model.value
               ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
-              : 'hover:bg-gray-50 dark:hover:bg-slate-800'
+              : 'hover:bg-muted/50'
           }`}
         >
           <span className="text-sm">{model.label}</span>
@@ -418,7 +418,7 @@ const getFlattenedMenuItems = () => {
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
-            className={`cursor-pointer flex-1 justify-between h-9 min-w-0 rounded-r-none border-r-0 bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-slate-100`}
+            className={`cursor-pointer flex-1 justify-between h-9 min-w-0 rounded-r-none border-r-0 bg-card hover:bg-muted/50 border-border text-foreground`}
           >
             <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
               {currentProvider && (
@@ -436,7 +436,7 @@ const getFlattenedMenuItems = () => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent 
-          className="w-[calc(100vw-2rem)] sm:w-80 max-w-[380px] bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700" 
+          className="w-[calc(100vw-2rem)] sm:w-80 max-w-[380px] bg-card border-border" 
           align="start"
           side="bottom"
           sideOffset={4}
@@ -458,7 +458,7 @@ const getFlattenedMenuItems = () => {
                       setExpandedProvider(expandedProvider === providerKey ? null : providerKey)
                     }
                   }}
-                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700"
+                  className="flex items-center justify-between p-3 bg-muted/50 hover:bg-muted"
                 >
                   <div className="flex items-center gap-3">
                     <div className={`w-5 h-5 rounded-full ${provider.color} flex items-center justify-center text-white flex-shrink-0`}>
@@ -466,7 +466,7 @@ const getFlattenedMenuItems = () => {
                     </div>
                     <span className="font-medium text-sm">{provider.label}</span>
                     {isNew(provider.addedAt) && <NewBadge />}
-                    {provider.type === 'config' && <ExternalLink className="h-3 w-3 text-gray-400" />}
+                    {provider.type === 'config' && <ExternalLink className="h-3 w-3 text-muted-foreground" />}
                     {selectedProvider === providerKey && <Check className="h-3 w-3 text-blue-600" />}
                   </div>
                   {(provider.type === 'direct' || provider.type === 'grouped') && (
@@ -478,7 +478,7 @@ const getFlattenedMenuItems = () => {
                 
                 {/* Expanded Models */}
                 {expandedProvider === providerKey && provider.type === 'direct' && provider.models && (
-                  <div className="bg-white dark:bg-slate-900 border-l-2 border-gray-200 dark:border-slate-700 ml-4">
+                  <div className="bg-card border-l-2 border-border ml-4">
                     {provider.models.map((model) => (
                       <DropdownMenuItem
                         key={model.value}
@@ -486,7 +486,7 @@ const getFlattenedMenuItems = () => {
                         className={`flex items-center justify-between px-4 py-3 ${
                           selectedProvider === providerKey && selectedModel === model.value
                             ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
-                            : 'hover:bg-gray-50 dark:hover:bg-slate-800'
+                            : 'hover:bg-muted/50'
                         }`}
                       >
                         <span className="flex items-center text-sm">
@@ -503,12 +503,12 @@ const getFlattenedMenuItems = () => {
                 
                 {/* Grouped Models */}
                 {expandedProvider === providerKey && provider.type === 'grouped' && provider.groups && (
-                  <div className="bg-white dark:bg-slate-900 border-l-2 border-gray-200 dark:border-slate-700 ml-4">
+                  <div className="bg-card border-l-2 border-border ml-4">
                     {provider.groups.map((group, groupIndex) => (
                       <div key={group.name}>
-                        {groupIndex > 0 && <div className="border-t border-gray-200 dark:border-slate-700" />}
-                        <div className="px-4 py-2 bg-gray-100 dark:bg-slate-800">
-                          <h4 className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide">
+                        {groupIndex > 0 && <div className="border-t border-border" />}
+                        <div className="px-4 py-2 bg-muted">
+                          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                             {group.name}
                           </h4>
                         </div>
@@ -547,12 +547,12 @@ const getFlattenedMenuItems = () => {
                           )}
                         </div>
                         {provider.description && (
-                          <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{provider.description}</p>
+                          <p className="text-xs text-muted-foreground truncate">{provider.description}</p>
                         )}
                       </div>
                     </DropdownMenuSubTrigger>
                     <DropdownMenuSubContent 
-                      className="w-64 max-h-96 overflow-y-auto bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700"
+                      className="w-64 max-h-96 overflow-y-auto bg-card border-border"
                       sideOffset={8}
                       alignOffset={-4}
                       avoidCollisions={true}
@@ -585,13 +585,13 @@ const getFlattenedMenuItems = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-sm truncate">{provider.label}</span>
-                        <ExternalLink className="h-3 w-3 text-gray-400 dark:text-slate-500 flex-shrink-0" />
+                        <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                         {selectedProvider === providerKey && (
                           <Check className="h-3 w-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                         )}
                       </div>
                       {provider.description && (
-                        <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{provider.description}</p>
+                        <p className="text-xs text-muted-foreground truncate">{provider.description}</p>
                       )}
                     </div>
                   </DropdownMenuItem>
@@ -608,13 +608,13 @@ const getFlattenedMenuItems = () => {
           <Button
             variant="outline"
             size="sm"
-            className={`cursor-pointer h-9 w-8 sm:w-9 rounded-l-none border-l-0 bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 border-gray-200 dark:border-slate-700 flex-shrink-0`}
+            className={`cursor-pointer h-9 w-8 sm:w-9 rounded-l-none border-l-0 bg-card hover:bg-muted/50 border-border flex-shrink-0`}
           >
-            <Settings className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500 dark:text-slate-400" />
+            <Settings className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
           </Button>
         </PopoverTrigger>
         <PopoverContent 
-          className="w-[calc(100vw-2rem)] sm:w-80 max-w-[380px] p-3 sm:p-4 bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700" 
+          className="w-[calc(100vw-2rem)] sm:w-80 max-w-[380px] p-3 sm:p-4 bg-card border-border" 
           align="end"
           side="bottom"
           sideOffset={4}
@@ -625,19 +625,19 @@ const getFlattenedMenuItems = () => {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="font-medium text-sm text-gray-900 dark:text-slate-100">Temperature</h4>
-                  <p className="text-xs text-gray-500 dark:text-slate-400">
+                  <h4 className="font-medium text-sm text-foreground">Temperature</h4>
+                  <p className="text-xs text-muted-foreground">
                     {isGPT5Model(selectedModel)
                       ? 'Selected model only supports temperature of 1'
                       : 'Controls response creativity'}
                   </p>
                 </div>
                 <div className="flex items-center gap-1 sm:gap-2">
-                  <Badge variant="outline" className="font-mono text-xs border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-300">
+                  <Badge variant="outline" className="font-mono text-xs border-border text-foreground">
                     {temperature.toFixed(2)}
                   </Badge>
                   {!isGPT5Model(selectedModel) && (
-                    <Badge variant="secondary" className="text-xs bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hidden sm:inline-flex">
+                    <Badge variant="secondary" className="text-xs bg-muted text-muted-foreground hidden sm:inline-flex">
                       {getTemperatureLabel(temperature)}
                     </Badge>
                   )}
@@ -654,7 +654,7 @@ const getFlattenedMenuItems = () => {
                   disabled={DISABLE_SETTINGS || isGPT5Model(selectedModel)}
                 />
               </div>
-              <div className="flex justify-between text-xs text-gray-500 dark:text-slate-400">
+              <div className="flex justify-between text-xs text-muted-foreground">
                 <span>Focused</span>
                 <span className="hidden sm:inline">Balanced</span>
                 <span>Creative</span>
@@ -662,16 +662,16 @@ const getFlattenedMenuItems = () => {
             </div>
             
             {currentProvider && (
-              <div className="border-t pt-3 border-gray-200 dark:border-slate-700">
+              <div className="border-t pt-3 border-border">
                 <div className="space-y-2">
-                  <h4 className="font-medium text-sm text-gray-900 dark:text-slate-100">Current Selection</h4>
-                  <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-50 dark:bg-slate-800 rounded-lg">
+                  <h4 className="font-medium text-sm text-foreground">Current Selection</h4>
+                  <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-muted/50 rounded-lg">
                     <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full ${currentProvider.color} flex items-center justify-center text-white flex-shrink-0`}>
                       {getProviderIcon(selectedProvider) || <span className="text-xs font-bold">{currentProvider.icon}</span>}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-slate-100 truncate">{currentProvider.label}</p>
-                      <p className="text-xs text-gray-500 dark:text-slate-400 truncate">
+                      <p className="text-sm font-medium text-foreground truncate">{currentProvider.label}</p>
+                      <p className="text-xs text-muted-foreground truncate">
                         {currentModel?.label || 'No model selected'}
                       </p>
                     </div>
@@ -685,9 +685,9 @@ const getFlattenedMenuItems = () => {
 
       {/* Azure Configuration Dialog */}
       <Dialog open={isAzureDialogOpen && !DISABLE_SETTINGS} onOpenChange={DISABLE_SETTINGS ? () => {} : setIsAzureDialogOpen}>
-        <DialogContent className="w-[calc(100vw-2rem)] sm:w-full max-w-md bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700 mx-4">
+        <DialogContent className="w-[calc(100vw-2rem)] sm:w-full max-w-md bg-card border-border mx-4">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-slate-100">
+            <DialogTitle className="flex items-center gap-2 text-foreground">
               <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-500 flex items-center justify-center text-white flex-shrink-0">
                 <Cloud className="h-3 w-3" />
               </div>
@@ -696,7 +696,7 @@ const getFlattenedMenuItems = () => {
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-gray-700 dark:text-slate-300">Model</Label>
+              <Label className="text-foreground">Model</Label>
               <div className="grid grid-cols-2 gap-1.5">
                 {modelProviders.azure_openai.models?.map((model) => (
                   <button
@@ -706,7 +706,7 @@ const getFlattenedMenuItems = () => {
                     className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs font-medium transition-colors text-left ${
                       tempAzureModel === model.value
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300'
-                        : 'border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-300'
+                        : 'border-border hover:bg-muted/50 text-foreground'
                     } ${DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                   >
                     {tempAzureModel === model.value && (
@@ -718,24 +718,24 @@ const getFlattenedMenuItems = () => {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="endpoint" className="text-gray-700 dark:text-slate-300">Azure Endpoint</Label>
+              <Label htmlFor="endpoint" className="text-foreground">Azure Endpoint</Label>
               <Input
                 id="endpoint"
                 placeholder="https://your-resource.cognitiveservices.azure.com/"
                 value={tempAzureConfig.endpoint || "https://pype-azure-openai.cognitiveservices.azure.com/"}
                 onChange={DISABLE_SETTINGS ? () => {} : (e) => setTempAzureConfig(prev => ({ ...prev, endpoint: e.target.value }))}
-                className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 text-gray-900 dark:text-slate-100 text-sm"
+                className="bg-card border-border text-foreground text-sm"
                 disabled={DISABLE_SETTINGS}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="apiVersion" className="text-gray-700 dark:text-slate-300">API Version</Label>
+              <Label htmlFor="apiVersion" className="text-foreground">API Version</Label>
               <Input
                 id="apiVersion"
                 placeholder="2024-12-01-preview"
                 value={tempAzureConfig.apiVersion || "2024-12-01-preview"}
                 onChange={DISABLE_SETTINGS ? () => {} : (e) => setTempAzureConfig(prev => ({ ...prev, apiVersion: e.target.value }))}
-                className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 text-gray-900 dark:text-slate-100 text-sm"
+                className="bg-card border-border text-foreground text-sm"
                 disabled={DISABLE_SETTINGS}
               />
             </div>
@@ -744,7 +744,7 @@ const getFlattenedMenuItems = () => {
             <Button 
               variant="outline" 
               onClick={() => setIsAzureDialogOpen(false)}
-              className="border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-300 w-full sm:w-auto"
+              className="border-border text-foreground w-full sm:w-auto"
             >
               Cancel
             </Button>

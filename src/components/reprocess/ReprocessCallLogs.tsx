@@ -283,7 +283,7 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
     <div className="space-y-5">
             {/* Date Range Picker */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <Label className="text-sm font-medium text-foreground">
                 Date Range
               </Label>
               <Popover>
@@ -316,7 +316,7 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
 
             {/* Analysis Type */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <Label className="text-sm font-medium text-foreground">
                 Scope
               </Label>
               <Select
@@ -336,7 +336,7 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
 
             {/* Analysis Options */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <Label className="text-sm font-medium text-foreground">
                 Analysis Type
               </Label>
               <Select
@@ -366,15 +366,15 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
             {/* Transcription Fields Selection */}
             {(reprocessOptions === 'transcription' || reprocessOptions === 'both') && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <Label className="text-sm font-medium text-foreground">
                   Transcription Fields (Optional)
                 </Label>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                <div className="text-xs text-muted-foreground mb-2">
                   Select specific fields to reprocess. Leave empty to process all fields.
                 </div>
-                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
+                <div className="border border-border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
                   {loadingFields ? (
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       Loading fields...
                     </div>
@@ -395,14 +395,14 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
                         />
                         <label
                           htmlFor={`transcription-${field}`}
-                          className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer flex-1"
+                          className="text-sm text-foreground cursor-pointer flex-1"
                         >
                           {field}
                         </label>
                       </div>
                     ))
                   ) : (
-                    <div className="text-sm text-gray-500 dark:text-gray-400 italic">
+                    <div className="text-sm text-muted-foreground italic">
                       No transcription fields configured for this agent. Configure field extractor in agent settings.
                     </div>
                   )}
@@ -422,15 +422,15 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
             {/* Metrics Fields Selection */}
             {(reprocessOptions === 'metrics' || reprocessOptions === 'both') && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <Label className="text-sm font-medium text-foreground">
                   Metrics Fields (Optional)
                 </Label>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                <div className="text-xs text-muted-foreground mb-2">
                   Select specific metrics to reprocess. Leave empty to process all metrics.
                 </div>
-                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
+                <div className="border border-border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
                   {loadingFields ? (
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       Loading fields...
                     </div>
@@ -451,14 +451,14 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
                         />
                         <label
                           htmlFor={`metrics-${field}`}
-                          className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer flex-1"
+                          className="text-sm text-foreground cursor-pointer flex-1"
                         >
                           {field}
                         </label>
                       </div>
                     ))
                   ) : (
-                    <div className="text-sm text-gray-500 dark:text-gray-400 italic">
+                    <div className="text-sm text-muted-foreground italic">
                       No metrics configured for this agent. Configure metrics in agent settings.
                     </div>
                   )}
@@ -481,7 +481,7 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full"></div>
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <span className="text-sm font-medium text-foreground">
                       Call Logs to Process
                     </span>
                   </div>
@@ -493,10 +493,10 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
             )}
 
             {counting && (
-              <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+              <div className="bg-muted/50 border border-border rounded-lg p-3">
                 <div className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
                     Counting call logs...
                   </span>
                 </div>

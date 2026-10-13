@@ -82,7 +82,7 @@ const HeaderVoiceDisplay: React.FC<HeaderVoiceDisplayProps> = ({
         <div className="flex items-center gap-2">
           <VoiceAvatar name={selectedVoiceName} dot={meta.dot} />
           <div className="text-xs">
-            <span className="font-medium text-gray-900 dark:text-gray-100">
+            <span className="font-medium text-foreground">
               {selectedVoiceName}
             </span>
             <Badge variant="secondary" className="ml-2 text-xs">

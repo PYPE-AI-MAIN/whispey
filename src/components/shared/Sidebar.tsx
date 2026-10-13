@@ -319,7 +319,7 @@ function renderContextHeader(config: SidebarConfig, isCollapsed: boolean, isMobi
       <div className="space-y-2">
         <Link
           href={config.backPath || '/'}
-          className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+          className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
           onClick={() => {
             if (isMobile && onMobileClose) {
               onMobileClose()
@@ -336,14 +336,14 @@ function renderContextHeader(config: SidebarConfig, isCollapsed: boolean, isMobi
 }
 
 function navItemTone(disabled: boolean | undefined, isActive: boolean): string {
-  if (disabled) return 'cursor-not-allowed text-gray-400 dark:text-gray-600'
+  if (disabled) return 'cursor-not-allowed text-muted-foreground'
   if (isActive) return 'cursor-pointer bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
-  return 'cursor-pointer text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
+  return 'cursor-pointer text-foreground hover:bg-muted/50 hover:text-foreground'
 }
 
 function navIconTone(disabled: boolean | undefined, isActive: boolean): string {
-  if (disabled) return 'text-gray-300 dark:text-gray-700'
-  return isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'
+  if (disabled) return 'text-muted-foreground'
+  return isActive ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground'
 }
 
 function renderNavigationItem(
@@ -632,7 +632,7 @@ export default function Sidebar({
               variant="ghost"
               size="sm"
               onClick={onMobileClose}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="p-1 hover:bg-muted"
               aria-label="Close sidebar"
             >
               <X className="w-4 h-4" />
@@ -641,7 +641,7 @@ export default function Sidebar({
         )}
 
         {/* Logo & Context Header */}
-        <div className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
+        <div className="px-4 py-4 border-b border-border/60">
           <div className="flex items-center justify-between gap-3">
             {(!isCollapsed || isMobile) && (
               <div className="flex items-center gap-3 group flex-1 min-w-0">
@@ -679,14 +679,14 @@ export default function Sidebar({
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', height: '32px', justifyContent: 'space-between' }}>
                     <span
-                      className="text-gray-900 dark:text-gray-100"
+                      className="text-foreground"
                       style={{ fontSize: '17px', fontWeight: 600, lineHeight: 1, fontFamily: '-apple-system, "Segoe UI", sans-serif', alignSelf: 'flex-start' }}
                     >
                       Whispey
                     </span>
                     <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '5px' }}>
                       <span
-                        className="text-gray-400 dark:text-gray-500"
+                        className="text-muted-foreground"
                         style={{ fontSize: '10px', fontWeight: 600, fontFamily: '-apple-system, "Segoe UI", sans-serif' }}
                       >
                         by
@@ -711,13 +711,13 @@ export default function Sidebar({
               >
                 {isCollapsed ? (
                   <>
-                    <PanelRightClose className="w-4 h-4 text-gray-600 dark:text-gray-400 group-hover:hidden transition-all" />
-                    <span className="text-gray-600 dark:text-gray-400 hidden group-hover:block text-lg">→</span>
+                    <PanelRightClose className="w-4 h-4 text-muted-foreground group-hover:hidden transition-all" />
+                    <span className="text-muted-foreground hidden group-hover:block text-lg">→</span>
                   </>
                 ) : (
                   <>
-                    <PanelRightOpen className="w-4 h-4 text-gray-600 dark:text-gray-400 group-hover:hidden transition-all" />
-                    <span className="text-gray-600 dark:text-gray-400 hidden group-hover:block text-lg">←</span>
+                    <PanelRightOpen className="w-4 h-4 text-muted-foreground group-hover:hidden transition-all" />
+                    <span className="text-muted-foreground hidden group-hover:block text-lg">←</span>
                   </>
                 )}
               </Button>
@@ -752,14 +752,14 @@ export default function Sidebar({
             <div key={group.id}>
               {group.name && (!isCollapsed || isMobile) && (
                 <div className={`px-3 py-2 ${groupIndex > 0 ? 'mt-4' : ''}`}>
-                  <h3 className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+                  <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                     {group.name}
                   </h3>
                 </div>
               )}
               
               {group.name && isCollapsed && !isMobile && groupIndex > 0 && (
-                <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
+                <div className="border-t border-border my-2" />
               )}
 
               <div className={`space-y-1 ${group.name && (!isCollapsed || isMobile) ? 'ml-0' : ''}`}>
@@ -882,7 +882,7 @@ function SidebarUserMenu({
   onSignOut: () => void
 }>): React.ReactNode {
   return (
-    <div className="border-t border-gray-100 dark:border-gray-800 p-3">
+    <div className="border-t border-border/60 p-3">
       {!mounted || !isLoaded ? (
         <UserMenuSkeleton isCollapsed={isCollapsed} isMobile={isMobile} />
       ) : (
@@ -901,11 +901,11 @@ function SidebarUserMenu({
             <DropdownMenuContent
               align={isCollapsed && !isMobile ? "center" : "start"}
               side={isCollapsed && !isMobile ? "right" : "top"}
-              className="w-56 shadow-lg border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800"
+              className="w-56 shadow-lg border border-border rounded-xl bg-card"
             >
-              <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700">
-                <p className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{getUserDisplayName(user)}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+              <div className="px-3 py-2 border-b border-border/60">
+                <p className="text-xs font-medium text-foreground truncate">{getUserDisplayName(user)}</p>
+                <p className="text-xs text-muted-foreground truncate">
                   {user?.emailAddresses?.[0]?.emailAddress}
                 </p>
               </div>
@@ -953,8 +953,8 @@ function UserMenuNameEmail({
 
   return (
     <div className="min-w-0 flex-1 text-left">
-      <p className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{getUserDisplayName(user)}</p>
-      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+      <p className="text-xs font-medium text-foreground truncate">{getUserDisplayName(user)}</p>
+      <p className="text-xs text-muted-foreground truncate">
         {user?.emailAddresses?.[0]?.emailAddress}
       </p>
     </div>

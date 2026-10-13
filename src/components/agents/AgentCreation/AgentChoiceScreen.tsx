@@ -41,15 +41,15 @@ function RequestAccessForm({ isMobile, reason, setReason, loading, success, erro
             variant="ghost"
             size="icon"
             onClick={onBack}
-            className="h-8 w-8 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="h-8 w-8 rounded-lg hover:bg-muted"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="flex-1">
-            <DialogTitle className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100`}>
+            <DialogTitle className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-foreground`}>
               Request Access
             </DialogTitle>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+            <p className="text-sm text-muted-foreground mt-0.5">
               Tell us why you'd like to create agents with Pype
             </p>
           </div>
@@ -63,17 +63,17 @@ function RequestAccessForm({ isMobile, reason, setReason, loading, success, erro
             <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-3">
               <Send className="w-6 h-6 text-green-600 dark:text-green-400" />
             </div>
-            <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1">
+            <h3 className="text-base font-medium text-foreground mb-1">
               Request Sent Successfully!
             </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-muted-foreground">
               We'll review your request and get back to you soon.
             </p>
           </div>
         ) : (
           <>
             <div className="space-y-2">
-              <Label htmlFor="reason" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <Label htmlFor="reason" className="text-sm font-medium text-foreground">
                 Why do you want to create agents with Pype?
               </Label>
               <Textarea
@@ -91,8 +91,8 @@ function RequestAccessForm({ isMobile, reason, setReason, loading, success, erro
               )}
             </div>
 
-            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
-              <p className="text-xs text-gray-600 dark:text-gray-400">
+            <div className="bg-muted/50 rounded-lg p-3">
+              <p className="text-xs text-muted-foreground">
                 <strong className="font-medium">Note:</strong> Pype agent creation is currently in beta.
                 We'll review your request and enable access based on your use case.
               </p>
@@ -103,7 +103,7 @@ function RequestAccessForm({ isMobile, reason, setReason, loading, success, erro
 
       {/* Footer */}
       {!success && (
-        <div className={`${isMobile ? 'px-4 py-3' : 'px-6 py-4'} bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-800 flex gap-3`}>
+        <div className={`${isMobile ? 'px-4 py-3' : 'px-6 py-4'} bg-muted/50 border-t border-border flex gap-3`}>
           <Button
             variant="outline"
             onClick={onBack}
@@ -137,13 +137,13 @@ function ChoiceScreenHeader({ isMobile }: Readonly<{ isMobile: boolean }>) {
   return (
     <DialogHeader className={`${isMobile ? 'px-4 pt-4 pb-3' : 'px-6 pt-6 pb-4'} flex-shrink-0`}>
       <div className="text-center">
-        <div className={`${isMobile ? 'w-10 h-10 mb-2' : 'w-12 h-12 mb-3'} mx-auto bg-gradient-to-br from-blue-50 to-gray-50 dark:from-blue-900/20 dark:to-gray-900/20 rounded-xl flex items-center justify-center border border-gray-100 dark:border-gray-800`}>
-          <Sparkles className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} text-gray-700 dark:text-gray-300`} />
+        <div className={`${isMobile ? 'w-10 h-10 mb-2' : 'w-12 h-12 mb-3'} mx-auto bg-gradient-to-br from-blue-50 to-gray-50 dark:from-blue-900/20 dark:to-gray-900/20 rounded-xl flex items-center justify-center border border-border/60`}>
+          <Sparkles className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} text-foreground`} />
         </div>
-        <DialogTitle className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100 mb-1`}>
+        <DialogTitle className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-foreground mb-1`}>
           Setup Voice Agent
         </DialogTitle>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+        <p className="text-sm text-muted-foreground">
           Choose how you'd like to get started
         </p>
       </div>
@@ -205,12 +205,12 @@ function CreateAgentIcon({ isMobile, isAvailable }: Readonly<{ isMobile: boolean
     <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} ${
       isAvailable
         ? 'bg-blue-100 dark:bg-blue-900/30 group-hover:bg-blue-200 dark:group-hover:bg-blue-900/50'
-        : 'bg-gray-100 dark:bg-gray-800'
+        : 'bg-muted'
     } rounded-xl flex items-center justify-center flex-shrink-0 transition-colors`}>
       {isAvailable ? (
         <Plus className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} text-blue-600 dark:text-blue-400`} />
       ) : (
-        <Lock className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} text-gray-400 dark:text-gray-500`} />
+        <Lock className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} text-muted-foreground`} />
       )}
     </div>
   )
@@ -221,7 +221,7 @@ function CreateAgentTitle({ isMobile, isAvailable, canCreatePypeAgent, hasReache
   return (
     <div className={`flex items-center gap-2 ${isMobile ? 'mb-1' : 'mb-2'}`}>
       <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold ${
-          isAvailable ? 'text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-400'
+          isAvailable ? 'text-foreground' : 'text-muted-foreground'
         }`}>
         {isMobile ? 'Create Pype Agent' : 'Create New Agent with Pype'}
       </h3>
@@ -256,8 +256,8 @@ function CreateAgentOption({ isMobile, canCreatePypeAgent, hasReachedLimit, onCr
       type="button"
       className={`group relative w-full text-left appearance-none bg-transparent ${isMobile ? 'p-4' : 'p-6'} rounded-xl border-2 ${
         isAvailable
-          ? 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/20'
-          : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800/70'
+          ? 'border-border hover:border-blue-300 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/20'
+          : 'border-border bg-muted/50 hover:bg-muted'
       } transition-all duration-200 cursor-pointer`}
       onClick={handleClick}
     >
@@ -267,8 +267,8 @@ function CreateAgentOption({ isMobile, canCreatePypeAgent, hasReachedLimit, onCr
           <CreateAgentTitle isMobile={isMobile} isAvailable={isAvailable} canCreatePypeAgent={canCreatePypeAgent} hasReachedLimit={hasReachedLimit} />
           <p className={`${isMobile ? 'text-xs' : 'text-sm'} ${
               isAvailable
-                ? 'text-gray-600 dark:text-gray-400'
-                : 'text-gray-500 dark:text-gray-500'
+                ? 'text-muted-foreground'
+                : 'text-muted-foreground'
             } leading-relaxed`}>
             <CreateAgentOptionCopy isMobile={isMobile} canCreatePypeAgent={canCreatePypeAgent} hasReachedLimit={hasReachedLimit} />
           </p>
@@ -283,18 +283,18 @@ function ConnectAgentOption({ isMobile, onConnectAgent }: Readonly<{ isMobile: b
   return (
     <button
       type="button"
-      className={`group relative w-full text-left appearance-none bg-transparent ${isMobile ? 'p-4' : 'p-6'} rounded-xl border-2 border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 hover:bg-gray-50/50 dark:hover:bg-gray-800/40 transition-all duration-200 cursor-pointer`}
+      className={`group relative w-full text-left appearance-none bg-transparent ${isMobile ? 'p-4' : 'p-6'} rounded-xl border-2 border-border hover:border-border hover:bg-muted/50 transition-all duration-200 cursor-pointer`}
       onClick={onConnectAgent}
     >
       <div className="flex items-start gap-3">
-        <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-gray-100 dark:bg-gray-800 group-hover:bg-gray-200 dark:group-hover:bg-gray-700 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors`}>
-          <Eye className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} text-gray-600 dark:text-gray-400`} />
+        <div className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} bg-muted group-hover:bg-muted rounded-xl flex items-center justify-center flex-shrink-0 transition-colors`}>
+          <Eye className={`${isMobile ? 'w-5 h-5' : 'w-6 h-6'} text-muted-foreground`} />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className={`${isMobile ? 'text-base mb-1' : 'text-lg mb-2'} font-semibold text-gray-900 dark:text-gray-100`}>
+          <h3 className={`${isMobile ? 'text-base mb-1' : 'text-lg mb-2'} font-semibold text-foreground`}>
             Connect Existing Agent
           </h3>
-          <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600 dark:text-gray-400 leading-relaxed`}>
+          <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground leading-relaxed`}>
             {isMobile
               ? 'Add monitoring to your existing LiveKit or Vapi voice agent.'
               : 'Add monitoring to your existing LiveKit or Vapi voice agent. Connect and start observing immediately.'
@@ -309,13 +309,13 @@ function ConnectAgentOption({ isMobile, onConnectAgent }: Readonly<{ isMobile: b
 /** Cancel-only footer for the main choice screen. */
 function ChoiceScreenFooter({ isMobile, onClose }: Readonly<{ isMobile: boolean; onClose: () => void }>) {
   return (
-    <div className={`flex-shrink-0 ${isMobile ? 'px-4 py-3' : 'px-6 py-4'} bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-800`}>
+    <div className={`flex-shrink-0 ${isMobile ? 'px-4 py-3' : 'px-6 py-4'} bg-muted/50 border-t border-border`}>
       <div className="flex gap-3">
         <Button
           variant="outline"
           onClick={onClose}
           size={isMobile ? "sm" : "default"}
-          className={`flex-1 ${isMobile ? 'h-9 text-sm' : 'h-10'} text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800`}
+          className={`flex-1 ${isMobile ? 'h-9 text-sm' : 'h-10'} text-foreground border-border hover:bg-muted/50`}
         >
           Cancel
         </Button>

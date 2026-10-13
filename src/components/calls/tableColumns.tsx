@@ -32,10 +32,10 @@ import { cn } from "@/lib/utils"
 // like the same one. Every tier is explicit now, one ladder, darkest to
 // lightest as you move from "just a call info column" to "a metric".
 export function getColumnGroupBgClass(columnId: string): string {
-  if (columnId.startsWith("metadata-")) return "bg-slate-100 dark:bg-slate-800"
-  if (columnId.startsWith("transcription-")) return "bg-slate-200 dark:bg-slate-700"
-  if (columnId.startsWith("metrics-")) return "bg-slate-300 dark:bg-slate-600"
-  return "bg-slate-50 dark:bg-slate-900"
+  if (columnId.startsWith("metadata-")) return "bg-muted"
+  if (columnId.startsWith("transcription-")) return "bg-muted"
+  if (columnId.startsWith("metrics-")) return "bg-muted-foreground/30"
+  return "bg-muted/50"
 }
 import { isViewerRole } from '@/utils/callLogsUtils'
 
@@ -56,7 +56,7 @@ function renderCustomerNumberCell(call: CallLog) {
           </div>
           <span
             className={cn(
-              "font-medium text-gray-900 dark:text-gray-100 text-sm",
+              "font-medium text-foreground text-sm",
               isLongNumber && "truncate"
             )}
             style={{ maxWidth: isLongNumber ? '140px' : 'none' }}
@@ -296,7 +296,7 @@ function renderMetricCell(call: CallLog, metricId: string) {
       <TooltipContent className="max-w-md bg-gray-900 dark:bg-gray-800 border-gray-700 p-0">
         <div className="text-sm p-4">
           <div className="font-semibold mb-2 text-white">{metricId.replaceAll('_', ' ').replaceAll(/\b\w/g, l => l.toUpperCase())}</div>
-          <div className="text-xs text-gray-100 whitespace-pre-wrap leading-relaxed max-h-[200px] overflow-y-auto pr-2">
+          <div className="text-xs text-foreground whitespace-pre-wrap leading-relaxed max-h-[200px] overflow-y-auto pr-2">
             {tooltipContent}
           </div>
         </div>

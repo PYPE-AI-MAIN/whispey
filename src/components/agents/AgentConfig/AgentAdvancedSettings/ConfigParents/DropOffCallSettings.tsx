@@ -231,7 +231,7 @@ export default function DropOffCallSettings({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
       </div>
     )
   }
@@ -241,15 +241,15 @@ export default function DropOffCallSettings({
       {/* Call Configuration Section */}
       <div className="space-y-4">
         <div className="space-y-1">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Call Configuration</h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <h3 className="text-sm font-semibold text-foreground">Call Configuration</h3>
+          <p className="text-xs text-muted-foreground">
             Configure the message and timing for drop-off calls
           </p>
         </div>
 
         {/* Drop-off Message */}
         <div className="space-y-2">
-          <Label htmlFor="dropoff-message" className="text-xs font-medium text-gray-700 dark:text-gray-300">
+          <Label htmlFor="dropoff-message" className="text-xs font-medium text-foreground">
             Drop-off Call Message
           </Label>
           <Textarea
@@ -259,14 +259,14 @@ export default function DropOffCallSettings({
             placeholder="Enter the message that will be spoken during the drop-off call..."
             className="min-h-[80px] text-sm resize-none"
           />
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-muted-foreground">
             This message will be spoken when initiating a drop-off call. Use the {'{{wcontext_dropoff}}'} variable to include a conversation summary.
           </p>
         </div>
 
         {/* Context Summary Prompt */}
         <div className="space-y-2">
-          <Label htmlFor="context-dropoff-prompt" className="text-xs font-medium text-gray-700 dark:text-gray-300">
+          <Label htmlFor="context-dropoff-prompt" className="text-xs font-medium text-foreground">
             Context Summary Prompt
           </Label>
           <Textarea
@@ -276,7 +276,7 @@ export default function DropOffCallSettings({
             placeholder="Enter the prompt that will generate a context summary for the drop-off call..."
             className="min-h-[100px] text-sm resize-none"
           />
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-muted-foreground">
             This prompt generates a summary of the previous conversation. The summary will be available as the {'{{wcontext_dropoff}}'} variable in your drop-off message.
           </p>
         </div>
@@ -285,8 +285,8 @@ export default function DropOffCallSettings({
       {/* Retry Settings Section */}
       <div className="space-y-4">
         <div className="space-y-1">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Retry Settings</h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <h3 className="text-sm font-semibold text-foreground">Retry Settings</h3>
+          <p className="text-xs text-muted-foreground">
             Configure retry behavior and criteria for drop-off calls
           </p>
         </div>
@@ -294,7 +294,7 @@ export default function DropOffCallSettings({
         <div className="grid grid-cols-2 gap-4">
           {/* Call Delay */}
           <div className="space-y-2">
-            <Label htmlFor="delay-minutes" className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            <Label htmlFor="delay-minutes" className="text-xs font-medium text-foreground">
               Call Delay (Minutes)
             </Label>
             <Input
@@ -305,14 +305,14 @@ export default function DropOffCallSettings({
               onChange={(e) => applyChange({ delay_minutes: Number.parseInt(e.target.value) || 0 })}
               className="text-sm"
             />
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-muted-foreground">
               Time to wait after a call ends before initiating the drop-off call.
             </p>
           </div>
 
           {/* Max Retries */}
           <div className="space-y-2">
-            <Label htmlFor="max-retries" className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            <Label htmlFor="max-retries" className="text-xs font-medium text-foreground">
               Maximum Retry Attempts
             </Label>
             <Input
@@ -324,7 +324,7 @@ export default function DropOffCallSettings({
               onChange={(e) => applyChange({ max_retries: Number.parseInt(e.target.value) || 0 })}
               className="text-sm"
             />
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-muted-foreground">
               Maximum number of retry attempts if a drop-off call fails (0-10).
             </p>
           </div>
@@ -332,7 +332,7 @@ export default function DropOffCallSettings({
 
         {/* Call Retry Required Prompt */}
         <div className="space-y-2">
-          <Label htmlFor="call-retry-criteria" className="text-xs font-medium text-gray-700 dark:text-gray-300">
+          <Label htmlFor="call-retry-criteria" className="text-xs font-medium text-foreground">
             Retry Metric Prompt
           </Label>
           <div className="relative">
@@ -344,8 +344,8 @@ export default function DropOffCallSettings({
               className="min-h-[150px] max-h-[300px] text-xs resize-none font-mono overflow-y-auto"
             />
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Define the prompt for the <code className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs">call_retry_required</code> metric. This prompt will be used to evaluate whether a call requires a retry. The metric will be automatically enabled when you save this configuration.
+          <p className="text-xs text-muted-foreground">
+            Define the prompt for the <code className="px-1 py-0.5 bg-muted rounded text-xs">call_retry_required</code> metric. This prompt will be used to evaluate whether a call requires a retry. The metric will be automatically enabled when you save this configuration.
           </p>
           <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
             <AlertCircle className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
@@ -359,23 +359,23 @@ export default function DropOffCallSettings({
       {/* Phone Number Configuration Section */}
       <div className="space-y-4">
         <div className="space-y-1">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Phone Number Configuration</h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <h3 className="text-sm font-semibold text-foreground">Phone Number Configuration</h3>
+          <p className="text-xs text-muted-foreground">
             Select the outbound phone number to use for drop-off calls
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="phone-number" className="text-xs font-medium text-gray-700 dark:text-gray-300">
+          <Label htmlFor="phone-number" className="text-xs font-medium text-foreground">
             Outbound Phone Number
           </Label>
           {loadingPhones ? (
             <div className="flex items-center gap-2 py-2">
-              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-              <span className="text-xs text-gray-500">Loading phone numbers...</span>
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Loading phone numbers...</span>
             </div>
           ) : phoneNumbers.length === 0 ? (
-            <div className="text-xs text-gray-500 dark:text-gray-400 py-2 px-3 bg-gray-50 dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-700">
+            <div className="text-xs text-muted-foreground py-2 px-3 bg-muted/50 rounded border border-border">
               No outbound phone numbers available. Please configure phone numbers in SIP Management.
             </div>
           ) : (
@@ -398,10 +398,10 @@ export default function DropOffCallSettings({
                 {phoneNumbers.map((phone) => (
                   <SelectItem key={phone.id} value={phone.id}>
                     <div className="flex items-center gap-2">
-                      <Phone className="w-3.5 h-3.5 text-gray-400" />
+                      <Phone className="w-3.5 h-3.5 text-muted-foreground" />
                       <span className="font-mono text-xs">{phone.phone_number}</span>
                       {phone.provider && (
-                        <span className="text-gray-500 text-xs">({phone.provider})</span>
+                        <span className="text-muted-foreground text-xs">({phone.provider})</span>
                       )}
                     </div>
                   </SelectItem>
@@ -410,7 +410,7 @@ export default function DropOffCallSettings({
             </Select>
           )}
           {selectedPhone && (
-            <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1 px-2 py-1.5 bg-gray-50 dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-700">
+            <div className="text-xs text-muted-foreground space-y-1 px-2 py-1.5 bg-muted/50 rounded border border-border">
               <p>
                 <span className="font-medium">Selected:</span> <span className="font-mono">{selectedPhone.phone_number}</span>
               </p>
@@ -425,13 +425,13 @@ export default function DropOffCallSettings({
       </div>
 
       {/* Enable/Disable Toggle */}
-      <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
+      <div className="pt-4 border-t border-border">
+        <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border">
           <div className="flex flex-col">
-            <Label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            <Label className="text-sm font-medium text-foreground">
               Enable Drop-off Calls
             </Label>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               Activate drop-off call functionality for this agent
             </p>
           </div>

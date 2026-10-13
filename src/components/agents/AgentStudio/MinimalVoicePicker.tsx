@@ -160,7 +160,7 @@ function useVoicePreview() {
 }
 
 function avatarTone(voice?: StudioVoice): string {
-  if (!voice) return 'bg-gray-300 dark:bg-gray-700'
+  if (!voice) return 'bg-muted-foreground/30'
   return voice.provider === 'sarvam'
     ? 'bg-gradient-to-br from-orange-400 to-rose-500'
     : 'bg-gradient-to-br from-violet-500 to-indigo-500'
@@ -213,7 +213,7 @@ function PlayOrb({
           : 'bg-gradient-to-br from-violet-500 to-indigo-500'
       )}
     >
-      {playing && <span className="absolute inset-0 animate-ping rounded-full bg-white/20" />}
+      {playing && <span className="absolute inset-0 animate-ping rounded-full bg-card/20" />}
       <span style={{ opacity: showControl ? 0 : 1, transition: 'opacity 150ms ease' }}>
         {voice.name[0]?.toUpperCase()}
       </span>
@@ -267,9 +267,9 @@ export default function MinimalVoicePicker({
     <Popover open={open} onOpenChange={setOpen}>
       {/* Anchor the list to the whole row, not just the text button inside it. */}
       <PopoverAnchor asChild>
-      <div className="flex h-12 w-full items-center gap-2.5 rounded-lg border border-gray-200 bg-white pl-2 pr-1 transition hover:border-gray-300 dark:border-gray-700 dark:bg-gray-800/50 dark:hover:border-gray-600">
+      <div className="flex h-12 w-full items-center gap-2.5 rounded-lg border border-border bg-card pl-2 pr-1 transition hover:border-border">
         {loading ? (
-          <span className="flex items-center gap-2 pl-1 text-xs text-gray-500">
+          <span className="flex items-center gap-2 pl-1 text-xs text-muted-foreground">
             <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading voices…
           </span>
         ) : (
@@ -291,14 +291,14 @@ export default function MinimalVoicePicker({
                 className="flex h-full min-w-0 flex-1 items-center gap-2 text-left disabled:opacity-60"
               >
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-medium text-gray-900 dark:text-gray-100">
+                  <span className="block truncate text-[13px] font-medium text-foreground">
                     {current?.name ?? 'Choose a voice'}
                   </span>
-                  <span className="block truncate text-[11px] text-gray-400 dark:text-gray-500">
+                  <span className="block truncate text-[11px] text-muted-foreground">
                     {voiceSubtitle(current)}
                   </span>
                 </span>
-                <ChevronsUpDown className="mr-1.5 h-3.5 w-3.5 shrink-0 text-gray-400" />
+                <ChevronsUpDown className="mr-1.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               </button>
             </PopoverTrigger>
           </>
@@ -310,7 +310,7 @@ export default function MinimalVoicePicker({
         align="start"
         sideOffset={6}
         style={{ width: 'var(--radix-popover-trigger-width)', minWidth: 340 }}
-        className="border-gray-200 bg-white p-1.5 shadow-xl dark:border-gray-800 dark:bg-gray-900"
+        className="border-border bg-card p-1.5 shadow-xl"
       >
         <div style={{ maxHeight: 360 }} className="overflow-y-auto">
           {preview.error && (
@@ -320,7 +320,7 @@ export default function MinimalVoicePicker({
           )}
           {groups.map((g) => (
             <div key={g.provider} className="pb-1">
-              <p className="px-2 pb-1 pt-2 text-[10px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
+              <p className="px-2 pb-1 pt-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                 {PROVIDER_LABEL[g.provider]}
               </p>
               {g.items.map((v) => {
@@ -347,7 +347,7 @@ export default function MinimalVoicePicker({
                     }}
                     className={cn(
                       'flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-blue-500/40',
-                      isSelected ? 'bg-blue-50 dark:bg-blue-500/10' : 'hover:bg-gray-50 dark:hover:bg-gray-800/70'
+                      isSelected ? 'bg-blue-50 dark:bg-blue-500/10' : 'hover:bg-muted/50'
                     )}
                   >
                     <PlayOrb
@@ -357,16 +357,16 @@ export default function MinimalVoicePicker({
                       onToggle={() => preview.toggle(v)}
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-[13px] font-medium text-gray-900 dark:text-gray-100">{v.name}</p>
+                      <p className="truncate text-[13px] font-medium text-foreground">{v.name}</p>
                       {v.subtitle && (
-                        <p className="truncate text-[11px] text-gray-500 dark:text-gray-400">{v.subtitle}</p>
+                        <p className="truncate text-[11px] text-muted-foreground">{v.subtitle}</p>
                       )}
                       {v.tags.length > 0 && (
                         <div className="mt-1 flex flex-wrap gap-1">
                           {v.tags.map((t) => (
                             <span
                               key={t}
-                              className="rounded-full border border-gray-200 px-1.5 py-px text-[10px] text-gray-500 dark:border-gray-700 dark:text-gray-400"
+                              className="rounded-full border border-border px-1.5 py-px text-[10px] text-muted-foreground"
                             >
                               {t}
                             </span>

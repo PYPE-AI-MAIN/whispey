@@ -20,10 +20,10 @@ function DispositionsBody({
 }>) {
   if (!configured) {
     return (
-      <div className="flex flex-col items-center gap-1.5 rounded-xl border border-dashed border-gray-200 px-4 py-5 text-center dark:border-gray-800">
-        <Settings2 className="h-4 w-4 text-gray-300 dark:text-gray-600" />
-        <p className="text-xs font-medium text-gray-600 dark:text-gray-300">Nothing extracted yet</p>
-        <p className="text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">
+      <div className="flex flex-col items-center gap-1.5 rounded-xl border border-dashed border-border px-4 py-5 text-center">
+        <Settings2 className="h-4 w-4 text-muted-foreground" />
+        <p className="text-xs font-medium text-muted-foreground">Nothing extracted yet</p>
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
           Define the dispositions to pull out of each call and they&apos;ll be computed
           automatically right after the call ends.
         </p>
@@ -33,8 +33,8 @@ function DispositionsBody({
 
   if (inProgress) {
     return (
-      <div className="flex flex-col items-center gap-1.5 rounded-xl border border-dashed border-gray-200 px-4 py-5 text-center dark:border-gray-800">
-        <p className="text-[11px] leading-relaxed text-gray-400 dark:text-gray-500">
+      <div className="flex flex-col items-center gap-1.5 rounded-xl border border-dashed border-border px-4 py-5 text-center">
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
           Call in progress — values from this call will show up once it ends.
         </p>
       </div>
@@ -42,11 +42,11 @@ function DispositionsBody({
   }
 
   return (
-    <div className="space-y-1.5 rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
+    <div className="space-y-1.5 rounded-xl border border-border bg-card p-3">
       {fields.map((f) => (
         <div key={f.key} className="flex items-baseline justify-between gap-3 text-[12px]">
-          <span className="shrink-0 font-medium text-gray-500 dark:text-gray-400">{f.key}</span>
-          <span className="truncate text-right text-gray-900 dark:text-gray-100">
+          <span className="shrink-0 font-medium text-muted-foreground">{f.key}</span>
+          <span className="truncate text-right text-foreground">
             <DispositionValue loading={loading} value={latestValues?.[f.key]} />
           </span>
         </div>
@@ -56,8 +56,8 @@ function DispositionsBody({
 }
 
 function DispositionValue({ loading, value }: Readonly<{ loading: boolean; value: string | undefined }>) {
-  if (loading) return <Loader2 className="ml-auto h-3 w-3 animate-spin text-gray-300 dark:text-gray-600" />
-  return value ?? <span className="text-gray-300 dark:text-gray-600">—</span>
+  if (loading) return <Loader2 className="ml-auto h-3 w-3 animate-spin text-muted-foreground" />
+  return value ?? <span className="text-muted-foreground">—</span>
 }
 
 export default function OutputVariablesPanel({
@@ -125,9 +125,9 @@ export default function OutputVariablesPanel({
   return (
     <div>
       <div className="mb-2 flex items-center justify-between px-0.5">
-        <span className="flex items-center gap-1.5 text-[11px] text-gray-400 dark:text-gray-500">
+        <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           Dispositions
-          {configured && loading && <Loader2 className="h-3 w-3 animate-spin text-gray-300 dark:text-gray-600" />}
+          {configured && loading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
         </span>
         {/* Same trigger the full config page uses for this exact dialog — left
             as-is rather than re-skinned, so it stays visually consistent with

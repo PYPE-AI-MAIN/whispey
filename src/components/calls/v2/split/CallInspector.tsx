@@ -66,7 +66,7 @@ export function CallInspector(props: Readonly<CallInspectorProps>) {
           <label className="ml-auto flex cursor-pointer items-center gap-1.5 text-[12.5px] text-[var(--cl-text3)]">
             <input type="checkbox" className="sr-only" checked={showEmpty} onChange={(e) => setShowEmpty(e.target.checked)} />
             <span className={cn("relative h-[15px] w-[26px] rounded-full transition-colors", showEmpty ? "bg-[var(--cl-accent)]" : "bg-[var(--cl-border2)]")}>
-              <span className={cn("absolute top-[2px] h-[11px] w-[11px] rounded-full bg-white shadow transition-all", showEmpty ? "left-[13px]" : "left-[2px]")} />
+              <span className={cn("absolute top-[2px] h-[11px] w-[11px] rounded-full bg-card shadow transition-all", showEmpty ? "left-[13px]" : "left-[2px]")} />
             </span>
             <span>Empty</span>
           </label>

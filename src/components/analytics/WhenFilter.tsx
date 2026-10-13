@@ -62,14 +62,14 @@ export function WhenFilter({
           <Button
             variant="ghost"
             size="sm"
-            className={cn('h-6 px-2 text-xs', active ? 'text-blue-700 dark:text-blue-300' : 'text-gray-500')}
+            className={cn('h-6 px-2 text-xs', active ? 'text-blue-700 dark:text-blue-300' : 'text-muted-foreground')}
           >
             <Clock className="mr-1 h-3 w-3" />
             {active ? describe(timeOfDay, days, preset?.label) : 'When'}
           </Button>
         </PopoverTrigger>
         <PopoverContent align="start" className="w-64 p-3">
-          <p className="mb-1.5 text-[11px] font-medium text-gray-500">Time of day</p>
+          <p className="mb-1.5 text-[11px] font-medium text-muted-foreground">Time of day</p>
           <div className="mb-3 space-y-1">
             {PRESETS.map((p) => (
               <button
@@ -79,7 +79,7 @@ export function WhenFilter({
                   'w-full rounded-md px-2 py-1.5 text-left text-xs transition',
                   (p.window?.from ?? null) === (timeOfDay?.from ?? null)
                     ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300'
-                    : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
+                    : 'text-muted-foreground hover:bg-muted'
                 )}
               >
                 {p.label}
@@ -92,18 +92,18 @@ export function WhenFilter({
               type="time"
               value={timeOfDay?.from ?? ''}
               onChange={(e) => onChange({ timeOfDay: { from: e.target.value, to: timeOfDay?.to ?? '23:59' }, days })}
-              className="h-7 w-full rounded-md border border-gray-200 bg-transparent px-1.5 text-xs dark:border-gray-800"
+              className="h-7 w-full rounded-md border border-border bg-transparent px-1.5 text-xs"
             />
-            <span className="text-xs text-gray-400">to</span>
+            <span className="text-xs text-muted-foreground">to</span>
             <input
               type="time"
               value={timeOfDay?.to ?? ''}
               onChange={(e) => onChange({ timeOfDay: { from: timeOfDay?.from ?? '00:00', to: e.target.value }, days })}
-              className="h-7 w-full rounded-md border border-gray-200 bg-transparent px-1.5 text-xs dark:border-gray-800"
+              className="h-7 w-full rounded-md border border-border bg-transparent px-1.5 text-xs"
             />
           </div>
 
-          <p className="mb-1.5 text-[11px] font-medium text-gray-500">Days</p>
+          <p className="mb-1.5 text-[11px] font-medium text-muted-foreground">Days</p>
           <div className="flex gap-1">
             {DAYS.map((d) => {
               const on = allDays || days.includes(d.n)
@@ -116,7 +116,7 @@ export function WhenFilter({
                     'h-7 w-7 rounded-md border text-xs transition',
                     on
                       ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
-                      : 'border-gray-200 text-gray-400 dark:border-gray-800'
+                      : 'border-border text-muted-foreground'
                   )}
                 >
                   {d.label}
@@ -126,7 +126,7 @@ export function WhenFilter({
           </div>
           <button
             onClick={() => onChange({ timeOfDay, days: WEEKDAYS })}
-            className="mt-1.5 text-[11px] text-gray-500 underline-offset-2 hover:underline"
+            className="mt-1.5 text-[11px] text-muted-foreground underline-offset-2 hover:underline"
           >
             Weekdays only
           </button>
@@ -137,7 +137,7 @@ export function WhenFilter({
         <button
           onClick={() => onChange({ timeOfDay: null, days: [] })}
           aria-label="Clear the time filter"
-          className="rounded-full p-0.5 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+          className="rounded-full p-0.5 text-muted-foreground hover:bg-muted"
         >
           <X className="h-3 w-3" />
         </button>

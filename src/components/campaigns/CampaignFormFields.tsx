@@ -97,15 +97,15 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
   const renderPipecatAgentSelect = () => {
     if (loadingPipecatAgents) {
       return (
-        <div className="w-full h-8 flex items-center justify-center border border-gray-300 dark:border-gray-700 rounded-lg">
-          <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+        <div className="w-full h-8 flex items-center justify-center border border-border rounded-lg">
+          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
         </div>
       )
     }
     if (pipecatAgents.length === 0) {
       return (
-        <div className="w-full h-8 flex items-center px-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
-          <span className="text-xs text-gray-500 dark:text-gray-400">No Pipecat agents found</span>
+        <div className="w-full h-8 flex items-center px-3 border border-border rounded-lg bg-muted/50">
+          <span className="text-xs text-muted-foreground">No Pipecat agents found</span>
         </div>
       )
     }
@@ -131,15 +131,15 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
   const renderLivekitAgentSelect = (field: any) => {
     if (permissionsLoading) {
       return (
-        <div className="w-full h-8 flex items-center justify-center border border-gray-300 dark:border-gray-700 rounded-lg">
-          <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+        <div className="w-full h-8 flex items-center justify-center border border-border rounded-lg">
+          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
         </div>
       )
     }
     if (agents.length === 0) {
       return (
-        <div className="w-full h-8 flex items-center px-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
-          <span className="text-xs text-gray-500 dark:text-gray-400">No agents available</span>
+        <div className="w-full h-8 flex items-center px-3 border border-border rounded-lg bg-muted/50">
+          <span className="text-xs text-muted-foreground">No agents available</span>
         </div>
       )
     }
@@ -178,7 +178,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
     <>
       {/* Batch Call Name */}
       <div>
-        <Label htmlFor="campaignName" className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
+        <Label htmlFor="campaignName" className="text-xs font-medium text-foreground mb-1.5 block">
           Batch Call Name
         </Label>
         <Field
@@ -193,7 +193,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
 
       {/* Agent Runtime - FIRST */}
       <div>
-        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
+        <Label className="text-xs font-medium text-foreground mb-1.5 flex items-center gap-1.5">
           <User className="w-3 h-3" />
           Agent Runtime
         </Label>
@@ -224,7 +224,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
 
       {/* Select Agent - SECOND, changes based on runtime */}
       <div>
-        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
+        <Label className="text-xs font-medium text-foreground mb-1.5 flex items-center gap-1.5">
           <User className="w-3 h-3" />
           Select Agent
         </Label>
@@ -242,7 +242,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
       {/* From Number - only for livekit */}
       {values.agentRuntime === 'livekit' && (
         <div>
-          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
+          <Label className="text-xs font-medium text-foreground mb-1.5 flex items-center gap-1.5">
             <Phone className="w-3 h-3" />
             From Number (Outbound)
           </Label>
@@ -250,12 +250,12 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
             {({ field }: any) => (
               <>
                 {loadingPhones ? (
-                  <div className="w-full h-8 flex items-center justify-center border border-gray-300 dark:border-gray-700 rounded-lg">
-                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                  <div className="w-full h-8 flex items-center justify-center border border-border rounded-lg">
+                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                   </div>
                 ) : phoneNumbers.length === 0 ? (
-                  <div className="w-full h-8 flex items-center px-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
-                    <span className="text-xs text-gray-500 dark:text-gray-400">No outbound phone numbers available</span>
+                  <div className="w-full h-8 flex items-center px-3 border border-border rounded-lg bg-muted/50">
+                    <span className="text-xs text-muted-foreground">No outbound phone numbers available</span>
                   </div>
                 ) : (
                   <Select
@@ -281,7 +281,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
                               {phone.formatted_number || phone.phone_number}
                             </span>
                             {phone.provider && (
-                              <span className="text-gray-500 text-xs">({phone.provider})</span>
+                              <span className="text-muted-foreground text-xs">({phone.provider})</span>
                             )}
                           </div>
                         </SelectItem>
@@ -298,10 +298,10 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
 
       {/* Campaign Concurrency */}
       <div>
-        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">
+        <Label className="text-xs font-medium text-foreground mb-1 block">
           Campaign Concurrency
         </Label>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+        <p className="text-xs text-muted-foreground mb-2">
           Number of simultaneous calls for this campaign (1-{maxConcurrency}).
         </p>
         <div className="flex items-center gap-2">

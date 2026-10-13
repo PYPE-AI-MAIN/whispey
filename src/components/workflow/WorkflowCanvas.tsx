@@ -309,7 +309,7 @@ export function WorkflowCanvas() {
           <Button
             variant="outline"
             size="sm"
-            className="h-8 bg-white/90 dark:bg-gray-900/90 backdrop-blur shadow-sm"
+            className="h-8 bg-card/90 backdrop-blur shadow-sm"
             onClick={() => fitView({ padding: 0.2, duration: 300 })}
           >
             <Locate className="h-3.5 w-3.5 mr-1.5" /> Fit view
@@ -317,7 +317,7 @@ export function WorkflowCanvas() {
           <Button
             variant="outline"
             size="sm"
-            className="h-8 bg-white/90 dark:bg-gray-900/90 backdrop-blur shadow-sm"
+            className="h-8 bg-card/90 backdrop-blur shadow-sm"
             onClick={() => {
               setSelectedNode(workflow.start)
               fitView({ nodes: [{ id: workflow.start }], padding: 1.5, maxZoom: 1, duration: 300 })
@@ -325,7 +325,7 @@ export function WorkflowCanvas() {
           >
             <Play className="h-3.5 w-3.5 mr-1.5" /> Go to start
           </Button>
-          <Button variant="outline" size="sm" className="h-8 bg-white/90 dark:bg-gray-900/90 backdrop-blur shadow-sm" onClick={handleAutoArrange}>
+          <Button variant="outline" size="sm" className="h-8 bg-card/90 backdrop-blur shadow-sm" onClick={handleAutoArrange}>
             <LayoutGrid className="h-3.5 w-3.5 mr-1.5" /> Auto-arrange
           </Button>
         </Panel>

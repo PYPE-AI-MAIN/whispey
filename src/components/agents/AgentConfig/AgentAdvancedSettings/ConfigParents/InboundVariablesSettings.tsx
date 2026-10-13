@@ -123,8 +123,8 @@ function InboundVariablesSettings({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="pr-3">
-          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Fetch variables on inbound calls</Label>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+          <Label className="text-xs font-medium text-foreground">Fetch variables on inbound calls</Label>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
             When someone calls in, look them up by their number and fill the prompt and greeting before the agent speaks. Off = nothing is called.
           </p>
         </div>
@@ -134,7 +134,7 @@ function InboundVariablesSettings({
       {enabled && (
         <>
           <div className="space-y-1">
-            <Label className="text-[11px] text-gray-600 dark:text-gray-400">Endpoint URL</Label>
+            <Label className="text-[11px] text-muted-foreground">Endpoint URL</Label>
             <Input
               value={url}
               onChange={(e) => applyChange({ url: e.target.value })}
@@ -144,7 +144,7 @@ function InboundVariablesSettings({
           </div>
 
           <div className="space-y-1">
-            <Label className="text-[11px] text-gray-600 dark:text-gray-400">Authorization header (optional)</Label>
+            <Label className="text-[11px] text-muted-foreground">Authorization header (optional)</Label>
             <Input
               value={authHeader}
               onChange={(e) => applyChange({ authHeader: e.target.value })}
@@ -155,7 +155,7 @@ function InboundVariablesSettings({
 
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
-              <Label className="text-[11px] text-gray-600 dark:text-gray-400">Max wait (ms)</Label>
+              <Label className="text-[11px] text-muted-foreground">Max wait (ms)</Label>
               <Input
                 type="number"
                 min={100}
@@ -166,7 +166,7 @@ function InboundVariablesSettings({
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-[11px] text-gray-600 dark:text-gray-400">Cache (seconds)</Label>
+              <Label className="text-[11px] text-muted-foreground">Cache (seconds)</Label>
               <Input
                 type="number"
                 min={0}
@@ -177,15 +177,15 @@ function InboundVariablesSettings({
               />
             </div>
           </div>
-          <p className="text-[11px] text-gray-500 dark:text-gray-400">
+          <p className="text-[11px] text-muted-foreground">
             The caller is on the line, so we wait at most {timeoutMs || 1000} ms. Slower than that and the agent greets with the default values below.
           </p>
 
           {/* The names the API must return — read straight from the prompt. */}
-          <div className="rounded border border-gray-200 dark:border-gray-700 p-2">
-            <Label className="text-[11px] text-gray-600 dark:text-gray-400">Variables this agent uses</Label>
+          <div className="rounded border border-border p-2">
+            <Label className="text-[11px] text-muted-foreground">Variables this agent uses</Label>
             {promptVariables.length === 0 ? (
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-[11px] text-muted-foreground mt-1">
                 No <code>{'{{variables}}'}</code> in the prompt or greeting yet. Add some, and set a default value for each — the default is used when the API returns nothing for that name.
               </p>
             ) : (
@@ -197,7 +197,7 @@ function InboundVariablesSettings({
                     </span>
                   ))}
                 </div>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5">
+                <p className="text-[11px] text-muted-foreground mt-1.5">
                   The API must return these exact names. A value from the API always replaces the default; the default is only used when the API returns nothing for that name.
                 </p>
               </>
@@ -205,20 +205,20 @@ function InboundVariablesSettings({
           </div>
 
           {/* Copy-paste spec for the customer's developer. */}
-          <div className="rounded border border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between px-2 py-1.5 border-b border-gray-200 dark:border-gray-700">
-              <Label className="text-[11px] text-gray-600 dark:text-gray-400">What their developer builds</Label>
+          <div className="rounded border border-border">
+            <div className="flex items-center justify-between px-2 py-1.5 border-b border-border">
+              <Label className="text-[11px] text-muted-foreground">What their developer builds</Label>
               <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[11px]" onClick={copySpec}>
                 {copied ? <Check className="w-3 h-3 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
                 {copied ? 'Copied' : 'Copy'}
               </Button>
             </div>
-            <pre className="text-[10px] leading-relaxed font-mono p-2 whitespace-pre-wrap break-words text-gray-700 dark:text-gray-300">{spec}</pre>
+            <pre className="text-[10px] leading-relaxed font-mono p-2 whitespace-pre-wrap break-words text-foreground">{spec}</pre>
           </div>
 
           {/* Test against the real endpoint. */}
           <div className="space-y-1">
-            <Label className="text-[11px] text-gray-600 dark:text-gray-400">Test with a phone number</Label>
+            <Label className="text-[11px] text-muted-foreground">Test with a phone number</Label>
             <div className="flex gap-2">
               <Input
                 value={testPhone}
@@ -245,17 +245,17 @@ function InboundVariablesSettings({
           {result && (
             <div className={`rounded border p-2 text-[11px] ${result.ok ? 'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-500/10' : 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-500/10'}`}>
               <div className="flex items-center justify-between">
-                <span className="font-medium text-gray-800 dark:text-gray-200">
+                <span className="font-medium text-foreground">
                   {result.ok ? `${returned.length} variable(s) returned` : 'Nothing usable came back'}
                 </span>
                 {result.latency_ms !== undefined && (
-                  <span className={result.latency_ms > (timeoutMs || 1000) ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}>
+                  <span className={result.latency_ms > (timeoutMs || 1000) ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}>
                     {result.latency_ms} ms
                   </span>
                 )}
               </div>
               {returned.length > 0 && (
-                <div className="mt-1 space-y-0.5 font-mono text-[10px] text-gray-700 dark:text-gray-300">
+                <div className="mt-1 space-y-0.5 font-mono text-[10px] text-foreground">
                   {returned.map((name) => (
                     <div key={name}>
                       {name}: {String(result.variables[name]).slice(0, 60)}
@@ -271,7 +271,7 @@ function InboundVariablesSettings({
                   Not returned, will use the default: {missing.join(', ')}
                 </p>
               )}
-              {result.error && <p className="mt-1 text-gray-600 dark:text-gray-400">{result.error}</p>}
+              {result.error && <p className="mt-1 text-muted-foreground">{result.error}</p>}
             </div>
           )}
         </>

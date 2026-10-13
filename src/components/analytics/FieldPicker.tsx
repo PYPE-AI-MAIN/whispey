@@ -72,7 +72,7 @@ export function disambiguate(fields: CatalogField[]): Map<string, string> {
 function Coverage({ pct }: Readonly<{ pct: number | null | undefined }>) {
   if (pct === null || pct === undefined) return null
   return (
-    <span className={cn('shrink-0 text-[11px] tabular-nums', pct < 20 ? 'text-amber-600 dark:text-amber-500' : 'text-gray-400')}>
+    <span className={cn('shrink-0 text-[11px] tabular-nums', pct < 20 ? 'text-amber-600 dark:text-amber-500' : 'text-muted-foreground')}>
       {Math.round(pct)}%
     </span>
   )
@@ -127,14 +127,14 @@ export function FieldPicker({
           disabled={disabled}
           aria-haspopup="listbox"
           aria-expanded={open}
-          className="flex h-8 w-full items-center justify-between gap-2 rounded-md border border-gray-200 bg-transparent px-2 text-sm outline-none transition focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-800"
+          className="flex h-8 w-full items-center justify-between gap-2 rounded-md border border-border bg-transparent px-2 text-sm outline-none transition focus:border-blue-400 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          <span className={cn('truncate', !chosen && 'text-gray-400')}>
+          <span className={cn('truncate', !chosen && 'text-muted-foreground')}>
             {chosen ? names.get(value) : placeholder}
           </span>
           <span className="flex shrink-0 items-center gap-1.5">
             <Coverage pct={chosen?.coverage_pct} />
-            <ChevronsUpDown className="h-3.5 w-3.5 text-gray-400" />
+            <ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
           </span>
         </button>
       </PopoverTrigger>
@@ -144,12 +144,12 @@ export function FieldPicker({
           // "extracted" finds the extracted ones
           filter={(itemValue, search) => (itemValue.toLowerCase().includes(search.toLowerCase()) ? 1 : 0)}
         >
-          <div className="flex items-center border-b border-gray-200 px-2 dark:border-gray-800">
-            <Search className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+          <div className="flex items-center border-b border-border px-2">
+            <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             <CommandInput placeholder="Search fields…" className="h-9 border-0 text-sm focus:ring-0" />
           </div>
           <CommandList className="max-h-80">
-            <CommandEmpty className="py-6 text-center text-xs text-gray-500">No field matches that.</CommandEmpty>
+            <CommandEmpty className="py-6 text-center text-xs text-muted-foreground">No field matches that.</CommandEmpty>
 
             {clearable && (
               <CommandGroup>
@@ -161,7 +161,7 @@ export function FieldPicker({
                   }}
                 >
                   <Check className={cn('mr-2 h-3.5 w-3.5', value ? 'opacity-0' : 'opacity-100')} />
-                  <span className="text-gray-500">{emptyLabel}</span>
+                  <span className="text-muted-foreground">{emptyLabel}</span>
                 </CommandItem>
               </CommandGroup>
             )}
@@ -191,7 +191,7 @@ export function FieldPicker({
                         </span>
                         {/* the definition the numbers are actually computed from */}
                         {f.description && (
-                          <span className="line-clamp-2 text-[11px] leading-snug text-gray-400">{f.description}</span>
+                          <span className="line-clamp-2 text-[11px] leading-snug text-muted-foreground">{f.description}</span>
                         )}
                         <FieldShape field={f} />
                       </span>
@@ -207,7 +207,7 @@ export function FieldPicker({
               type="button"
               onClick={rescan.run}
               disabled={rescan.busy}
-              className="flex w-full items-center gap-1.5 border-t border-gray-100 px-3 py-2 text-left text-[11px] text-gray-500 transition hover:bg-gray-50 disabled:opacity-60 dark:border-gray-800 dark:text-gray-400 dark:hover:bg-gray-800/60"
+              className="flex w-full items-center gap-1.5 border-t border-border/60 px-3 py-2 text-left text-[11px] text-muted-foreground transition hover:bg-muted/50 disabled:opacity-60"
             >
               <RefreshCw className={cn('h-3 w-3', rescan.busy && 'animate-spin')} />
               {rescan.busy ? 'Looking at the latest calls…' : 'Field missing? Rescan this agent'}
@@ -234,13 +234,13 @@ export function FieldShape({ field }: Readonly<{ field: CatalogField }>) {
       yes_no: 'yes / no',
     }
     const pair = BOOLEAN_PAIR_LABEL[field.boolean_encoding ?? ''] ?? 'yes (true) / no (false)'
-    return <span className="text-[11px] text-gray-400">{pair}</span>
+    return <span className="text-[11px] text-muted-foreground">{pair}</span>
   }
   if (field.value_type === 'enum' && field.enum_values?.length) {
     const shown = field.enum_values.slice(0, 4).join(', ')
     const more = field.enum_values.length - 4
     return (
-      <span className="truncate text-[11px] text-gray-400">
+      <span className="truncate text-[11px] text-muted-foreground">
         {shown}
         {more > 0 ? ` +${more}` : ''}
       </span>

@@ -176,7 +176,7 @@ export default function CallAgainDialog({ call, projectId, agent, phoneNumbers }
           </p>
 
           <div>
-            <label htmlFor="call-again-from-number" className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-300">
+            <label htmlFor="call-again-from-number" className="mb-1.5 block text-sm font-semibold text-foreground">
               Call from
             </label>
             {phoneNumbers.length === 1 ? (

@@ -383,10 +383,10 @@ function StudioWorkspace({ isPreview, onExitPreview }: Readonly<{ isPreview: boo
         )}
 
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
-          <div className="shrink-0 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <div className="shrink-0 rounded-xl border border-border bg-card p-4 shadow-sm">
             <InsightsStrip agentId={agentId} />
           </div>
-          <div className="shrink-0 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <div className="shrink-0 rounded-xl border border-border bg-card p-4 shadow-sm">
             <OutputVariablesPanel
               agentId={agentId}
               fieldExtractorPrompt={agent?.field_extractor_prompt}

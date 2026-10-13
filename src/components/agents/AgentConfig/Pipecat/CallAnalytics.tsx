@@ -45,11 +45,11 @@ const SENTIMENT_CONFIG = {
   neutral: {
     label: 'Neutral',
     icon: Minus,
-    bg: 'bg-gray-50 dark:bg-gray-800/50',
-    border: 'border-gray-200 dark:border-gray-700',
-    text: 'text-gray-600 dark:text-gray-400',
-    badge: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300',
-    dot: 'bg-gray-400',
+    bg: 'bg-muted/50',
+    border: 'border-border',
+    text: 'text-muted-foreground',
+    badge: 'bg-muted text-muted-foreground',
+    dot: 'bg-muted-foreground/40',
   },
   negative: {
     label: 'Negative',
@@ -75,13 +75,13 @@ function SentimentBadge({ sentiment, size = 'sm' }: { sentiment: 'positive' | 'n
 
 function ScoreBar({ score }: { score: number }) {
   const pct = Math.round(score * 100)
-  const color = score >= 0.6 ? 'bg-green-400' : score >= 0.4 ? 'bg-gray-400' : 'bg-red-400'
+  const color = score >= 0.6 ? 'bg-green-400' : score >= 0.4 ? 'bg-muted-foreground/40' : 'bg-red-400'
   return (
     <div className="flex items-center gap-1.5 mt-0.5">
-      <div className="flex-1 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+      <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
         <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-[11px] text-gray-400 w-6 text-right">{pct}%</span>
+      <span className="text-[11px] text-muted-foreground w-6 text-right">{pct}%</span>
     </div>
   )
 }
@@ -91,17 +91,17 @@ function ScoreBar({ score }: { score: number }) {
 function AnalysisSkeleton() {
   return (
     <div className="space-y-3 animate-pulse">
-      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3" />
-      <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-full" />
-      <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-5/6" />
+      <div className="h-4 bg-muted rounded w-2/3" />
+      <div className="h-3 bg-muted rounded w-full" />
+      <div className="h-3 bg-muted rounded w-5/6" />
       <div className="flex gap-2 mt-3">
         {[1, 2, 3].map(i => (
-          <div key={i} className="h-5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full" />
+          <div key={i} className="h-5 w-16 bg-muted rounded-full" />
         ))}
       </div>
       <div className="space-y-2 mt-3">
         {[1, 2, 3].map(i => (
-          <div key={i} className="h-10 bg-gray-200 dark:bg-gray-700 rounded-lg" />
+          <div key={i} className="h-10 bg-muted rounded-lg" />
         ))}
       </div>
     </div>
@@ -127,7 +127,7 @@ export default function CallAnalytics({
   const overallCfg = analysis ? SENTIMENT_CONFIG[analysis.overallSentiment] : null
 
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 space-y-4 flex-shrink-0">
+    <div className="rounded-xl border border-border bg-card shadow-sm p-4 space-y-4 flex-shrink-0">
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -135,7 +135,7 @@ export default function CallAnalytics({
           <div className="w-6 h-6 rounded-md bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
             <BarChart2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
           </div>
-          <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Call Analytics</span>
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Call Analytics</span>
           {isAnalyzing && (
             <div className="flex items-center gap-1 text-xs text-blue-500">
               <Loader2 className="w-3 h-3 animate-spin" />
@@ -143,7 +143,7 @@ export default function CallAnalytics({
             </div>
           )}
         </div>
-        <Button variant="ghost" size="sm" onClick={onDismiss} className="h-7 w-7 p-0 text-gray-400 hover:text-gray-600">
+        <Button variant="ghost" size="sm" onClick={onDismiss} className="h-7 w-7 p-0 text-muted-foreground hover:text-muted-foreground">
           <X className="w-3.5 h-3.5" />
         </Button>
       </div>
@@ -172,24 +172,24 @@ export default function CallAnalytics({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <SentimentBadge sentiment={analysis.overallSentiment} />
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Overall</span>
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Overall</span>
               </div>
-              <p className="text-xs text-gray-700 dark:text-gray-300 font-medium">{analysis.callOutcome}</p>
+              <p className="text-xs text-foreground font-medium">{analysis.callOutcome}</p>
             </div>
           </div>
 
           {/* Summary */}
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1">Summary</p>
-            <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">{analysis.summary}</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">Summary</p>
+            <p className="text-xs text-foreground leading-relaxed">{analysis.summary}</p>
           </div>
 
           {/* Topics */}
           {analysis.topics.length > 0 && (
             <div>
               <div className="flex items-center gap-1 mb-1.5">
-                <Tag className="w-3 h-3 text-gray-400" />
-                <p className="text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">Key Topics</p>
+                <Tag className="w-3 h-3 text-muted-foreground" />
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Key Topics</p>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {analysis.topics.map(topic => (
@@ -207,8 +207,8 @@ export default function CallAnalytics({
           {/* Per-turn transcript with sentiment */}
           <div>
             <div className="flex items-center gap-1 mb-2">
-              <MessageSquare className="w-3 h-3 text-gray-400" />
-              <p className="text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500">Turn-by-Turn</p>
+              <MessageSquare className="w-3 h-3 text-muted-foreground" />
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Turn-by-Turn</p>
             </div>
             <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
               {transcripts.map(turn => {
@@ -220,18 +220,18 @@ export default function CallAnalytics({
                     className={`rounded-lg px-3 py-2 text-xs border ${
                       isUser
                         ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800'
-                        : 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-700'
+                        : 'bg-muted/50 border-border'
                     }`}
                   >
                     <div className="flex items-center justify-between mb-0.5 gap-2">
                       <span className={`text-[10px] font-semibold uppercase tracking-wide ${
-                        isUser ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'
+                        isUser ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground'
                       }`}>
                         {isUser ? 'User' : 'Agent'}
                       </span>
                       {ta && <SentimentBadge sentiment={ta.sentiment} size="xs" />}
                     </div>
-                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{turn.text}</p>
+                    <p className="text-foreground leading-relaxed">{turn.text}</p>
                     {ta && <ScoreBar score={ta.score} />}
                   </div>
                 )

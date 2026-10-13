@@ -200,7 +200,7 @@ export default function PromptSettingsSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[650px] p-6 sm:max-w-[500px] overflow-y-auto bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+      <SheetContent className="w-[650px] p-6 sm:max-w-[500px] overflow-y-auto bg-card border-border">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <SettingsIcon className="w-4 h-4" />
@@ -252,7 +252,7 @@ export default function PromptSettingsSheet({
 
           {/* Variables Section */}
           <Collapsible open={isVariablesOpen} onOpenChange={setIsVariablesOpen}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
               <div className="flex items-center gap-2">
                 <VariableIcon className="w-4 h-4" />
                 <span className="font-medium">Variables</span>
@@ -269,8 +269,8 @@ export default function PromptSettingsSheet({
               {/* Predefined System Variables */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Predefined System Variables</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">(Automatically available)</span>
+                  <span className="text-xs font-medium text-foreground">Predefined System Variables</span>
+                  <span className="text-xs text-muted-foreground">(Automatically available)</span>
                 </div>
                 <div className="space-y-2">
                   {PREDEFINED_VARIABLES.map((predefinedVar) => (
@@ -282,7 +282,7 @@ export default function PromptSettingsSheet({
                         <code className="text-xs font-mono bg-blue-100 dark:bg-blue-900/40 px-2 py-1 rounded text-blue-900 dark:text-blue-200">
                           {`{{${predefinedVar.name}}}`}
                         </code>
-                        <span className="text-xs text-gray-600 dark:text-gray-400">
+                        <span className="text-xs text-muted-foreground">
                           {predefinedVar.description}
                         </span>
                       </div>
@@ -292,9 +292,9 @@ export default function PromptSettingsSheet({
               </div>
 
               {/* User Variables */}
-              <div className="space-y-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="space-y-2 pt-4 border-t border-border">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Custom Variables</span>
+                  <span className="text-xs font-medium text-foreground">Custom Variables</span>
                 </div>
                 <div className="flex gap-2">
                   <Button 
@@ -319,14 +319,14 @@ export default function PromptSettingsSheet({
 
                 <div className="space-y-3">
                   {customVariables.length === 0 ? (
-                    <div className="text-center py-6 text-gray-500 dark:text-gray-400">
+                    <div className="text-center py-6 text-muted-foreground">
                       <VariableIcon className="w-6 h-6 mx-auto mb-2 opacity-50" />
                       <p className="text-xs">No custom variables mapped</p>
-                      <p className="text-[10px] mt-1">Use <code className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{`{{variable_name}}`}</code> in your prompt</p>
+                      <p className="text-[10px] mt-1">Use <code className="bg-muted px-1.5 py-0.5 rounded">{`{{variable_name}}`}</code> in your prompt</p>
                     </div>
                   ) : (
                     customVariables.map((variable, index) => (
-                      <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-3">
+                      <div key={index} className="border border-border rounded-lg p-3 space-y-3">
                         <div className="flex w-full items-center justify-center gap-1">
                           <div className="flex-1 w-1/2 space-y-1">
                             <Input

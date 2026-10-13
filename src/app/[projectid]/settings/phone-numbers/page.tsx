@@ -95,7 +95,7 @@ function NativeSelect({
     <select
       value={value}
       onChange={e => onChange(e.target.value)}
-      className={`h-9 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-200 px-3 focus:outline-none focus:border-blue-600 transition-colors ${className}`}
+      className={`h-9 w-full rounded-lg border border-border bg-muted/50 text-sm text-foreground px-3 focus:outline-none focus:border-blue-600 transition-colors ${className}`}
     >
       {children}
     </select>
@@ -134,27 +134,27 @@ function PhoneNumberForm({
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800/60 p-5 space-y-4">
-      <h3 className="text-sm font-semibold text-gray-100">
+    <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+      <h3 className="text-sm font-semibold text-foreground">
         {isEdit ? 'Edit Phone Number' : 'Add Phone Number'}
       </h3>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Phone Number */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-gray-400">Phone Number</label>
+          <label className="text-xs font-medium text-muted-foreground">Phone Number</label>
           <input
             value={form.phone_number}
             onChange={e => set('phone_number', e.target.value)}
             placeholder="918064151286"
             disabled={isEdit}
-            className="h-9 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-200 px-3 placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-9 w-full rounded-lg border border-border bg-muted/50 text-sm text-foreground px-3 placeholder:text-muted-foreground focus:outline-none focus:border-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           />
         </div>
 
         {/* Provider */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-gray-400">Provider</label>
+          <label className="text-xs font-medium text-muted-foreground">Provider</label>
           <NativeSelect value={form.provider} onChange={v => set('provider', v as Provider)}>
             {(Object.keys(PROVIDER_LABELS) as Provider[]).map(p => (
               <option key={p} value={p}>{PROVIDER_LABELS[p]}</option>
@@ -164,7 +164,7 @@ function PhoneNumberForm({
 
         {/* Number Type */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-gray-400">Number Type</label>
+          <label className="text-xs font-medium text-muted-foreground">Number Type</label>
           <NativeSelect value={form.number_type} onChange={v => set('number_type', v as NumberType)}>
             {(Object.keys(NUMBER_TYPE_LABELS) as NumberType[]).map(t => (
               <option key={t} value={t}>{NUMBER_TYPE_LABELS[t]}</option>
@@ -174,7 +174,7 @@ function PhoneNumberForm({
 
         {/* Assign to Agent */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-gray-400">Assign to Agent</label>
+          <label className="text-xs font-medium text-muted-foreground">Assign to Agent</label>
           <NativeSelect value={form.assigned_agent_id} onChange={handleAgentChange}>
             <option value="">— Unassigned —</option>
             {agents.map(a => (
@@ -186,19 +186,19 @@ function PhoneNumberForm({
         {/* Acefone API Key — only when provider is acefone */}
         {form.provider.toLowerCase() === 'acefone' && (
           <div className="sm:col-span-2 space-y-1.5">
-            <label className="text-xs font-medium text-gray-400">Acefone C2C API Key</label>
+            <label className="text-xs font-medium text-muted-foreground">Acefone C2C API Key</label>
             <div className="relative">
               <input
                 type={showKey ? 'text' : 'password'}
                 value={form.acefone_api_key}
                 onChange={e => set('acefone_api_key', e.target.value)}
                 placeholder="5f0d3b62-..."
-                className="h-9 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-200 px-3 pr-10 placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:outline-none focus:border-blue-600 transition-colors"
+                className="h-9 w-full rounded-lg border border-border bg-muted/50 text-sm text-foreground px-3 pr-10 placeholder:text-muted-foreground focus:outline-none focus:border-blue-600 transition-colors"
               />
               <button
                 type="button"
                 onClick={() => setShowKey(s => !s)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
               >
                 {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -219,7 +219,7 @@ function PhoneNumberForm({
         <button
           onClick={onCancel}
           disabled={isPending}
-          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
         >
           <X className="h-3.5 w-3.5" /> Cancel
         </button>
@@ -357,7 +357,7 @@ export default function PhoneNumbersPage() {
         <tr key={rowKey} className="animate-pulse">
           {Array.from({ length: 6 }, (__, j) => `${rowKey}-cell-${j}`).map(cellKey => (
             <td key={cellKey} className="px-4 py-3">
-              <div className="h-3 bg-gray-200 dark:bg-gray-800 rounded w-3/4" />
+              <div className="h-3 bg-muted rounded w-3/4" />
             </td>
           ))}
         </tr>
@@ -368,7 +368,7 @@ export default function PhoneNumbersPage() {
       return (
         <tr>
           <td colSpan={6} className="py-16 text-center">
-            <div className="flex flex-col items-center gap-2 text-gray-600 dark:text-gray-400">
+            <div className="flex flex-col items-center gap-2 text-muted-foreground">
               <Phone className="h-6 w-6" />
               <span className="text-sm">No phone numbers yet</span>
               <button
@@ -406,31 +406,31 @@ export default function PhoneNumbersPage() {
       }
 
       return (
-        <tr key={n.id} className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50">
+        <tr key={n.id} className="transition-colors hover:bg-muted/50">
           {/* Phone Number */}
-          <td className="px-4 py-3 text-sm text-gray-900 dark:text-gray-200 font-mono truncate">
+          <td className="px-4 py-3 text-sm text-foreground font-mono truncate">
             {n.phone_number}
           </td>
 
           {/* Provider */}
           <td className="px-4 py-3">
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-muted text-foreground border border-border">
               {PROVIDER_LABELS[(n.provider as Provider)] ?? n.provider}
             </span>
           </td>
 
           {/* Type */}
-          <td className="px-4 py-3 text-[11px] text-gray-400">
+          <td className="px-4 py-3 text-[11px] text-muted-foreground">
             {NUMBER_TYPE_LABELS[(n.number_type as NumberType)] ?? n.number_type}
           </td>
 
           {/* Assigned Agent */}
-          <td className="px-4 py-3 text-sm text-gray-400 truncate">
+          <td className="px-4 py-3 text-sm text-muted-foreground truncate">
             {n.assigned_agent_name
-              ? <span className="text-gray-900 dark:text-gray-200">
+              ? <span className="text-foreground">
                   {agentDisplayName(agents.find(a => a.id === n.assigned_agent_id)) || n.assigned_agent_name}
                 </span>
-              : <span className="text-gray-600 text-xs italic dark:text-gray-400">Unassigned</span>
+              : <span className="text-muted-foreground text-xs italic">Unassigned</span>
             }
           </td>
 
@@ -438,12 +438,12 @@ export default function PhoneNumbersPage() {
           <td className="px-4 py-3">
             {n.acefone_api_key ? (
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-mono text-gray-400 truncate max-w-[100px]">
+                <span className="text-xs font-mono text-muted-foreground truncate max-w-[100px]">
                   {keyRevealed ? n.acefone_api_key : '••••••••'}
                 </span>
                 <button
                   onClick={() => toggleKeyReveal(n.id)}
-                  className="text-gray-600 hover:text-gray-400 transition-colors flex-shrink-0 dark:text-gray-400"
+                  className="text-muted-foreground hover:text-muted-foreground transition-colors flex-shrink-0"
                 >
                   {keyRevealed
                     ? <EyeOff className="h-3.5 w-3.5" />
@@ -452,7 +452,7 @@ export default function PhoneNumbersPage() {
                 </button>
               </div>
             ) : (
-              <span className="text-gray-700 text-xs dark:text-gray-300">—</span>
+              <span className="text-foreground text-xs">—</span>
             )}
           </td>
 
@@ -460,7 +460,7 @@ export default function PhoneNumbersPage() {
           <td className="px-4 py-3">
             {isDeleting ? (
               <div className="flex items-center gap-1">
-                <span className="text-[11px] text-gray-500 mr-1">Delete?</span>
+                <span className="text-[11px] text-muted-foreground mr-1">Delete?</span>
                 <button
                   onClick={() => deleteMutation.mutate(n.id)}
                   disabled={deleteMutation.isPending}
@@ -473,7 +473,7 @@ export default function PhoneNumbersPage() {
                 </button>
                 <button
                   onClick={() => setDeletingId(null)}
-                  className="w-6 h-6 flex items-center justify-center rounded text-gray-500 hover:bg-gray-700 transition-colors"
+                  className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:bg-gray-700 transition-colors"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -483,7 +483,7 @@ export default function PhoneNumbersPage() {
                 {n.provider?.toLowerCase() === 'acefone' && (
                   <button
                     onClick={() => { setEditingId(n.id); setShowAddForm(false) }}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                     title="Edit"
                   >
                     <Pencil className="h-3.5 w-3.5" />
@@ -491,7 +491,7 @@ export default function PhoneNumbersPage() {
                 )}
                 <button
                   onClick={() => setDeletingId(n.id)}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-900/20 transition-colors"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-900/20 transition-colors"
                   title="Delete"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -505,7 +505,7 @@ export default function PhoneNumbersPage() {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-white dark:bg-gray-900">
+    <div className="h-full flex flex-col overflow-hidden bg-card">
 
       {/* ── Navbar ── */}
       <div className="flex-shrink-0 border-b border-border bg-background">
@@ -513,7 +513,7 @@ export default function PhoneNumbersPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push(`/${projectId}/agents`)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
             </button>
@@ -529,14 +529,14 @@ export default function PhoneNumbersPage() {
             {isSuperAdmin && (
               <button
                 onClick={() => router.push(`/${projectId}/settings/dnc`)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:border-border transition-colors"
               >
                 <ShieldBan className="h-3.5 w-3.5" /> DNC List
               </button>
             )}
             <button
               onClick={() => setShowDocs(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:border-border transition-colors"
             >
               <BookOpen className="h-3.5 w-3.5" /> Setup Guide
             </button>
@@ -574,7 +574,7 @@ export default function PhoneNumbersPage() {
           )}
 
           {/* Table */}
-          <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+          <div className="rounded-xl border border-border overflow-hidden">
             <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
               <colgroup>
                 <col style={{ width: '180px' }} />
@@ -585,15 +585,15 @@ export default function PhoneNumbersPage() {
                 <col style={{ width: '80px' }} />
               </colgroup>
               <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+                <tr className="border-b border-border bg-muted/50">
                   {['Phone Number', 'Provider', 'Type', 'Assigned Agent', 'API Key', 'Actions'].map(h => (
-                    <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                    <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+              <tbody className="divide-y divide-border">
                 {renderTableRows()}
               </tbody>
             </table>
@@ -605,72 +605,72 @@ export default function PhoneNumbersPage() {
       <Sheet open={showDocs} onOpenChange={setShowDocs}>
         <SheetContent
           side="right"
-          className="w-full max-w-lg sm:max-w-lg bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 p-0 gap-0 flex flex-col"
+          className="w-full max-w-lg sm:max-w-lg bg-card border-border p-0 gap-0 flex flex-col"
         >
-          <SheetHeader className="flex-row items-center gap-2.5 space-y-0 px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
+          <SheetHeader className="flex-row items-center gap-2.5 space-y-0 px-6 py-4 border-b border-border flex-shrink-0">
             <BookOpen className="h-4 w-4 text-blue-400" />
-            <SheetTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100">Acefone Setup Guide</SheetTitle>
+            <SheetTitle className="text-sm font-semibold text-foreground">Acefone Setup Guide</SheetTitle>
           </SheetHeader>
           <div className="px-6 py-5 space-y-6 text-sm overflow-y-auto">
 
               <section className="space-y-3">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-blue-400">Inbound Calls</h3>
-                <p className="text-gray-400 text-xs">Set the <strong className="text-gray-900 dark:text-gray-200">Static Endpoint</strong> for your inbound DID in the Acefone dashboard:</p>
+                <p className="text-muted-foreground text-xs">Set the <strong className="text-foreground">Static Endpoint</strong> for your inbound DID in the Acefone dashboard:</p>
                 <div className="space-y-2">
                   <div>
-                    <p className="text-[11px] text-gray-500 mb-1">WebSocket stream (audio)</p>
-                    <code className="block bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-xs text-green-600 dark:text-green-400 font-mono break-all">wss://your-bridge-domain/bridge</code>
-                    <p className="text-[11px] text-gray-500 mt-1">Use <span className="text-yellow-600 dark:text-yellow-400">wss://</span> with a domain in production</p>
+                    <p className="text-[11px] text-muted-foreground mb-1">WebSocket stream (audio)</p>
+                    <code className="block bg-muted border border-border rounded-lg px-3 py-2 text-xs text-green-600 dark:text-green-400 font-mono break-all">wss://your-bridge-domain/bridge</code>
+                    <p className="text-[11px] text-muted-foreground mt-1">Use <span className="text-yellow-600 dark:text-yellow-400">wss://</span> with a domain in production</p>
                   </div>
                   <div>
-                    <p className="text-[11px] text-gray-500 mb-1">Prewarm webhook (Call received on Server)</p>
-                    <code className="block bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-xs text-green-600 dark:text-green-400 font-mono break-all">https://your-bridge-domain/acefone/inbound-prewarm</code>
+                    <p className="text-[11px] text-muted-foreground mb-1">Prewarm webhook (Call received on Server)</p>
+                    <code className="block bg-muted border border-border rounded-lg px-3 py-2 text-xs text-green-600 dark:text-green-400 font-mono break-all">https://your-bridge-domain/acefone/inbound-prewarm</code>
                   </div>
                   <div>
-                    <p className="text-[11px] text-gray-500 mb-1">Hangup webhook</p>
-                    <code className="block bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-xs text-green-600 dark:text-green-400 font-mono break-all">https://your-bridge-domain/acefone/hangup</code>
+                    <p className="text-[11px] text-muted-foreground mb-1">Hangup webhook</p>
+                    <code className="block bg-muted border border-border rounded-lg px-3 py-2 text-xs text-green-600 dark:text-green-400 font-mono break-all">https://your-bridge-domain/acefone/hangup</code>
                   </div>
                 </div>
               </section>
 
               <section className="space-y-3">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-blue-400">Outbound Calls (Campaigns)</h3>
-                <p className="text-gray-400 text-xs">Set the <strong className="text-gray-900 dark:text-gray-200">Dynamic Endpoint</strong> mode in Acefone:</p>
+                <p className="text-muted-foreground text-xs">Set the <strong className="text-foreground">Dynamic Endpoint</strong> mode in Acefone:</p>
                 <div className="space-y-2">
                   <div>
-                    <p className="text-[11px] text-gray-500 mb-1">WebSocket stream (audio)</p>
-                    <code className="block bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-xs text-green-600 dark:text-green-400 font-mono break-all">wss://your-bridge-domain/bridge</code>
+                    <p className="text-[11px] text-muted-foreground mb-1">WebSocket stream (audio)</p>
+                    <code className="block bg-muted border border-border rounded-lg px-3 py-2 text-xs text-green-600 dark:text-green-400 font-mono break-all">wss://your-bridge-domain/bridge</code>
                   </div>
                   <div>
-                    <p className="text-[11px] text-gray-500 mb-1">Dynamic endpoint</p>
-                    <code className="block bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-xs text-green-600 dark:text-green-400 font-mono break-all">https://your-bridge-domain/dynamic-endpoint</code>
+                    <p className="text-[11px] text-muted-foreground mb-1">Dynamic endpoint</p>
+                    <code className="block bg-muted border border-border rounded-lg px-3 py-2 text-xs text-green-600 dark:text-green-400 font-mono break-all">https://your-bridge-domain/dynamic-endpoint</code>
                   </div>
                   <div>
-                    <p className="text-[11px] text-gray-500 mb-1">Hangup webhook</p>
-                    <code className="block bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-xs text-green-600 dark:text-green-400 font-mono break-all">https://your-bridge-domain/acefone/hangup</code>
+                    <p className="text-[11px] text-muted-foreground mb-1">Hangup webhook</p>
+                    <code className="block bg-muted border border-border rounded-lg px-3 py-2 text-xs text-green-600 dark:text-green-400 font-mono break-all">https://your-bridge-domain/acefone/hangup</code>
                   </div>
                 </div>
               </section>
 
               <section className="space-y-3">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-blue-400">API Keys</h3>
-                <div className="space-y-2 text-xs text-gray-400">
-                  <div className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
-                    <p><span className="text-gray-900 dark:text-gray-200 font-medium">C2C API Key</span> — For outbound campaigns. Found in Acefone dashboard → API settings. Format: <code className="text-green-600 dark:text-green-400">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code></p>
+                <div className="space-y-2 text-xs text-muted-foreground">
+                  <div className="bg-muted border border-border rounded-lg p-3">
+                    <p><span className="text-foreground font-medium">C2C API Key</span> — For outbound campaigns. Found in Acefone dashboard → API settings. Format: <code className="text-green-600 dark:text-green-400">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code></p>
                   </div>
-                  <div className="bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
-                    <p><span className="text-gray-900 dark:text-gray-200 font-medium">Acefone Token (JWT)</span> — For mid-call transfer only. Set in agent → Tools &amp; Actions → Transfer Call. Format: <code className="text-green-600 dark:text-green-400">eyJ...long-jwt-string</code></p>
+                  <div className="bg-muted border border-border rounded-lg p-3">
+                    <p><span className="text-foreground font-medium">Acefone Token (JWT)</span> — For mid-call transfer only. Set in agent → Tools &amp; Actions → Transfer Call. Format: <code className="text-green-600 dark:text-green-400">eyJ...long-jwt-string</code></p>
                   </div>
                 </div>
               </section>
 
               <section className="space-y-2">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-blue-400">Important Notes</h3>
-                <ul className="text-xs text-gray-400 space-y-1.5 list-disc list-inside">
+                <ul className="text-xs text-muted-foreground space-y-1.5 list-disc list-inside">
                   <li>Use <code className="text-yellow-600 dark:text-yellow-400">ws://</code> for dev/testing, <code className="text-yellow-600 dark:text-yellow-400">wss://</code> for production</li>
-                  <li>Replace <code className="text-gray-700 dark:text-gray-300">your-bridge-domain</code> with your actual bridge server URL (shared by your admin)</li>
-                  <li>Inbound → <strong className="text-gray-900 dark:text-gray-200">Static</strong> endpoint mode in Acefone</li>
-                  <li>Outbound → <strong className="text-gray-900 dark:text-gray-200">Dynamic</strong> endpoint mode in Acefone</li>
+                  <li>Replace <code className="text-foreground">your-bridge-domain</code> with your actual bridge server URL (shared by your admin)</li>
+                  <li>Inbound → <strong className="text-foreground">Static</strong> endpoint mode in Acefone</li>
+                  <li>Outbound → <strong className="text-foreground">Dynamic</strong> endpoint mode in Acefone</li>
                   <li>Transfer auth header: raw JWT, <strong className="text-red-400">no &quot;Bearer&quot; prefix</strong></li>
                 </ul>
               </section>

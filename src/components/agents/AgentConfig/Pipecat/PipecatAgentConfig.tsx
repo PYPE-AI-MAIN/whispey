@@ -771,10 +771,10 @@ export default function PipecatAgentConfig({
 
   if (isLoading) {
     return (
-      <div className="h-screen bg-gray-50 dark:bg-gray-900 p-6">
+      <div className="h-screen bg-muted/50 p-6">
         <div className="max-w-7xl mx-auto animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 dark:bg-gray-800 rounded w-64" />
-          <div className="h-96 bg-gray-200 dark:bg-gray-800 rounded" />
+          <div className="h-8 bg-muted rounded w-64" />
+          <div className="h-96 bg-muted rounded" />
         </div>
       </div>
     )
@@ -782,13 +782,13 @@ export default function PipecatAgentConfig({
 
   if (error) {
     return (
-      <div className="h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-6">
-        <div className="max-w-md w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-8 text-center">
+      <div className="h-screen bg-muted/50 flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-card border border-border rounded-xl p-8 text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+          <h3 className="text-lg font-semibold text-foreground mb-2">
             Failed to load Pipecat agent
           </h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">{error}</p>
+          <p className="text-sm text-muted-foreground mb-6">{error}</p>
           <Button onClick={() => router.back()} variant="outline" className="w-full">Go Back</Button>
         </div>
       </div>
@@ -798,28 +798,28 @@ export default function PipecatAgentConfig({
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
+    <div className="h-screen bg-muted/50 flex flex-col">
 
       {/* Header */}
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex-shrink-0">
+      <div className="bg-card border-b border-border px-6 py-4 flex-shrink-0">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push(`/${projectId}/agents/${agentId}`)}
-              className="w-9 h-9 flex items-center justify-center text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-all"
+              className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-muted-foreground hover:bg-muted/50 rounded-xl transition-all"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-orange-500" />
               <div className="flex flex-col">
-                <span className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
+                <span className="text-sm text-muted-foreground flex items-center gap-1.5">
                   {agentName}
                   <span className="text-xs px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded font-medium">
                     Pipecat
                   </span>
                 </span>
-                <span className="text-xs text-gray-500 dark:text-gray-500">Agent Configuration</span>
+                <span className="text-xs text-muted-foreground">Agent Configuration</span>
               </div>
             </div>
           </div>
@@ -925,17 +925,17 @@ export default function PipecatAgentConfig({
 
             {/* Opening Message + Timezone row */}
             <div className="flex gap-3 flex-shrink-0">
-              <div className="flex-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-1.5">
-                <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Opening Message</label>
+              <div className="flex-1 bg-card border border-border rounded-lg p-3 space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Opening Message</label>
                 <Input
                   value={openingMessage}
                   onChange={e => setOpeningMessage(e.target.value)}
                   placeholder="नमस्ते! बताइए... or Hello {{customer_name}}!"
-                  className="h-8 text-sm border-gray-200 dark:border-gray-700"
+                  className="h-8 text-sm border-border"
                 />
               </div>
-              <div className="w-52 flex-shrink-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-1.5">
-                <label className="text-xs font-medium text-gray-600 dark:text-gray-400">Timezone</label>
+              <div className="w-52 flex-shrink-0 bg-card border border-border rounded-lg p-3 space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Timezone</label>
                 <select
                   value={timezone}
                   onChange={e => setTimezone(e.target.value)}
@@ -958,16 +958,16 @@ export default function PipecatAgentConfig({
             </div>
 
             {/* System Prompt */}
-            <div className={`${analyticsTranscripts.length === 0 ? 'flex-1 min-h-0' : 'min-h-[280px]'} bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 flex flex-col`}>
+            <div className={`${analyticsTranscripts.length === 0 ? 'flex-1 min-h-0' : 'min-h-[280px]'} bg-card border border-border rounded-lg p-4 flex flex-col`}>
               <div className="flex items-center justify-between mb-3 flex-shrink-0">
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">System Prompt</span>
+                <span className="text-xs font-medium text-muted-foreground">System Prompt</span>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setIsSettingsOpen(true)}
                     className={`flex items-center gap-1 text-xs transition-colors ${
                       detectedVarNames.some(n => !(n in variables))
                         ? 'text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300'
-                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                        : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
                     <SettingsIcon className="w-4 h-4" />
@@ -978,7 +978,7 @@ export default function PipecatAgentConfig({
                   </button>
                   <button
                     onClick={copyPrompt}
-                    className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                     disabled={!prompt}
                   >
                     {isCopied
@@ -993,10 +993,10 @@ export default function PipecatAgentConfig({
                 onChange={e => { if (!isProdLocked) setPrompt(e.target.value) }}
                 readOnly={isProdLocked}
                 placeholder="Define your agent's behavior and personality..."
-                className={`flex-1 min-h-0 font-mono text-sm resize-none border-gray-200 dark:border-gray-700 leading-relaxed ${isProdLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
+                className={`flex-1 min-h-0 font-mono text-sm resize-none border-border leading-relaxed ${isProdLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
               />
               <div className="mt-2 flex justify-end flex-shrink-0">
-                <span className="text-xs text-gray-400 dark:text-gray-500">
+                <span className="text-xs text-muted-foreground">
                   {prompt.length.toLocaleString()} chars
                 </span>
               </div>
@@ -1124,7 +1124,7 @@ export default function PipecatAgentConfig({
 
       {/* Prompt Settings Sheet — variables (same approach as LiveKit) */}
       <Sheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-        <SheetContent className="w-[500px] sm:max-w-[500px] p-6 overflow-y-auto bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+        <SheetContent className="w-[500px] sm:max-w-[500px] p-6 overflow-y-auto bg-card border-border">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <SettingsIcon className="w-4 h-4" />
@@ -1199,7 +1199,7 @@ export default function PipecatAgentConfig({
 
             {/* Variables collapsible */}
             <Collapsible open={isVariablesOpen} onOpenChange={setIsVariablesOpen}>
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
                 <div className="flex items-center gap-2">
                   <VariableIcon className="w-4 h-4" />
                   <span className="font-medium text-sm">Variables</span>
@@ -1216,7 +1216,7 @@ export default function PipecatAgentConfig({
                 {/* Detected vars from prompt/greeting */}
                 {detectedVarNames.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Detected in prompt / greeting</p>
+                    <p className="text-xs font-medium text-foreground">Detected in prompt / greeting</p>
                     <div className="space-y-2">
                       {detectedVarNames.map(name => (
                         <div key={name} className="flex items-center gap-2">
@@ -1227,7 +1227,7 @@ export default function PipecatAgentConfig({
                             value={variables[name] ?? ''}
                             onChange={e => setVariables(v => ({ ...v, [name]: e.target.value }))}
                             placeholder="default value…"
-                            className="h-8 text-xs flex-1 border-gray-200 dark:border-gray-700"
+                            className="h-8 text-xs flex-1 border-border"
                           />
                         </div>
                       ))}
@@ -1236,9 +1236,9 @@ export default function PipecatAgentConfig({
                 )}
 
                 {/* Extra (manually added) vars */}
-                <div className="space-y-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="space-y-2 pt-4 border-t border-border">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Custom Variables</p>
+                    <p className="text-xs font-medium text-foreground">Custom Variables</p>
                     <Button
                       variant="outline"
                       size="sm"
@@ -1254,11 +1254,11 @@ export default function PipecatAgentConfig({
                   </div>
 
                   {Object.keys(variables).filter(k => !detectedVarNames.includes(k)).length === 0 ? (
-                    <div className="text-center py-6 text-gray-500 dark:text-gray-400">
+                    <div className="text-center py-6 text-muted-foreground">
                       <VariableIcon className="w-6 h-6 mx-auto mb-2 opacity-50" />
                       <p className="text-xs">No custom variables</p>
                       <p className="text-[10px] mt-1">
-                        Use <code className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{`{{variable_name}}`}</code> in your prompt
+                        Use <code className="bg-muted px-1.5 py-0.5 rounded">{`{{variable_name}}`}</code> in your prompt
                       </p>
                     </div>
                   ) : (
@@ -1266,7 +1266,7 @@ export default function PipecatAgentConfig({
                       {Object.keys(variables)
                         .filter(k => !detectedVarNames.includes(k))
                         .map(name => (
-                          <div key={name} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                          <div key={name} className="border border-border rounded-lg p-3">
                             <div className="flex items-center gap-2">
                               <div className="flex-1 w-1/2">
                                 <Input
@@ -1281,7 +1281,7 @@ export default function PipecatAgentConfig({
                                     })
                                   }}
                                   placeholder="variable_name"
-                                  className="h-8 text-xs border-gray-200 dark:border-gray-700"
+                                  className="h-8 text-xs border-border"
                                 />
                               </div>
                               <div className="w-1/2">
@@ -1289,12 +1289,12 @@ export default function PipecatAgentConfig({
                                   value={variables[name] ?? ''}
                                   onChange={e => setVariables(v => ({ ...v, [name]: e.target.value }))}
                                   placeholder="Default value"
-                                  className="h-8 text-xs border-gray-200 dark:border-gray-700"
+                                  className="h-8 text-xs border-border"
                                 />
                               </div>
                               <button
                                 onClick={() => setVariables(v => { const n = { ...v }; delete n[name]; return n })}
-                                className="p-1.5 text-gray-400 hover:text-red-500 transition-colors rounded"
+                                className="p-1.5 text-muted-foreground hover:text-red-500 transition-colors rounded"
                               >
                                 <TrashIcon className="w-3.5 h-3.5" />
                               </button>

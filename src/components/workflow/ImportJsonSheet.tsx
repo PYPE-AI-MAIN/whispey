@@ -72,7 +72,7 @@ export function ImportJsonSheet({ open, onOpenChange }: Readonly<{ open: boolean
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder='{ "schemaVersion": "1.0", "start": "greeting", "nodes": [ ... ] }'
-            className="min-h-[240px] w-full flex-1 resize-none rounded-lg border border-gray-200 bg-gray-50 p-3 font-mono text-xs outline-none focus:ring-2 focus:ring-violet-500 dark:border-gray-700 dark:bg-gray-900"
+            className="min-h-[240px] w-full flex-1 resize-none rounded-lg border border-border bg-muted/50 p-3 font-mono text-xs outline-none focus:ring-2 focus:ring-violet-500"
           />
           {error && <p className="text-xs whitespace-pre-wrap text-red-600 dark:text-red-400">{error}</p>}
           <div className="flex justify-end gap-2">

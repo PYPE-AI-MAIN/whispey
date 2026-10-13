@@ -44,14 +44,14 @@ function Kpi({
   label, value, spec, icon: Icon,
 }: Readonly<{ label: string; value: number | null; spec: SpecInput; icon: (typeof KPI_ICONS)[keyof typeof KPI_ICONS] }>) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
       <div className="flex items-center gap-2">
         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
           <Icon className="h-3.5 w-3.5" />
         </span>
-        <div className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</div>
+        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</div>
       </div>
-      <div className="mt-3 text-3xl font-semibold tabular-nums text-gray-900 dark:text-gray-50">
+      <div className="mt-3 text-3xl font-semibold tabular-nums text-foreground">
         {value === null ? '—' : formatValue(value, spec)}
       </div>
     </div>
@@ -64,7 +64,7 @@ function StatusBadge({ isActive, environment }: Readonly<{ isActive: boolean; en
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
         isActive
           ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-          : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
+          : 'bg-muted text-muted-foreground'
       }`}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-gray-400'}`} />
@@ -77,18 +77,18 @@ function AgentRow({ agent, projectId, loading }: Readonly<{ agent: OrgAgentRow; 
   const router = useRouter()
   return (
     <tr
-      className="cursor-pointer border-b border-gray-100 last:border-0 hover:bg-gray-50 dark:border-gray-800/70 dark:hover:bg-gray-800/40"
+      className="cursor-pointer border-b border-border/60 last:border-0 hover:bg-muted/50"
       onClick={() => router.push(`/${projectId}/agents/${agent.id}`)}
     >
-      <td className="py-4 pl-6 pr-4 font-medium text-gray-900 dark:text-gray-100">{agent.name}</td>
-      <td className="py-4 pr-4 tabular-nums text-gray-700 dark:text-gray-300">{(agent.calls ?? (loading ? null : 0))?.toLocaleString() ?? '—'}</td>
-      <td className="py-4 pr-4 tabular-nums text-gray-700 dark:text-gray-300">
+      <td className="py-4 pl-6 pr-4 font-medium text-foreground">{agent.name}</td>
+      <td className="py-4 pr-4 tabular-nums text-foreground">{(agent.calls ?? (loading ? null : 0))?.toLocaleString() ?? '—'}</td>
+      <td className="py-4 pr-4 tabular-nums text-foreground">
         {agent.pickupPct === null ? '—' : `${agent.pickupPct.toFixed(0)}%`}
       </td>
-      <td className="py-4 pr-4 tabular-nums text-gray-700 dark:text-gray-300">
+      <td className="py-4 pr-4 tabular-nums text-foreground">
         {agent.latency === null ? '—' : `${agent.latency.toFixed(1)}s`}
       </td>
-      <td className="py-4 pr-6 text-gray-500 dark:text-gray-400">
+      <td className="py-4 pr-6 text-muted-foreground">
         <StatusBadge isActive={agent.is_active} environment={agent.environment} />
       </td>
     </tr>
@@ -113,7 +113,7 @@ export function RangePicker({ range, onChange }: Readonly<{ range: OverviewRange
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="flex gap-1 rounded-lg border border-gray-200 p-1 dark:border-gray-800">
+      <div className="flex gap-1 rounded-lg border border-border p-1">
         {DAY_OPTIONS.map((days) => (
           <button
             key={days}
@@ -124,7 +124,7 @@ export function RangePicker({ range, onChange }: Readonly<{ range: OverviewRange
             className={`flex h-8 items-center justify-center rounded-md px-3 text-sm font-medium transition-colors ${
               !isCustom && 'days' in range && range.days === days
                 ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900'
-                : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
+                : 'text-muted-foreground hover:bg-muted'
             }`}
           >
             {days} days
@@ -142,7 +142,7 @@ export function RangePicker({ range, onChange }: Readonly<{ range: OverviewRange
             {isCustom ? `${formatShort(parseLocalDate(range.from))} – ${formatShort(parseLocalDate(range.to))}` : 'Custom range'}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto rounded-xl border-gray-200 p-0 shadow-xl dark:border-gray-700" align="end">
+        <PopoverContent className="w-auto rounded-xl border-border p-0 shadow-xl" align="end">
           <Calendar mode="range" defaultMonth={draft?.from} selected={draft} onSelect={handleSelect} numberOfMonths={2} className="rounded-xl" />
         </PopoverContent>
       </Popover>
@@ -164,24 +164,24 @@ export function OrgOverview({
 
   if (isLoading && !hasData) {
     return (
-      <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900">
+      <div className="h-full overflow-y-auto bg-muted/50">
         <OverviewSkeleton />
       </div>
     )
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900">
+    <div className="h-full overflow-y-auto bg-muted/50">
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-8 md:px-10">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             {/* text-2xl/tracking-tight matches this app's real page-title convention
                 (e.g. api-keys/page.tsx's <h1>) — text-xl read undersized next to it */}
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">Overview</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">All agents, for the selected period.</p>
+            <p className="mt-1 text-sm text-muted-foreground">All agents, for the selected period.</p>
           </div>
           <div className="flex items-center gap-3">
-            {isLoading && <Loader2 className="h-4 w-4 animate-spin text-gray-400" />}
+            {isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
             <RangePicker range={range} onChange={setRange} />
           </div>
         </div>
@@ -200,8 +200,8 @@ export function OrgOverview({
         </div>
 
         <div>
-          <h2 className="mb-3 text-base font-semibold text-gray-900 dark:text-gray-100">Agent breakdown</h2>
-          <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <h2 className="mb-3 text-base font-semibold text-foreground">Agent breakdown</h2>
+          <div className="rounded-xl border border-border bg-card shadow-sm">
             {/* Rounding/clipping lives on this outer div (overflow-hidden); the
                 actual scrolling (both directions) happens on the inner div
                 instead of here — combining overflow-auto with rounded-xl on
@@ -219,19 +219,19 @@ export function OrgOverview({
               <div className="max-h-[32rem] overflow-auto scrollbar-thin">
                 <table className="w-full min-w-[640px] text-sm">
                   {/* Background on each <th>, not the <thead>/<tr> — see the comment above. */}
-                  <thead className="sticky top-0 z-10 text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                  <thead className="sticky top-0 z-10 text-left text-xs uppercase tracking-wide text-muted-foreground">
                     <tr>
-                      <th className="py-3 pl-6 pr-4 font-semibold border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800">Agent</th>
-                      <th className="py-3 pr-4 font-semibold border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800">Calls</th>
-                      <th className="py-3 pr-4 font-semibold border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800">Pickup %</th>
-                      <th className="py-3 pr-4 font-semibold border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800">Latency</th>
-                      <th className="py-3 pr-6 font-semibold border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800">Status</th>
+                      <th className="py-3 pl-6 pr-4 font-semibold border-b border-border bg-muted/50">Agent</th>
+                      <th className="py-3 pr-4 font-semibold border-b border-border bg-muted/50">Calls</th>
+                      <th className="py-3 pr-4 font-semibold border-b border-border bg-muted/50">Pickup %</th>
+                      <th className="py-3 pr-4 font-semibold border-b border-border bg-muted/50">Latency</th>
+                      <th className="py-3 pr-6 font-semibold border-b border-border bg-muted/50">Status</th>
                     </tr>
                   </thead>
                 <tbody>
                   {data.agents.length === 0 && !isLoading && (
                     <tr>
-                      <td colSpan={5} className="py-10 text-center text-gray-500 dark:text-gray-400">
+                      <td colSpan={5} className="py-10 text-center text-muted-foreground">
                         No agents in this project yet.
                       </td>
                     </tr>
@@ -244,7 +244,7 @@ export function OrgOverview({
               </div>
             </div>
           </div>
-          <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+          <p className="mt-3 text-xs text-muted-foreground">
             Pickup % is the share of unique phone numbers that completed a call. Latency is the average response time per call.
           </p>
         </div>
