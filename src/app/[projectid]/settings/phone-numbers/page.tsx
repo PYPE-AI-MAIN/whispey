@@ -1,5 +1,7 @@
 'use client'
 
+import { EmptyState } from '@/components/shared/EmptyState'
+import { Button } from '@/components/ui/button'
 import { useParams, useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -368,16 +370,12 @@ export default function PhoneNumbersPage() {
       return (
         <tr>
           <td colSpan={6} className="py-16 text-center">
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <Phone className="h-6 w-6" />
-              <span className="text-sm">No phone numbers yet</span>
-              <button
-                onClick={() => setShowAddForm(true)}
-                className="text-xs text-primary hover:text-blue-400 transition-colors"
-              >
-                Add your first number
-              </button>
-            </div>
+            <EmptyState
+              icon={Phone}
+              title="No phone numbers yet"
+              description="Add a number to start making and receiving calls."
+              action={<Button size="sm" onClick={() => setShowAddForm(true)}>Add your first number</Button>}
+            />
           </td>
         </tr>
       )

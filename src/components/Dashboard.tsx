@@ -1,4 +1,5 @@
 'use client'
+import { EmptyState } from '@/components/shared/EmptyState'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -151,15 +152,11 @@ function NoCallsMessage() {
   
   return (
     <div className="flex-1 flex items-center justify-center h-full">
-      <div className="text-center">
-        <div className={`${isMobile ? 'w-12 h-12' : 'w-16 h-16'} bg-muted rounded-full flex items-center justify-center mx-auto mb-4`}>
-          <Bot className={`${isMobile ? 'w-6 h-6' : 'w-8 h-8'} text-muted-foreground`} />
-        </div>
-        <h3 className={`${isMobile ? 'text-base' : 'text-lg'} font-medium text-foreground mb-2`}>No calls yet</h3>
-        <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-          Your VAPI agent is ready. Calls will appear here once you start receiving them.
-        </p>
-      </div>
+      <EmptyState
+        icon={Bot}
+        title="No calls yet"
+        description="Your VAPI agent is ready. Calls will appear here once you start receiving them."
+      />
     </div>
   )
 }

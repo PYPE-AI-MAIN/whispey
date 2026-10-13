@@ -1,5 +1,6 @@
 'use client'
 
+import { EmptyState } from '@/components/shared/EmptyState'
 import { useParams, useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useRef, useState } from 'react'
@@ -278,8 +279,14 @@ export default function DncPage() {
       )
     }
     if (filteredEntries.length === 0) {
-      const emptyMsg = scope === 'project' && !selectedProject ? 'Select an organization above.' : 'No numbers on the DNC list.'
-      return <div className="p-10 text-center text-sm text-muted-foreground">{emptyMsg}</div>
+      const needsOrg = scope === 'project' && !selectedProject
+      return (
+        <EmptyState
+          icon={ShieldBan}
+          title={needsOrg ? 'Choose an organization' : 'No numbers blocked'}
+          description={needsOrg ? 'Pick an organization above to see its blocked numbers.' : 'Numbers you add are never dialed.'}
+        />
+      )
     }
     return (
       <Table>
