@@ -216,6 +216,17 @@ function NodeFields({
                   }}
                   className="h-7 text-xs"
                 />
+                <label className="flex h-7 shrink-0 items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400" title="If off, the agent will not hold the call back waiting for this detail">
+                  <Checkbox
+                    checked={ex.required !== false}
+                    onCheckedChange={(v) => {
+                      const next = [...extractions]
+                      next[i] = { ...ex, required: v === true }
+                      patch({ extractions: next } as any)
+                    }}
+                  />
+                  Needed
+                </label>
                 <Button
                   size="icon"
                   variant="ghost"

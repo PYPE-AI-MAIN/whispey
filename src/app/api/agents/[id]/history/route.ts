@@ -32,7 +32,7 @@ export async function POST(
   try {
     const { id: agentId } = await params
     const body = await req.json()
-    const { config, userEmail, userId, commit_message } = body
+    const { config, userEmail, userId, commit_message, skipGithub } = body
 
     if (!config) {
       return NextResponse.json({ message: 'config is required' }, { status: 400 })
@@ -86,14 +86,10 @@ export async function POST(
     const projectName = project?.name ?? agent.project_id
     const agentName = agent.name ?? agentId
 
-    const githubResult = await pushEnrichedConfigToGitHub(
-      agentId,
-      snapshot,
-      projectName,
-      agentName,
-      commit_message.trim(),
-      userEmail ?? 'unknown',
-    )
+    // Workflow snapshots can hold API headers, so the editor asks to keep them out of GitHub.
+    const githubResult = skipGithub
+      ? null
+      : await pushEnrichedConfigToGitHub(agentId, snapshot, projectName, agentName, commit_message.trim(), userEmail ?? 'unknown')
 
     // Insert version row
     const { data: inserted, error } = await supabase.from('pype_agent_config_versions').insert({

@@ -20,6 +20,10 @@ import { WorkflowCanvas } from '@/components/workflow/WorkflowCanvas'
 import { Inspector } from '@/components/workflow/Inspector'
 import type { LintIssue } from '@/lib/workflow/linter'
 import { WorkflowHeader } from '@/components/workflow/WorkflowHeader'
+import { PublishDialog } from '@/components/workflow/PublishDialog'
+import { WorkflowHistory } from '@/components/workflow/WorkflowHistory'
+import { WebhookPanel } from '@/components/workflow/WebhookPanel'
+import { useWorkflowDeploy } from '@/hooks/useWorkflowDeploy'
 import { KnowledgePanel } from '@/components/workflow/KnowledgePanel'
 import { GlobalRulesPanel } from '@/components/workflow/GlobalRulesPanel'
 import { VariablesPanel } from '@/components/workflow/VariablesPanel'
@@ -91,7 +95,6 @@ function WorkflowPageInner() {
   const isDirty = useWorkflowStore((s) => s.isDirty)
   const lintIssues = useWorkflowStore((s) => s.lintIssues)
   const setWorkflow = useWorkflowStore((s) => s.setWorkflow)
-  const markClean = useWorkflowStore((s) => s.markClean)
   const setActiveNode = useWorkflowStore((s) => s.setActiveNode)
 
   const [needsTemplate, setNeedsTemplate] = useState(false)
@@ -155,7 +158,9 @@ function WorkflowPageInner() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [deploying, setDeploying] = useState(false)
+  const [publishOpen, setPublishOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [webhookOpen, setWebhookOpen] = useState(false)
 
   // Copy the canvas as workflow JSON — the counterpart to ImportJsonSheet.
   const copyJson = useCallback(async () => {
@@ -230,39 +235,18 @@ function WorkflowPageInner() {
     }
   }
 
-  // Deploy saves the workflow. Every agent runs on the shared worker pool, which re-reads the stored config
-  // on each call, so a deployed agent is live immediately — there is nothing to start.
-  const handleDeploy = async (): Promise<boolean> => {
-    if (!workflow || !backendAgentName) return false
+  const { deploying, deploy } = useWorkflowDeploy({ backendAgentName, agentId, onDeployed: agentLifecycle.refresh })
+
+  // Deploy asks what changed first; a flow with errors cannot be deployed, so show them instead.
+  const requestDeploy = () => {
+    if (!workflow || !backendAgentName) return
     if (hasErrors(lintIssues)) {
       // The list opens next to the button: a long multi-line toast ran its lines together.
       setIssuesOpen(true)
       toast.error(`Fix ${errorCount} ${errorCount === 1 ? 'problem' : 'problems'} before deploying`)
-      return false
+      return
     }
-    setDeploying(true)
-    try {
-      const res = await fetch(`/api/workflow/${encodeURIComponent(backendAgentName)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workflow: deployable(workflow) }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (res.ok) {
-        toast.success('Workflow deployed')
-        if (data?.warning) toast.error(data.warning, { duration: 8000 })
-        markClean()
-        agentLifecycle.refresh()
-        return true
-      }
-      toast.error(data?.message || `Deploy failed (${res.status})`)
-      return false
-    } catch {
-      toast.error('Could not reach the deploy endpoint')
-      return false
-    } finally {
-      setDeploying(false)
-    }
+    setPublishOpen(true)
   }
 
   if (!agentId || !projectId) {
@@ -335,7 +319,9 @@ function WorkflowPageInner() {
         validating={saving}
         onPaste={() => setImportOpen(true)}
         onCopy={copyJson}
-        onDeploy={() => handleDeploy()}
+        onDeploy={requestDeploy}
+        onOpenHistory={() => setHistoryOpen(true)}
+        onOpenWebhook={() => setWebhookOpen(true)}
         deploying={deploying}
         deployTitle={deployButtonTitle(isDirty)}
       />
@@ -371,6 +357,9 @@ function WorkflowPageInner() {
       <Inspector />
       <VariablesPanel open={variablesOpen} onOpenChange={setVariablesOpen} />
       <GlobalRulesPanel open={rulesOpen} onOpenChange={setRulesOpen} />
+      <PublishDialog open={publishOpen} onOpenChange={setPublishOpen} publishing={deploying} onPublish={async (m) => { if (await deploy(m)) setPublishOpen(false) }} />
+      <WorkflowHistory open={historyOpen} onOpenChange={setHistoryOpen} agentId={agentId} />
+      <WebhookPanel open={webhookOpen} onOpenChange={setWebhookOpen} agentId={agentId} projectId={projectId} />
       <KnowledgePanel open={knowledgeOpen} onOpenChange={setKnowledgeOpen} agentName={backendAgentName} />
       <ImportJsonSheet open={importOpen} onOpenChange={setImportOpen} />
       <AgentSettingsPanel open={settingsOpen} onOpenChange={setSettingsOpen} />
