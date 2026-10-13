@@ -43,6 +43,216 @@ interface TalkToAssistantProps {
   deploymentTarget?: 'classic' | 'docker'  // which voice backend this agent lives on
 }
 
+const AGENT_STATUS_COLOR: Record<string, string> = {
+  running: 'bg-green-500',
+  starting: 'bg-yellow-500',
+  stopping: 'bg-orange-500',
+  stopped: 'bg-muted-foreground',
+  error: 'bg-red-500',
+}
+
+const AGENT_STATE_LABEL: Record<string, string> = {
+  initializing: 'Initializing',
+  listening: 'Listening',
+  thinking: 'Thinking',
+  speaking: 'Speaking',
+}
+
+const formatTime = (seconds: number) => {
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
+function ModeButton({ active, disabled, onClick, icon, label }: Readonly<{ active: boolean; disabled: boolean; onClick: () => void; icon: React.ReactNode; label: string }>) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={[
+        'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium transition-all',
+        disabled ? 'cursor-not-allowed' : 'cursor-pointer',
+        active ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+      ].join(' ')}
+    >
+      {icon}
+      {label}
+    </button>
+  )
+}
+
+function runEndCallFlash({ flashEndCall, sessionActive, endCallRef, setIsEndCallHighlighted, onFlashEndCallDone }: {
+  flashEndCall: boolean
+  sessionActive: boolean
+  endCallRef: React.RefObject<HTMLButtonElement | null>
+  setIsEndCallHighlighted: (v: boolean) => void
+  onFlashEndCallDone?: () => void
+}): (() => void) | undefined {
+  if (!flashEndCall) {
+    setIsEndCallHighlighted(false) // always reset when parent resets
+    return undefined
+  }
+  if (!sessionActive) {
+    onFlashEndCallDone?.()
+    return undefined
+  }
+  setIsEndCallHighlighted(true)
+  endCallRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  const t = setTimeout(() => {
+    setIsEndCallHighlighted(false)
+    onFlashEndCallDone?.()
+  }, 2000)
+  return () => clearTimeout(t)
+}
+
+type VoiceHook = ReturnType<typeof useVoiceAgent>
+type VoiceStateT = VoiceHook[0]
+type VoiceActionsT = VoiceHook[1]
+type TranscriptItem = VoiceStateT['transcripts'][number]
+
+function TranscriptBubble({ transcript }: Readonly<{ transcript: TranscriptItem }>) {
+  const fromUser = transcript.speaker === 'user'
+  return (
+    <div className={`flex gap-2 ${fromUser ? 'justify-start' : 'justify-end'}`}>
+      <div className="flex items-start gap-2 max-w-[85%]">
+        {fromUser
+          ? <User className="w-4 h-4 text-primary mt-1 flex-shrink-0" />
+          : <Bot className="w-4 h-4 text-success mt-1 flex-shrink-0" />
+        }
+        <div className={`rounded-lg px-3 py-2 text-sm ${
+          fromUser
+            ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-200'
+            : 'bg-green-100 dark:bg-green-900/30 text-green-900 dark:text-green-200'
+        } ${transcript.isFinal ? '' : 'opacity-60 border-2 border-dashed border-border'}`}>
+          <p className="break-words">{transcript.text}</p>
+          <div className="text-xs opacity-70 mt-1 flex items-center justify-between">
+            <span>{transcript.timestamp.toLocaleTimeString()}</span>
+            {!transcript.isFinal && (
+              <span className="ml-2 text-xs bg-muted px-1 rounded">partial</span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function IdlePanel({ mode, onStart }: Readonly<{ mode: AgentTestMode; onStart: () => void }>) {
+  const isVoice = mode === 'voice'
+  return (
+    <div className="p-4 text-center flex-shrink-0">
+      <div className={`w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center ${
+        isVoice ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-emerald-50 dark:bg-emerald-900/30'
+      }`}>
+        {isVoice
+          ? <PhoneIcon className="w-6 h-6 text-primary" />
+          : <MessageSquare className="w-6 h-6 text-success" />
+        }
+      </div>
+      <p className="text-sm text-muted-foreground mb-3">
+        {isVoice ? 'Start voice conversation' : 'Start text conversation — no audio'}
+      </p>
+      <Button onClick={onStart} className="w-full">
+        {isVoice ? 'Start Call' : 'Start Chat'}
+      </Button>
+    </div>
+  )
+}
+
+function VoiceDetails({ open, onOpenChange, voiceState, voiceActions }: Readonly<{
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  voiceState: VoiceStateT
+  voiceActions: VoiceActionsT
+}>) {
+  return (
+    <Collapsible open={open} onOpenChange={onOpenChange}>
+      <CollapsibleContent className="mt-3 space-y-3">
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs">Volume</label>
+            <span className="text-xs text-muted-foreground">{voiceState.volume}%</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Volume2 className="w-3 h-3 text-muted-foreground" />
+            <Slider value={[voiceState.volume]} onValueChange={v => voiceActions.setVolume(v[0])} max={100} step={1} className="flex-1" />
+          </div>
+        </div>
+        <div className="p-2 bg-muted/50 rounded text-xs space-y-1">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Audio:</span>
+            <span>{voiceState.isMuted ? 'Muted' : 'Active'}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Room:</span>
+            <span className="truncate ml-2">{voiceState.webSession?.room_name || voiceState.webSession?.room || 'N/A'}</span>
+          </div>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  )
+}
+
+function BottomControls({ mode, isEndCallHighlighted, voiceState, voiceActions, endCallRef }: Readonly<{
+  mode: AgentTestMode
+  isEndCallHighlighted: boolean
+  voiceState: VoiceStateT
+  voiceActions: VoiceActionsT
+  endCallRef: React.RefObject<HTMLButtonElement | null>
+}>) {
+  return (
+  <div className="p-3 border-t border-border flex-shrink-0">
+    {isEndCallHighlighted && (
+      <p className="text-center text-xs text-destructive mb-2 animate-pulse">
+        End the {mode === 'voice' ? 'call' : 'session'} here before closing
+      </p>
+    )}
+    {mode === 'voice' ? (
+      <div className="flex justify-center gap-3">
+        <Button
+          variant={voiceState.isMuted ? 'default' : 'outline'}
+          size="sm"
+          onClick={voiceActions.toggleMute}
+          className="flex items-center gap-2"
+        >
+          {voiceState.isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+          {voiceState.isMuted ? 'Unmute' : 'Mute'}
+        </Button>
+        <Button
+          ref={endCallRef}
+          variant="destructive"
+          size="sm"
+          onClick={voiceActions.disconnect}
+          className={[
+            'flex items-center gap-2 transition-all duration-150',
+            isEndCallHighlighted ? 'ring-2 ring-red-400 ring-offset-2 scale-105' : '',
+          ].join(' ')}
+        >
+          <PhoneOff className="w-4 h-4" />
+          End Call
+        </Button>
+      </div>
+    ) : (
+      <div className="flex justify-center">
+        <Button
+          ref={endCallRef}
+          variant="destructive"
+          size="sm"
+          onClick={voiceActions.disconnect}
+          className={[
+            'flex items-center gap-2 transition-all duration-150',
+            isEndCallHighlighted ? 'ring-2 ring-red-400 ring-offset-2 scale-105' : '',
+          ].join(' ')}
+        >
+          <PhoneOff className="w-4 h-4" />
+          End Session
+        </Button>
+      </div>
+    )}
+  </div>
+  )
+}
+
 export default function TalkToAssistant({
   agentName,
   isOpen,
@@ -74,24 +284,7 @@ export default function TalkToAssistant({
   }, [sessionActive, onSessionActiveChange])
 
   // Flash end call — only trigger when session is actually active.
-  useEffect(() => {
-    if (!flashEndCall) {
-      setIsEndCallHighlighted(false)  // ← always reset when parent resets
-      return
-    }
-    if (sessionActive) {
-      setIsEndCallHighlighted(true)
-      endCallRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-      const t = setTimeout(() => {
-        setIsEndCallHighlighted(false)
-        onFlashEndCallDone?.()
-      }, 2000)
-      return () => clearTimeout(t)
-    } else {
-      onFlashEndCallDone?.()
-    }
-  }, [flashEndCall])
-   
+  useEffect(() => runEndCallFlash({ flashEndCall, sessionActive, endCallRef, setIsEndCallHighlighted, onFlashEndCallDone }), [flashEndCall])
 
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -106,32 +299,8 @@ export default function TalkToAssistant({
     setMode(next)
   }
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
-
-  const getAgentStatusColor = () => {
-    switch (agentStatus.status) {
-      case 'running':  return 'bg-green-500'
-      case 'starting': return 'bg-yellow-500'
-      case 'stopping': return 'bg-orange-500'
-      case 'stopped':  return 'bg-muted-foreground'
-      case 'error':    return 'bg-red-500'
-      default:         return 'bg-muted-foreground'
-    }
-  }
-
-  const getAgentStateDisplay = () => {
-    switch (voiceState.agentState) {
-      case 'initializing': return 'Initializing'
-      case 'listening':    return 'Listening'
-      case 'thinking':     return 'Thinking'
-      case 'speaking':     return 'Speaking'
-      default:             return 'Unknown'
-    }
-  }
+  const getAgentStatusColor = () => AGENT_STATUS_COLOR[agentStatus.status] ?? 'bg-muted-foreground'
+  const getAgentStateDisplay = () => AGENT_STATE_LABEL[voiceState.agentState] ?? 'Unknown'
 
   const handleSendTextMessage = async () => {
     if (!textMessage.trim() || isSendingText) return
@@ -169,34 +338,8 @@ export default function TalkToAssistant({
         <p className="text-xs text-muted-foreground -mt-2">{agentName}</p>
 
         <div className={`flex items-center bg-muted rounded-lg p-0.5 gap-0.5 ${sessionActive ? 'opacity-40 cursor-not-allowed' : ''}`}>
-          <button
-            onClick={() => handleModeSwitch('voice')}
-            disabled={sessionActive}
-            className={[
-              'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium transition-all',
-              sessionActive ? 'cursor-not-allowed' : 'cursor-pointer',
-              mode === 'voice'
-                ? 'bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
-            ].join(' ')}
-          >
-            <Mic className="w-3.5 h-3.5" />
-            Voice
-          </button>
-          <button
-            onClick={() => handleModeSwitch('chat')}
-            disabled={sessionActive}
-            className={[
-              'flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium transition-all',
-              sessionActive ? 'cursor-not-allowed' : 'cursor-pointer',
-              mode === 'chat'
-                ? 'bg-card text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground',
-            ].join(' ')}
-          >
-            <MessageSquare className="w-3.5 h-3.5" />
-            Chat
-          </button>
+          <ModeButton active={mode === 'voice'} disabled={sessionActive} onClick={() => handleModeSwitch('voice')} icon={<Mic className="w-3.5 h-3.5" />} label="Voice" />
+          <ModeButton active={mode === 'chat'} disabled={sessionActive} onClick={() => handleModeSwitch('chat')} icon={<MessageSquare className="w-3.5 h-3.5" />} label="Chat" />
         </div>
       </div>
 
@@ -210,22 +353,7 @@ export default function TalkToAssistant({
 
       {/* ── Idle ── */}
       {!voiceState.isConnected && !voiceState.isConnecting && (
-        <div className="p-4 text-center flex-shrink-0">
-          <div className={`w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center ${
-            mode === 'voice' ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-emerald-50 dark:bg-emerald-900/30'
-          }`}>
-            {mode === 'voice'
-              ? <PhoneIcon className="w-6 h-6 text-primary" />
-              : <MessageSquare className="w-6 h-6 text-success" />
-            }
-          </div>
-          <p className="text-sm text-muted-foreground mb-3">
-            {mode === 'voice' ? 'Start voice conversation' : 'Start text conversation — no audio'}
-          </p>
-          <Button onClick={() => voiceActions.connect()} className="w-full">
-            {mode === 'voice' ? 'Start Call' : 'Start Chat'}
-          </Button>
-        </div>
+        <IdlePanel mode={mode} onStart={() => voiceActions.connect()} />
       )}
 
       {/* ── Connecting ── */}
@@ -263,30 +391,7 @@ export default function TalkToAssistant({
             </div>
 
             {mode === 'voice' && (
-              <Collapsible open={showDetails} onOpenChange={setShowDetails}>
-                <CollapsibleContent className="mt-3 space-y-3">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-xs">Volume</label>
-                      <span className="text-xs text-muted-foreground">{voiceState.volume}%</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Volume2 className="w-3 h-3 text-muted-foreground" />
-                      <Slider value={[voiceState.volume]} onValueChange={v => voiceActions.setVolume(v[0])} max={100} step={1} className="flex-1" />
-                    </div>
-                  </div>
-                  <div className="p-2 bg-muted/50 rounded text-xs space-y-1">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Audio:</span>
-                      <span>{voiceState.isMuted ? 'Muted' : 'Active'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Room:</span>
-                      <span className="truncate ml-2">{voiceState.webSession?.room_name || voiceState.webSession?.room || 'N/A'}</span>
-                    </div>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
+              <VoiceDetails open={showDetails} onOpenChange={setShowDetails} voiceState={voiceState} voiceActions={voiceActions} />
             )}
           </div>
 
@@ -344,30 +449,7 @@ export default function TalkToAssistant({
                 ) : (
                   <div className="space-y-3">
                     {voiceState.transcripts.map(transcript => (
-                      <div
-                        key={transcript.id}
-                        className={`flex gap-2 ${transcript.speaker === 'user' ? 'justify-start' : 'justify-end'}`}
-                      >
-                        <div className="flex items-start gap-2 max-w-[85%]">
-                          {transcript.speaker === 'user'
-                            ? <User className="w-4 h-4 text-primary mt-1 flex-shrink-0" />
-                            : <Bot className="w-4 h-4 text-success mt-1 flex-shrink-0" />
-                          }
-                          <div className={`rounded-lg px-3 py-2 text-sm ${
-                            transcript.speaker === 'user'
-                              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-200'
-                              : 'bg-green-100 dark:bg-green-900/30 text-green-900 dark:text-green-200'
-                          } ${transcript.isFinal ? '' : 'opacity-60 border-2 border-dashed border-border'}`}>
-                            <p className="break-words">{transcript.text}</p>
-                            <div className="text-xs opacity-70 mt-1 flex items-center justify-between">
-                              <span>{transcript.timestamp.toLocaleTimeString()}</span>
-                              {!transcript.isFinal && (
-                                <span className="ml-2 text-xs bg-muted px-1 rounded">partial</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                      <TranscriptBubble key={transcript.id} transcript={transcript} />
                     ))}
                     <div ref={transcriptEndRef} />
                   </div>
@@ -377,55 +459,7 @@ export default function TalkToAssistant({
           </div>
 
           {/* Bottom controls */}
-          <div className="p-3 border-t border-border flex-shrink-0">
-            {isEndCallHighlighted && (
-              <p className="text-center text-xs text-destructive mb-2 animate-pulse">
-                End the {mode === 'voice' ? 'call' : 'session'} here before closing
-              </p>
-            )}
-            {mode === 'voice' ? (
-              <div className="flex justify-center gap-3">
-                <Button
-                  variant={voiceState.isMuted ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={voiceActions.toggleMute}
-                  className="flex items-center gap-2"
-                >
-                  {voiceState.isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                  {voiceState.isMuted ? 'Unmute' : 'Mute'}
-                </Button>
-                <Button
-                  ref={endCallRef}
-                  variant="destructive"
-                  size="sm"
-                  onClick={voiceActions.disconnect}
-                  className={[
-                    'flex items-center gap-2 transition-all duration-150',
-                    isEndCallHighlighted ? 'ring-2 ring-red-400 ring-offset-2 scale-105' : '',
-                  ].join(' ')}
-                >
-                  <PhoneOff className="w-4 h-4" />
-                  End Call
-                </Button>
-              </div>
-            ) : (
-              <div className="flex justify-center">
-                <Button
-                  ref={endCallRef}
-                  variant="destructive"
-                  size="sm"
-                  onClick={voiceActions.disconnect}
-                  className={[
-                    'flex items-center gap-2 transition-all duration-150',
-                    isEndCallHighlighted ? 'ring-2 ring-red-400 ring-offset-2 scale-105' : '',
-                  ].join(' ')}
-                >
-                  <PhoneOff className="w-4 h-4" />
-                  End Session
-                </Button>
-              </div>
-            )}
-          </div>
+          <BottomControls mode={mode} isEndCallHighlighted={isEndCallHighlighted} voiceState={voiceState} voiceActions={voiceActions} endCallRef={endCallRef} />
         </>
       )}
 
