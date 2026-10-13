@@ -357,7 +357,7 @@ export default function TalkToAssistant({
                             transcript.speaker === 'user'
                               ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-200'
                               : 'bg-green-100 dark:bg-green-900/30 text-green-900 dark:text-green-200'
-                          } ${!transcript.isFinal ? 'opacity-60 border-2 border-dashed border-border' : ''}`}>
+                          } ${transcript.isFinal ? '' : 'opacity-60 border-2 border-dashed border-border'}`}>
                             <p className="break-words">{transcript.text}</p>
                             <div className="text-xs opacity-70 mt-1 flex items-center justify-between">
                               <span>{transcript.timestamp.toLocaleTimeString()}</span>

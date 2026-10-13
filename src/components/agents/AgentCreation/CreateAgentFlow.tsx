@@ -473,9 +473,9 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
 
           {/* Platform Selection */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-foreground">
+            <div className="block text-sm font-medium text-foreground">
               Agent Platform
-            </label>
+            </div>
             {creationMode === 'flow' ? (
               <p className="h-10 flex items-center px-3 text-sm rounded-lg border border-border bg-muted/50 text-muted-foreground">
                 <Activity className="w-4 h-4 mr-2 text-primary" /> LiveKit Agent (required for conversation flows)
@@ -549,9 +549,9 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <label className="block text-sm font-medium text-foreground">
+                  <div className="block text-sm font-medium text-foreground">
                     Agent Name
-                  </label>
+                  </div>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -591,10 +591,10 @@ const CreateAgentFlow: React.FC<CreateAgentFlowProps> = ({
 
           {/* Description */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-foreground">
+            <label htmlFor="create-description" className="block text-sm font-medium text-foreground">
               Description <span className="text-muted-foreground font-normal">(optional)</span>
             </label>
-            <textarea
+            <textarea id="create-description"
               placeholder="Brief description of what this agent does..."
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}

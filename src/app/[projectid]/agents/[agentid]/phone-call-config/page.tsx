@@ -570,7 +570,7 @@ export default function PhoneCallConfig() {
 
             <div className="space-y-5 flex-1 w-full">
               <div className='w-full'>
-                <label className="block text-sm font-semibold text-foreground mb-2">Calling From <span className="text-destructive">*</span></label>
+                <div className="block text-sm font-semibold text-foreground mb-2">Calling From <span className="text-destructive">*</span></div>
                 {loadingPhoneNumbers ? (
                   <div className="h-12 w-full flex items-center justify-center border border-border rounded-xl bg-card"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
                 ) : phoneNumbers.length === 0 ? (
@@ -590,14 +590,14 @@ export default function PhoneCallConfig() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-foreground mb-2">
+                <div className="block text-sm font-semibold text-foreground mb-2">
                   <div className="flex gap-4 items-center">
                     Calling To <span className="text-destructive">*</span>
                     <button onClick={() => setShowDialer(!showDialer)} className={`h-7 w-7 flex items-center justify-center rounded-md border transition-all duration-200 active:scale-95 ${showDialer ? 'bg-blue-50 dark:bg-blue-900/20 border-primary/30 text-primary hover:bg-primary/15 dark:hover:bg-blue-900/30' : 'bg-white dark:bg-gray-800 border-border text-muted-foreground hover:border-primary/40 hover:text-primary dark:hover:text-blue-400'}`} title={showDialer ? 'Hide dialer' : 'Show dialer'}>
                       {showDialer ? <PhoneOff className="w-4 h-4" /> : <PhoneCall className="w-4 h-4" />}
                     </button>
                   </div>
-                </label>
+                </div>
                 <div className="flex gap-2">
                   <div className="flex h-12 flex-1">
                     <Select value={selectedCountry} onValueChange={setSelectedCountry}>

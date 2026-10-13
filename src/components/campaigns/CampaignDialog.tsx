@@ -430,7 +430,7 @@ const CampaignDialog: React.FC<CampaignDialogProps> = ({
                   
                   <div>
                     <label htmlFor="csv-file" className="block text-sm font-medium text-foreground mb-2">
-                      Upload CSV File
+                      Upload CSV File{' '}
                       <span className="text-destructive ml-1">*</span>
                     </label>
                     <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-blue-400 transition-colors">

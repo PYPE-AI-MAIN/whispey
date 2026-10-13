@@ -706,7 +706,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                   <div
                     key={project.id}
                     className={`group px-6 py-4 hover:bg-muted/50  transition-colors cursor-pointer ${
-                      index !== filteredProjects.length - 1 ? 'border-b border-border' : ''
+                      index === filteredProjects.length - 1 ? '' : 'border-b border-border'
                     } ${selectedProject === project.id ? 'opacity-50' : ''}`}
                     onClick={() => handleProjectClick(project)}
                     role="button"

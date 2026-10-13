@@ -926,8 +926,8 @@ export default function PipecatAgentConfig({
             {/* Opening Message + Timezone row */}
             <div className="flex gap-3 flex-shrink-0">
               <div className="flex-1 bg-card border border-border rounded-lg p-3 space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Opening Message</label>
-                <Input
+                <label htmlFor="pc-opening-message" className="text-xs font-medium text-muted-foreground">Opening Message</label>
+                <Input id="pc-opening-message"
                   value={openingMessage}
                   onChange={e => setOpeningMessage(e.target.value)}
                   placeholder="नमस्ते! बताइए... or Hello {{customer_name}}!"
@@ -935,8 +935,8 @@ export default function PipecatAgentConfig({
                 />
               </div>
               <div className="w-52 flex-shrink-0 bg-card border border-border rounded-lg p-3 space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Timezone</label>
-                <select
+                <label htmlFor="pc-timezone" className="text-xs font-medium text-muted-foreground">Timezone</label>
+                <select id="pc-timezone"
                   value={timezone}
                   onChange={e => setTimezone(e.target.value)}
                   className="w-full h-8 px-2 text-xs rounded-md border border-gray-200 dark:border-gray-700

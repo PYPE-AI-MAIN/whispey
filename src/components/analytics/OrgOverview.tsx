@@ -42,7 +42,7 @@ const KPI_ICONS = {
 } as const
 
 function Metric({ text, loading, skeletonClass }: Readonly<{ text: string | null; loading: boolean; skeletonClass: string }>) {
-  if (text !== null) return <>{text}</>
+  if (text !== null) return text
   return loading ? <Skeleton className={skeletonClass} /> : <>—</>
 }
 

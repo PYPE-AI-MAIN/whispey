@@ -516,12 +516,12 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
 
           {/* Platform Selection */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-foreground">Agent Platform</label>
+            <label htmlFor="connect-platform" className="block text-sm font-medium text-foreground">Agent Platform</label>
             <Select
               value={selectedPlatform}
               onValueChange={(v) => { setSelectedPlatform(v); setError(null) }}
             >
-              <SelectTrigger className="h-10 w-full">
+              <SelectTrigger id="connect-platform" className="h-10 w-full">
                 <SelectValue>
                   {(() => {
                     const p = PLATFORM_OPTIONS.find(o => o.value === selectedPlatform)
@@ -557,10 +557,10 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
 
             {/* Agent name — always shown */}
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-foreground">
+              <label htmlFor="connect-agent-name" className="block text-sm font-medium text-foreground">
                 Agent Name
               </label>
-              <Input
+              <Input id="connect-agent-name"
                 placeholder={
                   selectedPlatform === 'vapi' ? 'Support Assistant Monitor' :
                   selectedPlatform === 'retell' ? 'Retell Agent Monitor' :
@@ -575,10 +575,10 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
             {/* LiveKit notes */}
             {selectedPlatform === 'livekit' && (
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-foreground">
+                <label htmlFor="connect-notes" className="block text-sm font-medium text-foreground">
                   Notes <span className="text-muted-foreground font-normal">(optional)</span>
                 </label>
-                <textarea
+                <textarea id="connect-notes"
                   placeholder="Brief description of what this agent does..."
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}

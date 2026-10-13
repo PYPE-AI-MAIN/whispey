@@ -219,10 +219,10 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
               
               <form onSubmit={handleAddMember} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
+                  <label htmlFor="member-email" className="block text-sm font-medium text-foreground mb-2">
                     Email Address
                   </label>
-                  <input
+                  <input id="member-email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -232,10 +232,10 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
+                  <label htmlFor="member-role" className="block text-sm font-medium text-foreground mb-2">
                     Role
                   </label>
-                  <select
+                  <select id="member-role"
                     value={role}
                     onChange={(e) => setRole(e.target.value as 'admin' | 'viewer')}
                     className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"

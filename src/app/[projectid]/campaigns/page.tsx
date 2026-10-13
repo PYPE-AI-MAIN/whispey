@@ -650,7 +650,7 @@ function Campaigns() {
 
 // ─── Tiny shared sub-components ───────────────────────────────────────────────
 
-function Stat({ label, value, color = 'text-foreground' }: { label: string; value: number; color?: string }) {
+function Stat({ label, value, color = 'text-foreground' }: Readonly<{ label: string; value: number; color?: string }>) {
   return (
     <div className="flex items-center gap-1.5">
       <span className="text-xs text-muted-foreground">{label}:</span>
@@ -668,7 +668,7 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
-function MetricRow({ label, value, color = 'text-foreground' }: { label: string; value: number; color?: string }) {
+function MetricRow({ label, value, color = 'text-foreground' }: Readonly<{ label: string; value: number; color?: string }>) {
   return (
     <div className="flex items-center justify-between">
       <span className="text-sm text-muted-foreground">{label}</span>

@@ -326,7 +326,7 @@ export default function PromptSettingsSheet({
                     </div>
                   ) : (
                     customVariables.map((variable, index) => (
-                      <div key={index} className="border border-border rounded-lg p-3 space-y-3">
+                      <div key={index} /* NOSONAR: rows are edited in place and have no stable id */ className="border border-border rounded-lg p-3 space-y-3">
                         <div className="flex w-full items-center justify-center gap-1">
                           <div className="flex-1 w-1/2 space-y-1">
                             <Input

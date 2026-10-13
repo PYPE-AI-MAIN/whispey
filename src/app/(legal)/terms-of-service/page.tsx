@@ -159,27 +159,27 @@ export default function TermsOfService() {
                 <p className="font-medium text-destructive mb-2">Prohibited Activities:</p>
                 <ul className="space-y-2 text-sm text-destructive">
                   <li className="flex items-start gap-2">
-                    <span className="text-destructive mt-0.5">•</span>
+                    <span className="text-destructive mt-0.5">•</span>{' '}
                     Process or transmit any content that is illegal, harmful, threatening, abusive, or violates any laws
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-destructive mt-0.5">•</span>
+                    <span className="text-destructive mt-0.5">•</span>{' '}
                     Violate privacy rights or process personal data without proper consent and legal basis
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-destructive mt-0.5">•</span>
+                    <span className="text-destructive mt-0.5">•</span>{' '}
                     Attempt to gain unauthorized access to our systems or other users' accounts
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-destructive mt-0.5">•</span>
+                    <span className="text-destructive mt-0.5">•</span>{' '}
                     Overload our infrastructure with excessive requests or automated abuse
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-destructive mt-0.5">•</span>
+                    <span className="text-destructive mt-0.5">•</span>{' '}
                     Use the Service for cryptocurrency mining, botnets, or other resource-intensive unauthorized activities
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-destructive mt-0.5">•</span>
+                    <span className="text-destructive mt-0.5">•</span>{' '}
                     Reverse engineer, decompile, or attempt to extract source code from our proprietary systems
                   </li>
                 </ul>

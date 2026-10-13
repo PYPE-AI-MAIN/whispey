@@ -365,9 +365,9 @@ export default function PipecatPhoneCallConfig({
 
               {/* Calling From — display assigned numbers */}
               <div>
-                <label className="block text-sm font-semibold text-foreground mb-2">
+                <div className="block text-sm font-semibold text-foreground mb-2">
                   Calling From <span className="text-destructive">*</span>
-                </label>
+                </div>
                 {loadingNumbers ? (
                   <div className="h-12 w-full flex items-center justify-center border border-border rounded-xl bg-card">
                     <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
@@ -408,7 +408,7 @@ export default function PipecatPhoneCallConfig({
 
               {/* Calling To */}
               <div>
-                <label className="block text-sm font-semibold text-foreground mb-2">
+                <div className="block text-sm font-semibold text-foreground mb-2">
                   <div className="flex gap-4 items-center">
                     Calling To <span className="text-destructive">*</span>
                     <button
@@ -423,7 +423,7 @@ export default function PipecatPhoneCallConfig({
                       {showDialer ? <PhoneOff className="w-4 h-4" /> : <PhoneCall className="w-4 h-4" />}
                     </button>
                   </div>
-                </label>
+                </div>
                 <div className="flex gap-2">
                   <div className="flex h-12 flex-1">
                     <Select value={selectedCountry} onValueChange={setSelectedCountry}>
@@ -493,9 +493,9 @@ export default function PipecatPhoneCallConfig({
               {/* Variables */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-semibold text-foreground">
+                  <div className="text-sm font-semibold text-foreground">
                     Variables <span className="text-xs font-normal text-muted-foreground">(optional)</span>
-                  </label>
+                  </div>
                   <button
                     onClick={() => setVariables(prev => [...prev, { key: '', value: '' }])}
                     className="flex items-center gap-1 text-xs text-warning hover:text-warning font-medium"

@@ -83,18 +83,21 @@ const TRUNK_TO_NUMBER_TYPE: Record<string, NumberType> = {
 // ── Inline select ─────────────────────────────────────────────────────────────
 
 function NativeSelect({
+  id,
   value,
   onChange,
   children,
   className = '',
-}: {
+}: Readonly<{
+  id?: string
   value: string
   onChange: (v: string) => void
   children: React.ReactNode
   className?: string
-}) {
+}>) {
   return (
     <select
+      id={id}
       value={value}
       onChange={e => onChange(e.target.value)}
       className={`h-9 w-full rounded-lg border border-border bg-muted/50 text-sm text-foreground px-3 focus:outline-none focus:border-blue-600 transition-colors ${className}`}
@@ -144,8 +147,8 @@ function PhoneNumberForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Phone Number */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Phone Number</label>
-          <input
+          <label htmlFor="pn-number" className="text-xs font-medium text-muted-foreground">Phone Number</label>
+          <input id="pn-number"
             value={form.phone_number}
             onChange={e => set('phone_number', e.target.value)}
             placeholder="918064151286"
@@ -156,8 +159,8 @@ function PhoneNumberForm({
 
         {/* Provider */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Provider</label>
-          <NativeSelect value={form.provider} onChange={v => set('provider', v as Provider)}>
+          <label htmlFor="pn-provider" className="text-xs font-medium text-muted-foreground">Provider</label>
+          <NativeSelect id="pn-provider" value={form.provider} onChange={v => set('provider', v as Provider)}>
             {(Object.keys(PROVIDER_LABELS) as Provider[]).map(p => (
               <option key={p} value={p}>{PROVIDER_LABELS[p]}</option>
             ))}
@@ -166,8 +169,8 @@ function PhoneNumberForm({
 
         {/* Number Type */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Number Type</label>
-          <NativeSelect value={form.number_type} onChange={v => set('number_type', v as NumberType)}>
+          <label htmlFor="pn-type" className="text-xs font-medium text-muted-foreground">Number Type</label>
+          <NativeSelect id="pn-type" value={form.number_type} onChange={v => set('number_type', v as NumberType)}>
             {(Object.keys(NUMBER_TYPE_LABELS) as NumberType[]).map(t => (
               <option key={t} value={t}>{NUMBER_TYPE_LABELS[t]}</option>
             ))}
@@ -176,8 +179,8 @@ function PhoneNumberForm({
 
         {/* Assign to Agent */}
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Assign to Agent</label>
-          <NativeSelect value={form.assigned_agent_id} onChange={handleAgentChange}>
+          <label htmlFor="pn-agent" className="text-xs font-medium text-muted-foreground">Assign to Agent</label>
+          <NativeSelect id="pn-agent" value={form.assigned_agent_id} onChange={handleAgentChange}>
             <option value="">— Unassigned —</option>
             {agents.map(a => (
               <option key={a.id} value={a.id}>{agentDisplayName(a)}</option>
@@ -188,9 +191,9 @@ function PhoneNumberForm({
         {/* Acefone API Key — only when provider is acefone */}
         {form.provider.toLowerCase() === 'acefone' && (
           <div className="sm:col-span-2 space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Acefone C2C API Key</label>
+            <label htmlFor="pn-acefone-key" className="text-xs font-medium text-muted-foreground">Acefone C2C API Key</label>
             <div className="relative">
-              <input
+              <input id="pn-acefone-key"
                 type={showKey ? 'text' : 'password'}
                 value={form.acefone_api_key}
                 onChange={e => set('acefone_api_key', e.target.value)}

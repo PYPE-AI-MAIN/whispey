@@ -615,7 +615,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
           const retryType = config.type || 'sipCode'
 
           return (
-            <div key={index} className="p-3 border border-border rounded-md bg-card">
+            <div key={index} /* NOSONAR: rules are edited in place and have no stable id */ className="p-3 border border-border rounded-md bg-card">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-semibold text-foreground">
                   Retry Config #{index + 1}

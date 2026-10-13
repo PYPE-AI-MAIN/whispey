@@ -139,7 +139,7 @@ const ProjectCreationDialog: React.FC<ProjectCreationDialogProps> = ({
                 {/* Description */}
                 <div>
                   <label htmlFor="project-description" className="block text-sm font-medium text-foreground mb-2">
-                    Description
+                    Description{' '}
                     <span className="text-muted-foreground font-normal ml-1">(optional)</span>
                   </label>
                   <textarea
