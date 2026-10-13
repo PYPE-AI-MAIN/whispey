@@ -73,6 +73,97 @@ const formatTimestamp = (timestamp: number | string | null | undefined): string 
   }
 };
 
+const formatValue = (value: any): string => {
+  if (value === null) return 'null';
+  if (value === undefined) return 'undefined';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'boolean' || typeof value === 'number') return value.toString();
+  return JSON.stringify(value, null, 2);
+};
+
+const FIELD_GROUPS: Record<string, string[]> = {
+  identifiers: ['span_id', 'trace_id', 'request_id', 'parent_span_id', 'session_id'],
+  timing: ['created_at', 'captured_at', 'start_time', 'end_time'],
+  metrics: ['duration_ns', 'duration_ms', 'tokens_used', 'cost_usd'],
+  content: ['name', 'description', 'prompt', 'response', 'output', 'input'],
+  status: ['status', 'error', 'is_error'],
+  config: ['operation_type', 'model', 'temperature', 'max_tokens'],
+};
+
+const getFieldCategory = (key: string): string =>
+  Object.keys(FIELD_GROUPS).find((category) => FIELD_GROUPS[category].includes(key)) ?? 'other';
+
+const CATEGORY_LABELS: Record<string, { title: string; icon: React.ReactNode; color: string }> = {
+  identifiers: { title: 'Identifiers', icon: <Hash className="w-4 h-4" />, color: 'bg-primary/10 border-primary/30' },
+  timing: { title: 'Timing', icon: <Clock className="w-4 h-4" />, color: 'bg-success/10 border-success/30' },
+  metrics: { title: 'Metrics', icon: <Activity className="w-4 h-4" />, color: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800' },
+  content: { title: 'Content', icon: <MessageSquare className="w-4 h-4" />, color: 'bg-warning/10 border-warning/30' },
+  status: { title: 'Status', icon: <CheckCircle2 className="w-4 h-4" />, color: 'bg-muted/50 border-border' },
+  config: { title: 'Configuration', icon: <Zap className="w-4 h-4" />, color: 'bg-warning/10 border-warning/30' },
+  other: { title: 'Other', icon: <Code className="w-4 h-4" />, color: 'bg-muted/50 border-border' },
+};
+const CATEGORY_ORDER = ['identifiers', 'timing', 'metrics', 'content', 'status', 'config', 'other'];
+
+function SpanField({ fieldKey, value }: Readonly<{ fieldKey: string; value: any }>) {
+  const isTimeField = fieldKey.includes('time') || fieldKey.includes('at');
+  const formattedTimestamp = isTimeField ? formatTimestamp(value) : '';
+
+  return (
+    <div className="group bg-card rounded-lg p-3 border border-border hover:border-border transition-colors">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-semibold text-foreground">
+              {fieldKey.replaceAll('_', ' ')}
+            </span>
+            <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+              {typeof value}
+            </span>
+          </div>
+          
+          <div className="text-sm">
+            {typeof value === 'object' && value !== null ? (
+              <details className="group-inner">
+                <summary className="cursor-pointer text-muted-foreground hover:text-foreground font-medium text-xs mb-2">
+                  View Object ({Object.keys(value).length} properties)
+                </summary>
+                <div className="bg-muted/50 rounded p-3 mt-2 border border-border">
+                  <pre className="text-xs text-foreground font-mono overflow-x-auto whitespace-pre-wrap">
+                    {JSON.stringify(value, null, 2)}
+                  </pre>
+                </div>
+              </details>
+            ) : (
+              <div className="flex flex-col gap-1">
+                <span className={`font-medium break-all ${valueTone(value, isTimeField)}`}>
+                  {formatValue(value)}
+                </span>
+                {isTimeField && formattedTimestamp && (
+                  <span className="text-xs text-muted-foreground font-mono">
+                    {formattedTimestamp}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {(typeof value === 'string' || typeof value === 'number') && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigator.clipboard.writeText(String(value))}
+            className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 p-0 shrink-0"
+            title="Copy value"
+          >
+            <Copy className="w-3 h-3" />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Raw Data View Component
 const RawDataView = ({ span }: { span: any }) => {
   const [viewMode, setViewMode] = useState<'formatted' | 'raw'>('formatted');
@@ -81,120 +172,16 @@ const RawDataView = ({ span }: { span: any }) => {
     navigator.clipboard.writeText(text);
   };
 
-  const formatValue = (value: any): string => {
-    if (value === null) return 'null';
-    if (value === undefined) return 'undefined';
-    if (typeof value === 'boolean') return value.toString();
-    if (typeof value === 'number') return value.toString();
-    if (typeof value === 'string') return value;
-    return JSON.stringify(value, null, 2);
-  };
-
-  const getFieldCategory = (key: string) => {
-    const identifierFields = ['span_id', 'trace_id', 'request_id', 'parent_span_id', 'session_id'];
-    const timeFields = ['created_at', 'captured_at', 'start_time', 'end_time'];
-    const metricFields = ['duration_ns', 'duration_ms', 'tokens_used', 'cost_usd'];
-    const contentFields = ['name', 'description', 'prompt', 'response', 'output', 'input'];
-    const statusFields = ['status', 'error', 'is_error'];
-    const configFields = ['operation_type', 'model', 'temperature', 'max_tokens'];
-
-    if (identifierFields.includes(key)) return 'identifiers';
-    if (timeFields.includes(key)) return 'timing';
-    if (metricFields.includes(key)) return 'metrics';
-    if (contentFields.includes(key)) return 'content';
-    if (statusFields.includes(key)) return 'status';
-    if (configFields.includes(key)) return 'config';
-    return 'other';
-  };
-
   const renderFormattedData = () => {
     const entries = Object.entries(span);
-    const categorized = {
-      identifiers: entries.filter(([key]) => getFieldCategory(key) === 'identifiers'),
-      timing: entries.filter(([key]) => getFieldCategory(key) === 'timing'),
-      metrics: entries.filter(([key]) => getFieldCategory(key) === 'metrics'),
-      content: entries.filter(([key]) => getFieldCategory(key) === 'content'),
-      status: entries.filter(([key]) => getFieldCategory(key) === 'status'),
-      config: entries.filter(([key]) => getFieldCategory(key) === 'config'),
-      other: entries.filter(([key]) => getFieldCategory(key) === 'other'),
-    };
-
-    const categoryLabels = {
-      identifiers: { title: 'Identifiers', icon: <Hash className="w-4 h-4" />, color: 'bg-primary/10 border-primary/30' },
-      timing: { title: 'Timing', icon: <Clock className="w-4 h-4" />, color: 'bg-success/10 border-success/30' },
-      metrics: { title: 'Metrics', icon: <Activity className="w-4 h-4" />, color: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800' },
-      content: { title: 'Content', icon: <MessageSquare className="w-4 h-4" />, color: 'bg-warning/10 border-warning/30' },
-      status: { title: 'Status', icon: <CheckCircle2 className="w-4 h-4" />, color: 'bg-muted/50 border-border' },
-      config: { title: 'Configuration', icon: <Zap className="w-4 h-4" />, color: 'bg-warning/10 border-warning/30' },
-      other: { title: 'Other', icon: <Code className="w-4 h-4" />, color: 'bg-muted/50 border-border' },
-    };
-
-    const renderField = ([key, value]: [string, any]) => {
-      const isTimeField = key.includes('time') || key.includes('at');
-      const formattedTimestamp = isTimeField ? formatTimestamp(value) : '';
-      
-      return (
-        <div key={key} className="group bg-card rounded-lg p-3 border border-border hover:border-border transition-colors">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-semibold text-foreground">
-                  {key.replace(/_/g, ' ')}
-                </span>
-                <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                  {typeof value}
-                </span>
-              </div>
-              
-              <div className="text-sm">
-                {typeof value === 'object' && value !== null ? (
-                  <details className="group-inner">
-                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground font-medium text-xs mb-2">
-                      View Object ({Object.keys(value).length} properties)
-                    </summary>
-                    <div className="bg-muted/50 rounded p-3 mt-2 border border-border">
-                      <pre className="text-xs text-foreground font-mono overflow-x-auto whitespace-pre-wrap">
-                        {JSON.stringify(value, null, 2)}
-                      </pre>
-                    </div>
-                  </details>
-                ) : (
-                  <div className="flex flex-col gap-1">
-                    <span className={`font-medium break-all ${valueTone(value, isTimeField)}`}>
-                      {formatValue(value)}
-                    </span>
-                    {isTimeField && formattedTimestamp && (
-                      <span className="text-xs text-muted-foreground font-mono">
-                        {formattedTimestamp}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {(typeof value === 'string' || typeof value === 'number') && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => copyToClipboard(String(value))}
-                className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 p-0 shrink-0"
-                title="Copy value"
-              >
-                <Copy className="w-3 h-3" />
-              </Button>
-            )}
-          </div>
-        </div>
-      );
-    };
 
     return (
       <div className="space-y-6">
-        {Object.entries(categorized).map(([category, fields]) => {
+        {CATEGORY_ORDER.map((category) => {
+          const fields = entries.filter(([key]) => getFieldCategory(key) === category);
           if (fields.length === 0) return null;
-          const config = categoryLabels[category as keyof typeof categoryLabels];
-          
+          const config = CATEGORY_LABELS[category];
+
           return (
             <div key={category} className={`border rounded-xl p-4 ${config.color}`}>
               <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
@@ -203,7 +190,7 @@ const RawDataView = ({ span }: { span: any }) => {
                 <span className="text-xs text-muted-foreground font-normal">({fields.length})</span>
               </h4>
               <div className="grid grid-cols-1 gap-2">
-                {fields.map(renderField)}
+                {fields.map(([key, value]) => <SpanField key={key} fieldKey={key} value={value} />)}
               </div>
             </div>
           );
