@@ -3,21 +3,15 @@ title: A tour of the editor
 description: What every button and panel in the workflow editor does.
 ---
 
+import {TopBarMock} from '@site/src/components/TopBarMock';
+
 ## The top bar
 
-From left to right:
+The bar at the top of the editor, with each control numbered:
 
-| Control | What it does |
-|---|---|
-| **Back arrow** | Returns to the agent page. |
-| **Panel icon** | Shows or hides the side panel with the **Add** and **Outline** tabs. |
-| **Agent name** and **Unsaved** | The name, and a badge when you have changes that are not deployed yet. |
-| **Problems button** | Appears when something needs attention. Red "to fix" means Deploy is blocked until you fix it. Grey "to check" is advice. Click it for a list. |
-| **Ask Pi** | Opens a chat where you describe a change and Pi makes it. |
-| **Setup** | Voice, variables, global rules, knowledge base, webhook and version history. See below. |
-| **Test call** | Talk to the deployed agent in your browser. Greyed out until the agent is deployed. |
-| **Deploy** | Makes your changes live and saves a version. |
-| **More (three dots)** | **Check for problems**, **Copy flow as JSON** and **Paste flow from JSON**. |
+<TopBarMock />
+
+The problems button is red and says "to fix" when Deploy is blocked until you fix something. It is grey and says "to check" when it is only advice. Click it for a list.
 
 ### The Setup menu
 

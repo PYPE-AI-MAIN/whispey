@@ -3,6 +3,8 @@ title: Workflows overview
 description: What a workflow agent is, when to use one, and the words you will see.
 ---
 
+import {FlowDiagram} from '@site/src/components/FlowDiagram';
+
 A workflow agent is a voice agent whose call follows a path you design, one step at a time. Each step has a small job, such as "greet the caller", "ask for a date" or "say goodbye". When a step is done, the call moves to the next one.
 
 You do not need to write code or understand AI to build one.
@@ -20,6 +22,8 @@ Whispey has two kinds of agent.
 Start with a single prompt if the call is short and has few branches. Choose a workflow when the call needs to follow a script, collect specific details, or end in different ways.
 
 ## How a call moves
+
+<FlowDiagram />
 
 1. The call starts at the first step, called the **start** step. It is marked START on the canvas.
 2. The agent does what that step says, such as talking with the caller.

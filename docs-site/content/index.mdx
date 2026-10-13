@@ -1,23 +1,35 @@
 ---
 slug: /
 title: Whispey Documentation
+hide_title: true
 description: Complete documentation for Whispey - track, analyze, and optimize your AI voice agents
 ---
 
-## Overview
+import {Hero} from '@site/src/components/Hero';
+import {CardGrid, Card} from '@site/src/components/Cards';
+
+<Hero
+  title="Build voice agents"
+  accent="and see how they perform."
+  lead="Whispey helps you build voice agents that follow a path of steps, then shows you every call: what was said, how it went, and what to fix."
+  primary={{to: '/workflows/quickstart', label: 'Build your first workflow'}}
+  secondary={{to: '/quick-start', label: 'Connect the SDK'}}
+/>
+
+## Start here
+
+<CardGrid>
+  <Card to="/workflows/overview" tag="Workflows" title="What is a workflow?">A voice agent that follows a path of steps. The words you will see, in plain language.</Card>
+  <Card to="/workflows/quickstart" tag="Workflows" title="Build your first workflow">A booking agent in about ten minutes, from an empty page to a test call.</Card>
+  <Card to="/workflows/build-with-ai" tag="Workflows" title="Build it with any AI">Copy one prompt into ChatGPT or Claude and paste the result into Whispey.</Card>
+  <Card to="/workflows/troubleshooting" tag="Workflows" title="Something is not working">The agent is stuck, asks twice, or will not deploy. What to do about each.</Card>
+  <Card to="/quick-start" tag="SDK" title="Connect your agent">Install Whispey and send call data from your own LiveKit agent.</Card>
+  <Card to="/observability" tag="Analytics" title="Observability">Metrics, telemetry and what each chart means.</Card>
+</CardGrid>
+
+## About Whispey
 
 Whispey is a professional voice analytics platform that helps you monitor, analyze, and gain insights from your AI voice agent conversations. Track performance metrics, analyze conversation quality, and optimize your voice agents with comprehensive analytics.
-
-## Quick Navigation
-
-- **[Quick Start](/quick-start)** - Get up and running in minutes
-- **[Workflows](/workflows/overview)** - Build a voice agent that follows a path of steps, with no code
-- **[SDK](/sdk/setup)** - SDK documentation and guides
-- **[Configuration](/configuration)** - Set up your environment and configure Whispey
-- **[Complete Implementation](/complete-implementation)** - Full LiveKit integration example
-- **[Observability](/observability)** - Comprehensive monitoring and telemetry
-- **[Examples](/examples)** - Real-world use cases and implementations
-- **[Campaign Logs](/campaign-logs)** - Manage campaign logs, export data, and configure retry settings
 
 ## Key Features
 
