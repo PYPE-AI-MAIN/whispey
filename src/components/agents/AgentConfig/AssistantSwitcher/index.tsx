@@ -158,10 +158,7 @@ export default function AssistantSwitcher({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className={cn(
-                    "text-sm font-medium truncate",
-                    index === currentAssistantIndex 
-                      ? "text-foreground" 
-                      : "text-foreground"
+                    "text-sm font-medium truncate text-foreground"
                   )}>
                     {assistant.name}
                   </span>

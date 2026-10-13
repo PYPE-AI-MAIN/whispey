@@ -1138,7 +1138,7 @@ export default function PipecatAgentConfig({
           <div className="space-y-6 mt-6">
             {/* Unmapped variable warning */}
             {detectedVarNames.filter(n => !(n in variables)).length > 0 && (
-              <div
+              <div /* NOSONAR: clickable banner, a <button> cannot hold this block layout */
                 className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 cursor-pointer hover:bg-destructive/15 transition-colors"
                 onClick={() => {
                   const unmapped = detectedVarNames.filter(n => !(n in variables))

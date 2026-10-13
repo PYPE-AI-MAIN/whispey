@@ -95,8 +95,7 @@ function EnhancedInsights({
                 {formatCost(Number.parseFloat(trace.trace_cost_usd))}
               </span>
             </div>
-            {trace.otel_spans &&
-              trace.otel_spans.map((span: any, index: number) => (
+            {trace.otel_spans?.map((span: any, index: number) => (
                 <div key={index} /* NOSONAR: static list, spans have no unique id */ className="flex justify-between items-center p-2 bg-card rounded text-sm border border-border">
                   <span className="text-muted-foreground">{span.operation}:</span>
                   <span className="font-mono text-foreground">

@@ -625,7 +625,7 @@ export default function PipecatPhoneCallConfig({
             ) : (
               <div className="space-y-3">
                 {callHistory.map(call => (
-                  <div
+                  <div /* NOSONAR: history card holds nested controls, so it cannot be a <button> */
                     key={call.id}
                     onClick={() => loadCallFromHistory(call)}
                     role="button"

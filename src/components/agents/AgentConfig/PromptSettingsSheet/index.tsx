@@ -214,7 +214,7 @@ export default function PromptSettingsSheet({
         <div className="space-y-6 mt-6">
           {/* Unmapped Variables Warning */}
           {unmappedVariables.length > 0 && (
-            <div
+            <div /* NOSONAR: clickable banner, a <button> cannot hold this block layout */
               className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 cursor-pointer hover:bg-destructive/15 transition-colors"
               onClick={addAllUnmapped}
               role="button"

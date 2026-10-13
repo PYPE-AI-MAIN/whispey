@@ -696,7 +696,6 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
 
             {/* IVR Navigator specific fields */}
             {selectedToolType === 'ivr_navigator' && (
-              <>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label className="text-xs text-foreground">Function Name</Label>
@@ -721,7 +720,6 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                     />
                   </div>
                 </div>
-              </>
             )}
 
             {/* Handoff Agent specific fields */}

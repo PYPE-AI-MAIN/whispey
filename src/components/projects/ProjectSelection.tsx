@@ -703,7 +703,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
               {/* Table Body */}
               <div>
                 {filteredProjects.map((project, index) => (
-                  <div
+                  <div /* NOSONAR: row holds nested controls, so it cannot be a <button> */
                     key={project.id}
                     className={`group px-6 py-4 hover:bg-muted/50  transition-colors cursor-pointer ${
                       index === filteredProjects.length - 1 ? '' : 'border-b border-border'

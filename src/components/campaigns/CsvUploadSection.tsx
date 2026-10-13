@@ -295,6 +295,7 @@ const validateCsvData = (data: RecipientRow[], headers: string[]): CsvValidation
       </div>
 
       <div
+        role="presentation"
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}

@@ -265,11 +265,7 @@ function CreateAgentOption({ isMobile, canCreatePypeAgent, hasReachedLimit, onCr
         <CreateAgentIcon isMobile={isMobile} isAvailable={isAvailable} />
         <div className="flex-1 min-w-0">
           <CreateAgentTitle isMobile={isMobile} isAvailable={isAvailable} canCreatePypeAgent={canCreatePypeAgent} hasReachedLimit={hasReachedLimit} />
-          <p className={`${isMobile ? 'text-xs' : 'text-sm'} ${
-              isAvailable
-                ? 'text-muted-foreground'
-                : 'text-muted-foreground'
-            } leading-relaxed`}>
+          <p className={`${isMobile ? 'text-xs' : 'text-sm'} text-muted-foreground leading-relaxed`}>
             <CreateAgentOptionCopy isMobile={isMobile} canCreatePypeAgent={canCreatePypeAgent} hasReachedLimit={hasReachedLimit} />
           </p>
         </div>

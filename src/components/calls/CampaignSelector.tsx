@@ -122,7 +122,7 @@ export const CampaignSelector: React.FC<CampaignSelectorProps> = ({
             {selectedCampaign ? selectedCampaign.campaignName : 'Campaign'}
           </span>
           {selectedCampaign ? (
-            <span
+            <span /* NOSONAR: sits inside a button trigger; a <button> cannot nest */
               role="button"
               tabIndex={0}
               onClick={handleClear}

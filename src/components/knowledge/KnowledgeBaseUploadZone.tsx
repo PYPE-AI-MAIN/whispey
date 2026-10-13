@@ -196,6 +196,7 @@ export function KnowledgeBaseUploadZone({
     <div className={cn('space-y-4', className)}>
       {/* File upload zone */}
       <div
+        role="presentation"
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
