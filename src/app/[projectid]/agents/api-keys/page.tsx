@@ -1,5 +1,6 @@
 // src/app/[projectid]/agents/api-keys/page.tsx
 'use client'
+import { Page } from '@/components/shared/Page'
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
@@ -192,19 +193,10 @@ const ApiKeys = () => {
   // }
 
   return (
-    <div className="min-h-screen bg-card p-6">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            API Keys
-          </h1>
-        </div>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          Manage API keys for secure programmatic access to this project. Keys are encrypted and can be viewed when needed.
-        </p>
-      </div>
-
+    <Page
+      title="API Keys"
+      description="Manage API keys for secure programmatic access to this project. Keys are encrypted and can be viewed when needed."
+    >
       {/* Security Info */}
       <div className="mb-6 p-3 bg-primary/10 border border-primary/30 rounded-lg">
         <div className="flex items-start gap-3">
@@ -581,7 +573,7 @@ const ApiKeys = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </Page>
   )
 }
 

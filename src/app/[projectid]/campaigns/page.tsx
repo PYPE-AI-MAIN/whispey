@@ -479,8 +479,8 @@ function Campaigns() {
     <div className="flex flex-col h-screen bg-background">
 
       {/* ── Header ── */}
-      <div className="px-6 pt-6 pb-4 bg-background flex-shrink-0">
-        <div className="flex items-center justify-between">
+      <div className="bg-background flex-shrink-0">
+        <div className="mx-auto w-full max-w-6xl px-4 sm:px-8 flex items-center justify-between pt-6 pb-4 sm:pt-8">
           <div className="flex items-center gap-3">
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-foreground">Campaigns</h1>
@@ -515,8 +515,8 @@ function Campaigns() {
       </div>
 
       {/* ── Search ── */}
-      <div className="px-6 pb-4 bg-background flex-shrink-0">
-        <div className="relative max-w-sm">
+      <div className="bg-background flex-shrink-0">
+        <div className="mx-auto w-full max-w-6xl px-4 sm:px-8 pb-4"><div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search campaigns by name or ID…"
@@ -532,7 +532,7 @@ function Campaigns() {
               ✕
             </button>
           )}
-        </div>
+        </div></div>
       </div>
 
       {/* ── Error banner ── */}
@@ -544,23 +544,26 @@ function Campaigns() {
       )}
 
       {/* ── Content ── */}
-      <div className="flex-1 overflow-auto px-6 pb-6">
-
-        {/* Initial loading skeletons / empty states / campaign list */}
-        {renderCampaignsContent()}
+      <div className="flex-1 overflow-auto">
+        <div className="mx-auto w-full max-w-6xl px-4 pb-6 sm:px-8">
+          {/* Initial loading skeletons / empty states / campaign list */}
+          {renderCampaignsContent()}
+        </div>
       </div>
 
       {/* ── Pagination bar ── */}
       {!isLoading && !isError && pagination && (
-        <div className="px-4 pb-2 bg-card border-t border-border/60 flex-shrink-0">
-          <Pagination
-            currentPage={pagination.currentPage}
-            totalPages={pagination.totalPages}
-            total={pagination.total}
-            pageSize={PAGE_SIZE}
-            isFetching={isFetching}
-            onPageChange={setPage}
-          />
+        <div className="bg-card border-t border-border/60 flex-shrink-0">
+          <div className="mx-auto w-full max-w-6xl px-4 pb-2 sm:px-8">
+            <Pagination
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              total={pagination.total}
+              pageSize={PAGE_SIZE}
+              isFetching={isFetching}
+              onPageChange={setPage}
+            />
+          </div>
         </div>
       )}
 
