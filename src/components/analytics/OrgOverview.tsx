@@ -41,6 +41,11 @@ const KPI_ICONS = {
   billing: Timer,
 } as const
 
+function Metric({ text, loading, skeletonClass }: Readonly<{ text: string | null; loading: boolean; skeletonClass: string }>) {
+  if (text !== null) return <>{text}</>
+  return loading ? <Skeleton className={skeletonClass} /> : <>—</>
+}
+
 function Kpi({
   label, value, spec, icon: Icon, loading,
 }: Readonly<{ label: string; value: number | null; spec: SpecInput; icon: (typeof KPI_ICONS)[keyof typeof KPI_ICONS]; loading: boolean }>) {
@@ -53,7 +58,7 @@ function Kpi({
         <div className="text-xs font-medium text-muted-foreground">{label}</div>
       </div>
       <div className="mt-3 text-3xl font-semibold tabular-nums text-foreground">
-        {value === null ? (loading ? <Skeleton className="h-9 w-20" /> : '—') : formatValue(value, spec)}
+        <Metric text={value === null ? null : formatValue(value, spec)} loading={loading} skeletonClass="h-9 w-20" />
       </div>
     </div>
   )
@@ -76,18 +81,19 @@ function StatusBadge({ isActive, environment }: Readonly<{ isActive: boolean; en
 
 function AgentRow({ agent, projectId, loading }: Readonly<{ agent: OrgAgentRow; projectId: string; loading: boolean }>) {
   const router = useRouter()
+  const calls = agent.calls ?? (loading ? null : 0)
   return (
     <tr
       className="cursor-pointer border-b border-border/60 last:border-0 hover:bg-muted/50"
       onClick={() => router.push(`/${projectId}/agents/${agent.id}`)}
     >
       <td className="py-4 pl-6 pr-4 font-medium text-foreground">{agent.name}</td>
-      <td className="py-4 pr-4 tabular-nums text-foreground">{(agent.calls ?? (loading ? null : 0))?.toLocaleString() ?? (loading ? <Skeleton className="h-4 w-10" /> : '—')}</td>
+      <td className="py-4 pr-4 tabular-nums text-foreground"><Metric text={calls === null ? null : calls.toLocaleString()} loading={loading} skeletonClass="h-4 w-10" /></td>
       <td className="py-4 pr-4 tabular-nums text-foreground">
-        {agent.pickupPct === null ? (loading ? <Skeleton className="h-4 w-10" /> : '—') : `${agent.pickupPct.toFixed(0)}%`}
+        <Metric text={agent.pickupPct === null ? null : `${agent.pickupPct.toFixed(0)}%`} loading={loading} skeletonClass="h-4 w-10" />
       </td>
       <td className="py-4 pr-4 tabular-nums text-foreground">
-        {agent.latency === null ? (loading ? <Skeleton className="h-4 w-10" /> : '—') : `${agent.latency.toFixed(1)}s`}
+        <Metric text={agent.latency === null ? null : `${agent.latency.toFixed(1)}s`} loading={loading} skeletonClass="h-4 w-10" />
       </td>
       <td className="py-4 pr-6 text-muted-foreground">
         <StatusBadge isActive={agent.is_active} environment={agent.environment} />

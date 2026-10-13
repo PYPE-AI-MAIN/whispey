@@ -145,7 +145,7 @@ function SessionRow({ session, renaming, onNavigate, onRename, onRenameStart, on
 
       <span className="relative z-10 pointer-events-none text-xs text-muted-foreground truncate">{modelName(session.provider, session.model)}</span>
       <span className="relative z-10 pointer-events-none text-xs text-muted-foreground tabular-nums">{messages}</span>
-      <span className={cn('relative z-10 pointer-events-none text-xs tabular-nums', versions ? 'text-muted-foreground' : 'text-muted-foreground')}>
+      <span className={cn('relative z-10 pointer-events-none text-xs tabular-nums', versions ? 'text-muted-foreground' : 'text-muted-foreground/60')}>
         {versions ? `${versions} saved` : 'Not saved'}
       </span>
 
