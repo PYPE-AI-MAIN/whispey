@@ -216,11 +216,17 @@ function validateSubmit(platform: string, name: string, vapi: VapiState, retell:
 
 // ── Views ───────────────────────────────────────────────────────────────────
 
+function stepTone(active: boolean, done: boolean): string {
+  if (active) return 'bg-blue-100 dark:bg-blue-900/30 text-primary dark:text-blue-400'
+  if (done) return 'bg-green-100 dark:bg-green-900/30 text-success dark:text-green-400'
+  return 'bg-muted text-muted-foreground'
+}
+
 function StepRow({ active, done, idleLabel, label }: Readonly<{ active: boolean; done: boolean; idleLabel: string; label: string }>) {
   return (
     <>
       <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
-        active ? 'bg-blue-100 dark:bg-blue-900/30 text-primary dark:text-blue-400' : (done ? 'bg-green-100 dark:bg-green-900/30 text-success dark:text-green-400' : 'bg-muted text-muted-foreground')
+        stepTone(active, done)
       }`}>
         {active ? <Loader2 className="w-3 h-3 animate-spin" /> : idleLabel}
       </div>

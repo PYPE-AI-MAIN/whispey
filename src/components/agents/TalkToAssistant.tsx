@@ -170,7 +170,7 @@ function VoiceDetails({ open, onOpenChange, voiceState, voiceActions }: Readonly
       <CollapsibleContent className="mt-3 space-y-3">
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs">Volume</label>
+            <span className="text-xs">Volume</span>
             <span className="text-xs text-muted-foreground">{voiceState.volume}%</span>
           </div>
           <div className="flex items-center gap-2">

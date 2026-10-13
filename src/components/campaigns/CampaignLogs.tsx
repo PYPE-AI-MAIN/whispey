@@ -449,11 +449,12 @@ function ScheduleDialogContent({
         {/* Time Range and other fields */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
+            <label htmlFor="schedule-start-time" className="block text-sm font-medium text-foreground mb-2">
               <Clock className="w-4 h-4 inline mr-1" />
               Start Time
             </label>
             <input
+              id="schedule-start-time"
               type="time"
               value={scheduleData.start_time}
               onChange={(e) => onScheduleDataChange({ start_time: e.target.value })}
@@ -462,11 +463,12 @@ function ScheduleDialogContent({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
+            <label htmlFor="schedule-end-time" className="block text-sm font-medium text-foreground mb-2">
               <Clock className="w-4 h-4 inline mr-1" />
               End Time
             </label>
             <input
+              id="schedule-end-time"
               type="time"
               value={scheduleData.end_time}
               onChange={(e) => onScheduleDataChange({ end_time: e.target.value })}
