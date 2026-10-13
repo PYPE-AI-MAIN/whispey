@@ -112,7 +112,7 @@ export function AskPiPopover({ editor, fullPrompt }: { editor: any; fullPrompt: 
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
-    const last = msgs[msgs.length - 1]
+    const last = msgs.at(-1)
     const lastEl = el.lastElementChild as HTMLElement | null
     if (last?.role === 'assistant' && !busy && lastEl) el.scrollTo({ top: Math.max(0, lastEl.offsetTop - 12), behavior: 'smooth' })
     else el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
@@ -255,12 +255,12 @@ export function AskPiPopover({ editor, fullPrompt }: { editor: any; fullPrompt: 
                   )}
                 </div>
               ))}
-              {busy && msgs[msgs.length - 1]?.role !== 'assistant' && <div className="flex items-center gap-2 text-xs" style={{ color: t.muted }}><Loader2 className="h-3.5 w-3.5 animate-spin" /> Thinking…</div>}
+              {busy && msgs.at(-1)?.role !== 'assistant' && <div className="flex items-center gap-2 text-xs" style={{ color: t.muted }}><Loader2 className="h-3.5 w-3.5 animate-spin" /> Thinking…</div>}
               {lastIsError && (
                 <div className="flex items-start gap-2 rounded-lg px-3 py-2 text-xs" style={{ background: t.errBg, color: t.errText }}>
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   <span className="flex-1 break-words">{error}</span>
-                  {msgs[msgs.length - 1]?.role === 'user' && (
+                  {msgs.at(-1)?.role === 'user' && (
                     <button onClick={() => send(undefined, true)} className="flex shrink-0 items-center gap-1 font-semibold hover:underline"><RotateCcw className="h-3 w-3" />Retry</button>
                   )}
                 </div>

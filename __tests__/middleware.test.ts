@@ -6,6 +6,9 @@ const mockHasValidServiceToken = vi.hoisted(() => vi.fn())
 vi.mock('@clerk/nextjs/server', () => ({
   clerkMiddleware: (fn: any) => fn, // expose inner handler as default export
   createRouteMatcher: () => (_req: any) => false, // all routes are "protected"
+  // Used as the platform-admin fallback when the DB-based approval check
+  // doesn't already approve the request — not real Clerk data in this test.
+  currentUser: vi.fn().mockResolvedValue(null),
 }))
 
 vi.mock('@/lib/serviceTokenVerifier', () => ({
@@ -16,6 +19,9 @@ import middleware from '@/middleware'
 
 const makeReq = (pathname: string, authHeader?: string) => ({
   nextUrl: { pathname },
+  // Real NextRequest always has .url — needed for the approval-gate's
+  // `new URL('/pending-approval', request.url)` redirect.
+  url: `http://localhost:3000${pathname}`,
   headers: { get: (h: string) => (h === 'Authorization' ? (authHeader ?? null) : null) },
 })
 
@@ -28,7 +34,10 @@ describe('middleware', () => {
 
   it('calls auth.protect when no valid service token on a protected route', async () => {
     mockHasValidServiceToken.mockResolvedValue(false)
-    const auth = { protect: vi.fn() }
+    // Real Clerk's auth.protect() always resolves to a valid auth object (or
+    // throws/redirects) — never undefined — matching that here since
+    // middleware destructures userId off the result.
+    const auth = { protect: vi.fn().mockResolvedValue({ userId: 'test-user-id' }) }
     await (middleware as any)(auth, makeReq('/dashboard/private'))
     expect(auth.protect).toHaveBeenCalled()
   })

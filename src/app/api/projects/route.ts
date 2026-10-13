@@ -42,6 +42,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Self-serve org creation is open to any authenticated caller. No extra
+    // role check is needed here: middleware.ts already blocks a pending or
+    // declined account from reaching any route but /pending-approval, so by
+    // the time a request lands here the caller is either approved or a
+    // platform admin. This is the path /onboarding's "Create Organization"
+    // uses for a brand-new user with no prior project to inherit — see
+    // pendingUserActions.ts's copyExistingProjectAccess for the other case
+    // (an approved user who already had access via an old-domain account).
+    const userEmail = user.emailAddresses[0]?.emailAddress
+
     const body = await request.json()
     const { name, description } = body
 
@@ -98,7 +108,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Add creator to email_project_mapping as owner
-    const userEmail = user.emailAddresses[0]?.emailAddress
     if (userEmail) {
       const { error: mappingError } = await supabase
         .from('pype_voice_email_project_mapping')
@@ -114,7 +123,8 @@ export async function POST(request: NextRequest) {
             admin: true
           },
           added_by_clerk_id: userId,
-          is_active: true
+          is_active: true,
+          granted_via: 'new_domain'
         })
 
       if (mappingError) {
@@ -160,10 +170,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User email not found' }, { status: 400 })
     }
 
-    // Fetch projects this login has access to. Regular users only match
-    // their own clerk_id, or an unclaimed invite created by the new-domain
-    // approval flow — not every row that merely shares this email (a
-    // different account's old-domain membership included).
+    // Fetch projects this login has access to. Regular users only match their
+    // own clerk_id, or an unclaimed invite created by the new-domain approval
+    // flow — not every old row that merely shares this email (see
+    // getProjectRoleForApi.ts for why).
     const { data: projectMappings, error } = await supabase
       .from('pype_voice_email_project_mapping')
       .select(`

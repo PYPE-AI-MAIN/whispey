@@ -122,6 +122,15 @@ export default function CallAgainDialog({ call, projectId, agent, phoneNumbers }
 
   const disabled = isDispatching || isCheckingRunning || !fromPhoneNumberId || !runningStatus.isRunning || !isValidNumber
 
+  let statusMessage: string
+  if (isValidNumber) {
+    if (isCheckingRunning) statusMessage = 'Checking whether the agent is currently running…'
+    else if (runningStatus.isRunning) statusMessage = `Will dial ${call.customer_number} using ${agent.name}.`
+    else statusMessage = 'Agent is not currently running — start it first to dispatch this call.'
+  } else {
+    statusMessage = `"${displayNumber}" doesn't look like a valid phone number.`
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
@@ -165,13 +174,7 @@ export default function CallAgainDialog({ call, projectId, agent, phoneNumbers }
               <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
             )}
             <span className="break-all" title={call.customer_number}>
-              {!isValidNumber
-                ? `"${displayNumber}" doesn't look like a valid phone number.`
-                : isCheckingRunning
-                  ? 'Checking whether the agent is currently running…'
-                  : runningStatus.isRunning
-                    ? `Will dial ${call.customer_number} using ${agent.name}.`
-                    : 'Agent is not currently running — start it first to dispatch this call.'}
+              {statusMessage}
             </span>
           </p>
 

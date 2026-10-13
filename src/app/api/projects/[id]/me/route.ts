@@ -56,7 +56,10 @@ export async function GET(
 
     const globalRole: string = userRow?.roles?.globalRole ?? 'user'
     const globalPermissions: string[] = userRow?.roles?.permissions ?? []
-    const isSuperAdmin = globalRole === 'superadmin' || globalRole === 'prompter' || globalPermissions.includes('promptforge')
+    // Platform admins (PYPE_ADMINS) get the same superadmin-equivalent
+    // fallback access as a DB superadmin — same one-directional rule as
+    // getCallerGlobalRole in prod-auth.ts.
+    const isSuperAdmin = globalRole === 'superadmin' || globalRole === 'prompter' || globalPermissions.includes('promptforge') || isPlatformAdmin(userEmail)
 
     if (!mapping) {
       if (!isSuperAdmin) {

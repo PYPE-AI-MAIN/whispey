@@ -347,7 +347,7 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
 
   useEffect(() => {
     return () => {
-      try { if (roomRef.current && isConnected) roomRef.current.disconnect().catch(() => {}) } catch {}
+      if (roomRef.current && isConnected) roomRef.current.disconnect().catch(() => {})
       cleanupAudioElements()
       if (connectionTimeInterval.current) clearInterval(connectionTimeInterval.current)
     }

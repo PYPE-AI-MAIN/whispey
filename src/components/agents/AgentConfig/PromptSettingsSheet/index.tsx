@@ -214,7 +214,7 @@ export default function PromptSettingsSheet({
         <div className="space-y-6 mt-6">
           {/* Unmapped Variables Warning */}
           {unmappedVariables.length > 0 && (
-            <div
+            <div // NOSONAR typescript:S6819 — nested interactive controls, cannot be a native button
               className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
               onClick={addAllUnmapped}
               role="button"

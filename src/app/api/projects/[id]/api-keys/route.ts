@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
 
 const supabase = createServiceRoleClient()
 
@@ -26,6 +27,12 @@ export async function GET(
     if (!projectId) {
       console.log('No project ID, returning 400')
       return NextResponse.json({ error: 'Project ID required' }, { status: 400 })
+    }
+
+    // API keys are project secrets — require admin/owner, not just any member
+    const callerRole = await getProjectRoleForApi(projectId)
+    if (!callerRole || !['admin', 'owner'].includes(callerRole.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     // First, query the new API keys table

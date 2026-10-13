@@ -263,7 +263,9 @@ export default function UsersSettingsPage() {
     </div>
   )
 
-  if (!isSuperAdmin) return null
+  // isSuperAdmin already covers PYPE_ADMINS too (getCallerGlobalRole /
+  // /api/me/global-role treat platform admins as superadmin).
+  if (!isSuperAdmin) { router.replace(`/${projectId}/agents`); return null }
 
   const users = data?.users ?? []
   const q = search.trim().toLowerCase()

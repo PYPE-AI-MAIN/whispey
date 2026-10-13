@@ -1,5 +1,63 @@
+import { NextResponse } from 'next/server';
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { hasValidServiceToken } from '@/lib/serviceTokenVerifier';
+import { isPlatformAdmin } from '@/lib/isPlatformAdmin';
+
+// Edge-safe: a plain REST fetch, no @supabase/supabase-js — same reasoning as
+// serviceTokenVerifier.ts avoiding Node-only deps in this file. Returns
+// undefined (not found) or the row's approval fields.
+async function fetchApprovalStatus(clerkId: string): Promise<{ email: string | null; approval_status: string | null } | null> {
+  const url = process.env.SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) return null
+  try {
+    const res = await fetch(
+      `${url}/rest/v1/pype_voice_users?clerk_id=eq.${encodeURIComponent(clerkId)}&select=email,approval_status`,
+      // Next.js caches server-side fetch() by default — approval_status
+      // changes on every admin decision, so a cached response here would
+      // keep gating (or admitting) someone based on stale data indefinitely.
+      { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: 'no-store' }
+    )
+    if (!res.ok) return null
+    const rows = await res.json()
+    return Array.isArray(rows) && rows.length > 0 ? rows[0] : null
+  } catch {
+    return null
+  }
+}
+
+// Edge-safe: currentUser() from @clerk/nextjs/server is NOT safe to call
+// from inside clerkMiddleware() — it throws "auth() was called but Clerk
+// can't detect usage of clerkMiddleware()" at runtime on Edge (this only
+// surfaced in production; the unit test mocks Clerk entirely so it never
+// caught it). Hits Clerk's own Backend API directly instead, same pattern
+// as fetchApprovalStatus above.
+async function fetchClerkUserEmail(clerkId: string): Promise<string | null> {
+  const key = process.env.CLERK_SECRET_KEY
+  if (!key) return null
+  try {
+    const res = await fetch(`https://api.clerk.com/v1/users/${encodeURIComponent(clerkId)}`, {
+      headers: { Authorization: `Bearer ${key}` },
+      cache: 'no-store',
+    })
+    if (!res.ok) return null
+    const user = await res.json()
+    return user?.email_addresses?.[0]?.email_address ?? null
+  } catch {
+    return null
+  }
+}
+
+// New-domain signup-approval gate: a signed-in user whose account isn't
+// 'active' yet can reach only these, regardless of what route they hit.
+const isApprovalGateExemptRoute = createRouteMatcher([
+  '/pending-approval(.*)',
+  '/api/me/status(.*)',
+  // LayoutContent's self-heal (check row -> create row) must stay reachable,
+  // otherwise a signup the webhook missed can never get its pending row.
+  '/api/user/users',
+  '/api/user/create',
+]);
 
 // Define which routes are public (don't require authentication)
 const isPublicRoute = createRouteMatcher([
@@ -12,6 +70,7 @@ const isPublicRoute = createRouteMatcher([
   '/invite(.*)',
   // Public API routes (external callers — no Clerk session)
   '/api/webhooks(.*)',
+  '/api/health(.*)',
   '/api/vapi/webhook(.*)',
   '/api/retell/webhook(.*)',
   '/api/elevenlabs/webhook(.*)',
@@ -49,8 +108,47 @@ export default clerkMiddleware(async (auth, request) => {
 
   // If it's not a public route, require either a Clerk session or a valid internal service JWT
   if (!isPublicRoute(request)) {
-    const isInternalCall = await hasValidServiceToken(request.headers.get('Authorization'))
-    if (!isInternalCall) await auth.protect()
+    const authHeader = request.headers.get('Authorization')
+    // TEMP DEBUG — remove after confirming PYPE_JWT_SECRET visibility in middleware
+    console.log('[middleware debug]', {
+      path: pathname,
+      method: request.method,
+      hasAuthHeader: !!authHeader,
+      hasSecret: !!process.env.PYPE_JWT_SECRET,
+    })
+    const isInternalCall = await hasValidServiceToken(authHeader)
+    console.log('[middleware debug] isInternalCall:', isInternalCall)
+    if (!isInternalCall) {
+      const { userId } = await auth.protect()
+
+      if (userId && !isApprovalGateExemptRoute(request)) {
+        const caller = await fetchApprovalStatus(userId)
+
+        // Grandfather any row that predates this gate (approval_status is
+        // NULL, e.g. accounts created during earlier testing) — only an
+        // explicit 'pending'/'declined' blocks. Fail closed only when no row
+        // exists at all yet (e.g. webhook hasn't landed for a brand-new
+        // signup) — never treated as active by default in that case.
+        const status = caller?.approval_status
+        let approved = isPlatformAdmin(caller?.email) || (caller !== null && status !== 'pending' && status !== 'declined')
+
+        // Platform-admin status shouldn't depend on a DB row existing yet —
+        // fall back to Clerk's own session identity directly. Only runs on
+        // the failure path (not every request) so the common case pays no
+        // extra Clerk API call.
+        if (!approved) {
+          const clerkEmail = await fetchClerkUserEmail(userId)
+          approved = isPlatformAdmin(clerkEmail)
+        }
+
+        if (!approved) {
+          if (pathname.startsWith('/api/')) {
+            return NextResponse.json({ error: 'Account pending approval' }, { status: 403 })
+          }
+          return NextResponse.redirect(new URL('/pending-approval', request.url))
+        }
+      }
+    }
   }
 });
 

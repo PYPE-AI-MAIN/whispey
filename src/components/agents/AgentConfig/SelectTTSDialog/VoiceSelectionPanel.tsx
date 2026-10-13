@@ -126,7 +126,7 @@ const SarvamVoiceCard = ({
   isPreviewLoading: boolean
   onPreview: (e: React.MouseEvent) => void
 }) => (
-  <div
+  <div // NOSONAR typescript:S6819 — nested interactive controls, cannot be a native button
     onClick={onClick}
     role="button"
     tabIndex={0}
@@ -198,7 +198,7 @@ const ElevenLabsVoiceCard = ({
   isPreviewLoading: boolean
   onPreview: (e: React.MouseEvent) => void
 }) => (
-  <div
+  <div // NOSONAR typescript:S6819 — nested interactive controls, cannot be a native button
     onClick={onClick}
     role="button"
     tabIndex={0}
@@ -269,7 +269,7 @@ const GoogleTTSVoiceCard = ({
   isSelected: boolean
   onClick: () => void
 }) => (
-  <div
+  <div // NOSONAR typescript:S6819 — nested interactive controls, cannot be a native button
     onClick={onClick}
     role="button"
     tabIndex={0}

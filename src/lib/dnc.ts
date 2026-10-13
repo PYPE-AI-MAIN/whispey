@@ -2,6 +2,7 @@
 // the superadmin gate used by the /api/dnc routes and the settings/dnc UI.
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { isPlatformAdmin } from '@/lib/isPlatformAdmin'
 
 export const DNC_TABLE = 'pype_voice_dnc_list'
 
@@ -161,10 +162,12 @@ export async function getSuperAdminEmail(): Promise<string | null> {
   const supabase = createServiceRoleClient()
   const { data } = await supabase
     .from('pype_voice_users')
-    .select('roles')
+    .select('roles, email')
     .eq('clerk_id', userId)
     .single()
-  if (data?.roles?.globalRole !== 'superadmin') return null
+  // Platform admins (PYPE_ADMINS) get full superadmin-equivalent access —
+  // same one-directional rule as getCallerGlobalRole in prod-auth.ts.
+  if (data?.roles?.globalRole !== 'superadmin' && !isPlatformAdmin(data?.email)) return null
   const user = await currentUser()
   return user?.emailAddresses?.[0]?.emailAddress ?? userId
 }

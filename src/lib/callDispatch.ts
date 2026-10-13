@@ -49,7 +49,7 @@ export function getRunningAgentName(
   runningAgents: RunningAgent[]
 ): { isRunning: boolean; agentName: string | null } {
   if (agent.agent_type !== 'pype_agent' || !runningAgents.length) return { isRunning: false, agentName: null }
-  const sanitizedAgentId = agent.id.replace(/-/g, '_')
+  const sanitizedAgentId = agent.id.replaceAll('-', '_')
   const newFormat = `${agent.name}_${sanitizedAgentId}`
   let runningAgent = runningAgents.find((ra) => ra.agent_name === newFormat)
   if (runningAgent) return { isRunning: true, agentName: newFormat }

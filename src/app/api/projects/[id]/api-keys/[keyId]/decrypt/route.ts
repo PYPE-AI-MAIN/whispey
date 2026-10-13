@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { decryptWithWhispeyKey } from '@/lib/whispey-crypto'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
 
 const supabase = createServiceRoleClient()
 
@@ -17,6 +18,12 @@ export async function POST(
     }
 
     const { id: projectId, keyId } = await params
+
+    // API keys are project secrets — require admin/owner, not just any member
+    const callerRole = await getProjectRoleForApi(projectId)
+    if (!callerRole || !['admin', 'owner'].includes(callerRole.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
 
     // Get the encrypted key
     const { data: apiKey, error } = await supabase

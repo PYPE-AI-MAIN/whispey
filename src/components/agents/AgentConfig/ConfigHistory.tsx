@@ -649,7 +649,7 @@ function HistoryEntryRow({
   }
 
   return (
-    <div
+    <div // NOSONAR typescript:S6819 — nested interactive controls, cannot be a native button
       onClick={handleRowClick}
       role="button"
       tabIndex={0}

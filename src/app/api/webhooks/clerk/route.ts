@@ -3,6 +3,8 @@ import { Webhook } from 'svix'
 import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { isPlatformAdmin } from '@/lib/isPlatformAdmin'
+import { notifyAdminsOfPendingSignup } from '@/lib/sendApprovalEmail'
 
 interface ClerkWebhookEvent {
   data: {
@@ -79,7 +81,29 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const { email_addresses, first_name, last_name, image_url } = evt.data
       const userEmail = email_addresses[0]?.email_address || ''
 
+      // Svix retries user.created on any transient failure — without this
+      // guard a retry would insert a second row for the same clerk_id
+      // (this is exactly what produced 10 duplicate rows for one signup
+      // during testing). Idempotent no-op if this event already landed.
+      const { data: existingRow, error: existingLookupError } = await supabase
+        .from('pype_voice_users')
+        .select('id')
+        .eq('clerk_id', id)
+        .maybeSingle()
+
+      if (existingLookupError) {
+        console.error('❌ Error checking for existing clerk_id:', existingLookupError)
+        return new NextResponse('Error checking for existing user', { status: 500 })
+      }
+
+      if (existingRow) {
+        console.log(`⏭️ user.created retry for already-processed clerk_id ${id} — skipping`)
+        return new NextResponse('Webhook processed successfully', { status: 200 })
+      }
+
       console.log('✅ Creating new user in database')
+
+      const isAdmin = isPlatformAdmin(userEmail)
 
       const { data, error } = await supabase.from('pype_voice_users').insert({
         clerk_id: id,
@@ -87,6 +111,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         first_name: first_name,
         last_name: last_name,
         profile_image_url: image_url,
+        // Every signup starts pending until a platform admin decides —
+        // no more auto-approval by matching against a pre-existing account.
+        // PYPE_ADMINS still skip the queue outright.
+        approval_status: isAdmin ? 'active' : 'pending',
+        approval_token: isAdmin ? null : crypto.randomUUID(),
       }).select().single()
 
       if (error) {
@@ -96,12 +125,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       console.log('🎉 User created successfully:', data)
 
-      // Link any pending invite mappings for this email
-      // Non-fatal — user still has access via email-based lookup even if this fails
+      if (!isAdmin && data.approval_token) {
+        await notifyAdminsOfPendingSignup({
+          rowId: data.id,
+          approvalToken: data.approval_token,
+          userEmail,
+          userName: `${first_name ?? ''} ${last_name ?? ''}`.trim(),
+        })
+      }
+
+      // Link and consume any pending invite mapping for this email — clearing
+      // invite_token makes the invite link single-use (it stops resolving to
+      // anything the moment it's claimed), on top of its own 7-day expiry.
+      // Non-fatal — user still has access via clerk_id even if this fails.
       try {
         const { error: linkError } = await supabase
           .from('pype_voice_email_project_mapping')
-          .update({ clerk_id: id })
+          .update({ clerk_id: id, invite_token: null })
           .eq('email', userEmail)
           .is('clerk_id', null)
           .eq('is_active', true)

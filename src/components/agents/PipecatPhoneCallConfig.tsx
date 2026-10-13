@@ -623,7 +623,7 @@ export default function PipecatPhoneCallConfig({
             ) : (
               <div className="space-y-3">
                 {callHistory.map(call => (
-                  <div
+                  <div // NOSONAR typescript:S6819 — nested interactive controls, cannot be a native button
                     key={call.id}
                     onClick={() => loadCallFromHistory(call)}
                     role="button"

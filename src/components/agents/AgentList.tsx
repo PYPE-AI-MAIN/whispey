@@ -72,35 +72,6 @@ interface AgentListProps {
   showRunningCounter?: boolean
 }
 
-// Helper function to get agent running status (copied from AgentListItem)
-const getAgentRunningStatus = (agent: Agent, runningAgents?: RunningAgent[], isLoading?: boolean) => {
-  if (agent.agent_type !== 'pype_agent') {
-    return null
-  }
-  if (isLoading) {
-    return { isRunning: false, pid: null, status: 'loading' }
-  }
-  if (!runningAgents) {
-    return { isRunning: false, pid: null, status: 'stopped' }
-  }
-  const sanitizedAgentId = agent.id.replace(/-/g, '_')
-  const newFormat = `${agent.name}_${sanitizedAgentId}`
-  let runningAgent = runningAgents.find(ra => ra.agent_name === newFormat)
-  if (!runningAgent) {
-    runningAgent = runningAgents.find(ra => ra.agent_name === agent.name)
-  }
-  return runningAgent ? {
-    isRunning: !!runningAgent.pid || runningAgent.status === 'running',
-    pid: runningAgent.pid,
-    status: runningAgent.status,
-    actualAgentName: runningAgent.agent_name
-  } : {
-    isRunning: false,
-    pid: null,
-    status: 'stopped'
-  }
-}
-
 const AgentList: React.FC<AgentListProps> = ({
   agents,
   viewMode,
@@ -142,7 +113,7 @@ const AgentList: React.FC<AgentListProps> = ({
     return map
   }, [phoneNumbersData])
 
-  const { data: runningAgents = [], isLoading: isLoadingRunningAgents, refetch: refetchRunningAgents } = useQuery<RunningAgent[]>({ // Explicitly type useQuery
+  const { data: runningAgents = [], isLoading: isLoadingRunningAgents } = useQuery<RunningAgent[]>({ // Explicitly type useQuery
     queryKey: ['runningAgents', projectId],
     queryFn: async () => {
       const response = await fetch('/api/agents/running_agents')
@@ -339,7 +310,6 @@ const AgentList: React.FC<AgentListProps> = ({
   }
 
   const renderAgentItem = (agent: Agent, index: number, currentViewMode: 'grid' | 'list' | 'mobile') => {
-    const runningStatus = getAgentRunningStatus(agent, runningAgents, isLoadingRunningAgents)
     return (
       <AgentListItem
         key={agent.id}

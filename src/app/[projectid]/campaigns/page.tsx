@@ -363,7 +363,7 @@ function Campaigns() {
       /* Campaign list */
       <div className="grid gap-3">
         {campaigns.map(campaign => (
-          <div
+          <div // NOSONAR typescript:S6819 — nested interactive controls, cannot be a native button
             key={campaign.campaignId}
             onClick={() => router.push(`/${projectId}/campaigns/${campaign.campaignId}`)}
             role="button"

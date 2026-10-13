@@ -828,14 +828,7 @@ export default function AgentConfig() {
     }
   }
 
-  const getMobileAgentStatusText = () => {
-    switch (agentStatus.status) {
-      case 'running': return 'Live'
-      case 'error': return 'Status unavailable'
-      case 'stopped': return 'Agent not found'
-      default: return 'Unknown'
-    }
-  }
+  const getMobileAgentStatusText = getAgentStatusText
 
 // Predefined system variables (same as PromptSettingsSheet). These are always "mapped" by the
 // system, so we must never count them as unmapped—otherwise the Settings indicator stays red.

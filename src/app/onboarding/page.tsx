@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
-import { useQueryClient } from '@tanstack/react-query' // ✅ ADD THIS
-import { Building2, Loader2, Sparkles, ArrowRight, Rocket } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query' // ✅ ADD THIS
+import { Building2, Loader2, Sparkles, ArrowRight, Rocket, Clock } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,17 +19,40 @@ import {
 } from '@/components/ui/select'
 import toast from 'react-hot-toast'
 import Image from 'next/image'
+import { useGlobalRole } from '@/hooks/useGlobalRole'
 
 export default function OnboardingPage() {
   const router = useRouter()
   const { user } = useUser()
   const queryClient = useQueryClient() // ✅ ADD THIS
+  const { isSuperAdmin, isLoading: isRoleLoading } = useGlobalRole()
   const [isCreating, setIsCreating] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     environment: 'production'
   })
+
+  // Non-superadmins have no org yet and are waiting for an admin to add
+  // them to one — poll for that instead of requiring a manual navigation
+  // to notice it happened, same pattern as /pending-approval's status poll.
+  const { data: organizations } = useQuery({
+    queryKey: ['organizations'],
+    queryFn: async () => {
+      const res = await fetch('/api/projects')
+      if (!res.ok) throw new Error('Failed to fetch organizations')
+      return res.json()
+    },
+    enabled: !isRoleLoading && !isSuperAdmin,
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
+  })
+
+  useEffect(() => {
+    if (organizations && organizations.length > 0) {
+      router.push('/projects')
+    }
+  }, [organizations, router])
 
   const handleCreateOrganization = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -83,6 +106,31 @@ export default function OnboardingPage() {
     } finally {
       setIsCreating(false)
     }
+  }
+
+  // Self-serve org creation is superadmin-only (see POST /api/projects) —
+  // a regular approved user has no org yet and must wait for an admin to
+  // add them to one, so show that instead of a create form that would 403.
+  if (isRoleLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
+      </div>
+    )
+  }
+
+  if (!isSuperAdmin) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-gray-900 px-6 text-center">
+        <Clock className="w-12 h-12 text-amber-500 mb-4" />
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-white mb-2">
+          Waiting to be added to an organization
+        </h1>
+        <p className="text-slate-600 dark:text-slate-400 max-w-md">
+          An admin needs to add you to an organization before you can get started. You'll get an email once that happens.
+        </p>
+      </div>
+    )
   }
 
   return (
