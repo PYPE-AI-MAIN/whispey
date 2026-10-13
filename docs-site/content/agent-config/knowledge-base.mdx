@@ -1,0 +1,56 @@
+---
+title: Knowledge base
+description: Upload documents or web pages so a single-prompt agent can look things up during a call.
+---
+
+A knowledge base is a set of documents your agent can search while it talks, such as a price list, a policy or a help page. The agent looks up the answer instead of guessing.
+
+Setting this up has two parts. You add content on the **Knowledge Base** page. Then you switch the search on in **Agent Config**.
+
+## Add content
+
+1. Open your agent and click **Knowledge Base** in the left menu, under **Build**. The page says "Upload documents or URLs so your voice agent can use them in conversation."
+2. Under **Add content**, drag a file onto the box or click it. The box says "Drag and drop or click to upload".
+3. Or type a web address under **Add from URL**, for example `https://example.com/page`, and click **Add**.
+
+| What you can add | Limit |
+|---|---|
+| Files: PDF, TXT, DOC, DOCX, CSV | Up to 20 MB each |
+| A web page | By address |
+
+If a file is the wrong type, the page says "Unsupported file type", and if it is too big it says "File too large. Max size: 20MB".
+
+Everything you add is listed under **Documents in this knowledge base**. Each row shows the name and whether it is a file type or a **URL**. Use the bin on a row to delete it. When the list is empty, it says "Upload files or add a URL above to build your knowledge base."
+
+:::note
+Viewers cannot use this page. People with the viewer role are sent back to the agent page.
+:::
+
+## Turn on search
+
+Open **Agent Config**, then **Advanced Settings**, then **RAG Settings**.
+
+| Setting | What it does | Default |
+|---|---|---|
+| **Enable Knowledge Base search** | Lets the agent use your knowledge base while it talks. | Off |
+| **Top K** | How many pieces of text the agent pulls up for each search. From 1 to 50. | 5 |
+
+RAG means the agent retrieves text from your documents before it answers.
+
+When the search is on, a **Knowledge Search** row shows in **Tools & Actions** with the note "Managed by RAG Settings". You cannot edit it there.
+
+Publish with **Update Config** for the change to go live. See [Publish and history](./publish-and-history).
+
+## Tips
+
+- Add documents the agent should quote, not your whole file store.
+- Mention in the system prompt when to look things up, for example "For prices, search the knowledge base".
+- A higher **Top K** gives the agent more text to read, and a lower one keeps it focused. Test both with [Talk to Assistant](./phone-and-web-calls).
+
+## Workflow agents
+
+Workflow agents have their own knowledge base inside the workflow editor. See [Variables and the knowledge base](../workflows/variables-and-knowledge).
+
+## Pipecat agents
+
+Pipecat agents use a separate **Knowledge Base** page. See [Pipecat agents](./pipecat-agents).

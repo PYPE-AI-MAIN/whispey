@@ -67,7 +67,7 @@ const FlagListItem: React.FC<FlagListItemProps> = ({
               onClick={() => onCopyEmail(email)}
               className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
             >
-              {copied ? <Check className="w-2.5 h-2.5 text-emerald-500" /> : <Copy className="w-2.5 h-2.5" />}
+              {copied ? <Check className="w-2.5 h-2.5 text-success" /> : <Copy className="w-2.5 h-2.5" />}
             </button>
           )}
           <span className="shrink-0">· {formatRelativeTime(flag.flagged_at)}</span>
@@ -122,7 +122,7 @@ const FlagTooltipList: React.FC<FlagTooltipListProps> = ({ flags, copiedId, onCo
                 className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
               >
                 {copiedId === f.id ? (
-                  <Check className="w-2.5 h-2.5 text-emerald-500" />
+                  <Check className="w-2.5 h-2.5 text-success" />
                 ) : (
                   <Copy className="w-2.5 h-2.5" />
                 )}
@@ -195,7 +195,7 @@ function flaggedTriggerLook({ quiet, saving, flags }: FlagTriggerState): FlagTri
         {/* The quiet pill names what was flagged; the full list is in the tooltip. */}
         <span className={cn(quiet && 'truncate')}>{quiet ? (flags[0]?.text || 'Flagged') : 'Flagged'}</span>
         {flags.length > 1 && (
-          <span className="absolute -top-1.5 -right-1.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-white px-1 text-[9px] font-bold text-rose-600 shadow-sm ring-1 ring-rose-700/20 dark:bg-gray-900">
+          <span className="absolute -top-1.5 -right-1.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-card px-1 text-[9px] font-bold text-destructive shadow-sm ring-1 ring-rose-700/20">
             {flags.length}
           </span>
         )}
@@ -216,9 +216,9 @@ function unflaggedTriggerLook({ quiet, saving }: FlagTriggerState): FlagTriggerL
           )
         : cn(
             'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] font-medium select-none transition-all cursor-pointer',
-            'border border-dashed border-gray-300 dark:border-gray-600',
-            'text-gray-400 dark:text-gray-500',
-            'hover:border-rose-400 hover:text-rose-500 dark:hover:border-rose-500 dark:hover:text-rose-400 active:scale-95'
+            'border border-dashed border-border',
+            'text-muted-foreground',
+            'hover:border-rose-400 hover:text-destructive dark:hover:border-rose-500 active:scale-95'
           ),
       saving && 'opacity-40 pointer-events-none'
     ),
@@ -250,7 +250,7 @@ const FlagComposer: React.FC<FlagComposerProps> = ({
   <div className={cn('px-3 pb-3 pt-2', isFlagged && !editingId && 'border-t border-border/60')}>
     {(editingId || isFlagged) && (
       <div className="mb-1 flex items-center justify-between text-[10px] font-medium">
-        <span className={editingId ? 'text-rose-500' : 'text-muted-foreground'}>
+        <span className={editingId ? 'text-destructive' : 'text-muted-foreground'}>
           {editingId ? 'Editing your flag' : 'Add another flag'}
         </span>
         {editingId && (
@@ -476,7 +476,7 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
           </TooltipTrigger>
           <TooltipContent
             side="top"
-            className="pointer-events-auto bg-white text-gray-900 border border-gray-200 shadow-lg dark:bg-zinc-900 dark:text-zinc-100 dark:border-zinc-700"
+            className="pointer-events-auto bg-card text-foreground border border-border shadow-lg"
           >
             {tooltipContent}
           </TooltipContent>
@@ -512,7 +512,7 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
           {/* Header */}
           <div className="flex items-center justify-between px-3 py-2 border-b border-border/60">
             <div className="flex items-center gap-1.5 text-xs font-medium text-foreground">
-              <Flag className="w-3 h-3 text-rose-500 shrink-0" style={{ fill: 'currentColor' }} />
+              <Flag className="w-3 h-3 text-destructive shrink-0" style={{ fill: 'currentColor' }} />
               <span>{headerLabel}</span>
             </div>
             <div className="flex items-center gap-2">

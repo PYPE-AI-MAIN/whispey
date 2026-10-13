@@ -68,15 +68,15 @@ const CopyButton = ({ text, className = '' }: { text: string; className?: string
   return (
     <Button variant="ghost" size="sm" onClick={handleCopy} className={`w-7 h-7 p-0 ${className}`}>
       {copied
-        ? <Check className="w-3.5 h-3.5 text-green-600" />
-        : <Copy className="w-3.5 h-3.5 text-gray-400" />}
+        ? <Check className="w-3.5 h-3.5 text-success" />
+        : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
     </Button>
   )
 }
 
 const ConfigSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div className="space-y-4">
-    <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
+    <h3 className="text-sm font-medium text-foreground border-b border-border pb-2">
       {title}
     </h3>
     {children}
@@ -98,7 +98,7 @@ const languageDisplayMap: Record<string, string> = {
 }
 
 const NotAppliedBadge = () => (
-  <span className="text-xs text-amber-500 dark:text-amber-400">not applied for this model</span>
+  <span className="text-xs text-warning">not applied for this model</span>
 )
 
 // Kept as-is for the providers that already shipped; newer providers take the registry label.
@@ -117,7 +117,7 @@ const SarvamSettings = ({
   // The LiveKit plugin only sends pitch/loudness/enable_preprocessing for
   // bulbul:v2, so for every other model show them disabled with a note
   const v2OnlyControlsIgnored = sarvamConfig.model !== 'bulbul:v2'
-  const mutedClass = v2OnlyControlsIgnored ? 'text-gray-400 dark:text-gray-600' : ''
+  const mutedClass = v2OnlyControlsIgnored ? 'text-muted-foreground' : ''
   const isV4 = isBulbulV4Model(sarvamConfig.model)
   const languageOptions = Object.entries(languageDisplayMap).filter(
     ([code]) => !isV4 || BULBUL_V4_LANGUAGE_CODES.includes(code),
@@ -149,7 +149,7 @@ const SarvamSettings = ({
             </SelectContent>
           </Select>
           {isV4 && (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-muted-foreground">
               Set from the selected v4 voice. Only change it if you&apos;ve auditioned the voice in that language.
             </p>
           )}
@@ -170,7 +170,7 @@ const SarvamSettings = ({
               step={0.05}
               className="w-full"
             />
-            <div className="flex justify-between text-xs text-gray-500">
+            <div className="flex justify-between text-xs text-muted-foreground">
               <span>Slow (0.5×)</span>
               <span>Fast (2.0×)</span>
             </div>
@@ -194,7 +194,7 @@ const SarvamSettings = ({
               className="w-full"
               disabled={v2OnlyControlsIgnored}
             />
-            <div className="flex justify-between text-xs text-gray-500">
+            <div className="flex justify-between text-xs text-muted-foreground">
               <span>Quiet (0.5)</span>
               <span>Loud (2.0)</span>
             </div>
@@ -218,7 +218,7 @@ const SarvamSettings = ({
               className="w-full"
               disabled={v2OnlyControlsIgnored}
             />
-            <div className="flex justify-between text-xs text-gray-500">
+            <div className="flex justify-between text-xs text-muted-foreground">
               <span>Low (−20)</span>
               <span>High (+20)</span>
             </div>
@@ -240,7 +240,7 @@ const SarvamSettings = ({
               </Label>
               {v2OnlyControlsIgnored && <NotAppliedBadge />}
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-muted-foreground">
               Normalise numbers, dates and English words in mixed-language text
             </p>
           </div>
@@ -274,15 +274,15 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
   return (
     <div className="w-1/2 flex flex-col">
-      <div className="p-6 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
+      <div className="p-6 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2">
-          <Settings className="w-5 h-5 text-gray-500" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          <Settings className="w-5 h-5 text-muted-foreground" />
+          <h3 className="text-lg font-semibold text-foreground">
             {providerTitle(normalizedProvider) ?? 'TTS'}{' '}
             Settings
           </h3>
         </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           Configure speech synthesis parameters
         </p>
       </div>
@@ -376,7 +376,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                       }
                       min={0} max={1} step={0.01} className="w-full"
                     />
-                    <p className="text-xs text-gray-500">How similar to the original voice (0–1)</p>
+                    <p className="text-xs text-muted-foreground">How similar to the original voice (0–1)</p>
                   </div>
 
                   <div className="space-y-3">
@@ -388,7 +388,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                       }
                       min={0} max={1} step={0.01} className="w-full"
                     />
-                    <p className="text-xs text-gray-500">Voice stability (0–1, higher = more stable)</p>
+                    <p className="text-xs text-muted-foreground">Voice stability (0–1, higher = more stable)</p>
                   </div>
 
                   <div className="space-y-3">
@@ -400,7 +400,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                       }
                       min={0} max={1} step={0.01} className="w-full"
                     />
-                    <p className="text-xs text-gray-500">Voice style variation (0–1)</p>
+                    <p className="text-xs text-muted-foreground">Voice style variation (0–1)</p>
                   </div>
 
                   <div className="space-y-3">
@@ -412,7 +412,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                       }
                       min={0.25} max={4.0} step={0.05} className="w-full"
                     />
-                    <div className="flex justify-between text-xs text-gray-500">
+                    <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Slow (0.25×)</span>
                       <span>Fast (4.0×)</span>
                     </div>
@@ -421,7 +421,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                   <div className="flex items-center justify-between">
                     <div className="space-y-1">
                       <Label htmlFor="speaker-boost">Use Speaker Boost</Label>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Enhance speaker clarity</p>
+                      <p className="text-xs text-muted-foreground">Enhance speaker clarity</p>
                     </div>
                     <Switch
                       id="speaker-boost"
@@ -457,7 +457,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 />
                 <CopyButton text={googleTTSConfig.voice_name} />
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 Select a voice from the list or enter the voice name manually
               </p>
             </div>
@@ -468,8 +468,8 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
           <div className="flex items-center justify-center h-full">
             <div className="text-center space-y-3">
               <Settings className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto" />
-              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">Select a Voice</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <h3 className="text-sm font-medium text-foreground">Select a Voice</h3>
+              <p className="text-xs text-muted-foreground">
                 Choose a voice from the left panel to configure settings
               </p>
             </div>

@@ -12,20 +12,20 @@ export default function StudioError({ error, reset }: Readonly<{ error: Error & 
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
-      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Something went wrong</p>
-      <p className="max-w-sm text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+      <p className="text-sm font-medium text-foreground">Something went wrong</p>
+      <p className="max-w-sm text-xs leading-relaxed text-muted-foreground">
         Try again, or refresh the page if it keeps happening.
       </p>
       <div className="flex items-center gap-2">
         <button
           onClick={reset}
-          className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+          className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-muted/50"
         >
           <RefreshCw className="h-3.5 w-3.5" /> Try again
         </button>
         <button
           onClick={() => globalThis.location.reload()}
-          className="cursor-pointer text-xs text-gray-400 underline-offset-2 transition hover:text-gray-600 hover:underline dark:text-gray-500 dark:hover:text-gray-300"
+          className="cursor-pointer text-xs text-muted-foreground underline-offset-2 transition hover:text-muted-foreground hover:underline"
         >
           Refresh page
         </button>

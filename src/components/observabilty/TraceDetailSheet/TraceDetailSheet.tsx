@@ -38,6 +38,12 @@ import NodeSelector from "./NodeSelector"
 import BugReport from "./BugReport"
 import AudioPlayer from "@/components/AudioPlayer"
 
+
+function tabTone(selected: boolean, isBugReport: boolean): string {
+  if (!selected) return "border-transparent hover:text-foreground"
+  return isBugReport ? "border-red-500 dark:border-red-400 text-destructive" : "border-blue-500 dark:border-blue-400 text-primary"
+}
+
 interface TraceDetailSheetProps {
   isOpen: boolean
   trace: any
@@ -348,10 +354,10 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({
           }}
         >
           {/* Header */}
-          <SheetHeader className="border-b border-gray-200 dark:border-gray-800 px-6 py-4">
+          <SheetHeader className="border-b border-border px-6 py-4">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
-                <Activity className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
+                <Activity className="w-4 h-4 text-primary" />
               </div>
               <div>
                 <SheetTitle className="text-lg font-semibold text-left">
@@ -373,7 +379,7 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({
           </SheetHeader>
 
           {/* View Tabs */}
-          <div className="border-b border-gray-200 dark:border-gray-800">
+          <div className="border-b border-border">
             <div className="px-6">
               <nav className="flex space-x-4">
                 {viewTabs
@@ -384,12 +390,8 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({
                       onClick={() => setSelectedView(tab.id)}
                       className={cn(
                         "flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 -mb-px",
-                        selectedView === tab.id
-                          ? tab.id === "bug-report"
-                            ? "border-red-500 dark:border-red-400 text-red-600 dark:text-red-400"
-                            : "border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400" 
-                          : "border-transparent hover:text-gray-700 dark:hover:text-gray-300", 
-                        tab.id === "bug-report" ? "text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300" : "text-gray-500 dark:text-gray-400"
+                        tabTone(selectedView === tab.id, tab.id === "bug-report"),
+                        tab.id === "bug-report" ? "text-destructive hover:text-destructive" : "text-muted-foreground"
                       )}
                     >
                       {tab.icon}
@@ -405,8 +407,8 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({
             {selectedView === "pipeline" && (
               <div className="flex h-full">
                 {/* Left Panel - Node Selector */}
-                <div className="w-80 border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 p-4 flex-shrink-0">
-                  <h3 className="font-medium text-sm mb-4 text-gray-700 dark:text-gray-300">Pipeline Stages</h3>
+                <div className="w-80 border-r border-border bg-muted/50 p-4 flex-shrink-0">
+                  <h3 className="font-medium text-sm mb-4 text-foreground">Pipeline Stages</h3>
                   <NodeSelector
                     pipelineStages={pipelineStages}
                     setSelectedNode={setSelectedNode}
@@ -434,8 +436,8 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({
             {selectedView === "config" && (
               <div className="p-6 h-full overflow-y-auto">
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Raw Configuration Data</h3>
-                  <pre className="bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 p-4 rounded text-xs overflow-auto max-h-[70vh] border border-gray-200 dark:border-gray-700">
+                  <h3 className="text-lg font-semibold text-foreground">Raw Configuration Data</h3>
+                  <pre className="bg-muted/50 text-foreground p-4 rounded text-xs overflow-auto max-h-[70vh] border border-border">
                     {JSON.stringify(trace.turn_configuration, null, 2)}
                   </pre>
                 </div>

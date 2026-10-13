@@ -144,7 +144,7 @@ function NodeDetails({
     const SimpleAudioPlayer = ({ type, duration }: { type: 'stt' | 'tts', duration: number }) => {
       if (!recordingUrl || !audioSegmentInfo || duration === 0) {
         return (
-          <div className="text-sm text-gray-500 dark:text-gray-400 italic">
+          <div className="text-sm text-muted-foreground italic">
             Audio not available
           </div>
         )
@@ -160,7 +160,7 @@ function NodeDetails({
       // If duration becomes 0 after validation, show error
       if (durationInSeconds === 0) {
         return (
-          <div className="text-sm text-red-500 dark:text-red-400 italic">
+          <div className="text-sm text-destructive italic">
             Invalid audio duration: {duration}s
           </div>
         )
@@ -204,14 +204,14 @@ function NodeDetails({
     return (
       <div className="space-y-4">
         {/* Node Header */}
-        <div className="flex items-center gap-3 pb-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-3 pb-4 border-b border-border">
           {/* Neutral, not per-stage colored (see NodeSelector for the same change) */}
-          <div className="w-10 h-10 rounded-lg flex items-center justify-center border bg-gray-100 dark:bg-gray-900/40 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400">
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center border bg-muted border-border text-muted-foreground">
             {selectedStage.icon}
           </div>
           <div>
-            <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">{selectedStage.name} Processing</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <h3 className="font-semibold text-lg text-foreground">{selectedStage.name} Processing</h3>
+            <p className="text-sm text-muted-foreground">
               {selectedStage.inputType} → {selectedStage.outputType}
             </p>
           </div>
@@ -229,25 +229,25 @@ function NodeDetails({
             <>
               {/* Input Section */}
               <div className="space-y-3">
-                <h4 className="font-medium text-sm flex items-center gap-2 text-gray-900 dark:text-gray-100">
-                  <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500"></div>
+                <h4 className="font-medium text-sm flex items-center gap-2 text-foreground">
+                  <div className="w-2 h-2 rounded-full bg-muted-foreground/40"></div>
                   Input
                   {selectedStage.id === "stt" && trace.stt_metrics?.audio_duration && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto">
+                    <span className="text-xs text-muted-foreground ml-auto">
                       Audio stream •{" "}
-                      <code className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-1 rounded">{trace.stt_metrics.audio_duration.toFixed(1)}s</code>
+                      <code className="bg-muted text-foreground px-1 rounded">{trace.stt_metrics.audio_duration.toFixed(1)}s</code>
                     </span>
                   )}
                   {selectedStage.id === "tts" && trace.tts_metrics?.audio_duration && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-auto">
+                    <span className="text-xs text-muted-foreground ml-auto">
                       Text length:{" "}
-                      <code className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-1 rounded">{trace.agent_response?.length || 0} chars</code>
+                      <code className="bg-muted text-foreground px-1 rounded">{trace.agent_response?.length || 0} chars</code>
                     </span>
                   )}
                 </h4>
                 {selectedStage.id === "stt" && (
                   <div className="space-y-3">
-                    <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900 shadow-sm p-3 text-sm text-gray-600 dark:text-gray-400 italic">
+                    <div className="rounded-xl border border-border bg-muted shadow-sm p-3 text-sm text-muted-foreground italic">
                       Audio stream processed ({trace.stt_metrics?.audio_duration?.toFixed(1) || 0}s duration)
                     </div>
                     
@@ -258,40 +258,40 @@ function NodeDetails({
                   </div>
                 )}
                 {selectedStage.id === "llm" && (
-                  <div className="bg-gray-50 dark:bg-gray-900/40 border-l-4 border-gray-300 dark:border-gray-600 pl-3 py-2 text-sm text-gray-900 dark:text-gray-100">
+                  <div className="bg-muted/50 border-l-4 border-border pl-3 py-2 text-sm text-foreground">
                     "{formatTranscript(trace.user_transcript) || "No input"}"
                   </div>
                 )}
                 {selectedStage.id === "tts" && (
-                  <div className="bg-gray-50 dark:bg-gray-900/40 border-l-4 border-gray-300 dark:border-gray-600 pl-3 py-2 text-sm max-h-32 overflow-y-auto text-gray-900 dark:text-gray-100">
+                  <div className="bg-muted/50 border-l-4 border-border pl-3 py-2 text-sm max-h-32 overflow-y-auto text-foreground">
                     "{formatTranscript(trace.agent_response) || "No text"}"
                   </div>
                 )}
               </div>
 
               <div className="flex justify-center">
-                <ArrowDown className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                <ArrowDown className="w-5 h-5 text-muted-foreground" />
               </div>
 
               {/* Output Section */}
               <div className="space-y-3">
-                <h4 className="font-medium text-sm flex items-center gap-2 text-gray-900 dark:text-gray-100">
-                  <div className="w-2 h-2 rounded-full bg-gray-400 dark:bg-gray-500"></div>
+                <h4 className="font-medium text-sm flex items-center gap-2 text-foreground">
+                  <div className="w-2 h-2 rounded-full bg-muted-foreground/40"></div>
                   Output
                 </h4>
                 {selectedStage.id === "stt" && (
-                  <div className="bg-gray-50 dark:bg-gray-900/40 border-l-4 border-gray-300 dark:border-gray-600 pl-3 py-2 text-sm text-gray-900 dark:text-gray-100">
+                  <div className="bg-muted/50 border-l-4 border-border pl-3 py-2 text-sm text-foreground">
                     "{formatTranscript(trace.user_transcript) || "No transcription"}"
                   </div>
                 )}
                 {selectedStage.id === "llm" && (
-                  <div className="bg-gray-50 dark:bg-gray-900/40 border-l-4 border-gray-300 dark:border-gray-600 pl-3 py-2 text-sm max-h-40 overflow-y-auto text-gray-900 dark:text-gray-100">
+                  <div className="bg-muted/50 border-l-4 border-border pl-3 py-2 text-sm max-h-40 overflow-y-auto text-foreground">
                     "{formatTranscript(trace.agent_response) || "No response"}"
                   </div>
                 )}
                 {selectedStage.id === "tts" && (
                   <div className="space-y-3">
-                    <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900 shadow-sm p-3 text-sm text-gray-600 dark:text-gray-400 italic">
+                    <div className="rounded-xl border border-border bg-muted shadow-sm p-3 text-sm text-muted-foreground italic">
                       Audio generated ({trace.tts_metrics?.audio_duration?.toFixed(1) || 0}s duration)
                     </div>
                     
@@ -307,20 +307,20 @@ function NodeDetails({
           
           {/* Special handling for EOU - show detection timing instead of input/output */}
           {selectedStage.id === "eou" && (
-            <div className="bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 rounded-lg p-4">
-              <h4 className="font-medium text-sm mb-3 flex items-center gap-2 text-gray-900 dark:text-gray-100">
-                <Activity className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+            <div className="bg-muted/50 border border-border rounded-lg p-4">
+              <h4 className="font-medium text-sm mb-3 flex items-center gap-2 text-foreground">
+                <Activity className="w-4 h-4 text-muted-foreground" />
                 End of Utterance Detection
               </h4>
               <div className="space-y-3">
-                <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3">
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">EOU Detection Delay</div>
-                  <div className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">
+                <div className="rounded-xl border border-border bg-card shadow-sm p-3">
+                  <div className="text-xs text-muted-foreground mb-1">EOU Detection Delay</div>
+                  <div className="font-mono text-sm font-medium text-foreground">
                     {trace.eou_metrics?.end_of_utterance_delay ?
                       formatDuration(trace.eou_metrics.end_of_utterance_delay * 1000) :
                       "No data"}
                   </div>
-                  <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                  <div className="text-xs text-muted-foreground mt-1">
                     Time to detect the user stopped speaking
                   </div>
                 </div>
@@ -334,7 +334,7 @@ function NodeDetails({
         {SHOW_COMPLETE_PROMPT_CONTEXT && selectedStage.id === "llm" && trace.enhanced_data?.prompt_data && (
           <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/10 dark:to-indigo-900/10 border border-purple-200 dark:border-purple-800 rounded-xl p-5 mb-6">
             <div className="flex items-center justify-between mb-4">
-              <h4 className="font-semibold text-base flex items-center gap-2 text-gray-900 dark:text-gray-100">
+              <h4 className="font-semibold text-base flex items-center gap-2 text-foreground">
                 <MessageSquare className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                 Complete Prompt Context
               </h4>
@@ -347,10 +347,10 @@ function NodeDetails({
             <div className="mb-4">
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-2 h-2 rounded-full bg-amber-500"></div>
-                <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">System Instructions</span>
+                <span className="text-xs font-medium text-muted-foreground">System Instructions</span>
               </div>
-              <div className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-400 dark:border-amber-600 rounded-r-lg p-3 max-h-64 overflow-y-auto">
-                <pre className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono leading-relaxed">
+              <div className="bg-warning/10 border-l-4 border-amber-400 dark:border-amber-600 rounded-r-lg p-3 max-h-64 overflow-y-auto">
+                <pre className="text-xs text-foreground whitespace-pre-wrap font-mono leading-relaxed">
                   {trace.enhanced_data.prompt_data.system_instructions || "No system instructions"}
                 </pre>
               </div>
@@ -361,19 +361,19 @@ function NodeDetails({
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                  <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Available Tools</span>
+                  <span className="text-xs font-medium text-muted-foreground">Available Tools</span>
                   <Badge variant="outline" className="text-xs">
                     {trace.enhanced_data.prompt_data.available_tools.length}
                   </Badge>
                 </div>
                 <div className="grid grid-cols-1 gap-2">
-                  {trace.enhanced_data.prompt_data.available_tools.map((tool: any, idx: number) => (
-                    <div key={idx} className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                  {trace.enhanced_data.prompt_data.available_tools.map((tool: any) => (
+                    <div key={tool.name} className="bg-primary/10 border border-primary/30 rounded-lg p-3">
                       <div className="flex items-center justify-between mb-1">
-                        <code className="text-sm font-semibold text-blue-800 dark:text-blue-200">{tool.name}</code>
-                        <span className="text-xs text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-800 px-2 py-1 rounded">{tool.tool_type}</span>
+                        <code className="text-sm font-semibold text-primary">{tool.name}</code>
+                        <span className="text-xs text-primary bg-primary/15 px-2 py-1 rounded">{tool.tool_type}</span>
                       </div>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">{tool.description}</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{tool.description}</p>
                     </div>
                   ))}
                 </div>
@@ -387,7 +387,7 @@ function NodeDetails({
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                    <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Conversation History</span>
+                    <span className="text-xs font-medium text-muted-foreground">Conversation History</span>
                     <Badge variant="outline" className="text-xs">
                       {trace.enhanced_data.prompt_data.conversation_history.length} messages
                     </Badge>
@@ -403,7 +403,7 @@ function NodeDetails({
                   </Button>
                 </div>
 
-                <div className="space-y-2 max-h-80 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3">
+                <div className="space-y-2 max-h-80 overflow-y-auto rounded-xl border border-border bg-card shadow-sm p-3">
                   {trace.enhanced_data.prompt_data.conversation_history.map((message: any, idx: number) => {
                     // Parse content if it's a string array
                     let displayContent = message.content
@@ -417,10 +417,10 @@ function NodeDetails({
                     }
 
                     const roleColors = {
-                      system: "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200",
-                      user: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200",
-                      assistant: "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-200",
-                      unknown: "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400",
+                      system: "bg-warning/10 border-warning/30 text-warning",
+                      user: "bg-primary/10 border-primary/30 text-primary",
+                      assistant: "bg-success/10 border-success/30 text-success",
+                      unknown: "bg-muted/50 border-border text-muted-foreground",
                     }
 
                     return (
@@ -434,10 +434,10 @@ function NodeDetails({
                               {message.role}
                             </Badge>
                             {message.id && (
-                              <span className="text-xs font-mono text-gray-500 dark:text-gray-400">{message.id.slice(0, 12)}...</span>
+                              <span className="text-xs font-mono text-muted-foreground">{message.id.slice(0, 12)}...</span>
                             )}
                           </div>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">#{idx + 1}</span>
+                          <span className="text-xs text-muted-foreground">#{idx + 1}</span>
                         </div>
 
                         {displayContent ? (
@@ -449,7 +449,7 @@ function NodeDetails({
                             </pre>
                           </div>
                         ) : (
-                          <div className="text-xs italic text-gray-500 dark:text-gray-400">
+                          <div className="text-xs italic text-muted-foreground">
                             [Empty content - likely a function call or system event]
                           </div>
                         )}
@@ -463,17 +463,17 @@ function NodeDetails({
             {/* Context Summary */}
             <div className="mt-4 pt-4 border-t border-purple-200 dark:border-purple-700">
               <div className="grid grid-cols-3 gap-4 text-center">
-                <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3">
-                  <div className="text-xs text-gray-500 dark:text-gray-400">Context Length</div>
-                  <div className="font-mono font-semibold text-gray-900 dark:text-gray-100">{trace.enhanced_data.prompt_data.context_length || 0}</div>
+                <div className="rounded-xl border border-border bg-card shadow-sm p-3">
+                  <div className="text-xs text-muted-foreground">Context Length</div>
+                  <div className="font-mono font-semibold text-foreground">{trace.enhanced_data.prompt_data.context_length || 0}</div>
                 </div>
-                <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3">
-                  <div className="text-xs text-gray-500 dark:text-gray-400">Tools Available</div>
-                  <div className="font-mono font-semibold text-gray-900 dark:text-gray-100">{trace.enhanced_data.prompt_data.tools_count || 0}</div>
+                <div className="rounded-xl border border-border bg-card shadow-sm p-3">
+                  <div className="text-xs text-muted-foreground">Tools Available</div>
+                  <div className="font-mono font-semibold text-foreground">{trace.enhanced_data.prompt_data.tools_count || 0}</div>
                 </div>
-                <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3">
-                  <div className="text-xs text-gray-500 dark:text-gray-400">Captured</div>
-                  <div className="font-mono font-semibold text-xs text-gray-900 dark:text-gray-100">
+                <div className="rounded-xl border border-border bg-card shadow-sm p-3">
+                  <div className="text-xs text-muted-foreground">Captured</div>
+                  <div className="font-mono font-semibold text-xs text-foreground">
                     {trace.enhanced_data.prompt_data.timestamp
                       ? new Date(trace.enhanced_data.prompt_data.timestamp * 1000).toLocaleTimeString()
                       : "N/A"}
@@ -486,41 +486,41 @@ function NodeDetails({
 
         {/* Tool Calls for LLM - Show after prompts */}
         {selectedStage.id === "llm" && selectedStage.tools && selectedStage.tools.length > 0 && (
-          <div className="bg-gray-50 dark:bg-gray-900/40 border-l-4 border-gray-300 dark:border-gray-600 rounded-lg p-4">
-            <h4 className="font-medium text-sm mb-3 flex items-center gap-2 text-gray-900 dark:text-gray-100">
-              <Wrench className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+          <div className="bg-muted/50 border-l-4 border-border rounded-lg p-4">
+            <h4 className="font-medium text-sm mb-3 flex items-center gap-2 text-foreground">
+              <Wrench className="w-4 h-4 text-muted-foreground" />
               Tool Executions ({selectedStage.tools.length})
             </h4>
             <div className="space-y-3">
               {selectedStage.tools.map((tool: any) => (
-                <div key={tool.id ?? `${tool.name}-${tool.execution_duration_ms ?? 'na'}-${JSON.stringify(tool.arguments)}`} className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3">
+                <div key={tool.id ?? `${tool.name}-${tool.execution_duration_ms ?? 'na'}-${JSON.stringify(tool.arguments)}`} className="rounded-xl border border-border bg-card shadow-sm p-3">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                        <Wrench className="w-3 h-3 text-gray-500 dark:text-gray-400" />
+                      <div className="w-6 h-6 rounded bg-muted flex items-center justify-center">
+                        <Wrench className="w-3 h-3 text-muted-foreground" />
                       </div>
-                      <span className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">{tool.name}</span>
+                      <span className="font-mono text-sm font-medium text-foreground">{tool.name}</span>
                       <Badge variant={tool.status === "success" ? "default" : "destructive"} className="text-xs">
                         {tool.status}
                       </Badge>
                     </div>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                    <span className="text-xs text-muted-foreground font-mono">
                       {tool.execution_duration_ms ? formatDuration(tool.execution_duration_ms) : "< 1ms"}
                     </span>
                   </div>
 
                   <div className="space-y-2">
                     <div className="flex items-start gap-2">
-                      <span className="text-xs text-gray-600 dark:text-gray-400 font-medium min-w-[4rem]">Args:</span>
-                      <code className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2 py-1 rounded flex-1 break-all">
+                      <span className="text-xs text-muted-foreground font-medium min-w-[4rem]">Args:</span>
+                      <code className="text-xs bg-muted text-foreground px-2 py-1 rounded flex-1 break-all">
                         {JSON.stringify(tool.arguments, null, 1)}
                       </code>
                     </div>
 
                     {tool.result && (
                       <div className="flex items-start gap-2">
-                        <span className="text-xs text-gray-600 dark:text-gray-400 font-medium min-w-[4rem]">Result:</span>
-                        <code className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2 py-1 rounded flex-1 max-h-24 overflow-y-auto">
+                        <span className="text-xs text-muted-foreground font-medium min-w-[4rem]">Result:</span>
+                        <code className="text-xs bg-muted text-foreground px-2 py-1 rounded flex-1 max-h-24 overflow-y-auto">
                           {typeof tool.result === "string" ? tool.result : JSON.stringify(tool.result, null, 1)}
                         </code>
                       </div>
@@ -541,14 +541,14 @@ function NodeDetails({
             // Red panel only for a real failure — a clean recovery is neutral
             // with just a green checkmark, not a whole colored block of its own.
             selectedStage.fallbackFailureCount > 0
-              ? "bg-red-50 dark:bg-red-900/20 border-red-500 dark:border-red-400"
-              : "bg-gray-50 dark:bg-gray-900/40 border-gray-300 dark:border-gray-600"
+              ? "bg-destructive/10 border-red-500 dark:border-red-400"
+              : "bg-muted/50 border-border"
           )}>
-            <h4 className="font-medium text-sm mb-3 flex items-center gap-2 text-gray-900 dark:text-gray-100">
+            <h4 className="font-medium text-sm mb-3 flex items-center gap-2 text-foreground">
               {selectedStage.fallbackFailureCount > 0 ? (
-                <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
+                <AlertTriangle className="w-4 h-4 text-destructive" />
               ) : (
-                <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <CheckCircle className="w-4 h-4 text-success" />
               )}
               Fallback Events ({selectedStage.fallbackEvents.length})
             </h4>
@@ -558,17 +558,17 @@ function NodeDetails({
                 const isRecovery = fb.event_type === 'provider_recovered'
                 if (isRecovery) {
                   return (
-                    <div key={eventKey} className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3">
+                    <div key={eventKey} className="rounded-xl border border-border bg-card shadow-sm p-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                            <CheckCircle className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                          <div className="w-6 h-6 rounded bg-muted flex items-center justify-center">
+                            <CheckCircle className="w-3 h-3 text-success" />
                           </div>
-                          <span className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">
+                          <span className="font-mono text-sm font-medium text-foreground">
                             Recovered: {fb.provider_label || formatProviderLabel(fb.provider_name)}
                           </span>
                         </div>
-                        <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                        <span className="text-xs text-muted-foreground font-mono">
                           {fb.timestamp ? formatTimestamp(fb.timestamp) : ""}
                         </span>
                       </div>
@@ -577,59 +577,59 @@ function NodeDetails({
                 }
                 const isTotalFailure = !!fb.all_providers_failed
                 return (
-                  <div key={eventKey} className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3">
+                  <div key={eventKey} className="rounded-xl border border-border bg-card shadow-sm p-3">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
+                        <div className="w-6 h-6 rounded bg-destructive/15 flex items-center justify-center">
                           {isTotalFailure ? (
-                            <XCircle className="w-3 h-3 text-red-600 dark:text-red-400" />
+                            <XCircle className="w-3 h-3 text-destructive" />
                           ) : (
-                            <AlertTriangle className="w-3 h-3 text-red-600 dark:text-red-400" />
+                            <AlertTriangle className="w-3 h-3 text-destructive" />
                           )}
                         </div>
-                        <span className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">
+                        <span className="font-mono text-sm font-medium text-foreground">
                           {isTotalFailure
                             ? `${fb.provider_label || formatProviderLabel(fb.provider_name)} — no fallback available`
                             : <>{fb.provider_label || formatProviderLabel(fb.provider_name)} → {fb.fallback_label || formatProviderLabel(fb.fallback_provider)}</>}
                         </span>
                       </div>
-                      <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                      <span className="text-xs text-muted-foreground font-mono">
                         {fb.timestamp ? formatTimestamp(fb.timestamp) : ""}
                       </span>
                     </div>
 
                     <div className="space-y-2">
                       <div className="flex items-start gap-2">
-                        <span className="text-xs text-gray-600 dark:text-gray-400 font-medium min-w-[6rem]">Primary:</span>
-                        <code className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2 py-1 rounded flex-1 break-all">
+                        <span className="text-xs text-muted-foreground font-medium min-w-[6rem]">Primary:</span>
+                        <code className="text-xs bg-muted text-foreground px-2 py-1 rounded flex-1 break-all">
                           {fb.provider_name || "unknown"}
                         </code>
                       </div>
                       {!isTotalFailure && (
                         <div className="flex items-start gap-2">
-                          <span className="text-xs text-gray-600 dark:text-gray-400 font-medium min-w-[6rem]">Fallback:</span>
-                          <code className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2 py-1 rounded flex-1 break-all">
+                          <span className="text-xs text-muted-foreground font-medium min-w-[6rem]">Fallback:</span>
+                          <code className="text-xs bg-muted text-foreground px-2 py-1 rounded flex-1 break-all">
                             {fb.fallback_provider || "unknown"}
                           </code>
                         </div>
                       )}
                       {fb.all_providers && (
                         <div className="flex items-start gap-2">
-                          <span className="text-xs text-gray-600 dark:text-gray-400 font-medium min-w-[6rem]">All configured:</span>
-                          <code className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2 py-1 rounded flex-1 break-all">
+                          <span className="text-xs text-muted-foreground font-medium min-w-[6rem]">All configured:</span>
+                          <code className="text-xs bg-muted text-foreground px-2 py-1 rounded flex-1 break-all">
                             {String(fb.all_providers)}
                           </code>
                         </div>
                       )}
                       {fb.error_reason ? (
                         <div className="flex items-start gap-2">
-                          <span className="text-xs text-gray-600 dark:text-gray-400 font-medium min-w-[6rem]">Reason:</span>
-                          <code className="text-xs bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-2 py-1 rounded flex-1 max-h-24 overflow-y-auto break-all">
+                          <span className="text-xs text-muted-foreground font-medium min-w-[6rem]">Reason:</span>
+                          <code className="text-xs bg-destructive/10 border border-destructive/30 text-destructive px-2 py-1 rounded flex-1 max-h-24 overflow-y-auto break-all">
                             {fb.error_reason}
                           </code>
                         </div>
                       ) : (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 italic">
+                        <div className="text-xs text-muted-foreground italic">
                           Exact error reason wasn't captured for this event — check CloudWatch (/aws/vc-bots/errors) around this timestamp for the underlying exception.
                         </div>
                       )}
@@ -642,13 +642,13 @@ function NodeDetails({
         )}
 
         {selectedStage.metrics && (
-          <div className="bg-gray-50 dark:bg-gray-900/40 rounded-lg p-4">
-            <h4 className="font-medium text-sm mb-3 text-gray-900 dark:text-gray-100">Performance Metrics</h4>
+          <div className="bg-muted/50 rounded-lg p-4">
+            <h4 className="font-medium text-sm mb-3 text-foreground">Performance Metrics</h4>
             <div className="grid grid-cols-2 gap-4">
               {Object.entries(selectedStage.metrics).map(([key, value]) => (
-                <div key={key} className="bg-white dark:bg-gray-800 rounded p-3 border border-gray-200 dark:border-gray-700">
-                  <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">{key.replace(/_/g, " ")}</div>
-                  <div className="font-mono text-sm font-medium text-gray-900 dark:text-gray-100">
+                <div key={key} className="bg-card rounded p-3 border border-border">
+                  <div className="text-xs text-muted-foreground capitalize">{key.replaceAll("_", " ")}</div>
+                  <div className="font-mono text-sm font-medium text-foreground">
                     {key.includes("duration") || key.includes("ttft") || key.includes("ttfb")
                       ? `${typeof value === "number" ? value.toFixed(3) : value}s`
                       : key.includes("timestamp")
@@ -665,27 +665,27 @@ function NodeDetails({
 
         {/* Configuration */}
         {selectedStage.config && (
-          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 shadow-sm p-4">
-            <h4 className="font-medium text-sm mb-3 text-gray-900 dark:text-gray-100">Configuration</h4>
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded p-3">
+          <div className="rounded-xl border border-border bg-muted/50 shadow-sm p-4">
+            <h4 className="font-medium text-sm mb-3 text-foreground">Configuration</h4>
+            <div className="bg-card border border-border rounded p-3">
               <div className="grid grid-cols-1 gap-2 text-sm">
                 {selectedStage.id === "vad" && (
                   <>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Activation Threshold:</span>
-                      <code className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-1 rounded text-xs">
+                      <span className="text-muted-foreground">Activation Threshold:</span>
+                      <code className="bg-muted text-foreground px-1 rounded text-xs">
                         {selectedStage.config.activation_threshold}
                       </code>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Min Speech Duration:</span>
-                      <code className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-1 rounded text-xs">
+                      <span className="text-muted-foreground">Min Speech Duration:</span>
+                      <code className="bg-muted text-foreground px-1 rounded text-xs">
                         {selectedStage.config.min_speech_duration}s
                       </code>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Update Interval:</span>
-                      <code className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-1 rounded text-xs">
+                      <span className="text-muted-foreground">Update Interval:</span>
+                      <code className="bg-muted text-foreground px-1 rounded text-xs">
                         {selectedStage.config.capabilities?.update_interval}s
                       </code>
                     </div>
@@ -694,20 +694,20 @@ function NodeDetails({
                 {selectedStage.id === "eou" && (
                   <>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Detection Mode:</span>
-                      <code className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-1 rounded text-xs">
+                      <span className="text-muted-foreground">Detection Mode:</span>
+                      <code className="bg-muted text-foreground px-1 rounded text-xs">
                         {selectedStage.config?.detection_mode || "Voice Activity"}
                       </code>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Silence Threshold:</span>
-                      <code className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-1 rounded text-xs">
+                      <span className="text-muted-foreground">Silence Threshold:</span>
+                      <code className="bg-muted text-foreground px-1 rounded text-xs">
                         {selectedStage.config?.silence_threshold || "Default"}
                       </code>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Min Duration:</span>
-                      <code className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-1 rounded text-xs">
+                      <span className="text-muted-foreground">Min Duration:</span>
+                      <code className="bg-muted text-foreground px-1 rounded text-xs">
                         {selectedStage.config?.min_duration || "Auto"}s
                       </code>
                     </div>
@@ -716,16 +716,16 @@ function NodeDetails({
                 {selectedStage.id === "stt" && (
                   <>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Model:</span>
-                      <code className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-1 rounded text-xs">{selectedStage.config.model}</code>
+                      <span className="text-muted-foreground">Model:</span>
+                      <code className="bg-muted text-foreground px-1 rounded text-xs">{selectedStage.config.model}</code>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Language:</span>
-                      <code className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-1 rounded text-xs">{selectedStage.config.language}</code>
+                      <span className="text-muted-foreground">Language:</span>
+                      <code className="bg-muted text-foreground px-1 rounded text-xs">{selectedStage.config.language}</code>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Streaming:</span>
-                      <code className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-1 rounded text-xs">
+                      <span className="text-muted-foreground">Streaming:</span>
+                      <code className="bg-muted text-foreground px-1 rounded text-xs">
                         {selectedStage.config.capabilities?.streaming ? "Yes" : "No"}
                       </code>
                     </div>
@@ -734,23 +734,23 @@ function NodeDetails({
                 {selectedStage.id === "llm" && (
                   <>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Model:</span>
-                      <code className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-1 rounded text-xs">{selectedStage.config.model}</code>
+                      <span className="text-muted-foreground">Model:</span>
+                      <code className="bg-muted text-foreground px-1 rounded text-xs">{selectedStage.config.model}</code>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Temperature:</span>
-                      <code className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-1 rounded text-xs">{selectedStage.config.temperature}</code>
+                      <span className="text-muted-foreground">Temperature:</span>
+                      <code className="bg-muted text-foreground px-1 rounded text-xs">{selectedStage.config.temperature}</code>
                     </div>
                     {selectedStage.metrics && (
                       <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Prompt Tokens:</span>
-                        <code className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-1 rounded text-xs">{selectedStage.metrics.prompt_tokens}</code>
+                        <span className="text-muted-foreground">Prompt Tokens:</span>
+                        <code className="bg-muted text-foreground px-1 rounded text-xs">{selectedStage.metrics.prompt_tokens}</code>
                       </div>
                     )}
                     {selectedStage.metrics && (
                       <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-400">Completion Tokens:</span>
-                        <code className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-1 rounded text-xs">
+                        <span className="text-muted-foreground">Completion Tokens:</span>
+                        <code className="bg-muted text-foreground px-1 rounded text-xs">
                           {selectedStage.metrics.completion_tokens}
                         </code>
                       </div>
@@ -760,18 +760,18 @@ function NodeDetails({
                 {selectedStage.id === "tts" && (
                   <>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Voice ID:</span>
-                      <code className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-1 rounded text-xs">
+                      <span className="text-muted-foreground">Voice ID:</span>
+                      <code className="bg-muted text-foreground px-1 rounded text-xs">
                         {selectedStage.config.voice_id?.slice(0, 12)}...
                       </code>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Model:</span>
-                      <code className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-1 rounded text-xs">{selectedStage.config.model}</code>
+                      <span className="text-muted-foreground">Model:</span>
+                      <code className="bg-muted text-foreground px-1 rounded text-xs">{selectedStage.config.model}</code>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">Speed:</span>
-                      <code className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-1 rounded text-xs">
+                      <span className="text-muted-foreground">Speed:</span>
+                      <code className="bg-muted text-foreground px-1 rounded text-xs">
                         {selectedStage.config.voice_settings?.speed}
                       </code>
                     </div>

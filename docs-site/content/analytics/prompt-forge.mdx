@@ -1,0 +1,113 @@
+---
+title: Prompt Forge
+description: A text sandbox for trying prompt changes. Chat with your prompt, replay a real call, save versions and share them. Nothing here changes the live agent.
+---
+
+**Prompt Forge** (Beta) is a workbench for your agent's prompt. You change the instructions, chat with them as text, and see how the agent would reply. It is the quick way to test a fix before you touch the live agent.
+
+:::note
+Prompt Forge never changes your real agent. Everything you edit here, including the prompt, the model, the greeting and the tools, is saved with the Prompt Forge session only. To change the live agent, edit its configuration.
+:::
+
+## Who can use it
+
+Prompt Forge appears in the left menu under **Build** only for people who have been given access to it. If you do not see it, you do not have access yet. If you open the page without access, it says **Access Restricted**.
+
+## The sessions list
+
+Open **Prompt Forge** in the left menu. You see a table of sessions for this agent.
+
+| Column | What it shows |
+|---|---|
+| **Session** | The name, and a preview of the last message. |
+| **Model** | The model the session uses. |
+| **Messages** | How many messages the conversation has. |
+| **Versions** | How many versions have been saved. |
+| **Owner** | Who made the session. |
+| **Updated** | When it was last changed. |
+
+Everyone with access sees all sessions for the agent. You can edit only your own. Open someone else's to read it, chat with it and duplicate it.
+
+- **New session** makes an empty session.
+- The three-dot menu on a row has **Rename** and **Delete**. Deleting cannot be undone.
+
+The **Persona** and **Test Cases** tabs next to **Forge** are marked **Soon**. They are not available yet.
+
+## Inside a session
+
+The page has two halves. On the left is your prompt. On the right is a chat.
+
+### Left: the prompt
+
+- **System prompt.** The instructions the model follows. It fills in from your agent's configuration when you open a new session. If the box says the agent config server is unreachable, paste your prompt in yourself. A **Backend offline** tag appears at the top.
+- **Model settings.** Click the model name above the prompt. Choose the same provider, model and temperature choices that Agent Config offers, so test answers match the real agent. This applies to this session only.
+- **Variables.** If your prompt uses variables, such as the caller's name, a **Variables** bar lists them. Open it and type test values. Some variables are filled in automatically, and the bar says which.
+- **Greeting.** Choose how the call starts: **Agent speaks first**, **Agent generates the greeting** or **Wait for the user**. For the first, type the greeting text.
+- At the bottom you see the prompt's length in characters and words.
+
+Drag the line between the two halves to change their widths. Double-click it to reset.
+
+### Right: the chat
+
+Type a message at the bottom and send it. The reply streams in. The conversation uses your current prompt, model, variables and tools, so you see what would happen now.
+
+- Hover over a message and click **Replay from here** to run it again with your latest prompt. This is how you test a change on the same question.
+- **Restart** clears the conversation and starts again with the greeting.
+- Tool calls show up in the chat. Click one to see its **Arguments** and **Result**.
+
+### Tools
+
+If the agent has tools, a **tools** button shows how many. It opens a panel with each tool.
+
+- Edit a tool's description, endpoint, parameters and more. The change applies to the next message and is saved with the session. It never changes the agent.
+- A tool you changed is marked **edited**. **Reset to agent's version** puts it back.
+- Tick **Mock response** to have the tool reply with text you write instead of calling its endpoint. This is the safest way to test a flow. Tick **Treat as a failed call** to test how the agent handles an error.
+- Without a mock, a custom function calls its real endpoint. Transfer and knowledge tools are always mocked.
+
+:::warning
+A custom function without a mock response calls its real endpoint. If that endpoint changes data, such as booking an appointment, it will do so for real. Use **Mock response** unless you want that.
+:::
+
+### Replay a real call
+
+Click **Import log** to bring a past call into the chat.
+
+1. Choose a range: **Today**, **Last 7 days**, **Last 30 days** or **All time**. You can also add filters.
+2. Click a call to preview it on the right.
+3. Click **Import this call**.
+
+The conversation loads into the chat. A blue bar shows the number, date and length. Now change the prompt and use **Replay from here** to see whether the agent would have done better.
+
+### Load config
+
+Click **Load config** to paste an agent's configuration as JSON. Prompt Forge reads it and fills in the prompt, variables, tools, model and greeting. Click **Parse JSON**, check what it found, then **Apply Config**.
+
+## Drafts, versions and sharing
+
+Your session saves itself as you work. The header shows **Draft saved**, **Unsaved changes** or **Saving draft…**. If a save fails, it says **Couldn't save draft — retry**. Click it to try again.
+
+Versions are different. Click **Save** to add a new version: a snapshot of the prompt, settings, greeting and conversation. Versions never change. The button then reads **Saved v** and the version number.
+
+| Action | What it does |
+|---|---|
+| **Save** | Adds a new version. Your draft keeps going. |
+| Versions menu (for example **3 versions**) | Opens any saved version, read-only. **Working draft** brings you back. |
+| **Restore into draft** | Replaces your draft with the version you are looking at. Anything in the draft that is not saved as a version is lost. |
+| **Open draft** | Leaves a version and returns to the draft. |
+| **Share** | Copies a link. On a version, the link is to that version, which never changes. On the draft, it always shows the latest work. |
+| **Duplicate to edit** | On someone else's session, makes a copy that you own. |
+
+A session you do not own is read-only, and a banner says whose it is. You can still chat with it.
+
+## Ask Pi
+
+The switch near the message box (**Ask Pi**) turns the chat into a conversation with Pi, Whispey's assistant, about this prompt. Pi can look at the test chat and the agent's real calls. Use the same switch to go back to testing the agent.
+
+## A good way to work
+
+1. Find a call that went wrong in [Call Logs](./call-logs) or [QA Audit](./qa-audit).
+2. In Prompt Forge, use **Import log** to load it.
+3. Change the prompt to fix the problem. Use **Replay from here**.
+4. Try a few other questions to check you have not broken something else.
+5. **Save** a version and **Share** the link with a teammate.
+6. Make the change in the agent's configuration when you are happy.

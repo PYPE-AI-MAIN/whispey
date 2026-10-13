@@ -1,0 +1,44 @@
+---
+title: Do not call list
+description: How the do not call list blocks numbers from being dialed, and who can manage it.
+---
+
+The do not call (DNC) list holds phone numbers that must never be dialed. The page says listed numbers are blocked at upload, single-call and dispatch.
+
+:::note
+Only Whispey superadmins can manage the list. Other people see **DNC management is restricted to superadmins.** The page has no sidebar item. Superadmins reach it with the **DNC List** button on the Phone Numbers page.
+:::
+
+## What it does for you
+
+When you create a [campaign](./campaigns) and upload contacts, Whispey checks every number against the list.
+
+- Blocked numbers are highlighted in the recipients preview.
+- Blocked numbers are left out when you send the campaign.
+- If every number is blocked, you see **Every uploaded number is on the DNC list. Nothing to send.**
+
+## Scope
+
+An entry is either global or for one organization.
+
+| Scope | Effect |
+|---|---|
+| Global, all organizations | The number is blocked everywhere |
+| Per organization | The number is blocked only in the organization you pick |
+
+## How a superadmin adds numbers
+
+On **Do Not Call (DNC) List**, use the **Add numbers** card.
+
+1. Pick the **Scope**. For **Per organization**, also pick the **Organization**.
+2. Add **Phone numbers**. Type them one at a time, or choose a CSV file. The CSV needs a column named `phone`, with one number per row.
+3. Set **Bare numbers get** to the country code to add to numbers typed without one. The choices are India (+91) and United States (+1).
+4. Optionally add a **Reason (optional)**, for example `customer opt-out`.
+5. Add the numbers.
+
+Numbers are saved in international format. Below the card, the list shows **Number**, **Reason**, **Source**, **Added by** and **Added**. Use **Search number...** to find one. Use the remove button (**Remove from DNC**) to take a number off the list.
+
+## Related pages
+
+- [Campaigns](./campaigns)
+- [Phone numbers](./phone-numbers)

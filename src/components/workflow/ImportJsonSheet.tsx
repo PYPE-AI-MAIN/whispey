@@ -5,10 +5,22 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 import { Button } from '@/components/ui/button'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import { safeParseWorkflow } from '@/lib/workflow/schema'
+import { Copy } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { WORKFLOW_AI_PROMPT } from '@/lib/workflow/aiPrompt'
 
 // Paste a full workflow JSON and drop it straight onto the canvas — no LLM.
 // Same validation the AI-builder apply path uses, incl. the graphless guard.
+// Copies a prompt that teaches any AI the workflow format, so people can have it write a flow to paste here.
+async function copyAiPrompt() {
+  try {
+    await navigator.clipboard.writeText(WORKFLOW_AI_PROMPT)
+    toast.success('Prompt copied. Paste it into any AI, describe your agent, then paste its answer here.')
+  } catch {
+    toast.error('Could not copy. Select the text in the docs instead.')
+  }
+}
+
 export function ImportJsonSheet({ open, onOpenChange }: Readonly<{ open: boolean; onOpenChange: (v: boolean) => void }>) {
   const setWorkflow = useWorkflowStore((s) => s.setWorkflow)
   const [text, setText] = useState('')
@@ -49,6 +61,9 @@ export function ImportJsonSheet({ open, onOpenChange }: Readonly<{ open: boolean
           <SheetDescription>
             Paste a complete workflow JSON (schemaVersion 1.0). It replaces the current canvas.
           </SheetDescription>
+          <Button variant="outline" size="sm" className="mt-2 w-fit" onClick={copyAiPrompt}>
+            <Copy className="mr-1.5 h-3.5 w-3.5" /> Copy a prompt for any AI
+          </Button>
         </SheetHeader>
         {/* SheetContent itself has no padding — it lives on the header/footer, so
             the body needs its own px-4. min-h-0 lets the textarea flex-shrink. */}
@@ -57,9 +72,9 @@ export function ImportJsonSheet({ open, onOpenChange }: Readonly<{ open: boolean
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder='{ "schemaVersion": "1.0", "start": "greeting", "nodes": [ ... ] }'
-            className="min-h-[240px] w-full flex-1 resize-none rounded-lg border border-gray-200 bg-gray-50 p-3 font-mono text-xs outline-none focus:ring-2 focus:ring-violet-500 dark:border-gray-700 dark:bg-gray-900"
+            className="min-h-[240px] w-full flex-1 resize-none rounded-lg border border-border bg-muted/50 p-3 font-mono text-xs outline-none focus:ring-2 focus:ring-violet-500"
           />
-          {error && <p className="text-xs whitespace-pre-wrap text-red-600 dark:text-red-400">{error}</p>}
+          {error && <p className="text-xs whitespace-pre-wrap text-destructive">{error}</p>}
           <div className="flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button size="sm" onClick={handleImport} disabled={!text.trim()}>Import to canvas</Button>

@@ -225,7 +225,7 @@ export default function LandingPage() {
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Link href="/sign-in" className="wl-btn">Get started</Link>
-              <a href="https://pypeai.com/contact" target="_blank" rel="noopener noreferrer" className="wl-btn wl-btn-ghost">Talk to Pype</a>
+              <a href="https://calendly.com/dhruv-pypeai/onboarding" target="_blank" rel="noopener noreferrer" className="wl-btn wl-btn-ghost">Talk to Pype</a>
             </div>
           </div>
         </section>
@@ -239,7 +239,7 @@ export default function LandingPage() {
             <Link href="/privacy-policy" className="wl-link">Privacy policy</Link>
             <Link href="/terms-of-service" className="wl-link">Terms of service</Link>
             <a href="https://pypeai.com" target="_blank" rel="noopener noreferrer" className="wl-link">Pype AI</a>
-            <a href="https://pypeai.com/contact" target="_blank" rel="noopener noreferrer" className="wl-link">Contact</a>
+            <a href="https://calendly.com/dhruv-pypeai/onboarding" target="_blank" rel="noopener noreferrer" className="wl-link">Contact</a>
           </nav>
           <p className="wl-muted text-sm">&copy; {new Date().getFullYear()} Pype</p>
         </div>

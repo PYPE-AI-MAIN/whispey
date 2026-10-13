@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
-  Activity, BarChart3, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, FileCode2, Flag,
+  Activity, BarChart3, ChevronLeft, ChevronRight, ExternalLink, FileCode2, Flag,
   LineChart as LineChartIcon, Loader2, MessageCircle, Phone, PhoneMissed, PieChart as PieChartIcon, Plus, Search,
   SlidersHorizontal, Table2, TrendingDown, UserPlus, Users, X,
 } from 'lucide-react'
@@ -30,6 +30,7 @@ import { formatBucket, shortLabel } from './chartData'
 import { PIE_MAX_SLICES, SERIES_COLORS } from './ChartRenderer'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { RangePicker } from './OrgOverview'
+import { JourneyIntegrationGuide } from './JourneyIntegrationGuide'
 import {
   useActiveJourneys,
   useCampaigns,
@@ -50,16 +51,16 @@ import {
 import type { OverviewRange } from '@/hooks/useOrgOverview'
 
 const ALL = '__all__'
-const CARD = 'rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900'
-const CARD_TITLE = 'text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400'
-const INK = 'text-gray-900 dark:text-gray-100'
-const MUTED = 'text-gray-500 dark:text-gray-400'
+const CARD = 'rounded-xl border border-border bg-card shadow-sm'
+const CARD_TITLE = 'text-xs font-medium text-muted-foreground'
+const INK = 'text-foreground'
+const MUTED = 'text-muted-foreground'
 const GRID_STROKE = 'stroke-gray-200 dark:stroke-gray-800'
 const AXIS = { fontSize: 11, fill: 'currentColor' } as const
 const fmt = (n: number) => n.toLocaleString()
 
 function Skel({ className }: Readonly<{ className?: string }>) {
-  return <div className={cn('animate-pulse rounded-md bg-gray-100 dark:bg-gray-800', className)} />
+  return <div className={cn('animate-pulse rounded-md bg-muted', className)} />
 }
 
 function timeAgo(iso: string): string {
@@ -87,7 +88,7 @@ function ChartTooltip({
   const value = Number(p.value ?? 0)
   const heading = labelFormatter ? labelFormatter(String(label ?? p.payload?.bucket ?? '')) : String(label ?? p.payload?.bucket ?? p.name ?? '')
   return (
-    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs shadow-lg dark:border-gray-700 dark:bg-gray-900">
+    <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
       <p className={cn('mb-1 font-medium', INK)}>{heading}</p>
       <p className={cn('flex items-center gap-1.5 tabular-nums', MUTED)}>
         <span className="h-2 w-2 rounded-full" style={{ backgroundColor: p.color ?? 'var(--analytics-series-1)' }} />
@@ -107,7 +108,7 @@ function Segmented<T extends string>({
   value, onChange, options, label, iconOnly,
 }: Readonly<{ value: T; onChange: (v: T) => void; label: string; iconOnly?: boolean; options: { value: T; label: string; icon?: React.ReactNode; disabled?: boolean }[] }>) {
   return (
-    <fieldset className="m-0 inline-flex min-w-0 rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-gray-800 dark:bg-gray-900">
+    <fieldset className="m-0 inline-flex min-w-0 rounded-lg border border-border bg-muted/50 p-0.5">
       <legend className="sr-only">{label}</legend>
       {options.map((o) => (
         <button
@@ -119,7 +120,7 @@ function Segmented<T extends string>({
           title={o.label}
           className={cn(
             'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40',
-            value === o.value ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-gray-50' : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+            value === o.value ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
           )}
         >
           {o.icon}
@@ -197,7 +198,7 @@ function ActiveFilterChips({
     <div className="flex flex-wrap items-center gap-1.5">
       {keys.map((k) => (
         <button key={k} type="button" onClick={() => onChange({ ...filters, [k]: undefined })} title="Remove filter"
-          className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs text-blue-700 hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300">
+          className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs text-primary hover:bg-primary/15">
           {FILTER_LABELS[k]}: <span className="font-medium">{choices[k]?.find((c) => c.value === filters[k])?.label ?? filters[k]}</span>
           <X className="h-3 w-3" />
         </button>
@@ -207,49 +208,7 @@ function ActiveFilterChips({
   )
 }
 
-/** "Copied" flashes for 1.5s — shared by every code-snippet block on this page. */
-function useCopyToClipboard() {
-  const [copied, setCopied] = useState(false)
-  const copy = (text: string) => {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
-  return { copied, copy }
-}
-
-function CodeBlock({ code }: Readonly<{ code: string }>) {
-  const { copied, copy } = useCopyToClipboard()
-  return (
-    <div className="relative">
-      <pre className="max-h-64 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words rounded-lg bg-gray-900 p-3 text-[11px] leading-relaxed text-gray-100">{code}</pre>
-      <button
-        onClick={() => copy(code)}
-        className="absolute right-2 top-2 rounded-md border border-gray-700 bg-gray-800 p-1.5 text-gray-300 hover:bg-gray-700"
-        title="Copy"
-        aria-label="Copy snippet"
-      >
-        {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
-      </button>
-    </div>
-  )
-}
-
-const code = 'rounded bg-gray-100 px-1 dark:bg-gray-800'
-
-function IntegrationDocs({ campaignKey }: Readonly<{ campaignKey: string }>) {
-  const snippet = String.raw`curl -X POST https://whispey.xyz/api/journeys/events \
-  -H "Content-Type: application/json" \
-  -H "x-pype-token: <YOUR_PYPE_TOKEN>" \
-  -d '{
-    "campaign_key": "${campaignKey}",
-    "identity_key": "<your own member/lead id, e.g. member_id>",
-    "channel": "whatsapp",
-    "step": "<your own step name, e.g. current_step>",
-    "action": "message_sent",
-    "payload": { "delivery_status": "delivered", "reachout_count": 2 }
-  }'`
-
+function IntegrationDocs({ campaignKey, projectId }: Readonly<{ campaignKey: string; projectId: string }>) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -257,16 +216,8 @@ function IntegrationDocs({ campaignKey }: Readonly<{ campaignKey: string }>) {
           <FileCode2 className="h-3.5 w-3.5" /> Integration
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[30rem] max-w-[90vw]" style={{ width: 'min(30rem, 90vw)' }}>
-        <p className={cn('mb-1 text-sm font-medium', INK)}>Send events to this campaign</p>
-        <p className={cn('mb-3 text-xs', MUTED)}>
-          Any automation can post a step for a workflow — a new <code className={code}>identity_key</code> starts one automatically. Required:{' '}
-          <code className={code}>campaign_key</code>, <code className={code}>identity_key</code>, <code className={code}>channel</code>,{' '}
-          <code className={code}>step</code>, <code className={code}>action</code>. <code className={code}>step</code> and{' '}
-          <code className={code}>channel</code> are free text — reuse the names your system already has. Anything else you track goes in{' '}
-          <code className={code}>payload</code>, stored as-is and shown on each workflow's timeline. Limits: 8KB per request, 600 requests/min per token.
-        </p>
-        <CodeBlock code={snippet} />
+      <PopoverContent align="end" className="w-[34rem] max-w-[92vw]" style={{ width: 'min(34rem, 92vw)' }}>
+        <JourneyIntegrationGuide campaignKey={campaignKey} projectId={projectId} scroll />
       </PopoverContent>
     </Popover>
   )
@@ -275,46 +226,18 @@ function IntegrationDocs({ campaignKey }: Readonly<{ campaignKey: string }>) {
 /* ───────────────────────────── Empty state ───────────────────────────── */
 
 function EmptyState({ projectId }: Readonly<{ projectId: string }>) {
-  const snippet = String.raw`curl -X POST https://whispey.xyz/api/journeys/events \
-  -H "Content-Type: application/json" \
-  -H "x-pype-token: <paste the key from step 1>" \
-  -d '{
-    "campaign_key": "<pick any name for this campaign, e.g. onboarding>",
-    "identity_key": "<your own member/lead id, e.g. member_id>",
-    "channel": "whatsapp",
-    "step": "<your own step name, e.g. current_step>",
-    "action": "message_sent",
-    "payload": { "delivery_status": "delivered", "reachout_count": 2 }
-  }'`
-
-  const steps: { id: string; node: React.ReactNode }[] = [
-    { id: 'token', node: <>Get a token for this project — open{' '}
-      <Link href={`/${projectId}/agents/api-keys`} className="font-medium text-blue-600 hover:underline dark:text-blue-400">Project API Key</Link>{' '}
-      and copy it (create one if none exists).</> },
-    { id: 'first-call', node: <>Call the endpoint below with that token. This one call creates the campaign and the workflow automatically — nothing to set up beforehand.</> },
-    { id: 'later-steps', node: <>Call it again for every later step that same person reaches, reusing the same <code className={code}>campaign_key</code> and{' '}
-      <code className={code}>identity_key</code>, changing <code className={code}>step</code>/<code className={code}>action</code> each time.</> },
-    { id: 'come-back', node: <>Come back to this tab — the campaign shows up by its key, with this identity under "Recent workflows."</> },
-  ]
-
   return (
-    <div className="mx-auto flex min-h-full max-w-2xl flex-col items-center justify-center gap-6 px-6 py-10">
+    <div className="mx-auto flex min-h-full max-w-2xl flex-col items-center gap-6 px-6 py-10">
       <div className="text-center">
-        <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+        <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
           <Flag className="h-6 w-6" />
         </span>
         <h2 className={cn('text-lg font-semibold', INK)}>No workflows yet</h2>
         <p className={cn('mt-1 text-sm', MUTED)}>Send your first event and a campaign appears here, with its funnel and timelines.</p>
       </div>
-      <ol className={cn(CARD, 'w-full divide-y divide-gray-100 dark:divide-gray-800')}>
-        {steps.map((s, i) => (
-          <li key={s.id} className="flex gap-3 p-4 text-sm text-gray-700 dark:text-gray-300">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">{i + 1}</span>
-            <span className="pt-0.5">{s.node}</span>
-          </li>
-        ))}
-      </ol>
-      <div className="w-full"><CodeBlock code={snippet} /></div>
+      <div className={cn(CARD, 'w-full p-5')}>
+        <JourneyIntegrationGuide campaignKey={null} projectId={projectId} />
+      </div>
     </div>
   )
 }
@@ -426,14 +349,14 @@ function Funnel({
             return (
               <li
                 key={s.step_key}
-                className="group grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-1 py-0.5 transition hover:bg-gray-50 dark:hover:bg-gray-800/50 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)_5.5rem_6.5rem]"
+                className="group grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)_auto] items-center gap-3 rounded-lg px-1 py-0.5 transition hover:bg-muted/50 sm:grid-cols-[minmax(0,10rem)_minmax(0,1fr)_5.5rem_6.5rem]"
                 title={`${s.label}: ${fmt(s.reached_count)} reached${lostNote}`}
               >
-                <span className="flex items-center gap-2 truncate text-xs text-gray-700 dark:text-gray-300">
-                  <span className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold', 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300')}>{i + 1}</span>
+                <span className="flex items-center gap-2 truncate text-xs text-foreground">
+                  <span className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold', 'bg-muted text-muted-foreground')}>{i + 1}</span>
                   <span className="truncate">{s.label}</span>
                 </span>
-                <span className="relative block h-7 overflow-hidden rounded-md bg-gray-100/70 dark:bg-gray-800/60">
+                <span className="relative block h-7 overflow-hidden rounded-md bg-muted/70">
                   {prev && prevPct > pct && (
                     <span className="absolute inset-y-0 left-0 rounded-md" style={{ width: `${prevPct}%`, backgroundColor: 'color-mix(in srgb, var(--analytics-series-1) 22%, transparent)' }} />
                   )}
@@ -577,11 +500,11 @@ function ChartCard({
             />
           )}
           <button type="button" onClick={() => setAsTable((v) => !v)} aria-pressed={asTable} title="View as table" aria-label="View as table"
-            className={cn('rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200', asTable && 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200')}>
+            className={cn('rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground', asTable && 'bg-muted text-foreground')}>
             <Table2 className="h-4 w-4" />
           </button>
           {!readOnly && (
-            <button type="button" onClick={onRemove} title="Remove chart" aria-label="Remove chart" className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200">
+            <button type="button" onClick={onRemove} title="Remove chart" aria-label="Remove chart" className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">
               <X className="h-4 w-4" />
             </button>
           )}
@@ -595,10 +518,10 @@ function ChartCard({
         {!isLoading && shown.length > 0 && asTable && (
           <div className="h-full overflow-y-auto">
             <table className="w-full text-xs">
-              <thead><tr className={cn('border-b border-gray-200 text-left dark:border-gray-800', MUTED)}><th className="py-1.5 font-medium">{dimensionLabel}</th><th className="py-1.5 text-right font-medium">{metricLabel}</th><th className="py-1.5 text-right font-medium">Share</th></tr></thead>
+              <thead><tr className={cn('border-b border-border text-left', MUTED)}><th className="py-1.5 font-medium">{dimensionLabel}</th><th className="py-1.5 text-right font-medium">{metricLabel}</th><th className="py-1.5 text-right font-medium">Share</th></tr></thead>
               <tbody>
                 {shown.map((p) => (
-                  <tr key={p.bucket} className="border-b border-gray-100 last:border-0 dark:border-gray-800/70">
+                  <tr key={p.bucket} className="border-b border-border/60 last:border-0">
                     <td className={cn('max-w-[10rem] truncate py-1.5', INK)} title={labelFor(p.bucket)}>{labelFor(p.bucket)}</td>
                     <td className={cn('py-1.5 text-right tabular-nums', INK)}>{fmt(p.value)}</td>
                     <td className={cn('py-1.5 text-right tabular-nums', MUTED)}>{total ? Math.round((p.value / total) * 100) : 0}%</td>
@@ -707,14 +630,14 @@ function CustomChartBuilder({
 
   return (
     <div className="space-y-4">
-      {saved.error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">{saved.error}</p>}
+      {saved.error && <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">{saved.error}</p>}
 
       {canEdit && (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             {presets.length > 0 && <span className={cn('text-xs', MUTED)}>Quick add</span>}
             {presets.map((p) => (
-              <button key={p.label} type="button" disabled={saved.adding} onClick={() => add(p)} className="rounded-full border border-gray-200 px-2.5 py-1 text-xs text-gray-600 transition hover:border-blue-300 hover:text-blue-600 disabled:opacity-50 dark:border-gray-700 dark:text-gray-300 dark:hover:border-blue-800 dark:hover:text-blue-400">
+              <button key={p.label} type="button" disabled={saved.adding} onClick={() => add(p)} className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-primary disabled:opacity-50">
                 + {p.label}
               </button>
             ))}
@@ -789,13 +712,13 @@ function statusTone(status: string): string {
   if (/complet|success|won|convert|done|resolved/i.test(status)) return 'bg-emerald-500'
   if (/fail|drop|lost|cancel|error|stuck|expired|exhaust/i.test(status)) return 'bg-red-500'
   if (/active|progress|running|pending|open/i.test(status)) return 'bg-blue-500'
-  return 'bg-gray-400'
+  return 'bg-muted-foreground/40'
 }
 
 function StatusBadge({ status }: Readonly<{ status: string }>) {
   const tone = statusTone(status)
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-2 py-0.5 text-xs text-gray-700 dark:border-gray-700 dark:text-gray-300">
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-xs text-foreground">
       <span className={cn('h-1.5 w-1.5 rounded-full', tone)} />
       {status === 'exhausted' ? 'no more attempts' : status.replaceAll('_', ' ')}
     </span>
@@ -811,7 +734,7 @@ function callHref(projectId: string, e: JourneyEvent): string | null {
 /** How far a member got along the campaign's steps — one glance per row instead of a wall of chips. */
 function stepSegmentClass(isReached: boolean, isBeforeFurthest: boolean): string {
   if (isReached) return 'bg-blue-500'
-  return isBeforeFurthest ? 'bg-blue-200 dark:bg-blue-900/70' : 'bg-gray-200 dark:bg-gray-700'
+  return isBeforeFurthest ? 'bg-primary/20' : 'bg-muted'
 }
 
 function StepProgress({ steps, events }: Readonly<{ steps: StepDef[]; events: JourneyEvent[] }>) {
@@ -897,18 +820,18 @@ function Timeline({ projectId, events, steps }: Readonly<{ projectId: string; ev
               const bad = e.action === 'call_not_connected' || e.action === 'message_failed'
               return (
                 <li key={key} className="flex gap-3">
-                  <span className={cn('mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full', bad ? 'bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300')}>
+                  <span className={cn('mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full', bad ? 'bg-destructive/15 text-destructive' : 'bg-muted text-muted-foreground')}>
                     <EventIcon e={e} />
                   </span>
                   <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-baseline gap-x-2">
                     <span className={cn('text-sm font-medium', INK)}>{actionLabel(e.action)}</span>
                     <span className={cn('text-xs tabular-nums', MUTED)}>{new Date(e.occurred_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span>
-                    {href && <Link href={href} target="_blank" className="inline-flex items-center gap-0.5 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400">Open call <ExternalLink className="h-3 w-3" /></Link>}
+                    {href && <Link href={href} target="_blank" className="inline-flex items-center gap-0.5 text-xs font-medium text-primary hover:underline">Open call <ExternalLink className="h-3 w-3" /></Link>}
                   </div>
                   {e.step && e.action !== 'entered_campaign' && <p className={cn('mt-1 text-xs', MUTED)}>{stepLabel(e.step)}</p>}
                   {details.length > 0 && (
-                    <p className={cn('mt-0.5 text-xs leading-relaxed text-gray-400 dark:text-gray-500')}>
+                    <p className={cn('mt-0.5 text-xs leading-relaxed text-muted-foreground')}>
                       {details.map((k) => detailText(k, e.payload![k])).join(' · ')}
                     </p>
                   )}
@@ -958,7 +881,7 @@ function JourneyDrawer({
                   { label: 'Call attempts', value: count((e) => e.action.startsWith('call_')) },
                   { label: 'Calls answered', value: count((e) => e.action === 'call_completed') },
                 ].map((k) => (
-                  <div key={k.label} className="rounded-lg border border-gray-200 px-2 py-3 dark:border-gray-800">
+                  <div key={k.label} className="rounded-lg border border-border px-2 py-3">
                     <p className={cn('text-lg font-semibold tabular-nums', INK)}>{k.value}</p>
                     <p className={cn('text-[11px]', MUTED)}>{k.label}</p>
                   </div>
@@ -998,15 +921,15 @@ function RecentJourneys({
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className={cn('text-xs', MUTED)}>Most recently active first. Select a workflow to see everything that happened to that member.</p>
         <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
             value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a member on this page…" aria-label="Find a member on this page"
-            className="h-8 w-60 rounded-lg border border-gray-200 bg-white pl-8 pr-2 text-xs outline-none placeholder:text-gray-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-700 dark:bg-gray-900"
+            className="h-8 w-60 rounded-lg border border-border bg-card pl-8 pr-2 text-xs outline-none placeholder:text-muted-foreground focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
           />
         </div>
       </div>
       <div className={cn(CARD, 'overflow-hidden')}>
-        <div className={cn('hidden grid-cols-[minmax(0,12rem)_minmax(0,1fr)_9rem_5rem] gap-4 border-b border-gray-100 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider dark:border-gray-800 md:grid', MUTED)}>
+        <div className={cn('hidden grid-cols-[minmax(0,12rem)_minmax(0,1fr)_9rem_5rem] gap-4 border-b border-border/60 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider md:grid', MUTED)}>
           <span>Member</span><span>Progress</span><span>Status</span><span className="text-right">Last activity</span>
         </div>
         {isLoading && <div className="space-y-px p-3">{Array.from({ length: 8 }, (_, i) => <Skel key={i} className="h-12" />)}</div>}
@@ -1015,9 +938,9 @@ function RecentJourneys({
         {!isLoading && visible.length > 0 && (
           <ul>
             {visible.map((j) => (
-              <li key={j.id} className="border-b border-gray-100 last:border-0 dark:border-gray-800/70">
+              <li key={j.id} className="border-b border-border/60 last:border-0">
                 <button type="button" onClick={() => setOpenId(j.id)}
-                  className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-4 py-3 text-left transition hover:bg-gray-50 dark:hover:bg-gray-800/40 md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_9rem_5rem]">
+                  className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-4 py-3 text-left transition hover:bg-muted/50 md:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_9rem_5rem]">
                   <span className={cn('truncate text-sm font-medium', INK)} title={j.identity_key}>{j.identity_key}</span>
                   <span className="order-last col-span-2 md:order-none md:col-span-1"><StepProgress steps={steps} events={j.events} /></span>
                   <span className="flex flex-col items-start gap-1"><StatusBadge status={j.status} />{j.outcome && <span className={cn('max-w-full truncate text-[11px]', MUTED)} title={j.outcome}>{j.outcome.replaceAll('_', ' ')}</span>}</span>
@@ -1092,7 +1015,7 @@ export function JourneysTab({ projectId, isActive }: Readonly<{ projectId: strin
 
   if (campaignsLoading) {
     return (
-      <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900">
+      <div className="h-full overflow-y-auto bg-muted/50">
         <div className="mx-auto max-w-[1400px] space-y-6 px-4 py-6 sm:px-8">
           <Skel className="h-24" />
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{Array.from({ length: 4 }, (_, i) => <Skel key={i} className="h-24" />)}</div>
@@ -1104,7 +1027,7 @@ export function JourneysTab({ projectId, isActive }: Readonly<{ projectId: strin
 
   if (campaignsError) {
     return (
-      <div className="flex h-full items-center justify-center bg-gray-50 px-6 dark:bg-gray-900">
+      <div className="flex h-full items-center justify-center bg-muted/50 px-6">
         <div className={cn(CARD, 'max-w-md p-6 text-center')}>
           <p className={cn('text-sm font-semibold', INK)}>Couldn't load workflows</p>
           <p className={cn('mt-1 text-xs', MUTED)}>{campaignsError instanceof Error ? campaignsError.message : 'Something went wrong.'} This is a loading problem, not missing data. Nothing was deleted.</p>
@@ -1116,7 +1039,7 @@ export function JourneysTab({ projectId, isActive }: Readonly<{ projectId: strin
 
   if (!campaigns || campaigns.length === 0) {
     return (
-      <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900">
+      <div className="h-full overflow-y-auto bg-muted/50">
         <EmptyState projectId={projectId} />
       </div>
     )
@@ -1125,8 +1048,8 @@ export function JourneysTab({ projectId, isActive }: Readonly<{ projectId: strin
   const steps: StepDef[] = campaign?.steps ?? []
 
   return (
-    <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-900">
-      <div className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50/95 backdrop-blur dark:border-gray-800 dark:bg-gray-900/95">
+    <div className="h-full overflow-y-auto bg-muted/50">
+      <div className="sticky top-0 z-10 border-b border-border bg-muted/50 backdrop-blur">
         <div className="mx-auto max-w-[1400px] px-4 sm:px-8">
           <div className="flex flex-wrap items-center justify-between gap-3 pb-2 pt-3">
             <div className="flex min-w-0 items-center gap-3">
@@ -1141,7 +1064,7 @@ export function JourneysTab({ projectId, isActive }: Readonly<{ projectId: strin
             <div className="flex items-center gap-2">
               <RangePicker range={range} onChange={setRange} />
               {campaignId && <FiltersPopover projectId={projectId} campaignId={campaignId} filters={filters} onChange={handleFiltersChange} />}
-              {campaign && <IntegrationDocs campaignKey={campaign.key} />}
+              {campaign && <IntegrationDocs campaignKey={campaign.key} projectId={projectId} />}
             </div>
           </div>
           <nav className="-mb-px flex gap-1" aria-label="Workflows sections">
@@ -1150,7 +1073,7 @@ export function JourneysTab({ projectId, isActive }: Readonly<{ projectId: strin
                 key={v.id} type="button" onClick={() => changeView(v.id)} title={v.hint} aria-current={view === v.id ? 'page' : undefined}
                 className={cn(
                   'border-b-2 px-3 py-2 text-sm transition',
-                  view === v.id ? 'border-blue-600 font-medium text-gray-900 dark:border-blue-400 dark:text-gray-50' : 'border-transparent text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                  view === v.id ? 'border-blue-600 font-medium text-foreground dark:border-blue-400' : 'border-transparent text-muted-foreground hover:text-foreground'
                 )}
               >
                 {v.label}

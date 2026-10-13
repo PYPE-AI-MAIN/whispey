@@ -40,7 +40,7 @@ function FlowNodeComponent({ data, id, selected, positionAbsoluteX, positionAbso
 
   return (
     <div
-      className={`group relative flex items-stretch bg-white dark:bg-gray-900 ${isTerminal ? 'rounded-full' : 'rounded-xl'} shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_20px_-8px_rgba(0,0,0,0.15)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_8px_24px_-8px_rgba(0,0,0,0.6)] min-w-[168px] max-w-[220px] cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-[0_1px_2px_rgba(0,0,0,0.06),0_12px_28px_-8px_rgba(0,0,0,0.22)] ${ringClass}`}
+      className={`group relative flex items-stretch bg-card ${isTerminal ? 'rounded-full' : 'rounded-xl'} shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_20px_-8px_rgba(0,0,0,0.15)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_8px_24px_-8px_rgba(0,0,0,0.6)] min-w-[168px] max-w-[220px] cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-[0_1px_2px_rgba(0,0,0,0.06),0_12px_28px_-8px_rgba(0,0,0,0.22)] ${ringClass}`}
       style={selected ? ({ '--tw-ring-color': color } as React.CSSProperties) : undefined}
     >
       {nodeData.isStart && (
@@ -61,20 +61,20 @@ function FlowNodeComponent({ data, id, selected, positionAbsoluteX, positionAbso
           {Icon && <Icon className="w-3.5 h-3.5" strokeWidth={2.25} />}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[13px] font-semibold leading-tight text-gray-900 dark:text-gray-50 truncate">{label}</div>
+          <div className="text-[13px] font-semibold leading-tight text-foreground truncate">{label}</div>
           {!isTerminal && (
-            <div className="text-[11px] font-medium tracking-wide uppercase text-gray-400 dark:text-gray-500 mt-0.5">
+            <div className="text-[11px] font-medium tracking-wide uppercase text-muted-foreground mt-0.5">
               {nodeData.stage ? `${nodeData.stage} · ${meta?.label}` : meta?.label}
             </div>
           )}
         </div>
         {fromAnywhere && (
-          <span className="shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400" title="A global rule can send the call here from any step">
+          <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground" title="A global rule can send the call here from any step">
             any step
           </span>
         )}
         {isTerminal && incoming >= 3 && (
-          <span className="shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400" title={`${incoming} steps can end here`}>
+          <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground" title={`${incoming} steps can end here`}>
             {incoming} steps
           </span>
         )}

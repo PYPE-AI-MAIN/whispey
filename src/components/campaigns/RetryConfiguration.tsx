@@ -71,13 +71,13 @@ function ChipInput({
         {values.map((value, i) => (
           <span
             key={ids[i] ?? i}
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-mono text-gray-800 dark:text-gray-200"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted border border-border text-xs font-mono text-foreground"
           >
             {formatChip(value)}
             <button
               type="button"
               onClick={() => removeChip(i)}
-              className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              className="text-muted-foreground hover:text-foreground"
             >
               <X className="w-3 h-3" />
             </button>
@@ -112,7 +112,7 @@ function ChipInput({
           Add
         </Button>
       </div>
-      {error && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{error}</p>}
+      {error && <p className="text-xs text-destructive mt-1">{error}</p>}
     </div>
   )
 }
@@ -144,14 +144,14 @@ function SipCodePicker({
   return (
     <div className="mb-3">
       <div className="flex items-center gap-1 mb-1.5">
-        <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 block">
+        <Label className="text-xs font-medium text-muted-foreground block">
           SIP Error Codes
         </Label>
         <Popover>
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="shrink-0 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              className="shrink-0 text-muted-foreground hover:text-foreground"
               aria-label="What do these codes mean?"
             >
               <Info className="w-3.5 h-3.5" />
@@ -161,14 +161,14 @@ function SipCodePicker({
             <div className="space-y-2">
               {VALID_SIP_ERROR_CODES.map((c) => (
                 <div key={c.code}>
-                  <span className="font-mono font-semibold text-gray-900 dark:text-gray-100">
+                  <span className="font-mono font-semibold text-foreground">
                     {c.code}
                   </span>{' '}
-                  <span className="font-medium text-gray-900 dark:text-gray-100">{c.label}</span>
+                  <span className="font-medium text-foreground">{c.label}</span>
                   {!c.enabled && (
-                    <span className="ml-1 text-[11px] italic text-gray-400">(coming soon)</span>
+                    <span className="ml-1 text-[11px] italic text-muted-foreground">(coming soon)</span>
                   )}
-                  <p className="text-gray-500 dark:text-gray-400">{c.description}</p>
+                  <p className="text-muted-foreground">{c.description}</p>
                 </div>
               ))}
             </div>
@@ -224,13 +224,13 @@ function SipCodeGroup({
   return (
     <div>
       <div className="flex items-center gap-2 mb-1">
-        <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">{group.label}</span>
+        <span className="text-xs font-semibold text-muted-foreground">{group.label}</span>
         {group.codes.length > 1 && (
           <button
             type="button"
             disabled={addable.length === 0}
             onClick={() => onSelectAll(addable)}
-            className="text-xs text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed"
+            className="text-xs text-primary hover:underline disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed"
           >
             select all
           </button>
@@ -252,7 +252,7 @@ function SipCodeGroup({
               className={
                 selected
                   ? 'px-2 py-1 rounded-md border text-xs font-mono bg-blue-600 border-blue-600 text-white hover:bg-blue-700'
-                  : 'px-2 py-1 rounded-md border text-xs font-mono border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent'
+                  : 'px-2 py-1 rounded-md border text-xs font-mono border-border text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent'
               }
             >
               {c.code} — {c.label}
@@ -284,7 +284,7 @@ function OperatorAndExpectedValueFields({
   return (
     <>
       <div>
-        <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
+        <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
           Operator
         </Label>
         <Select value={operator || 'missing'} onValueChange={onOperatorChange}>
@@ -303,7 +303,7 @@ function OperatorAndExpectedValueFields({
 
       {operator && operator !== 'missing' && (
         <div>
-          <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
+          <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
             Expected Value
           </Label>
           <Input
@@ -576,15 +576,15 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
   }, [values.agentId, availableMetrics, availableFields, loadingFields])
 
   return (
-    <div className="space-y-3 p-4 border border-gray-200 dark:border-gray-800 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+    <div className="space-y-3 p-4 border border-border rounded-lg bg-muted/50">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <RefreshCw className="w-4 h-4 text-gray-700 dark:text-gray-300" />
-          <Label className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          <RefreshCw className="w-4 h-4 text-foreground" />
+          <Label className="text-sm font-semibold text-foreground">
             Retry Configuration
           </Label>
           {!values.agentId && (
-            <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+            <span className="text-xs text-muted-foreground ml-2">
               (Select an agent first)
             </span>
           )}
@@ -601,9 +601,9 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
         </Button>
       </div>
 
-      <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-        <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-        <AlertDescription className="text-xs text-blue-700 dark:text-blue-300">
+      <Alert className="bg-primary/10 border-primary/30">
+        <Info className="h-4 w-4 text-primary" />
+        <AlertDescription className="text-xs text-primary">
           Configure retry behavior for different error codes. Each error code can have its own retry settings. You can also add metric or field extractor based retries.
         </AlertDescription>
       </Alert>
@@ -615,9 +615,9 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
           const retryType = config.type || 'sipCode'
 
           return (
-            <div key={index} className="p-3 border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-900">
+            <div key={index} /* NOSONAR: rules are edited in place and have no stable id */ className="p-3 border border-border rounded-md bg-card">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                <span className="text-sm font-semibold text-foreground">
                   Retry Config #{index + 1}
                 </span>
                 <Button
@@ -625,7 +625,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                   variant="ghost"
                   size="sm"
                   onClick={() => removeRetryConfig(index)}
-                  className="h-7 w-7 p-0 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                 >
                   <X className="w-4 h-4" />
                 </Button>
@@ -633,7 +633,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
 
               {/* Retry Type Selector - show for all items */}
               <div className="mb-3">
-                <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
+                <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                   Retry Type
                 </Label>
                 <Select
@@ -722,15 +722,16 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                 {config.type === 'metric' && (
                   <>
                     <div>
-                      <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
+                      <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                         Metric Name
                       </Label>
-                      {loadingFields ? (
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                      {loadingFields && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Loader2 className="w-4 h-4 animate-spin" />
                           Loading metrics...
                         </div>
-                      ) : availableMetrics.length > 0 ? (
+                      )}
+                      {!loadingFields && availableMetrics.length > 0 && (
                         <Select
                           value={config.metricName || ''}
                           onValueChange={(value) => {
@@ -748,8 +749,9 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                             ))}
                           </SelectContent>
                         </Select>
-                      ) : (
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                      )}
+                      {!loadingFields && availableMetrics.length <= 0 && (
+                        <div className="text-xs text-muted-foreground">
                           No metrics configured for this agent. Configure metrics in agent settings.
                         </div>
                       )}
@@ -758,7 +760,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                     {config.metricName && (
                       <>
                         <div>
-                          <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
+                          <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                             Operator
                           </Label>
                           <Select
@@ -782,7 +784,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                         </div>
 
                         <div>
-                          <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
+                          <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                             Threshold
                           </Label>
                           <Input
@@ -796,7 +798,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                             className="h-9 text-sm"
                             placeholder="0.5"
                           />
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             Retry if metric value {config.operator || '<'} threshold (e.g., 0.5 for scores, 70 for percentages)
                           </p>
                         </div>
@@ -809,15 +811,16 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                 {config.type === 'fieldExtractor' && (
                   <>
                     <div>
-                      <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
+                      <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                         Field Name
                       </Label>
-                      {loadingFields ? (
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                      {loadingFields && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Loader2 className="w-4 h-4 animate-spin" />
                           Loading fields...
                         </div>
-                      ) : availableFields.length > 0 ? (
+                      )}
+                      {!loadingFields && availableFields.length > 0 && (
                         <Select
                           value={config.fieldName || ''}
                           onValueChange={(value) => {
@@ -835,8 +838,9 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                             ))}
                           </SelectContent>
                         </Select>
-                      ) : (
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                      )}
+                      {!loadingFields && availableFields.length <= 0 && (
+                        <div className="text-xs text-muted-foreground">
                           No field extractor fields configured for this agent. Configure field extractor in agent settings.
                         </div>
                       )}
@@ -863,7 +867,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                 {config.type === 'metadata' && (
                   <>
                     <div>
-                      <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
+                      <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                         Metadata Field
                       </Label>
                       <Select
@@ -884,7 +888,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                           ))}
                         </SelectContent>
                       </Select>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         Call-level metadata produced by the voice agent (not agent-configurable, unlike Field Extractor).
                       </p>
                     </div>
@@ -909,10 +913,10 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                 const isBackoff = Array.isArray(config.backoffMinutes) && config.backoffMinutes.length > 0
                 return (
                   <div className="space-y-2">
-                    <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1 block">
+                    <Label className="text-xs font-medium text-muted-foreground mb-1 block">
                       Retry Timing
                     </Label>
-                    <div className="flex items-center gap-4 text-xs text-gray-700 dark:text-gray-300">
+                    <div className="flex items-center gap-4 text-xs text-foreground">
                       <label className="inline-flex items-center gap-1.5 cursor-pointer">
                         <input
                           type="radio"
@@ -951,7 +955,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                     {!isBackoff ? (
                       <div className="grid grid-cols-2 gap-3 pt-1">
                         <div>
-                          <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
+                          <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                             Delay (minutes)
                           </Label>
                           <Input
@@ -963,13 +967,13 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                             className="h-8 text-xs"
                             placeholder="30"
                           />
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             0-1440 min
                           </p>
                         </div>
 
                         <div>
-                          <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
+                          <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                             Max Retries
                           </Label>
                           <Input
@@ -981,14 +985,14 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                             className="h-8 text-xs"
                             placeholder="2"
                           />
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             0-10 attempts
                           </p>
                         </div>
                       </div>
                     ) : (
                       <div className="pt-1">
-                        <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5 block">
+                        <Label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                           Backoff schedule (minutes)
                         </Label>
                         <ChipInput
@@ -1010,7 +1014,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                           formatChip={(n) => `${n} min`}
                           placeholder="Type minutes, e.g. 30"
                         />
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                           Entries are used in the order you add them. Attempt 1 waits{' '}
                           {(config.backoffMinutes || [])[0] ?? '?'} min,
                           attempt 2 waits {(config.backoffMinutes || [])[1] ?? '?'} min, etc.
@@ -1030,7 +1034,7 @@ export function RetryConfiguration({ onFieldChange, values }: RetryConfiguration
                           // Inline by default, hence block.
                           return (
                             <output
-                              className="block text-xs mt-2 rounded-md px-2 py-1.5 bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-900"
+                              className="block text-xs mt-2 rounded-md px-2 py-1.5 bg-warning/10 text-warning border border-warning/30"
                             >
                               {warning}
                             </output>

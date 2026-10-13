@@ -19,10 +19,10 @@ export default function DashboardRedirect() {
   }, [isLoaded, isSignedIn, router])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
+    <div className="min-h-screen flex items-center justify-center bg-card">
       <div className="text-center">
-        <div className="text-slate-600 dark:text-slate-400 mb-2">Redirecting...</div>
-        <div className="w-6 h-6 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin mx-auto"></div>
+        <div className="text-muted-foreground mb-2">Redirecting...</div>
+        <div className="w-6 h-6 border-2 border-border border-t-slate-600 rounded-full animate-spin mx-auto"></div>
       </div>
     </div>
   )
