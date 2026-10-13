@@ -173,7 +173,7 @@ export function OrgOverview({
 
   return (
     <div className="h-full overflow-y-auto bg-muted/50">
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-8 md:px-10">
+      <div className="wp-enter mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-8 md:px-10">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             {/* text-2xl/tracking-tight matches this app's real page-title convention
@@ -193,7 +193,7 @@ export function OrgOverview({
           </p>
         )}
 
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="wp-stagger mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Kpi label="Total calls" value={data.totalCalls} spec={KPI_SPECS.calls} icon={KPI_ICONS.calls} loading={isLoading} />
           <Kpi label="Pickup %" value={data.pickupPct} spec={KPI_SPECS.pickup} icon={KPI_ICONS.pickup} loading={isLoading} />
           <Kpi label="Avg latency" value={data.avgLatency} spec={KPI_SPECS.latency} icon={KPI_ICONS.latency} loading={isLoading} />
