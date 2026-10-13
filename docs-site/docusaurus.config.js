@@ -33,6 +33,8 @@ const config = {
         logo: {alt: 'Whispey', src: 'img/logo.svg', srcDark: 'img/logo-dark.svg'},
         items: [
           {to: '/workflows/overview', label: 'Workflows', position: 'left'},
+          {to: '/agent-config/overview', label: 'Agents', position: 'left'},
+          {to: '/analytics/overview', label: 'Analytics', position: 'left'},
           {to: '/quick-start', label: 'SDK', position: 'left'},
           {href: 'https://whispey.xyz', label: 'Open Whispey', position: 'right', className: 'wp-nav-cta'},
         ],

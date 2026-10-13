@@ -69,8 +69,28 @@ body {
 
 /* ---------- navbar ---------- */
 .navbar {
-  backdrop-filter: saturate(1.4) blur(14px);
   border-bottom: 1px solid var(--wp-line);
+}
+/* A blur on the bar itself would trap the phone menu (a fixed child) inside it, so only wide screens get it. */
+@media (min-width: 997px) {
+  .navbar {
+    backdrop-filter: saturate(1.4) blur(14px);
+  }
+}
+@media (max-width: 996px) {
+  .navbar {
+    background: var(--ifm-background-color);
+  }
+  .navbar-sidebar {
+    background: var(--ifm-background-color);
+  }
+  .navbar-sidebar__brand {
+    border-bottom: 1px solid var(--wp-line);
+  }
+  .wp-nav-cta.navbar__item {
+    margin: 0.5rem 0.75rem;
+    text-align: center;
+  }
 }
 .navbar__title {
   font-weight: 700;

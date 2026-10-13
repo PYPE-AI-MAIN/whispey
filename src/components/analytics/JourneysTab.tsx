@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
-  Activity, BarChart3, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, FileCode2, Flag,
+  Activity, BarChart3, ChevronLeft, ChevronRight, ExternalLink, FileCode2, Flag,
   LineChart as LineChartIcon, Loader2, MessageCircle, Phone, PhoneMissed, PieChart as PieChartIcon, Plus, Search,
   SlidersHorizontal, Table2, TrendingDown, UserPlus, Users, X,
 } from 'lucide-react'
@@ -30,6 +30,7 @@ import { formatBucket, shortLabel } from './chartData'
 import { PIE_MAX_SLICES, SERIES_COLORS } from './ChartRenderer'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { RangePicker } from './OrgOverview'
+import { JourneyIntegrationGuide } from './JourneyIntegrationGuide'
 import {
   useActiveJourneys,
   useCampaigns,
@@ -207,49 +208,7 @@ function ActiveFilterChips({
   )
 }
 
-/** "Copied" flashes for 1.5s — shared by every code-snippet block on this page. */
-function useCopyToClipboard() {
-  const [copied, setCopied] = useState(false)
-  const copy = (text: string) => {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
-  return { copied, copy }
-}
-
-function CodeBlock({ code }: Readonly<{ code: string }>) {
-  const { copied, copy } = useCopyToClipboard()
-  return (
-    <div className="relative">
-      <pre className="max-h-64 overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words rounded-lg bg-gray-900 p-3 text-[11px] leading-relaxed text-gray-100">{code}</pre>
-      <button
-        onClick={() => copy(code)}
-        className="absolute right-2 top-2 rounded-md border border-gray-700 bg-gray-800 p-1.5 text-gray-300 hover:bg-gray-700"
-        title="Copy"
-        aria-label="Copy snippet"
-      >
-        {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
-      </button>
-    </div>
-  )
-}
-
-const code = 'rounded bg-gray-100 px-1 dark:bg-gray-800'
-
-function IntegrationDocs({ campaignKey }: Readonly<{ campaignKey: string }>) {
-  const snippet = String.raw`curl -X POST https://whispey.xyz/api/journeys/events \
-  -H "Content-Type: application/json" \
-  -H "x-pype-token: <YOUR_PYPE_TOKEN>" \
-  -d '{
-    "campaign_key": "${campaignKey}",
-    "identity_key": "<your own member/lead id, e.g. member_id>",
-    "channel": "whatsapp",
-    "step": "<your own step name, e.g. current_step>",
-    "action": "message_sent",
-    "payload": { "delivery_status": "delivered", "reachout_count": 2 }
-  }'`
-
+function IntegrationDocs({ campaignKey, projectId }: Readonly<{ campaignKey: string; projectId: string }>) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -257,16 +216,8 @@ function IntegrationDocs({ campaignKey }: Readonly<{ campaignKey: string }>) {
           <FileCode2 className="h-3.5 w-3.5" /> Integration
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[30rem] max-w-[90vw]" style={{ width: 'min(30rem, 90vw)' }}>
-        <p className={cn('mb-1 text-sm font-medium', INK)}>Send events to this campaign</p>
-        <p className={cn('mb-3 text-xs', MUTED)}>
-          Any automation can post a step for a workflow — a new <code className={code}>identity_key</code> starts one automatically. Required:{' '}
-          <code className={code}>campaign_key</code>, <code className={code}>identity_key</code>, <code className={code}>channel</code>,{' '}
-          <code className={code}>step</code>, <code className={code}>action</code>. <code className={code}>step</code> and{' '}
-          <code className={code}>channel</code> are free text — reuse the names your system already has. Anything else you track goes in{' '}
-          <code className={code}>payload</code>, stored as-is and shown on each workflow's timeline. Limits: 8KB per request, 600 requests/min per token.
-        </p>
-        <CodeBlock code={snippet} />
+      <PopoverContent align="end" className="w-[34rem] max-w-[92vw]" style={{ width: 'min(34rem, 92vw)' }}>
+        <JourneyIntegrationGuide campaignKey={campaignKey} projectId={projectId} scroll />
       </PopoverContent>
     </Popover>
   )
@@ -275,30 +226,8 @@ function IntegrationDocs({ campaignKey }: Readonly<{ campaignKey: string }>) {
 /* ───────────────────────────── Empty state ───────────────────────────── */
 
 function EmptyState({ projectId }: Readonly<{ projectId: string }>) {
-  const snippet = String.raw`curl -X POST https://whispey.xyz/api/journeys/events \
-  -H "Content-Type: application/json" \
-  -H "x-pype-token: <paste the key from step 1>" \
-  -d '{
-    "campaign_key": "<pick any name for this campaign, e.g. onboarding>",
-    "identity_key": "<your own member/lead id, e.g. member_id>",
-    "channel": "whatsapp",
-    "step": "<your own step name, e.g. current_step>",
-    "action": "message_sent",
-    "payload": { "delivery_status": "delivered", "reachout_count": 2 }
-  }'`
-
-  const steps: { id: string; node: React.ReactNode }[] = [
-    { id: 'token', node: <>Get a token for this project — open{' '}
-      <Link href={`/${projectId}/agents/api-keys`} className="font-medium text-blue-600 hover:underline dark:text-blue-400">Project API Key</Link>{' '}
-      and copy it (create one if none exists).</> },
-    { id: 'first-call', node: <>Call the endpoint below with that token. This one call creates the campaign and the workflow automatically — nothing to set up beforehand.</> },
-    { id: 'later-steps', node: <>Call it again for every later step that same person reaches, reusing the same <code className={code}>campaign_key</code> and{' '}
-      <code className={code}>identity_key</code>, changing <code className={code}>step</code>/<code className={code}>action</code> each time.</> },
-    { id: 'come-back', node: <>Come back to this tab — the campaign shows up by its key, with this identity under "Recent workflows."</> },
-  ]
-
   return (
-    <div className="mx-auto flex min-h-full max-w-2xl flex-col items-center justify-center gap-6 px-6 py-10">
+    <div className="mx-auto flex min-h-full max-w-2xl flex-col items-center gap-6 px-6 py-10">
       <div className="text-center">
         <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
           <Flag className="h-6 w-6" />
@@ -306,15 +235,9 @@ function EmptyState({ projectId }: Readonly<{ projectId: string }>) {
         <h2 className={cn('text-lg font-semibold', INK)}>No workflows yet</h2>
         <p className={cn('mt-1 text-sm', MUTED)}>Send your first event and a campaign appears here, with its funnel and timelines.</p>
       </div>
-      <ol className={cn(CARD, 'w-full divide-y divide-gray-100 dark:divide-gray-800')}>
-        {steps.map((s, i) => (
-          <li key={s.id} className="flex gap-3 p-4 text-sm text-gray-700 dark:text-gray-300">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">{i + 1}</span>
-            <span className="pt-0.5">{s.node}</span>
-          </li>
-        ))}
-      </ol>
-      <div className="w-full"><CodeBlock code={snippet} /></div>
+      <div className={cn(CARD, 'w-full p-5')}>
+        <JourneyIntegrationGuide campaignKey={null} projectId={projectId} />
+      </div>
     </div>
   )
 }
@@ -1141,7 +1064,7 @@ export function JourneysTab({ projectId, isActive }: Readonly<{ projectId: strin
             <div className="flex items-center gap-2">
               <RangePicker range={range} onChange={setRange} />
               {campaignId && <FiltersPopover projectId={projectId} campaignId={campaignId} filters={filters} onChange={handleFiltersChange} />}
-              {campaign && <IntegrationDocs campaignKey={campaign.key} />}
+              {campaign && <IntegrationDocs campaignKey={campaign.key} projectId={projectId} />}
             </div>
           </div>
           <nav className="-mb-px flex gap-1" aria-label="Workflows sections">
