@@ -284,7 +284,7 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
         <div className="w-1/3 bg-muted/50 border border-border rounded-lg flex flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto p-6 space-y-8">
             <div>
-              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Configuration Overview</h3>
+              <h3 className="text-xs font-medium text-muted-foreground mb-2">Configuration Overview</h3>
               
               <div className="mb-6">
                 <div className="flex items-center gap-2 mb-2">
@@ -301,7 +301,7 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
               <div className="space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Model</span>
+                    <span className="text-xs font-medium text-muted-foreground">Model</span>
                     <span className="text-xs text-muted-foreground">{assistant.model?.provider}</span>
                   </div>
                   <p className="text-sm font-medium text-foreground">{assistant.model?.model}</p>
@@ -309,7 +309,7 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Voice</span>
+                    <span className="text-xs font-medium text-muted-foreground">Voice</span>
                     <span className="text-xs text-muted-foreground">{assistant.voice?.provider}</span>
                   </div>
                   <p className="text-sm font-medium text-foreground">{assistant.voice?.voiceId}</p>

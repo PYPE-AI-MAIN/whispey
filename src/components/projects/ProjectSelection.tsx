@@ -692,7 +692,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
             <div className="border border-border rounded-lg overflow-hidden bg-card">
               {/* Table Header */}
               <div className="px-6 py-3 bg-muted/50 border-b border-border">
-                <div className="grid grid-cols-12 gap-4 text-xs font-medium text-foreground uppercase tracking-wide">
+                <div className="grid grid-cols-12 gap-4 text-xs font-medium text-foreground">
                   <div className="col-span-6">Organization Name</div>
                   <div className="col-span-2">Environment</div>
                   <div className="col-span-2">Created</div>

@@ -469,7 +469,7 @@ const handleRowClick = (trace: TraceLog) => {
           <>
             {/* Header */}
             <div className="border-b border-border bg-muted/50 px-4 py-2">
-              <div className="grid grid-cols-12 gap-3 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              <div className="grid grid-cols-12 gap-3 text-xs font-medium text-muted-foreground">
                 <div className="col-span-3">Trace Info</div>
                 <div className="col-span-4 flex items-center gap-2">
                   Conversation

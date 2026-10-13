@@ -81,7 +81,7 @@ export default function PipecatToolsSettings({
   return (
     <div className="bg-card border border-border rounded-lg overflow-y-auto h-full">
       <div className="p-4 space-y-4">
-        <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+        <h3 className="text-xs font-medium text-muted-foreground flex items-center gap-2">
           <WrenchIcon className="w-3.5 h-3.5" />
           Tools & Actions
         </h3>

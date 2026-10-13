@@ -856,7 +856,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
               {/* Tab Navigation */}
               {agent && (
                 <div>
-                  <div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Sections</div>
+                  <div className="text-xs font-medium text-muted-foreground mb-2">Sections</div>
                   <div className="space-y-1">
                     {mobileTabs.map((tab) => {
                       const Icon = tab.icon
@@ -884,7 +884,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
 
               {/* Period Filters */}
               <div>
-                <div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Period</div>
+                <div className="text-xs font-medium text-muted-foreground mb-2">Period</div>
                 <div className="flex flex-wrap gap-2">
                   {quickFilters.map((filter) => (
                     <PeriodOptionButton
@@ -938,7 +938,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
 
               {/* Tabs */}
               {/* <div>
-                <div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Sections</div>
+                <div className="text-xs font-medium text-muted-foreground mb-2">Sections</div>
                 <div className="space-y-1">
                   {tabs.map((tab) => {
                     const Icon = tab.icon
@@ -963,7 +963,7 @@ const { data: callsCheck, isLoading: callsCheckLoading } = useSupabaseQuery(
               {/* Field Extractor for mobile (visibility-controlled) */}
               {agent && canSeeFieldExtractor && (
                 <div>
-                  <div className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Tools</div>
+                  <div className="text-xs font-medium text-muted-foreground mb-2">Tools</div>
                   <FieldExtractorDialog
                     initialData={JSON.parse(agent?.field_extractor_prompt || '[]')}
                     initialVariables={(agent as any)?.field_extractor_variables || {}}

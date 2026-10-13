@@ -170,7 +170,7 @@ export function JourneyIntegrationGuide({ campaignKey, projectId, scroll }: Read
       </ol>
 
       <div>
-        <p className={cn('mb-1.5 text-xs font-medium uppercase tracking-wide', MUTED)}>What to send</p>
+        <p className={cn('mb-1.5 text-xs font-medium', MUTED)}>What to send</p>
         <dl className="divide-y divide-border/60 rounded-lg border border-border text-xs">
           {FIELDS.map((f) => (
             <div key={f.name} className="grid grid-cols-[7.5rem_1fr] gap-2 px-3 py-2">
@@ -185,7 +185,7 @@ export function JourneyIntegrationGuide({ campaignKey, projectId, scroll }: Read
       </div>
 
       <div>
-        <p className={cn('mb-1.5 text-xs font-medium uppercase tracking-wide', MUTED)}>What comes back</p>
+        <p className={cn('mb-1.5 text-xs font-medium', MUTED)}>What comes back</p>
         <dl className="divide-y divide-border/60 rounded-lg border border-border text-xs">
           {REPLIES.map((r) => (
             <div key={r.code} className="grid grid-cols-[3rem_1fr] gap-2 px-3 py-2">

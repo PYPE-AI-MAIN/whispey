@@ -141,7 +141,7 @@ function ProviderModelItems({
           <React.Fragment key={group.name}>
             {groupIndex > 0 && <DropdownMenuSeparator className="bg-muted" />}
             <div className="px-2 py-1.5 bg-muted/50 sticky top-0 z-10">
-              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
+              <h4 className="text-xs font-medium text-muted-foreground truncate">
                 {group.name}
               </h4>
             </div>
@@ -508,7 +508,7 @@ const getFlattenedMenuItems = () => {
                       <div key={group.name}>
                         {groupIndex > 0 && <div className="border-t border-border" />}
                         <div className="px-4 py-2 bg-muted">
-                          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          <h4 className="text-xs font-medium text-muted-foreground">
                             {group.name}
                           </h4>
                         </div>

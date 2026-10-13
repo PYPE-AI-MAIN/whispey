@@ -76,7 +76,7 @@ export function RecipientsPreview({ csvData, dncBlocked }: Readonly<RecipientsPr
                   <th 
                     key={header}
                     scope="col"
-                    className={`px-4 py-3 text-left text-xs font-semibold text-foreground uppercase tracking-wider border-r border-border last:border-r-0 ${getColumnWidth(header)}`}
+                    className={`px-4 py-3 text-left text-xs font-semibold text-foreground border-r border-border last:border-r-0 ${getColumnWidth(header)}`}
                   >
                     {header}
                   </th>

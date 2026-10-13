@@ -752,7 +752,7 @@ export default function Sidebar({
             <div key={group.id}>
               {group.name && (!isCollapsed || isMobile) && (
                 <div className={`px-3 py-2 ${groupIndex > 0 ? 'mt-4' : ''}`}>
-                  <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  <h3 className="text-xs font-medium text-muted-foreground">
                     {group.name}
                   </h3>
                 </div>

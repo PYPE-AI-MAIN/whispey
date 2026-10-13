@@ -120,7 +120,7 @@ export function ChartCard({
             )}
             {/* a real button, pointer-events-auto, so the browser can show the full title on hover when it is cut off; clicking still selects the card */}
             <h3 className="min-w-0 text-xs font-medium text-muted-foreground">
-              <button type="button" title={widget.title} onClick={onSelect} className="pointer-events-auto block max-w-full cursor-pointer truncate text-left uppercase">
+              <button type="button" title={widget.title} onClick={onSelect} className="pointer-events-auto block max-w-full cursor-pointer truncate text-left">
                 {widget.title}
               </button>
             </h3>
