@@ -398,7 +398,7 @@ function Bubble({
             onSeek && start !== undefined && "cursor-pointer hover:border-[#93c5fd] dark:hover:border-[#2f4a7a]",
             "rounded-[14px] rounded-tr-[4px] border bg-[#eff6ff] px-[15px] py-[11px] text-[15.5px] leading-[1.6] transition-[border-color,box-shadow] duration-300 dark:bg-[#1c2b4a]",
             active
-              ? "border-[#60a5fa] shadow-[0_0_0_3px_rgba(59,130,246,.18)] dark:border-[#3b82f6]"
+              ? "border-[#7a3fae] shadow-[0_0_0_3px_rgba(75,0,130,.18)] dark:border-[#ff6b6b]"
               : "border-[#bfdbfe] dark:border-[#24365c]"
           )}
         >

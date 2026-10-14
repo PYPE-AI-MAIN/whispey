@@ -13,7 +13,7 @@ export const V2_THEME = [
   "[--cl-text:#0f172a] dark:[--cl-text:#e2e8f0]",
   "[--cl-text2:#475569] dark:[--cl-text2:#94a3b8]",
   "[--cl-text3:#64748b] dark:[--cl-text3:#64748b]",
-  "[--cl-accent:#2563eb] dark:[--cl-accent:#3b82f6]",
+  "[--cl-accent:#4b0082] dark:[--cl-accent:#ff6b6b]",
   "[--cl-accent-soft:rgba(37,99,235,.08)] dark:[--cl-accent-soft:rgba(59,130,246,.14)]",
   "[--cl-accent-line:rgba(37,99,235,.35)] dark:[--cl-accent-line:rgba(59,130,246,.45)]",
   "[--cl-accent-text:#1d4ed8] dark:[--cl-accent-text:#93c5fd]",

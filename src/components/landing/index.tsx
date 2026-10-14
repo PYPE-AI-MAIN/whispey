@@ -2,11 +2,10 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { Instrument_Serif, Plus_Jakarta_Sans } from 'next/font/google'
+import { Plus_Jakarta_Sans } from 'next/font/google'
 import Header, { Brand } from './landing-header'
 
-const serif = Instrument_Serif({ weight: '400', style: ['normal', 'italic'], subsets: ['latin'], variable: '--font-sw-serif', display: 'swap' })
-const sans = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-sw-sans', display: 'swap' })
+const sans = Plus_Jakarta_Sans({ subsets: ['latin'], weight: ['600', '700', '800'], variable: '--font-sw-sans', display: 'swap' })
 
 const STEPS = [
   { title: 'Install the SDK', body: 'Add Whispey to your agent project.' },
@@ -40,75 +39,73 @@ const LATENCY = [
 
 const PAGE_CSS = `
   .wl-page { background:
-      radial-gradient(60% 40% at 6% 0%, #d3e2ff 0%, rgba(211,226,255,0) 70%),
-      radial-gradient(46% 36% at 96% 22%, #d9ecff 0%, rgba(217,236,255,0) 70%),
-      #f8fbff;
-    color: #0b1b3b; font-family: var(--font-sw-sans), system-ui, sans-serif; }
+      radial-gradient(60% 40% at 6% 0%, #f1e6fa 0%, rgba(241,230,250,0) 70%),
+      radial-gradient(46% 36% at 96% 22%, #ffe9e6 0%, rgba(255,233,230,0) 70%),
+      #fffafa;
+    color: #1e0a52; font-family: var(--font-satoshi), system-ui, sans-serif; }
   .dark .wl-page { background:
-      radial-gradient(60% 40% at 6% 0%, rgba(59,130,246,0.26) 0%, rgba(59,130,246,0) 70%),
-      radial-gradient(46% 36% at 96% 22%, rgba(14,165,233,0.14) 0%, rgba(14,165,233,0) 70%),
-      #050a14;
-    color: #eef4ff; }
-  .wl-header { background: rgba(248,251,255,0.82); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(37,99,235,0.1); }
-  .dark .wl-header { background: rgba(5,10,20,0.78); border-bottom-color: rgba(255,255,255,0.08); }
-  .wl-title { font-family: var(--font-sw-serif), Georgia, serif; font-weight: 400; letter-spacing: -0.012em; line-height: 1.08; }
+      radial-gradient(60% 40% at 6% 0%, rgba(124,58,237,0.3) 0%, rgba(124,58,237,0) 70%),
+      radial-gradient(46% 36% at 96% 22%, rgba(255,107,107,0.14) 0%, rgba(255,107,107,0) 70%),
+      #1e0a52;
+    color: #fff5f5; }
+  .wl-header { background: rgba(255,250,250,0.82); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(75,0,130,0.1); }
+  .dark .wl-header { background: rgba(30,10,82,0.78); border-bottom-color: rgba(255,255,255,0.08); }
+  .wl-title { font-family: var(--font-sw-sans), system-ui, sans-serif; font-weight: 700; letter-spacing: -0.03em; line-height: 1.08; text-wrap: balance; }
   .wl-h1 { font-size: clamp(2.5rem, 6vw, 4.6rem); }
   .wl-h2 { font-size: clamp(1.9rem, 3.6vw, 2.8rem); }
-  .wl-em { font-style: italic; padding-right: 0.06em; color: transparent;
-    background-image: linear-gradient(90deg, #1d4ed8, #3b82f6); -webkit-background-clip: text; background-clip: text; }
-  .dark .wl-em { background-image: linear-gradient(90deg, #60a5fa, #7dd3fc); }
-  .wl-muted { color: #5b6b86; } .dark .wl-muted { color: #9db0d0; }
-  .wl-link { color: #0b1b3b; text-decoration: none; } .wl-link:hover { text-decoration: underline; text-underline-offset: 4px; }
-  .dark .wl-link { color: #eef4ff; }
-  .wl-btn { display: inline-flex; align-items: center; justify-content: center; border-radius: 9999px; color: #fff; font-weight: 600;
-    background: linear-gradient(90deg, #1d4ed8, #3b82f6); padding: 0.8rem 1.6rem; font-size: 0.95rem;
-    box-shadow: 0 10px 24px -12px rgba(29,78,216,0.75); transition: transform .15s ease, box-shadow .15s ease; }
+    .wl-em { color: #ff6b6b; }
+  .wl-muted { color: #6b6485; } .dark .wl-muted { color: #b3a9d4; }
+  .wl-link { color: #1e0a52; text-decoration: none; } .wl-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+  .dark .wl-link { color: #fff5f5; }
+  .wl-btn { display: inline-flex; align-items: center; justify-content: center; border-radius: 9999px; font-weight: 600;
+    background: #ff6b6b; color: #1e0a52; padding: 0.8rem 1.6rem; font-size: 0.95rem;
+    box-shadow: 0 10px 24px -12px rgba(255,107,107,0.7); transition: transform .15s ease, box-shadow .15s ease; }
   .wl-btn:hover { transform: translateY(-1px); } .wl-btn:disabled { opacity: .6; }
   .wl-btn-sm { padding: 0.5rem 1.1rem; font-size: 0.85rem; }
-  .wl-btn-ghost { background: transparent; color: #0b1b3b; box-shadow: none; border: 1px solid rgba(37,99,235,0.25); }
-  .dark .wl-btn-ghost { color: #eef4ff; border-color: rgba(255,255,255,0.22); }
-  .wl-rule { border-top: 1px solid rgba(37,99,235,0.14); } .dark .wl-rule { border-top-color: rgba(255,255,255,0.1); }
+  .wl-btn-ghost { background: transparent; color: #1e0a52; box-shadow: none; border: 1px solid rgba(75,0,130,0.25); }
+  .dark .wl-btn-ghost { color: #fff5f5; border-color: rgba(255,255,255,0.22); }
+  .wl-rule { border-top: 1px solid rgba(75,0,130,0.14); } .dark .wl-rule { border-top-color: rgba(255,255,255,0.1); }
   .wl-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82rem; line-height: 1.6; overflow-x: auto;
-    background: rgba(255,255,255,0.75); border: 1px solid rgba(37,99,235,0.14); border-radius: 12px; padding: 0.9rem 1rem; }
+    background: rgba(255,255,255,0.75); border: 1px solid rgba(75,0,130,0.14); border-radius: 12px; padding: 0.9rem 1rem; }
   .dark .wl-code { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.12); }
-  .wl-frame { border-radius: 18px; border: 1px solid rgba(37,99,235,0.18); box-shadow: 0 30px 70px -34px rgba(30,64,160,0.55); overflow: hidden; background: #fff; text-align: left; }
-  .dark .wl-frame { border-color: rgba(255,255,255,0.14); background: #0b1424; }
-  .wl-eyebrow { font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 600; color: #2563eb; }
-  .dark .wl-eyebrow { color: #60a5fa; }
-  .wl-band { background: #eef4ff; color: #0b1b3b; }
-  .dark .wl-band { background: #08101f; color: #eef4ff; }
-  .wl-card { border: 1px solid rgba(37,99,235,0.14); background: #fff; border-radius: 20px; padding: 1.6rem; display: flex; flex-direction: column; gap: 1.1rem;
-    box-shadow: 0 18px 40px -30px rgba(30,64,160,0.45); }
+  .wl-frame { border-radius: 18px; border: 1px solid rgba(75,0,130,0.18); box-shadow: 0 30px 70px -34px rgba(30,10,82,0.55); overflow: hidden; background: #fff; text-align: left; }
+  .dark .wl-frame { border-color: rgba(255,255,255,0.14); background: #25105e; }
+  .wl-eyebrow { font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 600; color: #4b0082; }
+  .dark .wl-eyebrow { color: #ff8a8a; }
+  .wl-band { background: #f6f1fa; color: #1e0a52; }
+  .dark .wl-band { background: #150640; color: #fff5f5; }
+  .wl-card { border: 1px solid rgba(75,0,130,0.14); background: #fff; border-radius: 20px; padding: 1.6rem; display: flex; flex-direction: column; gap: 1.1rem;
+    box-shadow: 0 18px 40px -30px rgba(30,10,82,0.45); }
   .dark .wl-card { border-color: rgba(255,255,255,0.1); background: rgba(255,255,255,0.035); box-shadow: none; }
-  .wl-card p { color: #5b6b86; line-height: 1.6; } .dark .wl-card p { color: #9db0d0; }
-  .wl-mock { margin-top: auto; border: 1px solid rgba(37,99,235,0.12); background: #f6f9ff; border-radius: 14px; padding: 1rem; font-size: 0.82rem; }
-  .dark .wl-mock { border-color: rgba(255,255,255,0.1); background: rgba(5,10,20,0.6); }
-  .wl-tag { font-size: 0.66rem; letter-spacing: 0.12em; text-transform: uppercase; color: #7488aa; } .dark .wl-tag { color: #6f84a8; }
-  .wl-ink { color: #0b1b3b; } .dark .wl-ink { color: #dbe7ff; }
-  .wl-soft { color: #5b6b86; } .dark .wl-soft { color: #9db0d0; }
-  .wl-track { background: rgba(37,99,235,0.1); } .dark .wl-track { background: rgba(255,255,255,0.08); }
-  .wl-pill { border: 1px solid rgba(37,99,235,0.22); border-radius: 9999px; padding: 0.25rem 0.7rem; color: #5b6b86; }
-  .dark .wl-pill { border-color: rgba(255,255,255,0.16); color: #9db0d0; }
-  .wl-pill-on { background: linear-gradient(90deg, #1d4ed8, #3b82f6); border-color: transparent; color: #fff; }
-  .dark .wl-pill-on { color: #fff; }
+  .wl-card p { color: #6b6485; line-height: 1.6; } .dark .wl-card p { color: #b3a9d4; }
+  .wl-mock { margin-top: auto; border: 1px solid rgba(75,0,130,0.12); background: #faf6fc; border-radius: 14px; padding: 1rem; font-size: 0.82rem; }
+  .dark .wl-mock { border-color: rgba(255,255,255,0.1); background: rgba(30,10,82,0.6); }
+  .wl-tag { font-size: 0.66rem; letter-spacing: 0.12em; text-transform: uppercase; color: #8a80a8; } .dark .wl-tag { color: #8a80a8; }
+  .wl-ink { color: #1e0a52; } .dark .wl-ink { color: #ece6ff; }
+  .wl-soft { color: #6b6485; } .dark .wl-soft { color: #b3a9d4; }
+  .wl-track { background: rgba(75,0,130,0.1); } .dark .wl-track { background: rgba(255,255,255,0.08); }
+  .wl-pill { border: 1px solid rgba(75,0,130,0.22); border-radius: 9999px; padding: 0.25rem 0.7rem; color: #6b6485; }
+  .dark .wl-pill { border-color: rgba(255,255,255,0.16); color: #b3a9d4; }
+  .wl-pill-on { background: #ff6b6b; border-color: transparent; color: #1e0a52; }
+  .dark .wl-pill-on { color: #1e0a52; }
   .wl-code-dark { display: none; }
-  .wl-num { font-family: var(--font-sw-serif), Georgia, serif; font-size: 2rem; line-height: 1; color: #2563eb; }
-  .dark .wl-num { color: #60a5fa; }
+  .wl-num { font-family: var(--font-sw-sans), system-ui, sans-serif; font-weight: 700; font-size: 2rem; line-height: 1; color: #4b0082; }
+  .dark .wl-num { color: #ff8a8a; }
 `
 
 export default function LandingPage() {
   return (
-    <div className={`${serif.variable} ${sans.variable} wl-page min-h-screen`}>
+    <div className={`${sans.variable} wl-page min-h-screen`}>
       <style>{PAGE_CSS}</style>
       <Header />
 
       <div>
         <section className="mx-auto max-w-4xl px-6 pb-10 pt-16 text-center sm:pt-24">
           <h1 className="wl-title wl-h1">
-            Create voice agents and see how patients <span className="wl-em">engage.</span>
+            AI that answers every patient call <span className="wl-em">reliably.</span>
           </h1>
           <p className="wl-muted mx-auto mt-6 max-w-2xl text-lg leading-relaxed">
-            Whispey is Pype AI's workspace for voice agents. Build them, run them, and review every call: what was said, how the patient responded, and what to fix.
+            Whispey is where Pype builds its healthcare voice agents. Build them, run them, and review every call: what was said, how the patient responded, and what to fix.
           </p>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
             <Link href="/sign-in" className="wl-btn">Get started</Link>
@@ -158,7 +155,7 @@ export default function LandingPage() {
                       <li key={l.label}>
                         <span className="wl-soft">{l.label}</span>
                         <span className="wl-track mt-1.5 block h-1.5 rounded-full">
-                          <span className="block h-1.5 rounded-full" style={{ width: l.w, background: 'linear-gradient(90deg, #1d4ed8, #60a5fa)' }} />
+                          <span className="block h-1.5 rounded-full" style={{ width: l.w, background: 'linear-gradient(90deg, #4b0082, #ff6b6b)' }} />
                         </span>
                       </li>
                     ))}
