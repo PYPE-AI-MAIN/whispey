@@ -395,7 +395,7 @@ function Bubble({
           {...seekProps(start, onSeek)}
           title={onSeek && start !== undefined ? "Play from here" : undefined}
           className={cn(
-            onSeek && start !== undefined && "cursor-pointer hover:border-[#93c5fd] dark:hover:border-[#2f4a7a]",
+            onSeek && start !== undefined && "cursor-pointer hover:border-[#bf98e1] dark:hover:border-[#6b3a44]",
             "rounded-[14px] rounded-tr-[4px] border bg-[#eff6ff] px-[15px] py-[11px] text-[15.5px] leading-[1.6] transition-[border-color,box-shadow] duration-300 dark:bg-[#1c2b4a]",
             active
               ? "border-[#7a3fae] shadow-[0_0_0_3px_rgba(75,0,130,.18)] dark:border-[#ff6b6b]"
