@@ -1,42 +1,51 @@
-/* Whispey docs: quiet neutral surfaces, one blue accent, Inter throughout.
+/* Whispey docs in the Pype brand: indigo #4B0082 and coral #FF6B6B, Plus Jakarta Sans headings, Satoshi text.
    The layout follows the familiar docs pattern — tabs on top, section-headed
    sidebar, a page header with actions, and "On this page" on the right. */
-:root {
-  --ifm-color-primary: #2563eb;
-  --ifm-color-primary-dark: #1d4ed8;
-  --ifm-color-primary-darker: #1e40af;
-  --ifm-color-primary-darkest: #1e3a8a;
-  --ifm-color-primary-light: #3b82f6;
-  --ifm-color-primary-lighter: #60a5fa;
-  --ifm-color-primary-lightest: #93c5fd;
+@font-face {
+  font-family: 'Satoshi';
+  src: url('./fonts/Satoshi-Variable.woff2') format('woff2');
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
 
-  --wp-ink: #0f172a;
-  --wp-text: #334155;
-  --wp-muted: #64748b;
-  --wp-faint: #94a3b8;
-  --wp-line: #e5e7eb;
-  --wp-line-strong: #d1d5db;
-  --wp-soft: #f3f4f6;
-  --wp-accent-soft: rgba(37, 99, 235, 0.08);
+:root {
+  --ifm-color-primary: #4b0082;
+  --ifm-color-primary-dark: #430075;
+  --ifm-color-primary-darker: #3d006b;
+  --ifm-color-primary-darkest: #32005a;
+  --ifm-color-primary-light: #5e1a96;
+  --ifm-color-primary-lighter: #7a3fae;
+  --ifm-color-primary-lightest: #a47ccb;
+
+  --wp-coral: #ff6b6b;
+  --wp-ink: #1e0a52;
+  --wp-text: #3b3361;
+  --wp-muted: #667085;
+  --wp-faint: #98a2b3;
+  --wp-line: #ece8f2;
+  --wp-line-strong: #d9d2e6;
+  --wp-soft: #f6f1fa;
+  --wp-accent-soft: rgba(75, 0, 130, 0.07);
   --wp-card: #ffffff;
   --wp-surface: #ffffff;
-  --wp-code-bg: #f8fafc;
-  --wp-glow-a: #dbe7ff;
-  --wp-glow-b: #e6f0ff;
-  --wp-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06);
+  --wp-code-bg: #faf7fc;
+  --wp-glow-a: #f1e6fa;
+  --wp-glow-b: #ffe9e6;
+  --wp-shadow: 0 1px 2px rgba(30, 10, 82, 0.04), 0 8px 24px rgba(30, 10, 82, 0.07);
 
-  --ifm-font-family-base: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ifm-font-family-base: 'Satoshi', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --ifm-font-family-monospace: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-  --ifm-heading-font-family: var(--ifm-font-family-base);
-  --wp-display-font: 'Instrument Serif', Georgia, serif;
+  --ifm-heading-font-family: var(--wp-display-font);
+  --wp-display-font: 'Plus Jakarta Sans', 'Satoshi', system-ui, sans-serif;
   --ifm-font-color-base: var(--wp-text);
   --ifm-heading-color: var(--wp-ink);
-  --ifm-background-color: #ffffff;
+  --ifm-background-color: #fffafa;
   --ifm-background-surface-color: #ffffff;
-  --ifm-navbar-background-color: rgba(255, 255, 255, 0.85);
+  --ifm-navbar-background-color: rgba(255, 250, 250, 0.85);
   --ifm-navbar-height: 64px;
   --ifm-navbar-shadow: none;
-  --ifm-global-radius: 10px;
+  --ifm-global-radius: 12px;
   --ifm-line-height-base: 1.75;
   --ifm-font-size-base: 16px;
   --ifm-code-font-size: 88%;
@@ -46,72 +55,72 @@
   --ifm-hr-border-color: var(--wp-line);
   --ifm-table-border-color: var(--wp-line);
   --doc-sidebar-width: 288px;
-  --docusaurus-highlighted-code-line-bg: rgba(37, 99, 235, 0.08);
+  --docusaurus-highlighted-code-line-bg: rgba(75, 0, 130, 0.07);
 }
 
-/* Dark mode uses the product's own deep navy (src/app/globals.css .dark).
+/* Dark mode is the Pype site's own deep indigo with the coral accent.
    html[...] outranks Docusaurus's own html[data-theme='dark'] defaults. */
 html[data-theme='dark'] {
-  --ifm-color-primary: oklch(0.714 0.143 254.6);
-  --ifm-color-primary-dark: oklch(0.66 0.15 256);
-  --ifm-color-primary-darker: oklch(0.6 0.16 258);
-  --ifm-color-primary-darkest: oklch(0.52 0.17 260);
-  --ifm-color-primary-light: oklch(0.76 0.12 254);
-  --ifm-color-primary-lighter: oklch(0.81 0.1 254);
-  --ifm-color-primary-lightest: oklch(0.88 0.06 254);
+  --ifm-color-primary: #ff6b6b;
+  --ifm-color-primary-dark: #f25555;
+  --ifm-color-primary-darker: #e84a4a;
+  --ifm-color-primary-darkest: #c93a3a;
+  --ifm-color-primary-light: #ff8080;
+  --ifm-color-primary-lighter: #ff9a9a;
+  --ifm-color-primary-lightest: #ffbcbc;
 
-  --wp-ink: oklch(0.97 0.012 255);
-  --wp-text: oklch(0.86 0.025 257);
-  --wp-muted: oklch(0.72 0.04 258);
-  --wp-faint: oklch(0.58 0.04 260);
-  --wp-line: oklch(1 0 0 / 10%);
-  --wp-line-strong: oklch(1 0 0 / 15%);
-  --wp-soft: oklch(0.21 0.038 262);
-  --wp-accent-soft: oklch(0.714 0.143 254.6 / 14%);
-  --wp-card: oklch(0.19 0.035 262);
-  --wp-surface: oklch(0.19 0.035 262);
-  --wp-code-bg: oklch(0.17 0.033 262);
-  --wp-glow-a: oklch(0.45 0.15 262 / 22%);
-  --wp-glow-b: oklch(0.5 0.12 240 / 10%);
+  --wp-ink: #f6f2f2;
+  --wp-text: #d6d0e2;
+  --wp-muted: #a39cb5;
+  --wp-faint: #7d7590;
+  --wp-line: rgba(255, 255, 255, 0.1);
+  --wp-line-strong: rgba(255, 255, 255, 0.16);
+  --wp-soft: #1e1829;
+  --wp-accent-soft: rgba(255, 107, 107, 0.14);
+  --wp-card: #14101d;
+  --wp-surface: #14101d;
+  --wp-code-bg: #110d19;
+  --wp-glow-a: rgba(124, 58, 237, 0.12);
+  --wp-glow-b: rgba(255, 107, 107, 0.08);
   --wp-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 30px rgba(0, 0, 0, 0.35);
 
-  --ifm-background-color: oklch(0.15 0.03 262);
-  --ifm-background-surface-color: oklch(0.15 0.03 262);
-  --ifm-navbar-background-color: oklch(0.15 0.03 262 / 85%);
-  --docusaurus-highlighted-code-line-bg: oklch(0.714 0.143 254.6 / 14%);
+  --ifm-background-color: #0e0b16;
+  --ifm-background-surface-color: #0e0b16;
+  --ifm-navbar-background-color: rgba(14, 11, 22, 0.85);
+  --docusaurus-highlighted-code-line-bg: rgba(255, 107, 107, 0.14);
 }
 
-/* Depth in dark mode: one soft blue glow behind the top of the page, and
+/* Depth in dark mode: a soft violet glow behind the top of the page, and
    surfaces a step lighter than the page so cards and tables read as layers. */
 html[data-theme='dark'] {
   background-color: var(--ifm-background-color);
   background-image:
-    radial-gradient(900px 480px at 18% -8%, oklch(0.45 0.14 262 / 22%), transparent 65%),
-    radial-gradient(700px 420px at 92% 0%, oklch(0.55 0.12 230 / 10%), transparent 60%);
+    radial-gradient(900px 480px at 18% -8%, rgba(124, 58, 237, 0.12), transparent 65%),
+    radial-gradient(700px 420px at 92% 0%, rgba(255, 107, 107, 0.08), transparent 60%);
   background-attachment: fixed;
 }
 [data-theme='dark'] .navbar {
-  background-color: oklch(0.15 0.03 262 / 72%);
+  background-color: rgba(14, 11, 22, 0.72);
 }
 [data-theme='dark'] .theme-doc-sidebar-container {
-  background: oklch(0.15 0.03 262 / 55%);
+  background: rgba(14, 11, 22, 0.55);
 }
 [data-theme='dark'] .markdown table thead tr,
 [data-theme='dark'] .wp-window-bar {
-  background: oklch(0.21 0.04 262);
+  background: #1e1829;
 }
 [data-theme='dark'] .wp-page-actions,
 [data-theme='dark'] .pagination-nav__link,
 [data-theme='dark'] .wp-card {
-  background: oklch(0.18 0.034 262 / 70%);
+  background: rgba(20, 16, 29, 0.7);
 }
 [data-theme='dark'] .markdown h1,
 [data-theme='dark'] .markdown h2,
 [data-theme='dark'] .markdown h3 {
-  color: oklch(0.98 0.008 255);
+  color: #f6f2f2;
 }
 [data-theme='dark'] .wp-nav-cta.navbar__item {
-  color: oklch(0.15 0.03 262) !important;
+  color: #1e0a52 !important;
 }
 
 html {
@@ -120,7 +129,6 @@ html {
 }
 
 body {
-  font-feature-settings: 'cv11', 'ss01';
   letter-spacing: -0.006em;
 }
 
@@ -342,10 +350,10 @@ main[class*='docMainContainer'] .container {
 }
 .markdown .wp-page-header h1 {
   font-family: var(--wp-display-font);
-  font-size: 2.9rem;
-  font-weight: 400;
-  letter-spacing: -0.01em;
-  line-height: 1.08;
+  font-size: 2.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
   margin: 0;
 }
 .markdown .wp-page-header .wp-page-description,
@@ -581,8 +589,8 @@ main[class*='docMainContainer'] .container {
 }
 .alert--info,
 .alert--secondary {
-  --ifm-alert-background-color: rgba(37, 99, 235, 0.05);
-  --ifm-alert-border-color: rgba(37, 99, 235, 0.25);
+  --ifm-alert-background-color: rgba(75, 0, 130, 0.05);
+  --ifm-alert-border-color: rgba(75, 0, 130, 0.25);
   --ifm-alert-foreground-color: var(--wp-text);
 }
 .alert--success {
@@ -619,7 +627,7 @@ div[class*='codeBlockContainer'] pre code {
   padding: 0.95rem 1.1rem !important;
 }
 [data-theme='dark'] div[class*='codeBlockContainer'] {
-  border-color: oklch(1 0 0 / 8%);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 div[class*='codeBlockTitle'] {
   border-bottom: 1px solid var(--wp-line) !important;
@@ -768,28 +776,18 @@ div[class*='codeBlockTitle'] {
 .markdown h1.wp-hero-title,
 .wp-hero-title {
   font-family: var(--wp-display-font);
-  font-weight: 400;
+  font-weight: 700;
   /* sized to the reading column (between the sidebar and "On this page"), not the window */
-  font-size: clamp(2.8rem, 5.4vw, 4.6rem);
-  line-height: 1.02;
-  letter-spacing: -0.015em;
+  font-size: clamp(2.5rem, 4.8vw, 3.9rem);
+  line-height: 1.06;
+  letter-spacing: -0.025em;
   margin: 0 0 1.1rem;
   max-width: 42rem;
   text-wrap: balance;
 }
 .wp-hero-title em {
-  font-style: italic;
-  color: transparent;
-  background-image: linear-gradient(90deg, #1d4ed8, #3b82f6);
-  -webkit-background-clip: text;
-  background-clip: text;
-  /* italic letters lean past their box; the padding keeps the last one from being clipped */
-  padding: 0 0.12em 0.06em 0.02em;
-  -webkit-box-decoration-break: clone;
-  box-decoration-break: clone;
-}
-[data-theme='dark'] .wp-hero-title em {
-  background-image: linear-gradient(90deg, #60a5fa, #7dd3fc);
+  font-style: normal;
+  color: var(--wp-coral);
 }
 .wp-hero-lead {
   max-width: 34rem;
@@ -816,9 +814,13 @@ div[class*='codeBlockTitle'] {
   transform: translateY(-1px);
 }
 .wp-btn-primary {
-  background: linear-gradient(90deg, #1d4ed8, #3b82f6);
+  background: var(--ifm-color-primary);
   color: #fff !important;
-  box-shadow: 0 12px 28px -12px rgba(37, 99, 235, 0.7);
+  box-shadow: 0 12px 28px -12px rgba(75, 0, 130, 0.55);
+}
+[data-theme='dark'] .wp-btn-primary {
+  color: #1e0a52 !important;
+  box-shadow: 0 12px 28px -12px rgba(255, 107, 107, 0.6);
 }
 .wp-btn-ghost {
   border: 1px solid var(--wp-line);
@@ -849,7 +851,7 @@ div[class*='codeBlockTitle'] {
 .wp-card:hover {
   transform: translateY(-2px);
   border-color: var(--ifm-color-primary);
-  box-shadow: 0 16px 34px -22px rgba(37, 99, 235, 0.55);
+  box-shadow: 0 16px 34px -22px rgba(75, 0, 130, 0.4);
   color: var(--wp-ink);
 }
 .wp-card-tag {
@@ -985,7 +987,7 @@ div[class*='codeBlockTitle'] {
   z-index: 1;
 }
 [data-theme='dark'] .wp-pin {
-  color: oklch(0.15 0.03 262);
+  color: #1e0a52;
 }
 
 /* the editor top bar */
@@ -1059,7 +1061,7 @@ div[class*='codeBlockTitle'] {
   font-weight: 600;
 }
 [data-theme='dark'] .wp-ctl-primary {
-  color: oklch(0.15 0.03 262);
+  color: #1e0a52;
 }
 .wp-canvas-strip {
   height: 54px;
@@ -1151,7 +1153,7 @@ div[class*='codeBlockTitle'] {
   border-left-color: var(--wp-faint);
 }
 .wp-node {
-  --tone: #3b82f6;
+  --tone: #4b0082;
   flex: 0 1 8.75rem;
   min-width: 7.5rem;
   display: flex;
@@ -1164,8 +1166,8 @@ div[class*='codeBlockTitle'] {
   background: var(--wp-surface);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
-.wp-tone-blue { --tone: #3b82f6; }
-.wp-tone-violet { --tone: #8b5cf6; }
+.wp-tone-blue { --tone: #4b0082; }
+.wp-tone-violet { --tone: #ff6b6b; }
 .wp-tone-red { --tone: #ef4444; }
 .wp-tone-green { --tone: #10b981; }
 .wp-node-kind {

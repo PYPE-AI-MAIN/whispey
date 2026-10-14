@@ -1163,7 +1163,7 @@ function VariablePanel({ variables, onChange, disabled, autoFilled = [] }: Reado
     <div className="shrink-0 border-t border-border">
       <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-4 h-8 hover:bg-muted transition-colors">
         <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-400 dark:bg-blue-500 shrink-0" />
+          <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
           Variables ({variables.length})
         </span>
         <ChevronDown className={cn('w-3 h-3 text-muted-foreground transition-transform', open && 'rotate-180')} />
@@ -1236,13 +1236,13 @@ function GreetingPanel({ greeting, onChange, disabled }: Readonly<{ greeting: Gr
             </SelectContent>
           </Select>
           {greeting.mode === 'assistant_speaks_first' && (
-            <textarea
+            <VariableTextarea
               value={greeting.text}
-              onChange={e => onChange({ ...greeting, text: e.target.value })}
+              onChange={text => onChange({ ...greeting, text })}
               disabled={disabled}
-              rows={2}
               placeholder="Hello! How can I help you today?  ({{variables}} work here too)"
-              className="w-full resize-none rounded border border-border bg-card px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-blue-400 dark:focus:border-blue-500"
+              className="rounded border-border"
+              style={{ height: '72px', minHeight: '72px' }}
             />
           )}
         </div>
@@ -2305,7 +2305,7 @@ function MessageBubble({ message, onReplay }: { message: Message; onReplay?: () 
   const ordered = !isUser && hasTools && (message.parts?.length ?? 0) > 0
   const textBubble = (text: string, key?: string, streaming?: boolean) => (
     <div key={key} className={cn('rounded-2xl px-4 py-2.5 text-sm leading-relaxed w-full',
-      isUser ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-tr-sm' : 'bg-muted/50 text-gray-900 border border-border rounded-tl-sm')}>
+      isUser ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-tr-sm' : 'bg-muted/50 text-foreground border border-border rounded-tl-sm')}>
       <p className="whitespace-pre-wrap break-words">
         {text}
         {streaming && <span className="inline-block w-0.5 h-3.5 bg-current ml-0.5 align-middle animate-pulse" />}
@@ -2333,7 +2333,7 @@ function MessageBubble({ message, onReplay }: { message: Message; onReplay?: () 
         )}
         {!ordered && (message.content || !hasTools) && (
           <div className={cn('rounded-2xl px-4 py-2.5 text-sm leading-relaxed w-full',
-            isUser ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-tr-sm' : 'bg-muted/50 text-gray-900 border border-border rounded-tl-sm')}>
+            isUser ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-tr-sm' : 'bg-muted/50 text-foreground border border-border rounded-tl-sm')}>
             <p className="whitespace-pre-wrap break-words">
               {message.content}
               {!message.isFinal && message.content && <span className="inline-block w-0.5 h-3.5 bg-current ml-0.5 align-middle animate-pulse" />}
