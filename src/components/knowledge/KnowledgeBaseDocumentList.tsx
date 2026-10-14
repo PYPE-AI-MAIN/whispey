@@ -99,7 +99,7 @@ export function KnowledgeBaseDocumentList({
         const link = document.createElement('a')
         link.href = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }))
         // What is stored is the extracted text, so the download is a .txt of it.
-        link.download = `${name.replace(/^https?:\/\//, '').replace(/[^\w.-]+/g, '_').replace(/\.[a-z0-9]{2,4}$/i, '')}.txt`
+        link.download = `${name.replace(/^https?:\/\//, '').replaceAll(/[^\w.-]+/g, '_').replace(/\.[a-z0-9]{2,4}$/i, '')}.txt`
         link.click()
         URL.revokeObjectURL(link.href)
       } catch (e) {
