@@ -2,9 +2,10 @@
 'use client'
 
 import React, { useCallback, useState } from 'react'
-import { FileText, Trash2, Loader2, Link as LinkIcon, AlertCircle } from 'lucide-react'
+import { FileText, Trash2, Loader2, Link as LinkIcon, AlertCircle, Eye, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { getKnowledgeFileTypeLabel } from './constants'
 import { cn } from '@/lib/utils'
 
@@ -62,6 +63,52 @@ export function KnowledgeBaseDocumentList({
       }
     },
     [deletingId, onDelete, onRefresh, agentId]
+  )
+
+  const [viewing, setViewing] = useState<{ doc: KnowledgeDocument; text: string | null; failed?: string } | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
+
+  const loadText = useCallback(
+    async (id: string): Promise<string> => {
+      const res = await fetch(`/api/knowledge/documents/${encodeURIComponent(id)}/content?agent_id=${encodeURIComponent(agentId ?? '')}`)
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || typeof data.text !== 'string') throw new Error(data?.error || 'Could not load the document')
+      return data.text
+    },
+    [agentId]
+  )
+
+  const handleView = useCallback(
+    async (doc: KnowledgeDocument) => {
+      setViewing({ doc, text: null })
+      try {
+        setViewing({ doc, text: await loadText(doc.id) })
+      } catch (e) {
+        setViewing({ doc, text: null, failed: e instanceof Error ? e.message : 'Could not load the document' })
+      }
+    },
+    [loadText]
+  )
+
+  const handleDownload = useCallback(
+    async (doc: KnowledgeDocument, name: string) => {
+      setBusyId(doc.id)
+      setError(null)
+      try {
+        const text = await loadText(doc.id)
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }))
+        // What is stored is the extracted text, so the download is a .txt of it.
+        link.download = `${name.replace(/^https?:\/\//, '').replace(/[^\w.-]+/g, '_').replace(/\.[a-z0-9]{2,4}$/i, '')}.txt`
+        link.click()
+        URL.revokeObjectURL(link.href)
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Could not download the document')
+      } finally {
+        setBusyId(null)
+      }
+    },
+    [loadText]
   )
 
   const displayName = (doc: KnowledgeDocument) =>
@@ -131,6 +178,25 @@ export function KnowledgeBaseDocumentList({
               <Button
                 variant="ghost"
                 size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground flex-shrink-0"
+                onClick={() => handleView(doc)}
+                aria-label={`View ${name}`}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground flex-shrink-0"
+                onClick={() => handleDownload(doc, name)}
+                disabled={busyId === doc.id}
+                aria-label={`Download ${name}`}
+              >
+                {busyId === doc.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
                 className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                 onClick={() => handleDelete(doc.id)}
                 disabled={isDeleting}
@@ -146,6 +212,20 @@ export function KnowledgeBaseDocumentList({
           )
         })}
       </ul>
+      <Dialog open={!!viewing} onOpenChange={(open) => !open && setViewing(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="truncate">{viewing ? displayName(viewing.doc) : ''}</DialogTitle>
+          </DialogHeader>
+          {viewing?.failed && <p className="text-sm text-destructive">{viewing.failed}</p>}
+          {!viewing?.failed && viewing?.text === null && (
+            <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+          )}
+          {typeof viewing?.text === 'string' && (
+            <pre className="max-h-[60vh] overflow-auto whitespace-pre-wrap break-words rounded-lg border border-border bg-muted/50 p-4 text-xs leading-relaxed text-foreground">{viewing.text}</pre>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
