@@ -422,6 +422,12 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
   }, [pathname, searchParams])
   const splitOpen = !!openCallId && !selectedCampaign
   const openedCall = splitOpen ? findCall(currentPageCalls, openCallId) : null
+  // Whether a call has been open on this visit. Only then may the page move the
+  // split to another call by itself; a link's call that isn't in the list shows
+  // "not found" instead of quietly opening someone else's call.
+  const [browsingCalls, setBrowsingCalls] = useState(false)
+  useEffect(() => { if (openedCall) setBrowsingCalls(true) }, [openedCall])
+  const openCallMissing = splitOpen && !isLoading && !openedCall && (!browsingCalls || currentPageCalls.length === 0)
 
   // From the table it's a new history entry; from the split list it's a switch.
   const openCall = useCallback((call: CallLog) => setOpenCallId(call.id, openCallId ? "replace" : "push"), [setOpenCallId, openCallId])
@@ -446,9 +452,9 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
   // Paging with the split open moves to the new page's first call; an open call
   // that isn't in the loaded page (e.g. after a filter change) does the same.
   useEffect(() => {
-    if (!splitOpen || isLoading || currentPageCalls.length === 0 || openedCall) return
+    if (!splitOpen || !browsingCalls || isLoading || currentPageCalls.length === 0 || openedCall) return
     setOpenCallId(currentPageCalls[0].id)
-  }, [splitOpen, isLoading, currentPageCalls, openedCall, setOpenCallId])
+  }, [splitOpen, browsingCalls, isLoading, currentPageCalls, openedCall, setOpenCallId])
 
   const closeSplit = useCallback(() => {
     // Back on the table, the keyboard cursor sits on the call that was open.
@@ -567,9 +573,12 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
         listFooter={<SplitListFooter {...pager} rangeLabel={rangeLabel} currentPage={currentPage} />}
       />
     ) : (
-      <div className="flex flex-1 items-center justify-center text-sm text-[var(--cl-text3)]">
-        <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Opening call…
-      </div>
+      <SplitPlaceholder
+        missing={openCallMissing}
+        callId={openCallId ?? ""}
+        traceHref={project?.id ? `/${project.id}/agents/${agent.id}/observability?session_id=${encodeURIComponent(openCallId ?? "")}` : null}
+        onBack={closeSplit}
+      />
     ),
     table: (
       <>
@@ -902,6 +911,46 @@ function NextPageButton({ isLastPage, pageLoading, goToNextPage }: Readonly<Page
 }
 
 // The pager under the call list beside an open call.
+const CALL_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** While the open call loads, or — when the link's call isn't in the list — a "not found" note instead of opening a different call. */
+function SplitPlaceholder({ missing, callId, traceHref, onBack }: Readonly<{ missing: boolean; callId: string; traceHref: string | null; onBack: () => void }>) {
+  if (!missing) {
+    return (
+      <div className="flex flex-1 items-center justify-center text-sm text-[var(--cl-text3)]">
+        <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Opening call…
+      </div>
+    )
+  }
+  const valid = CALL_ID_PATTERN.test(callId)
+  return (
+    <div role="alert" className="flex flex-1 items-center justify-center p-6">
+      <div className="max-w-md text-center">
+        <AlertCircle className="mx-auto mb-3 h-8 w-8 text-[var(--cl-text3)]" />
+        <h2 className="text-[15px] font-semibold">{valid ? "Call not found in this list" : "This link's call ID isn't valid"}</h2>
+        <p className="mt-1.5 text-[13.5px] text-[var(--cl-text2)]">
+          {valid
+            ? "It may have been deleted, or it's outside the current date range, filters or page."
+            : "Check that the whole link was copied. The call ID looks cut short or has extra characters."}
+        </p>
+        <code className="mt-3 inline-block max-w-full break-all rounded-md border border-[var(--cl-border)] bg-[var(--cl-panel2)] px-2 py-1 font-mono text-[12px] text-[var(--cl-text2)]">
+          {callId}
+        </code>
+        <div className="mt-4 flex justify-center gap-2">
+          <button type="button" onClick={onBack} className={V2_BTN}>
+            <ChevronLeft className="h-4 w-4" /> Back to calls
+          </button>
+          {valid && traceHref && (
+            <a href={traceHref} className={V2_BTN}>
+              Open its trace
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function SplitListFooter(props: Readonly<PagerProps & { rangeLabel: React.ReactNode; currentPage: number }>) {
   return (
     <div className="flex h-[52px] flex-none items-center justify-between border-t border-[var(--cl-border)] px-3 text-[13px] text-[var(--cl-text3)]">
