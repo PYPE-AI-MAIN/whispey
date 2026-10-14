@@ -29,7 +29,7 @@ export interface NodeMeta {
 
 export const NODE_REGISTRY: Record<NodeType, NodeMeta> = {
   conversation: {
-    label: 'Conversation', icon: MessageSquare, color: '#3b82f6', category: 'LLM',
+    label: 'Conversation', icon: MessageSquare, color: '#8f4fc4', category: 'LLM',
     useCase: "The agent talks with the caller for one step, then moves on when it is done. Use it for most of the call.",
   },
   extract_variable: {

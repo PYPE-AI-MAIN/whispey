@@ -572,7 +572,7 @@ function ViewCampaign() {
     return (
       <div className="flex flex-col h-screen bg-card">
         {/* Header */}
-        <div className="px-6 py-4 border-border bg-background border-b shadow-sm">
+        <div className="px-6 py-4 border-border bg-card border-b shadow-sm">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
@@ -620,7 +620,7 @@ function ViewCampaign() {
   }
 
   const renderHeader = () => (
-    <div className="px-6 py-4 border-border bg-background border-b shadow-sm">
+    <div className="px-6 py-4 border-border bg-card border-b shadow-sm">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Button
