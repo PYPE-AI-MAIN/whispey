@@ -426,7 +426,7 @@ export default function TermsOfService() {
               Open Source (GitHub)
             </a>
             <span className="text-gray-300">•</span>
-            <Link href="https://docs.whispey.pypeai.com" className="text-muted-foreground hover:text-primary transition-colors">
+            <Link href="/docs" className="text-muted-foreground hover:text-primary transition-colors">
               Documentation
             </Link>
           </div>

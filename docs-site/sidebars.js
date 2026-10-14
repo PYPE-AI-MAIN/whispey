@@ -4,9 +4,9 @@ const sidebars = {
     'index',
     {
       type: 'category',
+      collapsible: false,
       label: 'Get started',
-      collapsed: false,
-      items: [
+            items: [
         'workspace/getting-started',
         'workflows/quickstart',
         {type: 'doc', id: 'quick-start', label: 'Connect the SDK'},
@@ -14,6 +14,7 @@ const sidebars = {
     },
     {
       type: 'category',
+      collapsible: false,
       label: 'Workflow agents',
       link: {type: 'doc', id: 'workflows/overview'},
       items: [
@@ -30,6 +31,7 @@ const sidebars = {
     },
     {
       type: 'category',
+      collapsible: false,
       label: 'Single-prompt agents',
       link: {type: 'doc', id: 'agent-config/overview'},
       items: [
@@ -51,22 +53,34 @@ const sidebars = {
     },
     {
       type: 'category',
-      label: 'Ask Pi',
-      link: {type: 'doc', id: 'ask-pi/overview'},
-      items: ['ask-pi/what-you-can-ask', 'ask-pi/tips-and-limits'],
+      collapsible: false,
+      label: 'Build with your AI assistant (MCP)',
+      link: {type: 'doc', id: 'mcp/overview'},
+      items: ['mcp/quickstart', 'mcp/build-an-agent', 'mcp/agent-studio', 'mcp/what-you-can-ask'],
     },
     {
       type: 'category',
+      collapsible: false,
+      label: 'Ask Pi',
+      link: {type: 'doc', id: 'ask-pi/overview'},
+      items: ['ask-pi/what-you-can-ask', 'ask-pi/in-call-logs', 'ask-pi/tips-and-limits'],
+    },
+    {
+      type: 'category',
+      collapsible: false,
       label: 'Calls and phones',
       items: ['workspace/phone-numbers', 'workspace/campaigns', 'campaign-logs', 'workspace/do-not-call'],
     },
     {
       type: 'category',
+      collapsible: false,
       label: 'Analytics and quality',
       link: {type: 'doc', id: 'analytics/overview'},
       items: [
         'analytics/reading-your-numbers',
+        'analytics/call-logs-guide',
         'analytics/call-logs',
+        'analytics/dispositions',
         'analytics/custom-charts',
         'analytics/project-analytics',
         'analytics/send-events',
@@ -79,6 +93,7 @@ const sidebars = {
     },
     {
       type: 'category',
+      collapsible: false,
       label: 'Your workspace',
       items: [
         'workspace/organizations',
@@ -90,11 +105,13 @@ const sidebars = {
     },
     {
       type: 'category',
+      collapsible: false,
       label: 'Connect other platforms',
       items: ['integrations/connect-an-agent', 'integrations/vapi', 'integrations/retell'],
     },
     {
       type: 'category',
+      collapsible: false,
       label: 'SDK and reference',
       items: [
         {type: 'category', label: 'SDK', items: ['sdk/setup', 'sdk/recording-urls', 'sdk/bug-reporting', 'sdk/healthbench-evaluation', 'sdk/features']},
