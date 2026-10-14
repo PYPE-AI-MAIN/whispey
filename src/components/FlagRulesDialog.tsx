@@ -160,7 +160,7 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
     initialFlagRules?.rules?.length
       ? initialFlagRules.rules.map((r) => ({
           ...r,
-          conditions: r.conditions.map((c) => ({ ...c, id: c.id || newId() })), // backfill ids on load (persisted configs have none)
+          conditions: r.conditions.map((c) => ({ ...c, id: c.id || newId(), matchType: c.matchType ?? "exact", value: c.value ?? "" })), // backfill ids + fields older configs lack
         }))
       : [newRule()]
   )
