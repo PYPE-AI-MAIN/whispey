@@ -269,13 +269,6 @@ export function WorkflowCanvas() {
         deleteKeyCode={['Delete', 'Backspace']}
         fitView
         minZoom={0.2}
-        // Moving around a big flow: two-finger scroll or wheel pans (shift for sideways), pinch or ctrl-scroll zooms,
-        // and any mouse button drags the canvas. A few pixels of wobble while clicking a step no longer moves it.
-        panOnScroll
-        panOnDrag={[0, 1, 2]}
-        nodeDragThreshold={4}
-        paneClickDistance={4}
-        zoomOnDoubleClick={false}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
         {/* Only the button colors, via xyflow's own CSS variables — the
