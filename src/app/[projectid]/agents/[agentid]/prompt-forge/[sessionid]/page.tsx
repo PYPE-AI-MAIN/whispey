@@ -389,15 +389,15 @@ function CallPreview({ selectedId, loading, turns }: Readonly<{ selectedId: stri
     return (
       <div className="flex flex-col items-center justify-center h-full gap-2 text-center px-6">
         <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center"><Phone className="w-4 h-4 text-gray-300 dark:text-gray-600" /></div>
-        <p className="text-xs text-gray-400 dark:text-gray-600">Select a call to preview</p>
+        <p className="text-xs text-muted-foreground">Select a call to preview</p>
       </div>
     )
   }
   if (loading) {
-    return <div className="flex items-center justify-center h-full gap-2 text-xs text-gray-400 dark:text-gray-600"><Loader2 className="w-4 h-4 animate-spin" />Loading preview…</div>
+    return <div className="flex items-center justify-center h-full gap-2 text-xs text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" />Loading preview…</div>
   }
   if (turns?.length === 0) {
-    return <div className="flex flex-col items-center justify-center h-full gap-2 px-6 text-center"><p className="text-xs text-gray-400 dark:text-gray-600">No transcript data for this call.</p></div>
+    return <div className="flex flex-col items-center justify-center h-full gap-2 px-6 text-center"><p className="text-xs text-muted-foreground">No transcript data for this call.</p></div>
   }
   return (
     <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
@@ -407,7 +407,7 @@ function CallPreview({ selectedId, loading, turns }: Readonly<{ selectedId: stri
         return (
           <div key={turn.id} className="space-y-2">
             {userText && <div className="flex justify-end"><div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 px-3 py-2 text-xs leading-relaxed">{userText}</div></div>}
-            {agentText && <div className="flex justify-start"><div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-800 px-3 py-2 text-xs leading-relaxed">{agentText}</div></div>}
+            {agentText && <div className="flex justify-start"><div className="max-w-[80%] rounded-2xl rounded-tl-sm bg-card text-foreground border border-border px-3 py-2 text-xs leading-relaxed">{agentText}</div></div>}
           </div>
         )
       })}
@@ -464,15 +464,15 @@ function SessionDetailGuard() {
   // session API checks access itself, so there's nothing to wait for.
   if (!isLoading && !canAccessPromptForge) {
     return (
-      <div className="h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-10 max-w-sm w-full text-center shadow-sm mx-4">
-          <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mx-auto mb-4">
-            <Lock className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+      <div className="h-screen bg-muted/50 flex items-center justify-center">
+        <div className="bg-card border border-border rounded-2xl p-10 max-w-sm w-full text-center shadow-sm mx-4">
+          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-4 h-4 text-muted-foreground" />
           </div>
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">Access Restricted</h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-5 leading-relaxed">
+          <h2 className="text-sm font-semibold text-foreground mb-2">Access Restricted</h2>
+          <p className="text-xs text-muted-foreground mb-5 leading-relaxed">
             Prompt Forge requires{' '}
-            <code className="bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded font-mono text-gray-700 dark:text-gray-300">promptforge: true</code>{' '}
+            <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-foreground">promptforge: true</code>{' '}
             in your project permissions.
           </p>
           <Button variant="outline" size="sm" className="w-full h-8 text-xs" onClick={() => router.replace(`/${projectId}/agents/${agentId}`)}>
@@ -583,9 +583,9 @@ function SessionDetailLoader({ projectId, agentId, sessionId }: { projectId: str
 
   if (notFound) {
     return (
-      <div className="h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="h-screen bg-muted/50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">{viewVersion ? `Version ${viewVersion} of this session wasn't found.` : 'Session not found.'}</p>
+          <p className="text-sm text-muted-foreground mb-3">{viewVersion ? `Version ${viewVersion} of this session wasn't found.` : 'Session not found.'}</p>
           <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => router.replace(`/${projectId}/agents/${agentId}/prompt-forge`)}>
             Back to sessions
           </Button>
@@ -650,10 +650,10 @@ function SettingsDialog({ open, onClose, provider, onProviderChange, model, onMo
   const status = availability?.[provider]
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+      <DialogContent className="sm:max-w-md bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100">Model</DialogTitle>
-          <DialogDescription className="text-xs text-gray-500 dark:text-gray-400">
+          <DialogTitle className="text-sm font-semibold text-foreground">Model</DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground">
             The same choices as Agent Config, so test answers match the real agent. Applies to this session only.
           </DialogDescription>
         </DialogHeader>
@@ -668,11 +668,11 @@ function SettingsDialog({ open, onClose, provider, onProviderChange, model, onMo
           />
         </div>
         {status && !status.available && (
-          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-300">
+          <p className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
             {status.reason ?? 'This provider can’t run in Prompt Forge here.'} Pick another provider to test.
           </p>
         )}
-        {readOnly && <p className="text-[11px] text-gray-400 dark:text-gray-500">Read-only — duplicate the session to change its model.</p>}
+        {readOnly && <p className="text-[11px] text-muted-foreground">Read-only — duplicate the session to change its model.</p>}
       </DialogContent>
     </Dialog>
   )
@@ -702,10 +702,10 @@ function ConfigImportDialog({ open, onClose, onApply }: {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+      <DialogContent className="sm:max-w-lg bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100">Load Agent Config</DialogTitle>
-          <DialogDescription className="text-xs text-gray-500 dark:text-gray-400">
+          <DialogTitle className="text-sm font-semibold text-foreground">Load Agent Config</DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground">
             Paste your agent config JSON to fill in the prompt, variables, tools, model and greeting.
           </DialogDescription>
         </DialogHeader>
@@ -714,17 +714,17 @@ function ConfigImportDialog({ open, onClose, onApply }: {
           onChange={e => { setJson(e.target.value); setParsed(null); setError(null) }}
           placeholder={'{\n  "version": "1.0",\n  "config": { ... }\n}'}
           rows={10}
-          className="w-full text-xs font-mono rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-3 resize-none outline-none focus:border-gray-300 dark:focus:border-gray-600 placeholder:text-gray-400 dark:placeholder:text-gray-600 leading-relaxed"
+          className="w-full text-xs font-mono rounded-lg border border-border bg-muted/50 text-foreground p-3 resize-none outline-none focus:border-border placeholder:text-muted-foreground leading-relaxed"
         />
-        {error && <p className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-lg px-3 py-2">{error}</p>}
+        {error && <p className="text-xs text-destructive bg-destructive/10 border border-destructive/30 rounded-lg px-3 py-2">{error}</p>}
         {parsed && (
-          <div className="bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/30 rounded-lg px-4 py-3 text-xs space-y-1">
-            <p className="font-semibold text-green-700 dark:text-green-400 mb-1.5">Config parsed — ready to apply</p>
-            <p className="text-green-600 dark:text-green-500">✓ Prompt: {parsed.prompt.length.toLocaleString()} chars</p>
-            <p className="text-green-600 dark:text-green-500">✓ Variables: {parsed.variables.length} ({parsed.variables.map(v => v.name).join(', ')})</p>
-            <p className="text-green-600 dark:text-green-500">✓ Tools: {parsed.tools.length} ({parsed.tools.map(t => t.name).join(', ')})</p>
-            {parsed.llm.model && <p className="text-green-600 dark:text-green-500">✓ Model: {modelLabelFor(parsed.llm.provider, parsed.llm.model)} · temperature {parsed.llm.temperature}</p>}
-            {parsed.greeting && <p className="text-green-600 dark:text-green-500">✓ Greeting: {GREETING_MODES.find(m => m.value === parsed.greeting!.mode)?.label}</p>}
+          <div className="bg-success/10 border border-success/30 rounded-lg px-4 py-3 text-xs space-y-1">
+            <p className="font-semibold text-success mb-1.5">Config parsed — ready to apply</p>
+            <p className="text-success">✓ Prompt: {parsed.prompt.length.toLocaleString()} chars</p>
+            <p className="text-success">✓ Variables: {parsed.variables.length} ({parsed.variables.map(v => v.name).join(', ')})</p>
+            <p className="text-success">✓ Tools: {parsed.tools.length} ({parsed.tools.map(t => t.name).join(', ')})</p>
+            {parsed.llm.model && <p className="text-success">✓ Model: {modelLabelFor(parsed.llm.provider, parsed.llm.model)} · temperature {parsed.llm.temperature}</p>}
+            {parsed.greeting && <p className="text-success">✓ Greeting: {GREETING_MODES.find(m => m.value === parsed.greeting!.mode)?.label}</p>}
           </div>
         )}
         <div className="flex gap-2 justify-end pt-1">
@@ -804,15 +804,15 @@ function ImportLogDialog({ open, onClose, agentId, onImport, transcriptionFields
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-3xl p-0 gap-0 bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col" style={{ height: '75vh', maxHeight: 640 }}>
-        <DialogHeader className="px-5 pt-5 pb-4 border-b border-gray-100 dark:border-gray-800 shrink-0">
-          <DialogTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100">Import Call Log</DialogTitle>
-          <DialogDescription className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Select a call to preview, then import it to replay with a different prompt.</DialogDescription>
+      <DialogContent className="sm:max-w-3xl p-0 gap-0 bg-card border-border overflow-hidden flex flex-col" style={{ height: '75vh', maxHeight: 640 }}>
+        <DialogHeader className="px-5 pt-5 pb-4 border-b border-border/60 shrink-0">
+          <DialogTitle className="text-sm font-semibold text-foreground">Import Call Log</DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground mt-0.5">Select a call to preview, then import it to replay with a different prompt.</DialogDescription>
         </DialogHeader>
         <div className="flex flex-1 overflow-hidden">
-          <div className="w-72 shrink-0 border-r border-gray-100 dark:border-gray-800 flex flex-col overflow-hidden">
+          <div className="w-72 shrink-0 border-r border-border/60 flex flex-col overflow-hidden">
             {/* The Call Logs filters, plus a quick date range */}
-            <div className="shrink-0 flex items-center gap-1.5 px-3 py-2 border-b border-gray-100 dark:border-gray-800">
+            <div className="shrink-0 flex items-center gap-1.5 px-3 py-2 border-b border-border/60">
               <Select value={range} onValueChange={v => setRange(v as ImportRange)}>
                 <SelectTrigger className="h-8 w-[118px] text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -827,29 +827,29 @@ function ImportLogDialog({ open, onClose, agentId, onImport, transcriptionFields
               />
             </div>
             <div className="flex-1 overflow-y-auto">
-              {loading && <div className="flex items-center justify-center py-12 gap-2 text-xs text-gray-400 dark:text-gray-600"><Loader2 className="w-4 h-4 animate-spin" />Loading…</div>}
-              {!loading && error && <div className="px-4 py-3 text-xs text-red-600 dark:text-red-400">{error}</div>}
+              {loading && <div className="flex items-center justify-center py-12 gap-2 text-xs text-muted-foreground"><Loader2 className="w-4 h-4 animate-spin" />Loading…</div>}
+              {!loading && error && <div className="px-4 py-3 text-xs text-destructive">{error}</div>}
               {!loading && !error && logs.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-12 gap-2 px-4 text-center">
-                  <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center"><Phone className="w-4 h-4 text-gray-400 dark:text-gray-600" /></div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{filters.length || range !== 'all' ? 'No calls match — try a wider range or fewer filters' : 'No completed calls found'}</p>
+                  <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center"><Phone className="w-4 h-4 text-muted-foreground" /></div>
+                  <p className="text-xs text-muted-foreground">{filters.length || range !== 'all' ? 'No calls match — try a wider range or fewer filters' : 'No completed calls found'}</p>
                 </div>
               )}
               {!loading && logs.map(log => (
                 <button key={log.id} onClick={() => handleSelectLog(log)}
-                  className={cn('w-full flex items-start gap-2.5 px-4 py-3 text-left border-b border-gray-100 dark:border-gray-800 last:border-0 transition-colors',
-                    selectedId === log.id ? 'bg-blue-50 dark:bg-blue-900/20' : 'hover:bg-gray-100 dark:hover:bg-gray-800')}
+                  className={cn('w-full flex items-start gap-2.5 px-4 py-3 text-left border-b border-border/60 last:border-0 transition-colors',
+                    selectedId === log.id ? 'bg-primary/10' : 'hover:bg-muted')}
                 >
                   <div className={cn('w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 border',
-                    selectedId === log.id ? 'bg-blue-100 dark:bg-blue-900/40 border-blue-200 dark:border-blue-800' : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700')}>
-                    <Phone className={cn('w-3 h-3', selectedId === log.id ? 'text-blue-500 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500')} />
+                    selectedId === log.id ? 'bg-primary/15 border-primary/30' : 'bg-muted border-border')}>
+                    <Phone className={cn('w-3 h-3', selectedId === log.id ? 'text-primary' : 'text-muted-foreground')} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={cn('text-xs font-medium truncate', selectedId === log.id ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-gray-100')}>
+                    <p className={cn('text-xs font-medium truncate', selectedId === log.id ? 'text-primary' : 'text-foreground')}>
                       {log.customer_number || 'Unknown caller'}
                     </p>
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                      <span className="text-[10px] text-gray-400 dark:text-gray-600">{formatRelative(log.created_at)}</span>
+                      <span className="text-[10px] text-muted-foreground">{formatRelative(log.created_at)}</span>
                       {log.duration_seconds > 0 && <><span className="text-gray-300 dark:text-gray-700">·</span><span className="text-[10px] text-gray-400 dark:text-gray-600">{formatDuration(log.duration_seconds)}</span></>}
                       {log.call_ended_reason && <><span className="text-gray-300 dark:text-gray-700">·</span><span className="text-[10px] text-gray-400 dark:text-gray-600 capitalize">{log.call_ended_reason.replaceAll('_', ' ')}</span></>}
                     </div>
@@ -858,26 +858,26 @@ function ImportLogDialog({ open, onClose, agentId, onImport, transcriptionFields
               ))}
             </div>
             {showPagination && (
-              <div className="shrink-0 flex items-center justify-center gap-0.5 py-2 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-                <Button variant="ghost" size="sm" className="h-9 w-9 sm:h-7 sm:w-7 p-0 text-gray-500 dark:text-gray-400" disabled={page === 1 || loading} onClick={() => goToPage(page - 1)}>
+              <div className="shrink-0 flex items-center justify-center gap-0.5 py-2 border-t border-border/60 bg-card">
+                <Button variant="ghost" size="sm" className="h-9 w-9 sm:h-7 sm:w-7 p-0 text-muted-foreground" disabled={page === 1 || loading} onClick={() => goToPage(page - 1)}>
                   <ChevronLeft className="w-3.5 h-3.5" />
                 </Button>
                 {pageItems.map((item) =>
                   item === '…'
-                    ? <span key="ellipsis" className="w-6 text-center text-xs text-gray-400 dark:text-gray-600 select-none">…</span>
+                    ? <span key="ellipsis" className="w-6 text-center text-xs text-muted-foreground select-none">…</span>
                     : <Button key={item} variant={item === page ? 'default' : 'ghost'} size="sm" className={cn('h-9 w-9 sm:h-7 sm:w-7 p-0 text-xs font-medium', item === page && 'pointer-events-none')} disabled={loading} onClick={() => goToPage(item)}>{item}</Button>
                 )}
-                <Button variant="ghost" size="sm" className="h-9 w-9 sm:h-7 sm:w-7 p-0 text-gray-500 dark:text-gray-400" disabled={!hasNextPage || loading} onClick={() => goToPage(page + 1)}>
+                <Button variant="ghost" size="sm" className="h-9 w-9 sm:h-7 sm:w-7 p-0 text-muted-foreground" disabled={!hasNextPage || loading} onClick={() => goToPage(page + 1)}>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </Button>
               </div>
             )}
           </div>
-          <div className="flex-1 flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-900">
+          <div className="flex-1 flex flex-col overflow-hidden bg-muted/50">
             <CallPreview selectedId={selectedId} loading={previewLoading} turns={previewTurns} />
           </div>
         </div>
-        <div className="shrink-0 flex items-center justify-end gap-2 px-5 py-3.5 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <div className="shrink-0 flex items-center justify-end gap-2 px-5 py-3.5 border-t border-border/60 bg-card">
           <Button variant="outline" size="sm" className="h-8 text-xs" onClick={onClose}>Cancel</Button>
           <Button size="sm" className="h-8 text-xs" onClick={handleImport} disabled={!canImport}>Import this call</Button>
         </div>
@@ -889,9 +889,9 @@ function ImportLogDialog({ open, onClose, agentId, onImport, transcriptionFields
 // ─── Tools sheet ──────────────────────────────────────────────────────────────
 
 const TOOL_TYPE_STYLES: Record<string, string> = {
-  custom_function:  'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800/40',
-  transfer_call:    'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800/40',
-  knowledge_search: 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800/40',
+  custom_function:  'bg-primary/10 text-primary border-primary/30',
+  transfer_call:    'bg-warning/10 text-warning border-warning/30',
+  knowledge_search: 'bg-success/10 text-success border-success/30',
 }
 
 /** The parts of a tool someone can change here — to tell an edited tool from the agent's. */
@@ -900,8 +900,8 @@ const toolShape = (t: AgentTool) => JSON.stringify({
   p: t.parameters, mock: t.mock?.enabled ? t.mock : null,
 })
 
-const FIELD = 'w-full rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1 text-xs text-gray-900 dark:text-gray-100 outline-none focus:border-blue-400 dark:focus:border-blue-500 disabled:opacity-60'
-const FIELD_LABEL = 'text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1'
+const FIELD = 'w-full rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground outline-none focus:border-blue-400 dark:focus:border-blue-500 disabled:opacity-60'
+const FIELD_LABEL = 'text-[10px] font-medium text-muted-foreground mb-1'
 
 // One tool, editable in place (owner only). Changes apply to the next message
 // and are saved with the session; they never touch the agent's real config.
@@ -928,33 +928,33 @@ function ToolCard({ tool, onChange, readOnly, original, onReset }: Readonly<{
   const mock = tool.mock ?? { enabled: false, response: '', success: true }
   const mockInvalid = mock.enabled && mock.response.trim().startsWith('{') && (() => { try { JSON.parse(mock.response); return false } catch { return true } })()
   return (
-    <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <button onClick={() => setExpanded(e => !e)} className="w-full flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-left transition-colors">
-        <Zap className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
+    <div className="rounded-lg border border-border overflow-hidden">
+      <button onClick={() => setExpanded(e => !e)} className="w-full flex items-start gap-3 p-3 bg-muted/50 hover:bg-muted text-left transition-colors">
+        <Zap className="w-3.5 h-3.5 text-warning mt-0.5 shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-0.5">
-            <span className="text-sm font-mono font-medium text-gray-900 dark:text-gray-100">{tool.name}</span>
+            <span className="text-sm font-mono font-medium text-foreground">{tool.name}</span>
             <span className={cn('text-[10px] px-1.5 py-px rounded border font-medium shrink-0', typeStyle)}>{tool.type.replaceAll('_', ' ')}</span>
             {mock.enabled && <span className="text-[10px] px-1.5 py-px rounded border font-medium shrink-0 border-violet-300 text-violet-600 dark:border-violet-700 dark:text-violet-300">mocked</span>}
-            {original && toolShape(original) !== toolShape(tool) && <span className="text-[10px] px-1.5 py-px rounded border font-medium shrink-0 border-amber-300 text-amber-600 dark:border-amber-700 dark:text-amber-300">edited</span>}
+            {original && toolShape(original) !== toolShape(tool) && <span className="text-[10px] px-1.5 py-px rounded border font-medium shrink-0 border-warning/40 text-warning">edited</span>}
           </div>
-          {tool.description && <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">{tool.description}</p>}
+          {tool.description && <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{tool.description}</p>}
         </div>
-        <ChevronDown className={cn('w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0 transition-transform', expanded && 'rotate-180')} />
+        <ChevronDown className={cn('w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0 transition-transform', expanded && 'rotate-180')} />
       </button>
       {expanded && (
-        <div className="border-t border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-800">
+        <div className="border-t border-border divide-y divide-border/60">
           {!readOnly && original && toolShape(original) !== toolShape(tool) && (
             <div className="flex items-center justify-between px-3 py-2 bg-amber-50/60 dark:bg-amber-900/10">
-              <span className="text-[11px] text-amber-700 dark:text-amber-300">Changed from the agent&apos;s version</span>
-              <button className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-300 hover:underline" onClick={onReset}>
+              <span className="text-[11px] text-warning">Changed from the agent&apos;s version</span>
+              <button className="inline-flex items-center gap-1 text-[11px] font-medium text-warning hover:underline" onClick={onReset}>
                 <RotateCcw className="w-3 h-3" />Reset to agent&apos;s version
               </button>
             </div>
           )}
           {/* Mock response — the quickest way to test a flow without the real API */}
           <div className="px-3 py-2.5 space-y-2 bg-violet-50/50 dark:bg-violet-900/10">
-            <label className="flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-300">
+            <label className="flex items-center gap-2 text-xs font-medium text-foreground">
               <input type="checkbox" checked={mock.enabled} disabled={readOnly} onChange={e => set({ mock: { ...mock, enabled: e.target.checked } })} />
               <span>Mock response — reply with this instead of calling the endpoint</span>
             </label>
@@ -969,11 +969,11 @@ function ToolCard({ tool, onChange, readOnly, original, onReset }: Readonly<{
                   className={cn(FIELD, 'font-mono', mockInvalid && 'border-red-400')}
                 />
                 <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400">
+                  <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                     <input type="checkbox" checked={mock.success === false} disabled={readOnly} onChange={e => set({ mock: { ...mock, success: !e.target.checked } })} />
                     <span>Treat as a failed call</span>
                   </label>
-                  {mockInvalid && <span className="text-[11px] text-red-500">Not valid JSON — it will be sent as plain text</span>}
+                  {mockInvalid && <span className="text-[11px] text-destructive">Not valid JSON — it will be sent as plain text</span>}
                 </div>
               </>
             )}
@@ -1018,7 +1018,7 @@ function ToolCard({ tool, onChange, readOnly, original, onReset }: Readonly<{
             <div className="flex items-center justify-between mb-1.5">
               <p className={FIELD_LABEL}>Parameters</p>
               {!readOnly && (
-                <button className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline"
+                <button className="text-[11px] text-primary hover:underline"
                   onClick={() => set({ parameters: [...tool.parameters, { name: '', type: 'string', description: '', required: false }] })}>
                   + Add
                 </button>
@@ -1026,17 +1026,17 @@ function ToolCard({ tool, onChange, readOnly, original, onReset }: Readonly<{
             </div>
             <div className="space-y-2">
               {tool.parameters.map((p, i) => (
-                <div key={paramKey(i)} className="rounded-md border border-gray-100 dark:border-gray-800 p-2 space-y-1.5">
+                <div key={paramKey(i)} className="rounded-md border border-border/60 p-2 space-y-1.5">
                   <div className="flex items-center gap-1.5">
-                    <input value={p.name} disabled={readOnly} placeholder="name" onChange={e => setParam(i, { name: e.target.value })} className={cn(FIELD, 'font-mono text-blue-600 dark:text-blue-400')} />
+                    <input value={p.name} disabled={readOnly} placeholder="name" onChange={e => setParam(i, { name: e.target.value })} className={cn(FIELD, 'font-mono text-primary')} />
                     <select value={p.type} disabled={readOnly} onChange={e => setParam(i, { type: e.target.value })} className={cn(FIELD, 'w-24 shrink-0')}>
                       {['string', 'number', 'integer', 'boolean'].map(t => <option key={t}>{t}</option>)}
                     </select>
-                    <label className="flex items-center gap-1 text-[11px] text-gray-500 shrink-0">
+                    <label className="flex items-center gap-1 text-[11px] text-muted-foreground shrink-0">
                       <input type="checkbox" checked={p.required} disabled={readOnly} onChange={e => setParam(i, { required: e.target.checked })} />req
                     </label>
                     {!readOnly && (
-                      <button aria-label="Remove parameter" className="text-gray-400 hover:text-red-500 shrink-0" onClick={() => removeParam(i)}>
+                      <button aria-label="Remove parameter" className="text-muted-foreground hover:text-destructive shrink-0" onClick={() => removeParam(i)}>
                         <X className="w-3.5 h-3.5" />
                       </button>
                     )}
@@ -1066,12 +1066,12 @@ function ToolsSheet({ open, onClose, tools, onChange, readOnly, agentTools }: Re
   const reset = (next: AgentTool[]) => { onChange(next); setResetCount(n => n + 1) }
   return (
     <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent className="w-[520px] sm:max-w-[520px] bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 overflow-y-auto">
+      <SheetContent className="w-[520px] sm:max-w-[520px] bg-card border-border overflow-y-auto">
         <SheetHeader className="pb-4">
-          <SheetTitle className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <Zap className="w-4 h-4 text-amber-500" />Tools ({tools.length})
+          <SheetTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Zap className="w-4 h-4 text-warning" />Tools ({tools.length})
           </SheetTitle>
-          <SheetDescription className="text-xs text-gray-500 dark:text-gray-400">
+          <SheetDescription className="text-xs text-muted-foreground">
             {readOnly
               ? 'Read-only. Custom functions call their endpoints (or their mock response); transfer and knowledge tools are mocked.'
               : 'Edit anything here to test — changes apply to the next message and save with this session, not the agent. Use “Mock response” to test a reply without calling the real API.'}
@@ -1079,9 +1079,9 @@ function ToolsSheet({ open, onClose, tools, onChange, readOnly, agentTools }: Re
         </SheetHeader>
         <div className="space-y-2 mt-2">
           {!readOnly && anyEdited && (
-            <div className="flex items-center justify-between rounded-lg border border-amber-200 dark:border-amber-800/40 bg-amber-50/60 dark:bg-amber-900/10 px-3 py-2">
-              <span className="text-xs text-amber-700 dark:text-amber-300">These tools differ from the agent&apos;s.</span>
-              <button className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-300 hover:underline"
+            <div className="flex items-center justify-between rounded-lg border border-warning/30 bg-amber-50/60 dark:bg-amber-900/10 px-3 py-2">
+              <span className="text-xs text-warning">These tools differ from the agent&apos;s.</span>
+              <button className="inline-flex items-center gap-1 text-xs font-medium text-warning hover:underline"
                 onClick={() => reset((agentTools ?? []).map(a => ({ ...a, id: crypto.randomUUID() })))}>
                 <RotateCcw className="w-3 h-3" />Reset all to agent&apos;s tools
               </button>
@@ -1109,39 +1109,39 @@ function ToolCallBlock({ tc }: { tc: ToolCall }) {
   const [expanded, setExpanded] = useState(false)
   if (tc.pending) {
     return (
-      <div className="mt-1.5 rounded-lg border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/10 text-xs overflow-hidden">
+      <div className="mt-1.5 rounded-lg border border-warning/30 bg-warning/10 text-xs overflow-hidden">
         <div className="flex items-center gap-2 px-3 py-1.5">
-          <Loader2 className="w-3 h-3 text-amber-500 animate-spin shrink-0" />
-          <span className="font-mono font-medium text-amber-700 dark:text-amber-400 flex-1 truncate">{tc.name}</span>
-          <span className="text-[10px] text-amber-500 dark:text-amber-600">calling…</span>
+          <Loader2 className="w-3 h-3 text-warning animate-spin shrink-0" />
+          <span className="font-mono font-medium text-warning flex-1 truncate">{tc.name}</span>
+          <span className="text-[10px] text-warning">calling…</span>
         </div>
       </div>
     )
   }
   const ok = tc.success !== false
   return (
-    <div className="mt-1.5 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-xs bg-white dark:bg-gray-900">
-      <button onClick={() => setExpanded(e => !e)} className="w-full flex items-center gap-2 px-3 py-1.5 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-left transition-colors">
-        <Zap className="w-3 h-3 text-amber-500 shrink-0" />
-        <span className="font-mono font-medium text-gray-700 dark:text-gray-300 flex-1 truncate">{tc.name}</span>
-        {tc.duration_ms != null && <span className="text-[10px] text-gray-400 tabular-nums shrink-0">{tc.duration_ms}ms</span>}
+    <div className="mt-1.5 rounded-lg border border-border overflow-hidden text-xs bg-card">
+      <button onClick={() => setExpanded(e => !e)} className="w-full flex items-center gap-2 px-3 py-1.5 bg-muted/50 hover:bg-muted text-left transition-colors">
+        <Zap className="w-3 h-3 text-warning shrink-0" />
+        <span className="font-mono font-medium text-foreground flex-1 truncate">{tc.name}</span>
+        {tc.duration_ms != null && <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">{tc.duration_ms}ms</span>}
         <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', ok ? 'bg-green-500' : 'bg-red-500')} />
-        <ChevronDown className={cn('w-3 h-3 text-gray-400 transition-transform shrink-0', expanded && 'rotate-180')} />
+        <ChevronDown className={cn('w-3 h-3 text-muted-foreground transition-transform shrink-0', expanded && 'rotate-180')} />
       </button>
       {expanded && (
-        <div className="border-t border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-800">
+        <div className="border-t border-border divide-y divide-border/60">
           {tc.arguments != null && (
             <div className="px-3 py-2">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5">Arguments</p>
-              <pre className="text-[11px] text-gray-700 dark:text-gray-300 font-mono whitespace-pre-wrap break-all leading-relaxed max-h-40 overflow-auto">
+              <p className="text-[10px] font-medium text-muted-foreground mb-1.5">Arguments</p>
+              <pre className="text-[11px] text-foreground font-mono whitespace-pre-wrap break-all leading-relaxed max-h-40 overflow-auto">
                 {typeof tc.arguments === 'string' ? tc.arguments : JSON.stringify(tc.arguments, null, 2)}
               </pre>
             </div>
           )}
           {tc.result != null && (
             <div className="px-3 py-2">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5">Result</p>
-              <pre className="text-[11px] text-gray-700 dark:text-gray-300 font-mono whitespace-pre-wrap break-all leading-relaxed max-h-40 overflow-auto">
+              <p className="text-[10px] font-medium text-muted-foreground mb-1.5">Result</p>
+              <pre className="text-[11px] text-foreground font-mono whitespace-pre-wrap break-all leading-relaxed max-h-40 overflow-auto">
                 {typeof tc.result === 'string' ? tc.result : JSON.stringify(tc.result, null, 2)}
               </pre>
             </div>
@@ -1159,13 +1159,13 @@ function VariablePanel({ variables, onChange, disabled, autoFilled = [] }: Reado
   const [open, setOpen] = useState(false)
   if (variables.length === 0 && autoFilled.length === 0) return null
   return (
-    <div className="shrink-0 border-t border-gray-200 dark:border-gray-800">
-      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-4 h-8 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-        <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-400 dark:bg-blue-500 shrink-0" />
+    <div className="shrink-0 border-t border-border">
+      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-4 h-8 hover:bg-muted transition-colors">
+        <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
           Variables ({variables.length})
         </span>
-        <ChevronDown className={cn('w-3 h-3 text-gray-400 transition-transform', open && 'rotate-180')} />
+        <ChevronDown className={cn('w-3 h-3 text-muted-foreground transition-transform', open && 'rotate-180')} />
       </button>
       {open && (
         <div className="px-4 pb-3 pt-1 max-h-52 overflow-y-auto space-y-1.5">
@@ -1173,7 +1173,7 @@ function VariablePanel({ variables, onChange, disabled, autoFilled = [] }: Reado
             <div key={v.name} className="flex items-center gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="text-[11px] font-mono text-blue-600 dark:text-blue-400 w-36 shrink-0 truncate cursor-default">{`{{${v.name}}}`}</span>
+                  <span className="text-[11px] font-mono text-primary w-36 shrink-0 truncate cursor-default">{`{{${v.name}}}`}</span>
                 </TooltipTrigger>
                 {v.description && <TooltipContent side="left" className="text-xs max-w-[200px]">{v.description}</TooltipContent>}
               </Tooltip>
@@ -1182,14 +1182,14 @@ function VariablePanel({ variables, onChange, disabled, autoFilled = [] }: Reado
                 onChange={e => { const updated = [...variables]; updated[i] = { ...v, value: e.target.value }; onChange(updated) }}
                 placeholder={v.description || 'value…'}
                 disabled={disabled}
-                className="flex-1 h-6 text-xs px-2 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-600 outline-none focus:border-blue-400 dark:focus:border-blue-500 transition-colors"
+                className="flex-1 h-6 text-xs px-2 rounded border border-border bg-card text-foreground placeholder:text-muted-foreground outline-none focus:border-blue-400 dark:focus:border-blue-500 transition-colors"
               />
             </div>
           ))}
           {autoFilled.length > 0 && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <p className="pt-1 text-[10.5px] leading-relaxed text-gray-400 dark:text-gray-500 cursor-default">
+                <p className="pt-1 text-[10.5px] leading-relaxed text-muted-foreground cursor-default">
                   Filled in automatically: <span className="font-mono">{autoFilled.map(n => `{{${n}}}`).join(', ')}</span>
                 </p>
               </TooltipTrigger>
@@ -1210,38 +1210,38 @@ function GreetingPanel({ greeting, onChange, disabled }: Readonly<{ greeting: Gr
   const [open, setOpen] = useState(true)
   const current = GREETING_MODES.find(m => m.value === greeting.mode)
   return (
-    <div className="shrink-0 border-t border-gray-200 dark:border-gray-800">
-      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-4 h-8 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-        <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+    <div className="shrink-0 border-t border-border">
+      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-4 h-8 hover:bg-muted transition-colors">
+        <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5">
           <MessageSquareText className="w-3 h-3" />
-          Greeting · <span className="text-gray-400 dark:text-gray-500 font-normal">{current?.label}</span>
+          Greeting · <span className="text-muted-foreground font-normal">{current?.label}</span>
         </span>
-        <ChevronDown className={cn('w-3 h-3 text-gray-400 transition-transform', open && 'rotate-180')} />
+        <ChevronDown className={cn('w-3 h-3 text-muted-foreground transition-transform', open && 'rotate-180')} />
       </button>
       {open && (
         <div className="px-4 pb-3 pt-1 space-y-2">
           <Select value={greeting.mode} onValueChange={v => onChange({ ...greeting, mode: v as GreetingMode })} disabled={disabled}>
             {/* the trigger shows just the mode; its explanation lives in the menu */}
-            <SelectTrigger className="h-7 w-full text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"><SelectValue>{current?.label}</SelectValue></SelectTrigger>
+            <SelectTrigger className="h-7 w-full text-xs bg-card border-border"><SelectValue>{current?.label}</SelectValue></SelectTrigger>
             <SelectContent>
               {GREETING_MODES.map(m => (
                 <SelectItem key={m.value} value={m.value} className="text-xs">
                   <span className="flex flex-col">
                     <span>{m.label}</span>
-                    <span className="text-[11px] text-gray-400">{m.hint}</span>
+                    <span className="text-[11px] text-muted-foreground">{m.hint}</span>
                   </span>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
           {greeting.mode === 'assistant_speaks_first' && (
-            <textarea
+            <VariableTextarea
               value={greeting.text}
-              onChange={e => onChange({ ...greeting, text: e.target.value })}
+              onChange={text => onChange({ ...greeting, text })}
               disabled={disabled}
-              rows={2}
               placeholder="Hello! How can I help you today?  ({{variables}} work here too)"
-              className="w-full resize-none rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1.5 text-xs text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-600 outline-none focus:border-blue-400 dark:focus:border-blue-500"
+              className="rounded border-border"
+              style={{ height: '72px', minHeight: '72px' }}
             />
           )}
         </div>
@@ -1276,13 +1276,13 @@ function SessionNameEditor({ name, onSave }: { name: string; onSave: (v: string)
         onChange={e => setValue(e.target.value)}
         onBlur={commit}
         onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setEditing(false); setValue(name) } }}
-        className="text-sm font-medium bg-white dark:bg-gray-800 border border-blue-400 dark:border-blue-500 rounded px-2 py-0.5 text-gray-900 dark:text-gray-100 outline-none min-w-0 max-w-[200px]"
+        className="text-sm font-medium bg-card border border-blue-400 dark:border-blue-500 rounded px-2 py-0.5 text-foreground outline-none min-w-0 max-w-[200px]"
       />
     )
   }
 
   return (
-    <button onClick={startEdit} className="text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors truncate max-w-[200px]" title="Click to rename">
+    <button onClick={startEdit} className="text-sm font-medium text-foreground hover:text-primary transition-colors truncate max-w-[200px]" title="Click to rename">
       {name || 'Untitled session'}
     </button>
   )
@@ -1346,7 +1346,7 @@ function HeaderAction({ viewingVersion, canEdit, readOnly, onRestore, onOpenDraf
   if (viewingVersion && canEdit) {
     return (
       <>
-        <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs px-2 ml-1 text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200" onClick={onRestore}>
+        <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs px-2 ml-1 text-muted-foreground hover:text-foreground" onClick={onRestore}>
           <RotateCcw className="w-3 h-3" />Restore into draft
         </Button>
         <Button size="sm" className="h-7 gap-1.5 text-xs px-3 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300" onClick={onOpenDraft}>
@@ -1373,10 +1373,10 @@ function HeaderAction({ viewingVersion, canEdit, readOnly, onRestore, onOpenDraf
 /** Auto-save status of the draft (versions are separate — that's the Save button). */
 function DraftStatus({ state, onRetry }: Readonly<{ state: DraftState; onRetry: () => void }>) {
   if (state === 'error') {
-    return <button type="button" onClick={onRetry} className="text-[11px] text-red-500 hover:underline mr-1">{DRAFT_LABELS.error}</button>
+    return <button type="button" onClick={onRetry} className="text-[11px] text-destructive hover:underline mr-1">{DRAFT_LABELS.error}</button>
   }
   return (
-    <span className="text-[11px] text-gray-400 dark:text-gray-500 mr-1 flex items-center gap-1" aria-live="polite">
+    <span className="text-[11px] text-muted-foreground mr-1 flex items-center gap-1" aria-live="polite">
       {state === 'saving' && <Loader2 className="w-3 h-3 animate-spin" />}
       {state === 'saved' && <Check className="w-3 h-3" />}
       {DRAFT_LABELS[state]}
@@ -1424,7 +1424,7 @@ function VersionsMenu({ versions, viewingVersion, onOpen }: Readonly<{ versions:
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 px-2" disabled={versions.length === 0}>
+        <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted px-2" disabled={versions.length === 0}>
           <History className="w-3 h-3" /><span>{versionsLabel(versions.length)}</span>
         </Button>
       </DropdownMenuTrigger>
@@ -1437,7 +1437,7 @@ function VersionsMenu({ versions, viewingVersion, onOpen }: Readonly<{ versions:
         {versions.map(v => (
           <DropdownMenuItem key={v.id} className="text-xs" onClick={() => onOpen(v.version)}>
             <span className="font-mono w-8 shrink-0">v{v.version}</span>
-            <span className="flex-1 min-w-0 truncate text-gray-500 dark:text-gray-400">{formatRelative(v.created_at)}{v.created_by_email ? ` · ${v.created_by_email}` : ''}</span>
+            <span className="flex-1 min-w-0 truncate text-muted-foreground">{formatRelative(v.created_at)}{v.created_by_email ? ` · ${v.created_by_email}` : ''}</span>
             {viewingVersion === v.version && <Check className="w-3 h-3" />}
           </DropdownMenuItem>
         ))}
@@ -1454,8 +1454,8 @@ function ShareButton({ copied, version, onShare }: Readonly<{ copied: boolean; v
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 px-2" onClick={onShare}>
-          {copied ? <Check className="w-3 h-3 text-green-500" /> : <Link2 className="w-3 h-3" />}<span>{copied ? 'Copied' : 'Share'}</span>
+        <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted px-2" onClick={onShare}>
+          {copied ? <Check className="w-3 h-3 text-success" /> : <Link2 className="w-3 h-3" />}<span>{copied ? 'Copied' : 'Share'}</span>
         </Button>
       </TooltipTrigger>
       <TooltipContent>{hint}</TooltipContent>
@@ -1466,14 +1466,14 @@ function ShareButton({ copied, version, onShare }: Readonly<{ copied: boolean; v
 /** Shown over the chat after a call log is imported. */
 function ImportedBanner({ meta, onClose }: Readonly<{ meta: ImportedMeta; onClose: () => void }>) {
   return (
-    <div className="shrink-0 flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800/30">
-      <Phone className="w-3 h-3 text-blue-500 dark:text-blue-400 shrink-0" />
-      <span className="text-xs text-blue-700 dark:text-blue-300 flex-1 min-w-0 truncate">
+    <div className="shrink-0 flex items-center gap-2 px-4 py-2 bg-primary/10 border-b border-primary/20">
+      <Phone className="w-3 h-3 text-primary shrink-0" />
+      <span className="text-xs text-primary flex-1 min-w-0 truncate">
         <span className="font-medium">{meta.phone}</span>
-        <span className="text-blue-500 dark:text-blue-400 ml-1.5">· {meta.date}{meta.duration && ` · ${meta.duration}`}</span>
+        <span className="text-primary ml-1.5">· {meta.date}{meta.duration && ` · ${meta.duration}`}</span>
       </span>
       <span className="text-[10px] text-blue-400 dark:text-blue-600 shrink-0">Imported · edit prompt &amp; replay</span>
-      <button onClick={onClose} aria-label="Dismiss" className="w-4 h-4 flex items-center justify-center rounded text-blue-400 hover:text-blue-700 hover:bg-blue-100 dark:hover:bg-blue-800/30 transition-colors"><X className="w-3 h-3" /></button>
+      <button onClick={onClose} aria-label="Dismiss" className="w-4 h-4 flex items-center justify-center rounded text-blue-400 hover:text-primary hover:bg-primary/15 transition-colors"><X className="w-3 h-3" /></button>
     </div>
   )
 }
@@ -1488,15 +1488,15 @@ function MessageComposer({ inputRef, value, onChange, onSend, busy, blockedReaso
 }>) {
   const canSend = !!value.trim() && !busy
   return (
-    <div className="shrink-0 px-4 pb-4 pt-3 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+    <div className="shrink-0 px-4 pb-4 pt-3 border-t border-border/60 bg-card">
       {blockedReason && (
-        <p className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-300">
+        <p className="mb-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-1.5 text-xs text-warning">
           {blockedReason} Choose another in the model settings to test.
         </p>
       )}
       {/* The whole box is the text field's hit area: a <label> around the
           textarea focuses it on a click anywhere outside the send button. */}
-      <label className="flex items-center gap-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2.5 focus-within:border-gray-300 dark:focus-within:border-gray-600 focus-within:ring-1 focus-within:ring-gray-200 dark:focus-within:ring-gray-700 transition-all cursor-text">
+      <label className="flex items-center gap-2 rounded-xl border border-border bg-muted/50 px-3 py-2.5 focus-within:border-border focus-within:ring-1 focus-within:ring-gray-200 dark:focus-within:ring-gray-700 transition-all cursor-text">
         <span className="sr-only">Message</span>
         <textarea
           ref={inputRef}
@@ -1509,7 +1509,7 @@ function MessageComposer({ inputRef, value, onChange, onSend, busy, blockedReaso
           }}
           placeholder="Message…  (press / to jump here)"
           rows={1}
-          className="flex-1 resize-none bg-gray-50 dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-600 outline-none border-none leading-5 max-h-28 overflow-y-auto caret-gray-900 dark:caret-gray-100 py-0"
+          className="flex-1 resize-none bg-muted/50 text-sm text-foreground placeholder:text-muted-foreground outline-none border-none leading-5 max-h-28 overflow-y-auto caret-gray-900 dark:caret-gray-100 py-0"
         />
         <div className="flex items-center gap-1.5 shrink-0">
           <button
@@ -1517,14 +1517,14 @@ function MessageComposer({ inputRef, value, onChange, onSend, busy, blockedReaso
             onClick={e => { e.stopPropagation(); onSend() }}
             disabled={!canSend}
             className={cn('w-7 h-7 flex items-center justify-center rounded-lg transition-colors',
-              canSend ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300' : 'bg-gray-100 dark:bg-gray-700 text-gray-300 dark:text-gray-600 cursor-not-allowed')}
+              canSend ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300' : 'bg-muted text-gray-300 cursor-not-allowed')}
           >
             <Send className="w-3.5 h-3.5" />
           </button>
         </div>
       </label>
       <div className="flex items-center justify-between mt-1.5 px-1">
-        <span className="text-[10px] text-gray-400 dark:text-gray-600 flex items-center gap-1"><CornerDownLeft className="w-2.5 h-2.5" />Enter to send · Shift+Enter for new line</span>
+        <span className="text-[10px] text-muted-foreground flex items-center gap-1"><CornerDownLeft className="w-2.5 h-2.5" />Enter to send · Shift+Enter for new line</span>
         <AskPiSwitch on={false} onChange={on => { if (on) onAskPi() }} />
       </div>
     </div>
@@ -1912,27 +1912,27 @@ function ForgeUI({
 
   return (
     <TooltipProvider delayDuration={100}>
-      <div className="h-screen flex flex-col bg-white dark:bg-gray-900 overflow-hidden">
+      <div className="h-screen flex flex-col bg-card overflow-hidden">
 
         {/* ── Topbar ── */}
-        <header className="h-11 shrink-0 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+        <header className="h-11 shrink-0 flex items-center justify-between px-4 border-b border-border bg-card">
           <div className="flex items-center gap-2 min-w-0">
             <Tooltip>
               <TooltipTrigger asChild>
-                <button onClick={() => router.push(`/${projectId}/agents/${agentId}/prompt-forge`)} className="w-6 h-6 flex items-center justify-center rounded text-gray-400 dark:text-gray-600 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors shrink-0">
+                <button onClick={() => router.push(`/${projectId}/agents/${agentId}/prompt-forge`)} className="w-6 h-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0">
                   <ChevronLeft className="w-4 h-4" />
                 </button>
               </TooltipTrigger>
               <TooltipContent>Back to sessions</TooltipContent>
             </Tooltip>
-            <div className="w-6 h-6 rounded-md bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
-              <FlaskConical className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+            <div className="w-6 h-6 rounded-md bg-primary/15 flex items-center justify-center shrink-0">
+              <FlaskConical className="w-3.5 h-3.5 text-primary" />
             </div>
-            <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 shrink-0">Prompt Forge</span>
+            <span className="text-sm font-semibold text-foreground shrink-0">Prompt Forge</span>
             {agentName && <><ChevronRight className="w-3.5 h-3.5 text-gray-300 dark:text-gray-700 shrink-0" /><span className="text-sm text-gray-400 dark:text-gray-500 shrink-0 hidden sm:block truncate max-w-[120px]">{agentName}</span></>}
             <ChevronRight className="w-3.5 h-3.5 text-gray-300 dark:text-gray-700 shrink-0" />
             {readOnly
-              ? <span className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate max-w-[200px]">{sessionName}</span>
+              ? <span className="text-sm font-medium text-foreground truncate max-w-[200px]">{sessionName}</span>
               : <SessionNameEditor name={sessionName} onSave={handleNameSave} />}
             {viewingVersion && <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-medium rounded-full shrink-0">v{viewingVersion.version}</Badge>}
             <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 font-medium rounded-full shrink-0">Beta</Badge>
@@ -1942,7 +1942,7 @@ function ForgeUI({
             {backendDown && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-xs mr-1 cursor-default">
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-warning/10 text-warning text-xs mr-1 cursor-default">
                     <WifiOff className="w-3 h-3" /><span>Backend offline</span>
                   </div>
                 </TooltipTrigger>
@@ -1952,7 +1952,7 @@ function ForgeUI({
             {!readOnly && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 px-2" onClick={() => setConfigImportOpen(true)}>
+                  <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted px-2" onClick={() => setConfigImportOpen(true)}>
                     <Code2 className="w-3 h-3" /><span>Load config</span>
                   </Button>
                 </TooltipTrigger>
@@ -1962,7 +1962,7 @@ function ForgeUI({
             {tools.length > 0 && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 px-2" onClick={() => setToolsOpen(true)}>
+                  <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted px-2" onClick={() => setToolsOpen(true)}>
                     <Zap className="w-3 h-3" /><span>{tools.length} tools</span>
                   </Button>
                 </TooltipTrigger>
@@ -1971,7 +1971,7 @@ function ForgeUI({
             )}
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 px-2" onClick={() => setImportOpen(true)} disabled={isStreaming}>
+                <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted px-2" onClick={() => setImportOpen(true)} disabled={isStreaming}>
                   <Download className="w-3 h-3" /><span>Import log</span>
                 </Button>
               </TooltipTrigger>
@@ -1979,7 +1979,7 @@ function ForgeUI({
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 px-2"
+                <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted px-2"
                   onClick={startConversation} disabled={!conversationStarted || isStreaming}>
                   <RotateCcw className="w-3 h-3" /><span>Restart</span>
                 </Button>
@@ -2002,7 +2002,7 @@ function ForgeUI({
 
         {/* Read-only: a saved version, or someone else's session */}
         {readOnly && (
-          <div className="shrink-0 flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/15 border-b border-amber-100 dark:border-amber-800/30 text-xs text-amber-800 dark:text-amber-300">
+          <div className="shrink-0 flex items-center gap-2 px-4 py-2 bg-warning/10 border-b border-warning/20 text-xs text-warning">
             <Eye className="w-3.5 h-3.5 shrink-0" />
             <span className="flex-1 min-w-0 truncate">
               <ReadOnlyNotice viewingVersion={viewingVersion} canEdit={canEdit} ownerEmail={ownerEmail} />
@@ -2013,7 +2013,7 @@ function ForgeUI({
           </div>
         )}
         {saveError && (
-          <div className="shrink-0 flex items-center gap-2 px-4 py-1.5 bg-red-50 dark:bg-red-900/15 border-b border-red-100 dark:border-red-800/30 text-xs text-red-700 dark:text-red-300">
+          <div className="shrink-0 flex items-center gap-2 px-4 py-1.5 bg-destructive/10 border-b border-destructive/20 text-xs text-destructive">
             <span className="flex-1">{saveError}</span>
             <button onClick={() => setSaveError(null)}><X className="w-3 h-3" /></button>
           </div>
@@ -2024,20 +2024,20 @@ function ForgeUI({
 
             {/* Left: Prompt editor + variables */}
             <div className="flex flex-col min-w-0" style={{ width: `${leftPct}%` }}>
-              <div className="h-9 shrink-0 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">System prompt</span>
+              <div className="h-9 shrink-0 flex items-center justify-between px-4 border-b border-border bg-card">
+                <span className="text-xs font-medium text-muted-foreground">System prompt</span>
                 <div className="flex items-center gap-1">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <button onClick={() => setSettingsOpen(true)} className="flex items-center gap-1.5 h-6 px-1.5 rounded text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                      <button onClick={() => setSettingsOpen(true)} className="flex items-center gap-1.5 h-6 px-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                         <Settings2 className="w-3.5 h-3.5 shrink-0" />
                         <span className="text-[11px] font-mono">{modelLabel}</span>
                       </button>
                     </TooltipTrigger>
                     <TooltipContent>Model settings</TooltipContent>
                   </Tooltip>
-                  <button onClick={handleCopy} className="flex items-center gap-1 text-[11px] text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors rounded px-1.5 py-0.5 hover:bg-gray-100 dark:hover:bg-gray-800">
-                    {copied ? <><Check className="w-3 h-3 text-green-500" /><span className="text-green-500">Copied</span></> : <><Copy className="w-3 h-3" />Copy</>}
+                  <button onClick={handleCopy} className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors rounded px-1.5 py-0.5 hover:bg-muted">
+                    {copied ? <><Check className="w-3 h-3 text-success" /><span className="text-success">Copied</span></> : <><Copy className="w-3 h-3" />Copy</>}
                   </button>
                 </div>
               </div>
@@ -2053,9 +2053,9 @@ function ForgeUI({
               </div>
               <VariablePanel variables={shownVariables} onChange={setVariables} disabled={readOnly} autoFilled={autoFilledVariables} />
               <GreetingPanel greeting={greeting} onChange={setGreeting} disabled={readOnly} />
-              <div className="h-7 shrink-0 flex items-center justify-between px-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-                <span className="text-[11px] text-gray-400 dark:text-gray-600 tabular-nums">{systemPrompt.length.toLocaleString()} chars</span>
-                <span className="text-[11px] text-gray-400 dark:text-gray-600 tabular-nums">{systemPrompt.split(/\s+/).filter(Boolean).length.toLocaleString()} words</span>
+              <div className="h-7 shrink-0 flex items-center justify-between px-4 border-t border-border bg-card">
+                <span className="text-[11px] text-muted-foreground tabular-nums">{systemPrompt.length.toLocaleString()} chars</span>
+                <span className="text-[11px] text-muted-foreground tabular-nums">{systemPrompt.split(/\s+/).filter(Boolean).length.toLocaleString()} words</span>
               </div>
             </div>
 
@@ -2068,13 +2068,13 @@ function ForgeUI({
               title="Drag to resize · double-click to reset"
               onPointerDown={startResize}
               onDoubleClick={() => setLeftPct(DEFAULT_LEFT_PCT)}
-              className="group relative w-px shrink-0 cursor-col-resize bg-gray-200 dark:bg-gray-800"
+              className="group relative w-px shrink-0 cursor-col-resize bg-muted"
             >
               <span className="absolute inset-y-0 -left-1.5 -right-1.5 group-hover:bg-blue-400/20 group-active:bg-blue-400/30" />
             </button>
 
             {/* Right: Chat */}
-            <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-gray-900">
+            <div className="flex-1 flex flex-col overflow-hidden bg-card">
               {importedFrom && <ImportedBanner meta={importedFrom} onClose={() => setImportedFrom(null)} />}
               <div className="flex-1 overflow-y-auto">
                 {messages.length === 0
@@ -2132,10 +2132,10 @@ function AskPiSwitch({ on, onChange }: Readonly<{ on: boolean; onChange: (on: bo
       onClick={() => onChange(!on)}
       title={on ? 'Back to testing the agent' : 'Ask Pi about this prompt and test'}
       className={cn('inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors',
-        on ? 'border-violet-400 bg-violet-500 text-white' : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-violet-300 hover:text-violet-600 dark:hover:text-violet-300')}
+        on ? 'border-violet-400 bg-violet-500 text-white' : 'border-border text-muted-foreground hover:border-violet-300 hover:text-violet-600 dark:hover:text-violet-300')}
     >
       <span className={cn('relative inline-block h-3 w-5 rounded-full transition-colors', on ? 'bg-white/40' : 'bg-gray-300 dark:bg-gray-600')}>
-        <span className={cn('absolute top-0.5 h-2 w-2 rounded-full bg-white transition-all', on ? 'left-2.5' : 'left-0.5')} />
+        <span className={cn('absolute top-0.5 h-2 w-2 rounded-full bg-card transition-all', on ? 'left-2.5' : 'left-0.5')} />
       </span>
       <PiGlyph className="w-3 h-3" />Ask Pi
     </button>
@@ -2163,8 +2163,8 @@ const PI_MARKDOWN_COMPONENTS: Components = {
   p: ({ children }) => <p className="my-1">{children}</p>,
   ul: ({ children }) => <ul className="my-1 list-disc pl-5">{children}</ul>,
   ol: ({ children }) => <ol className="my-1 list-decimal pl-5">{children}</ol>,
-  code: ({ children }) => <code className="rounded bg-gray-100 dark:bg-gray-800 px-1 font-mono text-[12px]">{children}</code>,
-  pre: ({ children }) => <pre className="my-1.5 whitespace-pre-wrap rounded-md bg-gray-100 dark:bg-gray-800 p-2 text-[12px]">{children}</pre>,
+  code: ({ children }) => <code className="rounded bg-muted px-1 font-mono text-[12px]">{children}</code>,
+  pre: ({ children }) => <pre className="my-1.5 whitespace-pre-wrap rounded-md bg-muted p-2 text-[12px]">{children}</pre>,
 }
 
 // The message box, switched to Ask Pi: a taller box with the Pi conversation
@@ -2187,11 +2187,11 @@ function ForgePiPanel({ pi, inputRef, onExit }: Readonly<{
     <div className="shrink-0 flex flex-col border-t-2 border-violet-400/60 bg-violet-50/40 dark:bg-violet-950/20" style={{ height: '46%', minHeight: 260 }}>
       <div className="shrink-0 flex items-center gap-2 px-4 py-2">
         <span className="grid h-5 w-5 place-items-center rounded-full bg-violet-500 text-white"><PiGlyph className="w-3 h-3" /></span>
-        <span className="text-xs font-semibold text-gray-800 dark:text-gray-200">Ask Pi</span>
-        <span className="text-[11px] text-gray-500 dark:text-gray-400 truncate">knows this prompt, model, greeting, tools and the test chat</span>
+        <span className="text-xs font-semibold text-foreground">Ask Pi</span>
+        <span className="text-[11px] text-muted-foreground truncate">knows this prompt, model, greeting, tools and the test chat</span>
         <span className="flex-1" />
         {pi.messages.length > 0 && (
-          <button onClick={pi.reset} className="text-[11px] text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 inline-flex items-center gap-1"><RotateCcw className="w-3 h-3" />New chat</button>
+          <button onClick={pi.reset} className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1"><RotateCcw className="w-3 h-3" />New chat</button>
         )}
         <AskPiSwitch on onChange={on => { if (!on) onExit() }} />
       </div>
@@ -2199,7 +2199,7 @@ function ForgePiPanel({ pi, inputRef, onExit }: Readonly<{
         {pi.messages.length === 0 ? (
           <div className="flex flex-wrap gap-1.5 pt-1">
             {PI_FORGE_SUGGESTIONS.map(q => (
-              <button key={q} onClick={() => send(q)} className="rounded-full border border-violet-200 dark:border-violet-800/60 bg-white dark:bg-gray-900 px-2.5 py-1 text-xs text-gray-600 dark:text-gray-300 hover:border-violet-400">
+              <button key={q} onClick={() => send(q)} className="rounded-full border border-violet-200 dark:border-violet-800/60 bg-card px-2.5 py-1 text-xs text-muted-foreground hover:border-violet-400">
                 {q}
               </button>
             ))}
@@ -2207,19 +2207,19 @@ function ForgePiPanel({ pi, inputRef, onExit }: Readonly<{
         ) : pi.messages.map(m => m.role === 'user' ? (
           <div key={m.id} className="ml-auto max-w-[80%] w-fit rounded-2xl rounded-tr-sm bg-violet-500 text-white px-3 py-1.5 text-sm">{m.content}</div>
         ) : (
-          <div key={m.id} className="max-w-[92%] text-sm text-gray-800 dark:text-gray-200 leading-relaxed">
+          <div key={m.id} className="max-w-[92%] text-sm text-foreground leading-relaxed">
             {(() => {
               const step = [...(m.toolCalls ?? [])].reverse().find(tc => PI_TOOL_STEPS[tc.name])
-              return step ? <p className="mb-1 text-[11px] text-gray-500">{PI_TOOL_STEPS[step.name]}{step.pending ? '…' : ''}</p> : null
+              return step ? <p className="mb-1 text-[11px] text-muted-foreground">{PI_TOOL_STEPS[step.name]}{step.pending ? '…' : ''}</p> : null
             })()}
-            {!m.content && !m.isFinal ? <span className="text-xs text-gray-500">Thinking…</span> : (
+            {!m.content && !m.isFinal ? <span className="text-xs text-muted-foreground">Thinking…</span> : (
               <ReactMarkdown components={PI_MARKDOWN_COMPONENTS}>{m.content}</ReactMarkdown>
             )}
           </div>
         ))}
       </div>
       <div className="shrink-0 px-4 pb-3">
-        <div className="rounded-xl border border-violet-300 dark:border-violet-700 bg-white dark:bg-gray-900 px-3 py-2 focus-within:ring-2 focus-within:ring-violet-200 dark:focus-within:ring-violet-900">
+        <div className="rounded-xl border border-violet-300 dark:border-violet-700 bg-card px-3 py-2 focus-within:ring-2 focus-within:ring-violet-200 dark:focus-within:ring-violet-900">
           <textarea
             ref={inputRef}
             value={text}
@@ -2227,7 +2227,7 @@ function ForgePiPanel({ pi, inputRef, onExit }: Readonly<{
             onChange={e => setText(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(text) } }}
             placeholder="Ask Pi about this prompt, the test chat, or the agent’s real calls…"
-            className="w-full resize-none bg-transparent text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 outline-none"
+            className="w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
           />
           <div className="flex justify-end">
             <button onClick={() => send(text)} disabled={!text.trim() || pi.busy} aria-label="Ask Pi"
@@ -2253,12 +2253,12 @@ function emptyChatHint(hasTools?: boolean, hasVariables?: boolean): string {
 function ChatEmptyState({ hasTools, hasVariables, onGenerateGreeting }: Readonly<{ hasTools?: boolean; hasVariables?: boolean; onGenerateGreeting?: () => void }>) {
   return (
     <div className="flex h-full min-h-[320px] flex-col items-center justify-center gap-4 select-none px-6 text-center">
-      <div className="w-12 h-12 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 flex items-center justify-center">
+      <div className="w-12 h-12 rounded-2xl bg-muted/50 border border-border flex items-center justify-center">
         <FlaskConical className="w-5 h-5 text-gray-300 dark:text-gray-600" />
       </div>
       <div>
-        <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Start the conversation</p>
-        <p className="text-xs text-gray-400 dark:text-gray-600 mt-1 max-w-[300px] leading-relaxed">
+        <p className="text-sm font-medium text-muted-foreground">Start the conversation</p>
+        <p className="text-xs text-muted-foreground mt-1 max-w-[300px] leading-relaxed">
           {emptyChatHint(hasTools, hasVariables)}
         </p>
       </div>
@@ -2268,7 +2268,7 @@ function ChatEmptyState({ hasTools, hasVariables, onGenerateGreeting }: Readonly
         </Button>
       )}
       {(hasTools || hasVariables) && (
-        <div className="flex items-center gap-3 text-[11px] text-gray-400 dark:text-gray-600">
+        <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
           {hasVariables && <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-400" />Variables active</span>}
           {hasTools && <span className="flex items-center gap-1"><Zap className="w-2.5 h-2.5 text-amber-400" />Tools active</span>}
         </div>
@@ -2285,14 +2285,14 @@ function MessageBubble({ message, onReplay }: { message: Message; onReplay?: () 
     return (
       <div className="flex gap-3 items-center py-1">
         <div className="relative w-6 h-6 shrink-0">
-          <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800/60 flex items-center justify-center">
-            <Bot className="w-3 h-3 text-blue-500 dark:text-blue-400" />
+          <div className="w-6 h-6 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center">
+            <Bot className="w-3 h-3 text-primary" />
           </div>
           <span className="absolute inset-[-3px] rounded-full border border-blue-400/40 dark:border-blue-500/30 animate-ping" />
         </div>
         <div className="flex items-end gap-1.5 pb-0.5">
           {[0, 150, 300].map(d => (
-            <span key={d} className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600 animate-bounce" style={{ animationDelay: `${d}ms` }} />
+            <span key={d} className="w-1.5 h-1.5 rounded-full bg-muted-foreground/30 animate-bounce" style={{ animationDelay: `${d}ms` }} />
           ))}
         </div>
       </div>
@@ -2304,7 +2304,7 @@ function MessageBubble({ message, onReplay }: { message: Message; onReplay?: () 
   const ordered = !isUser && hasTools && (message.parts?.length ?? 0) > 0
   const textBubble = (text: string, key?: string, streaming?: boolean) => (
     <div key={key} className={cn('rounded-2xl px-4 py-2.5 text-sm leading-relaxed w-full',
-      isUser ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-tr-sm' : 'bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 rounded-tl-sm')}>
+      isUser ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-tr-sm' : 'bg-muted/50 text-foreground border border-border rounded-tl-sm')}>
       <p className="whitespace-pre-wrap break-words">
         {text}
         {streaming && <span className="inline-block w-0.5 h-3.5 bg-current ml-0.5 align-middle animate-pulse" />}
@@ -2314,7 +2314,7 @@ function MessageBubble({ message, onReplay }: { message: Message; onReplay?: () 
   return (
     <div className={cn('group flex gap-2 items-start', isUser && 'flex-row-reverse')}>
       <div className={cn('w-6 h-6 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold mt-1',
-        isUser ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900' : 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/60')}>
+        isUser ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900' : 'bg-primary/15 text-primary border border-primary/30')}>
         {isUser ? 'U' : <Bot className="w-3 h-3" />}
       </div>
       <div className={cn('flex flex-col min-w-0', isUser ? 'items-end' : 'items-start')} style={{ maxWidth: '80%' }}>
@@ -2332,7 +2332,7 @@ function MessageBubble({ message, onReplay }: { message: Message; onReplay?: () 
         )}
         {!ordered && (message.content || !hasTools) && (
           <div className={cn('rounded-2xl px-4 py-2.5 text-sm leading-relaxed w-full',
-            isUser ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-tr-sm' : 'bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 rounded-tl-sm')}>
+            isUser ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-tr-sm' : 'bg-muted/50 text-foreground border border-border rounded-tl-sm')}>
             <p className="whitespace-pre-wrap break-words">
               {message.content}
               {!message.isFinal && message.content && <span className="inline-block w-0.5 h-3.5 bg-current ml-0.5 align-middle animate-pulse" />}
@@ -2357,15 +2357,15 @@ function MessageBubble({ message, onReplay }: { message: Message; onReplay?: () 
 
 function PageSkeleton() {
   return (
-    <div className="h-screen flex flex-col bg-white dark:bg-gray-900">
-      <div className="h-11 border-b border-gray-200 dark:border-gray-800 px-4 flex items-center gap-3">
+    <div className="h-screen flex flex-col bg-card">
+      <div className="h-11 border-b border-border px-4 flex items-center gap-3">
         <Skeleton className="h-6 w-6 rounded-md" /><Skeleton className="h-4 w-28" /><Skeleton className="h-4 w-36" />
       </div>
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex flex-col border-r border-gray-200 dark:border-gray-800" style={{ width: '42%' }}>
-          <div className="h-9 border-b border-gray-200 dark:border-gray-800 px-4 flex items-center"><Skeleton className="h-3.5 w-24" /></div>
+        <div className="flex flex-col border-r border-border" style={{ width: '42%' }}>
+          <div className="h-9 border-b border-border px-4 flex items-center"><Skeleton className="h-3.5 w-24" /></div>
           <div className="flex-1 p-5"><Skeleton className="h-full w-full rounded-lg" /></div>
-          <div className="h-7 border-t border-gray-200 dark:border-gray-800 px-4 flex items-center gap-2"><Skeleton className="h-3 w-16" /><Skeleton className="h-3 w-12 ml-auto" /></div>
+          <div className="h-7 border-t border-border px-4 flex items-center gap-2"><Skeleton className="h-3 w-16" /><Skeleton className="h-3 w-12 ml-auto" /></div>
         </div>
         <div className="flex-1 p-6 flex flex-col items-center justify-center gap-3">
           <Skeleton className="h-12 w-12 rounded-2xl" /><Skeleton className="h-4 w-36" /><Skeleton className="h-3 w-52" />

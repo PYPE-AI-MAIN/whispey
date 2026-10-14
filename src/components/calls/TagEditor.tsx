@@ -463,9 +463,9 @@ export const TagEditor: React.FC<TagEditorProps> = ({
                   )
                 : cn(
                     'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] font-medium',
-                    'border border-dashed border-gray-300 dark:border-gray-600',
-                    'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300',
-                    'hover:border-gray-400 dark:hover:border-gray-400 transition-colors select-none'
+                    'border border-dashed border-border',
+                    'text-muted-foreground hover:text-muted-foreground',
+                    'hover:border-border transition-colors select-none'
                   ),
               saving && 'opacity-40 pointer-events-none'
             )}

@@ -23,11 +23,11 @@ interface CampaignSelectorProps {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  running:   'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  scheduled: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  paused:    'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-  completed: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
-  draft:     'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400',
+  running:   'bg-success/15 text-success',
+  scheduled: 'bg-primary/15 text-primary',
+  paused:    'bg-warning/15 text-warning',
+  completed: 'bg-muted text-muted-foreground',
+  draft:     'bg-muted text-muted-foreground',
 }
 
 const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000
@@ -113,7 +113,7 @@ export const CampaignSelector: React.FC<CampaignSelectorProps> = ({
           className={cn(
             'h-8 gap-1.5 text-sm font-medium transition-colors max-w-[200px]',
             selectedCampaign
-              ? 'border-blue-400 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-600 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/30'
+              ? 'border-blue-400 bg-primary/10 text-primary hover:bg-primary/15 dark:border-blue-600'
               : 'text-muted-foreground hover:text-foreground'
           )}
         >
@@ -122,12 +122,12 @@ export const CampaignSelector: React.FC<CampaignSelectorProps> = ({
             {selectedCampaign ? selectedCampaign.campaignName : 'Campaign'}
           </span>
           {selectedCampaign ? (
-            <span
+            <span /* NOSONAR: sits inside a button trigger; a <button> cannot nest */
               role="button"
               tabIndex={0}
               onClick={handleClear}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onSelect(null) } }}
-              className="ml-0.5 rounded-full p-0.5 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors shrink-0"
+              className="ml-0.5 rounded-full p-0.5 hover:bg-primary/20 transition-colors shrink-0"
             >
               <X className="h-3 w-3" />
             </span>
@@ -163,7 +163,7 @@ export const CampaignSelector: React.FC<CampaignSelectorProps> = ({
         )}
 
         {error && (
-          <div className="flex items-center gap-2 px-3 py-4 text-sm text-red-600 dark:text-red-400">
+          <div className="flex items-center gap-2 px-3 py-4 text-sm text-destructive">
             <AlertCircle className="h-4 w-4 shrink-0" />
             {error}
           </div>
@@ -188,7 +188,7 @@ export const CampaignSelector: React.FC<CampaignSelectorProps> = ({
                   className={cn(
                     'w-full flex items-start gap-2 px-3 py-2 text-left transition-colors',
                     'hover:bg-muted/60 dark:hover:bg-gray-800/60',
-                    isSelected && 'bg-blue-50 dark:bg-blue-900/20'
+                    isSelected && 'bg-primary/10'
                   )}
                 >
                   <div className="flex-1 min-w-0">

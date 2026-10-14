@@ -162,11 +162,11 @@ export default function SimplifiedSipManagement() {
 
   if (loading) {
     return (
-      <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="flex flex-col h-screen bg-muted/50">
         <div className="flex items-center justify-center flex-1">
           <div className="flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-blue-600 dark:text-blue-400" />
-            <span className="text-sm text-gray-600 dark:text-gray-400">Loading Phone Settings...</span>
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <span className="text-sm text-muted-foreground">Loading Phone Settings...</span>
           </div>
         </div>
       </div>
@@ -174,13 +174,13 @@ export default function SimplifiedSipManagement() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex flex-col h-screen bg-muted/50">
       {/* Header */}
-      <div className="px-6 py-4 border-border bg-background border-b">
+      <div className="px-6 py-4 border-border bg-card border-b">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
-              <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <div className="w-8 h-8 bg-primary/15 rounded-lg flex items-center justify-center">
+              <Phone className="w-4 h-4 text-primary" />
             </div>
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-foreground">Phone Settings</h1>
@@ -189,14 +189,14 @@ export default function SimplifiedSipManagement() {
           
           <div className="flex items-center gap-4 text-xs">
             <div className="text-center">
-              <div className="font-medium text-gray-900 dark:text-gray-100">{phoneAgents.length}</div>
-              <div className="text-gray-500 dark:text-gray-400">Total Numbers</div>
+              <div className="font-medium text-foreground">{phoneAgents.length}</div>
+              <div className="text-muted-foreground">Total Numbers</div>
             </div>
             <div className="text-center">
-              <div className="font-medium text-gray-900 dark:text-gray-100">
+              <div className="font-medium text-foreground">
                 {phoneAgents.filter(p => p.status === 'active').length}
               </div>
-              <div className="text-gray-500 dark:text-gray-400">Active</div>
+              <div className="text-muted-foreground">Active</div>
             </div>
           </div>
         </div>
@@ -204,11 +204,11 @@ export default function SimplifiedSipManagement() {
 
       {/* Alert Messages */}
       {error && (
-        <div className="mx-4 mt-3 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-xs">
+        <div className="mx-4 mt-3 p-2 bg-destructive/10 border border-destructive/30 rounded text-xs">
           <div className="flex items-center gap-2">
-            <AlertCircle className="h-3 w-3 text-red-600 dark:text-red-400 flex-shrink-0" />
-            <span className="text-red-800 dark:text-red-400 flex-1">{error}</span>
-            <Button variant="ghost" size="sm" onClick={() => setError('')} className="h-4 w-4 p-0 text-red-400 hover:text-red-600">
+            <AlertCircle className="h-3 w-3 text-destructive flex-shrink-0" />
+            <span className="text-destructive flex-1">{error}</span>
+            <Button variant="ghost" size="sm" onClick={() => setError('')} className="h-4 w-4 p-0 text-red-400 hover:text-destructive">
               <X className="h-3 w-3" />
             </Button>
           </div>
@@ -216,11 +216,11 @@ export default function SimplifiedSipManagement() {
       )}
 
       {success && (
-        <div className="mx-4 mt-3 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded text-xs">
+        <div className="mx-4 mt-3 p-2 bg-success/10 border border-success/30 rounded text-xs">
           <div className="flex items-center gap-2">
-            <CheckCircle className="h-3 w-3 text-green-600 dark:text-green-400 flex-shrink-0" />
-            <span className="text-green-800 dark:text-green-400 flex-1">{success}</span>
-            <Button variant="ghost" size="sm" onClick={() => setSuccess('')} className="h-4 w-4 p-0 text-green-400 hover:text-green-600">
+            <CheckCircle className="h-3 w-3 text-success flex-shrink-0" />
+            <span className="text-success flex-1">{success}</span>
+            <Button variant="ghost" size="sm" onClick={() => setSuccess('')} className="h-4 w-4 p-0 text-green-400 hover:text-success">
               <X className="h-3 w-3" />
             </Button>
           </div>
@@ -228,9 +228,9 @@ export default function SimplifiedSipManagement() {
       )}
 
       {/* Search Bar */}
-      {filteredAgents.length !== 0 && <div className="px-4 py-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-800">
+      {filteredAgents.length !== 0 && <div className="px-4 py-3 bg-card border-b border-border">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search phone numbers or agents..."
             value={searchQuery}
@@ -241,16 +241,16 @@ export default function SimplifiedSipManagement() {
       </div>}
 
       {/* Main Content */}
-      <div className="flex-1 overflow-auto bg-white dark:bg-gray-900">
+      <div className="flex-1 overflow-auto bg-card">
       {filteredAgents.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-full text-center p-8">
-          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-3">
-            <Phone className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          <div className="w-12 h-12 bg-primary/15 rounded-full flex items-center justify-center mb-3">
+            <Phone className="w-6 h-6 text-primary" />
           </div>
-          <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
+          <h3 className="text-sm font-medium text-foreground mb-1">
             {searchQuery ? 'No phone numbers match your search' : 'No agents created yet'}
           </h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 max-w-sm">
+          <p className="text-xs text-muted-foreground mb-3 max-w-sm">
             {searchQuery 
               ? 'Try adjusting your search criteria'
               : 'Create an agent with Pype then request for numbers!'
@@ -264,12 +264,12 @@ export default function SimplifiedSipManagement() {
         </div>
       ) : (
         <div className="p-4">
-          <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+          <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
             {/* Table Header — hidden below sm: a 4-column grid at 375px would
                 crush every field to under 90px. Each row below labels its own
                 fields inline on mobile instead of relying on this header. */}
-            <div className="hidden sm:block px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-800">
-              <div className="grid grid-cols-4 gap-4 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            <div className="hidden sm:block px-4 py-3 bg-muted/50 border-b border-border">
+              <div className="grid grid-cols-4 gap-4 text-xs font-medium text-muted-foreground">
                 <div>Number</div>
                 <div>Assigned Agent Name</div>
                 <div>Last Updated</div>
@@ -278,23 +278,23 @@ export default function SimplifiedSipManagement() {
             </div>
 
             {/* Table Body */}
-            <div className="divide-y divide-gray-200 dark:divide-gray-800">
+            <div className="divide-y divide-border">
               {filteredAgents.map((phoneAgent) => {
                 return (
                   <div
                     key={phoneAgent.id}
-                    className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                    className="px-4 py-3 hover:bg-muted/50 transition-colors"
                   >
                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 sm:gap-4 sm:items-center">
                       {/* Phone Number */}
                       <div>
-                        <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500 sm:hidden">Number</div>
+                        <div className="text-[11px] font-medium text-muted-foreground sm:hidden">Number</div>
                         {phoneAgent.inbound_phone_number ? (
                           <Badge variant="outline" className="text-sm font-mono">
                             {phoneAgent.inbound_phone_number}
                           </Badge>
                         ) : (
-                          <span className="text-sm text-gray-400 dark:text-gray-500 italic">
+                          <span className="text-sm text-muted-foreground italic">
                             No number assigned
                           </span>
                         )}
@@ -302,16 +302,16 @@ export default function SimplifiedSipManagement() {
                       
                       {/* Assigned Agent */}
                       <div>
-                        <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500 sm:hidden">Assigned Agent Name</div>
+                        <div className="text-[11px] font-medium text-muted-foreground sm:hidden">Assigned Agent Name</div>
                         {phoneAgent.name ? (
                           <div className="flex items-center gap-2">
-                            <Bot className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                            <span className="text-sm text-gray-900 dark:text-gray-100 truncate max-w-[200px]" title={displayNameFor(phoneAgent)}>
+                            <Bot className="w-4 h-4 text-primary flex-shrink-0" />
+                            <span className="text-sm text-foreground truncate max-w-[200px]" title={displayNameFor(phoneAgent)}>
                               {displayNameFor(phoneAgent)}
                             </span>
                           </div>
                         ) : (
-                          <span className="text-sm text-gray-400 dark:text-gray-500 italic">
+                          <span className="text-sm text-muted-foreground italic">
                             Unassigned
                           </span>
                         )}
@@ -319,8 +319,8 @@ export default function SimplifiedSipManagement() {
                       
                       {/* Last Updated */}
                       <div>
-                        <div className="text-[11px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500 sm:hidden">Last Updated</div>
-                        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                        <div className="text-[11px] font-medium text-muted-foreground sm:hidden">Last Updated</div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Clock className="w-4 h-4 flex-shrink-0" />
                           <span className="truncate max-w-[150px]" title={formatDate(phoneAgent.created_at)}>
                             {formatDate(phoneAgent.created_at)}

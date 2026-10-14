@@ -367,7 +367,7 @@ function StudioWorkspace({ isPreview, onExitPreview }: Readonly<{ isPreview: boo
 
       <div style={{ minWidth: 320 }} className="flex flex-1 flex-col">
         {isPreview && (
-          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-blue-100 bg-blue-50 px-4 py-1.5 text-xs text-blue-700 dark:border-blue-500/20 dark:bg-blue-500/10 dark:text-blue-300">
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-primary/20 bg-primary/10 px-4 py-1.5 text-xs text-primary">
             <span className="flex items-center gap-1.5">
               <Eye className="h-3.5 w-3.5" />
               Previewing Studio with a sample flow — create the agent through the MCP to see its real one.
@@ -375,7 +375,7 @@ function StudioWorkspace({ isPreview, onExitPreview }: Readonly<{ isPreview: boo
             <button
               onClick={onExitPreview}
               aria-label="Exit preview"
-              className="rounded p-0.5 transition hover:bg-blue-100 dark:hover:bg-blue-500/20"
+              className="rounded p-0.5 transition hover:bg-primary/15"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -383,10 +383,10 @@ function StudioWorkspace({ isPreview, onExitPreview }: Readonly<{ isPreview: boo
         )}
 
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
-          <div className="shrink-0 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <div className="shrink-0 rounded-xl border border-border bg-card p-4 shadow-sm">
             <InsightsStrip agentId={agentId} />
           </div>
-          <div className="shrink-0 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <div className="shrink-0 rounded-xl border border-border bg-card p-4 shadow-sm">
             <OutputVariablesPanel
               agentId={agentId}
               fieldExtractorPrompt={agent?.field_extractor_prompt}

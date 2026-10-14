@@ -113,19 +113,19 @@ export function OutcomeOrderEditor({
       <DialogContent className="max-w-2xl sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-base">When we called more than once, which result wins?</DialogTitle>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-muted-foreground">
             Drag to reorder. The top one is the best outcome. Anything not on this list ranks after everything on it.
           </p>
         </DialogHeader>
 
         {candidates.length === 0 ? (
-          <p className="py-6 text-center text-sm text-gray-500">
+          <p className="py-6 text-center text-sm text-muted-foreground">
             This agent has no field with a short list of results yet, so there is nothing to rank.
           </p>
         ) : (
           <>
             <div>
-              <label htmlFor="outcome-ranking-field" className="mb-1 block text-[11px] font-medium text-gray-500">Which field holds the result</label>
+              <label htmlFor="outcome-ranking-field" className="mb-1 block text-[11px] font-medium text-muted-foreground">Which field holds the result</label>
               <Select
                 value={fieldKey}
                 onValueChange={(v) => {
@@ -161,15 +161,15 @@ export function OutcomeOrderEditor({
                   ))}
                 </SortableContext>
               </DndContext>
-              {order.length === 0 && <p className="py-4 text-center text-sm text-gray-500">No results recorded for this field yet.</p>}
+              {order.length === 0 && <p className="py-4 text-center text-sm text-muted-foreground">No results recorded for this field yet.</p>}
             </div>
 
             {/* not decoration: this rewrites what last quarter's numbers were.
                 Said in the interface's own colours rather than a wash of
                 yellow — a notice nobody can read past is not more serious, it
                 just looks louder. */}
-            <div className="flex items-start gap-2.5 rounded-md border-l-2 border-slate-400 bg-slate-50 px-3 py-2.5 text-xs leading-relaxed text-slate-600 dark:border-slate-500 dark:bg-slate-800/50 dark:text-slate-300">
-              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500" />
+            <div className="flex items-start gap-2.5 rounded-md border-l-2 border-border bg-muted/50 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <span>
                 {ranked
                   ? 'Changing this order changes past numbers too — every chart counting one row per patient is recalculated.'
@@ -177,7 +177,7 @@ export function OutcomeOrderEditor({
               </span>
             </div>
 
-            {error && <p className="text-xs text-red-600">{error}</p>}
+            {error && <p className="text-xs text-destructive">{error}</p>}
 
             <div className="flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={onClose}>
@@ -202,17 +202,17 @@ function OutcomeRow({ value, rank, isBest, isWorst }: Readonly<{ value: string; 
       ref={s.setNodeRef}
       style={{ transform: CSS.Translate.toString(s.transform), transition: s.transition }}
       className={cn(
-        'mb-1 flex items-center gap-2 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-sm dark:border-gray-800 dark:bg-gray-900',
+        'mb-1 flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5 text-sm',
         s.isDragging && 'opacity-70 shadow-md'
       )}
     >
       <button {...s.attributes} {...s.listeners} aria-label={`Move ${value}`} className="cursor-grab text-gray-300 dark:text-gray-600">
         <GripVertical className="h-3.5 w-3.5" />
       </button>
-      <span className="w-5 shrink-0 text-right text-xs tabular-nums text-gray-400">{rank}</span>
+      <span className="w-5 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{rank}</span>
       <span className="min-w-0 flex-1 truncate">{value}</span>
-      {isBest && <span className="shrink-0 text-[11px] text-green-600 dark:text-green-500">best</span>}
-      {isWorst && !isBest && <span className="shrink-0 text-[11px] text-gray-400">worst</span>}
+      {isBest && <span className="shrink-0 text-[11px] text-success">best</span>}
+      {isWorst && !isBest && <span className="shrink-0 text-[11px] text-muted-foreground">worst</span>}
     </div>
   )
 }

@@ -200,7 +200,7 @@ export default function PromptSettingsSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[650px] p-6 sm:max-w-[500px] overflow-y-auto bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+      <SheetContent className="w-[650px] p-6 sm:max-w-[500px] overflow-y-auto bg-card border-border">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <SettingsIcon className="w-4 h-4" />
@@ -215,7 +215,7 @@ export default function PromptSettingsSheet({
           {/* Unmapped Variables Warning */}
           {unmappedVariables.length > 0 && (
             <div // NOSONAR typescript:S6819 — nested interactive controls, cannot be a native button
-              className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+              className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 cursor-pointer hover:bg-destructive/15 transition-colors"
               onClick={addAllUnmapped}
               role="button"
               tabIndex={0}
@@ -223,12 +223,12 @@ export default function PromptSettingsSheet({
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-start gap-2 flex-1">
-                  <AlertCircleIcon className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                  <div className="text-xs text-red-800 dark:text-red-200">
+                  <AlertCircleIcon className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                  <div className="text-xs text-destructive">
                     <p className="font-medium mb-1">{unmappedVariables.length} unmapped variable{unmappedVariables.length > 1 ? 's' : ''} - click to configure</p>
                     <div className="flex flex-wrap gap-1 mb-2">
                       {unmappedVariables.map(name => (
-                        <code key={name} className="bg-red-100 dark:bg-red-900/40 px-1.5 py-0.5 rounded text-red-900 dark:text-red-200">
+                        <code key={name} className="bg-destructive/15 px-1.5 py-0.5 rounded text-red-900 dark:text-red-200">
                           {name}
                         </code>
                       ))}
@@ -242,7 +242,7 @@ export default function PromptSettingsSheet({
                     e.stopPropagation()
                     addAllUnmapped()
                   }}
-                  className="h-7 text-xs flex-shrink-0 border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30"
+                  className="h-7 text-xs flex-shrink-0 border-destructive/40 text-destructive hover:bg-destructive/15"
                 >
                   Map All
                 </Button>
@@ -252,12 +252,12 @@ export default function PromptSettingsSheet({
 
           {/* Variables Section */}
           <Collapsible open={isVariablesOpen} onOpenChange={setIsVariablesOpen}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+            <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
               <div className="flex items-center gap-2">
                 <VariableIcon className="w-4 h-4" />
                 <span className="font-medium">Variables</span>
                 {variables.length > 0 && (
-                  <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs px-2 py-0.5 rounded-full">
+                  <span className="bg-primary/15 text-primary text-xs px-2 py-0.5 rounded-full">
                     {variables.length}
                   </span>
                 )}
@@ -269,20 +269,20 @@ export default function PromptSettingsSheet({
               {/* Predefined System Variables */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Predefined System Variables</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">(Automatically available)</span>
+                  <span className="text-xs font-medium text-foreground">Predefined System Variables</span>
+                  <span className="text-xs text-muted-foreground">(Automatically available)</span>
                 </div>
                 <div className="space-y-2">
                   {PREDEFINED_VARIABLES.map((predefinedVar) => (
                     <div 
                       key={predefinedVar.name} 
-                      className="border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3"
+                      className="border border-primary/30 bg-primary/10 rounded-lg p-3"
                     >
                       <div className="flex items-center gap-2">
-                        <code className="text-xs font-mono bg-blue-100 dark:bg-blue-900/40 px-2 py-1 rounded text-blue-900 dark:text-blue-200">
+                        <code className="text-xs font-mono bg-primary/15 px-2 py-1 rounded text-blue-900 dark:text-blue-200">
                           {`{{${predefinedVar.name}}}`}
                         </code>
-                        <span className="text-xs text-gray-600 dark:text-gray-400">
+                        <span className="text-xs text-muted-foreground">
                           {predefinedVar.description}
                         </span>
                       </div>
@@ -292,9 +292,9 @@ export default function PromptSettingsSheet({
               </div>
 
               {/* User Variables */}
-              <div className="space-y-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="space-y-2 pt-4 border-t border-border">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Custom Variables</span>
+                  <span className="text-xs font-medium text-foreground">Custom Variables</span>
                 </div>
                 <div className="flex gap-2">
                   <Button 
@@ -319,14 +319,14 @@ export default function PromptSettingsSheet({
 
                 <div className="space-y-3">
                   {customVariables.length === 0 ? (
-                    <div className="text-center py-6 text-gray-500 dark:text-gray-400">
+                    <div className="text-center py-6 text-muted-foreground">
                       <VariableIcon className="w-6 h-6 mx-auto mb-2 opacity-50" />
                       <p className="text-xs">No custom variables mapped</p>
-                      <p className="text-[10px] mt-1">Use <code className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">{`{{variable_name}}`}</code> in your prompt</p>
+                      <p className="text-[10px] mt-1">Use <code className="bg-muted px-1.5 py-0.5 rounded">{`{{variable_name}}`}</code> in your prompt</p>
                     </div>
                   ) : (
                     customVariables.map((variable, index) => (
-                      <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-3">
+                      <div key={index} /* NOSONAR: rows are edited in place and have no stable id */ className="border border-border rounded-lg p-3 space-y-3">
                         <div className="flex w-full items-center justify-center gap-1">
                           <div className="flex-1 w-1/2 space-y-1">
                             <Input
@@ -356,7 +356,7 @@ export default function PromptSettingsSheet({
                               }`}
                             />
                             {variable.name && /^\d/.test(variable.name) && (
-                              <p className="text-[10px] text-red-600 dark:text-red-400">
+                              <p className="text-[10px] text-destructive">
                                 Cannot start with a number
                               </p>
                             )}
@@ -373,7 +373,7 @@ export default function PromptSettingsSheet({
                             variant="ghost"
                             size="sm"
                             onClick={() => removeVariable(index)}
-                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 flex justify-center items-center"
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive flex justify-center items-center"
                           >
                             <TrashIcon className="w-3 h-3" />
                           </Button>

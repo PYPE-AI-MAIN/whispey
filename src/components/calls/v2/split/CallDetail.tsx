@@ -395,11 +395,11 @@ function Bubble({
           {...seekProps(start, onSeek)}
           title={onSeek && start !== undefined ? "Play from here" : undefined}
           className={cn(
-            onSeek && start !== undefined && "cursor-pointer hover:border-[#93c5fd] dark:hover:border-[#2f4a7a]",
-            "rounded-[14px] rounded-tr-[4px] border bg-[#eff6ff] px-[15px] py-[11px] text-[15.5px] leading-[1.6] transition-[border-color,box-shadow] duration-300 dark:bg-[#1c2b4a]",
+            onSeek && start !== undefined && "cursor-pointer hover:border-[var(--cl-accent-line)]",
+            "rounded-[14px] rounded-tr-[4px] border bg-[var(--cl-accent-soft)] px-[15px] py-[11px] text-[15.5px] leading-[1.6] transition-[border-color,box-shadow] duration-300",
             active
-              ? "border-[#60a5fa] shadow-[0_0_0_3px_rgba(59,130,246,.18)] dark:border-[#3b82f6]"
-              : "border-[#bfdbfe] dark:border-[#24365c]"
+              ? "border-[var(--cl-accent)] shadow-[0_0_0_3px_var(--cl-accent-soft)]"
+              : "border-[var(--cl-accent-soft)]"
           )}
         >
           {text}
@@ -491,7 +491,7 @@ function ToolPill({ tool, mask, onOpen }: Readonly<{ tool: any; mask: (value: st
             <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md bg-black/20 p-2 font-mono text-[11.5px]">{result}</pre>
           </>
         )}
-        <button type="button" onClick={onOpen} className="mt-2 text-[12px] text-blue-400 hover:underline">
+        <button type="button" onClick={onOpen} className="mt-2 text-[12px] text-[var(--cl-accent-text)] hover:underline">
           Open in Tools tab →
         </button>
       </TooltipContent>

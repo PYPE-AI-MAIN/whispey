@@ -27,19 +27,19 @@ export function DispatchVariablesEditor({ variables, setVariables }: Readonly<{
 }>) {
   return (
     <fieldset className="border-0 p-0 m-0">
-      <legend className="w-full flex items-center justify-between mb-2 p-0 text-sm font-semibold text-gray-700 dark:text-gray-300">
-        <span>Variables <span className="text-xs font-normal text-gray-400">(optional)</span></span>
+      <legend className="w-full flex items-center justify-between mb-2 p-0 text-sm font-semibold text-foreground">
+        <span>Variables <span className="text-xs font-normal text-muted-foreground">(optional)</span></span>
         <button
           type="button"
           onClick={() => setVariables(prev => [...prev, { id: crypto.randomUUID(), key: '', value: '' }])}
-          className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+          className="flex items-center gap-1 text-xs text-primary hover:text-primary font-medium"
         >
           <Plus className="w-3.5 h-3.5" /> Add Variable
         </button>
       </legend>
       {variables.length === 0 ? (
-        <p className="text-xs text-gray-400 dark:text-gray-500 italic">
-          No variables. Use <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{'{{key}}'}</code> in your agent prompt.
+        <p className="text-xs text-muted-foreground italic">
+          No variables. Use <code className="bg-muted px-1 rounded">{'{{key}}'}</code> in your agent prompt.
         </p>
       ) : (
         <div className="space-y-2">
@@ -49,18 +49,18 @@ export function DispatchVariablesEditor({ variables, setVariables }: Readonly<{
                 placeholder="key"
                 value={v.key}
                 onChange={e => setVariables(prev => updateVariableAt(prev, i, 'key', e.target.value))}
-                className="h-8 text-xs font-mono w-[35%] bg-white dark:bg-gray-800"
+                className="h-8 text-xs font-mono w-[35%] bg-card"
               />
               <Input
                 placeholder="value"
                 value={v.value}
                 onChange={e => setVariables(prev => updateVariableAt(prev, i, 'value', e.target.value))}
-                className="h-8 text-xs flex-1 bg-white dark:bg-gray-800"
+                className="h-8 text-xs flex-1 bg-card"
               />
               <button
                 type="button"
                 onClick={() => setVariables(prev => removeVariableAt(prev, i))}
-                className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                className="p-1.5 hover:bg-destructive/10 rounded text-red-400 hover:text-destructive transition-colors"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
