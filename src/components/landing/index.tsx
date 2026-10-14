@@ -102,7 +102,7 @@ export default function LandingPage() {
       <div>
         <section className="mx-auto max-w-4xl px-6 pb-10 pt-16 text-center sm:pt-24">
           <h1 className="wl-title wl-h1">
-            AI that answers every patient call <span className="wl-em">reliably.</span>
+            Reliable and auditable AI agents <span className="wl-em">for healthcare.</span>
           </h1>
           <p className="wl-muted mx-auto mt-6 max-w-2xl text-lg leading-relaxed">
             Whispey is where Pype builds its healthcare voice agents. Build them, run them, and review every call: what was said, how the patient responded, and what to fix.
