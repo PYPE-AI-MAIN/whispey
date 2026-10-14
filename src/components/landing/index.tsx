@@ -115,8 +115,8 @@ export default function LandingPage() {
 
         <section className="mx-auto max-w-5xl px-6 pb-20">
           <div className="wl-frame">
-            <Image src="/call-logs-light.webp" alt="The call logs page in Whispey, listing each call with its status, duration and flag" width={2000} height={1130} priority className="h-auto w-full dark:hidden" />
-            <Image src="/call-logs-dark.webp" alt="" width={2000} height={1136} priority className="hidden h-auto w-full dark:block" />
+            <Image src="/call-logs-light.webp" alt="The call logs page in Whispey, listing each call with its status, duration and flag" width={2000} height={1135} priority className="h-auto w-full dark:hidden" />
+            <Image src="/call-logs-dark.webp" alt="" width={2000} height={1069} priority className="hidden h-auto w-full dark:block" />
           </div>
         </section>
 
