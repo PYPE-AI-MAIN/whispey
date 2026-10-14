@@ -353,17 +353,11 @@ const PI_MARKDOWN_STATIC: Components = {
   strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
 }
 
-function codeText(children: unknown): string {
-  if (typeof children === "string") return children
-  if (Array.isArray(children)) return children.filter((c): c is string => typeof c === "string").join("")
-  return ""
-}
-
 function piMarkdownComponents(onOpenCall: (id: string) => void): Components {
   return {
     ...PI_MARKDOWN_STATIC,
     code: ({ children }) => {
-      const text = codeText(children)
+      const text = typeof children === "string" ? children : Array.isArray(children) ? children.filter((c): c is string => typeof c === "string").join("") : ""
       const value = text.trim()
       // call ids Pi cites open that call
       if (UUID.test(value)) {
