@@ -357,7 +357,8 @@ function piMarkdownComponents(onOpenCall: (id: string) => void): Components {
   return {
     ...PI_MARKDOWN_STATIC,
     code: ({ children }) => {
-      const value = String(children ?? "").trim()
+      const text = typeof children === "string" ? children : Array.isArray(children) ? children.filter((c): c is string => typeof c === "string").join("") : ""
+      const value = text.trim()
       // call ids Pi cites open that call
       if (UUID.test(value)) {
         return (

@@ -25,7 +25,8 @@ async function ticketAccess(ticketId: string) {
 /** QA team only: upload one image for a ticket; returns the key to attach to a comment. */
 export async function POST(request: NextRequest) {
   const form = await request.formData().catch(() => null)
-  const ticketId = String(form?.get('ticketId') ?? '')
+  const rawTicketId = form?.get('ticketId')
+  const ticketId = typeof rawTicketId === 'string' ? rawTicketId : ''
   const file = form?.get('file')
   if (!/^[0-9a-f-]{36}$/.test(ticketId) || !(file instanceof File)) return NextResponse.json({ error: 'ticketId and file are required' }, { status: 400 })
   const ext = TYPES[file.type]

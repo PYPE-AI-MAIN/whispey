@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Clock, CheckCircle, XCircle, AlertTriangle, Wrench, TrendingUp, Brain, Mic, Volume2, Activity, Download, Loader2, Copy, Check } from "lucide-react"
 import { OTelSpan } from "@/types/openTelemetry";
-import { useSupabaseQuery } from "../../hooks/useSupabase"
 import TraceDetailSheet from "./TraceDetailSheet/TraceDetailSheet"
 import { cn } from "@/lib/utils"
 import { useSessionTrace, useSessionSpansInfinite } from "@/hooks/useSessionTrace" // Changed import
