@@ -14,7 +14,6 @@ import AgentCreationDialog from '../AgentCreation/AgentCreationDialog'
 import AgentSelectionSkeleton from './AgentSelectionSkeleton'
 import AgentEmptyStates from './EmptyStates/AgentEmptyStates'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { useMobile } from '@/hooks/use-mobile'
 import { UserPermissionsProvider, useInvalidateUserPermissions } from '@/contexts/UserPermissionsContext'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { agentDisplayName } from '@/lib/agentDisplayName'
@@ -55,8 +54,6 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
   // const router = useRouter()
 
   const invalidatePermissions = useInvalidateUserPermissions()
-
-  const { isMobile } = useMobile(768)
 
   // Fetch project data
   const { isLoading: projectLoading, error: projectError } = useSupabaseQuery('pype_voice_projects', {
