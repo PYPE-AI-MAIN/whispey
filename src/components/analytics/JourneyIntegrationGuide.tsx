@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Check, Copy, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const DOCS_URL = 'https://docs.whispey.pypeai.com/analytics/send-events/'
+const DOCS_URL = '/docs/analytics/send-events/'
 const INK = 'text-foreground'
 const MUTED = 'text-muted-foreground'
 const CODE = 'rounded bg-muted px-1'

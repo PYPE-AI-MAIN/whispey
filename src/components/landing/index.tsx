@@ -112,7 +112,7 @@ export default function LandingPage() {
           </p>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
             <Link href="/sign-in" className="wl-btn">Get started</Link>
-            <a href="https://docs.whispey.pypeai.com" target="_blank" rel="noopener noreferrer" className="wl-btn wl-btn-ghost">Read the docs</a>
+            <a href="/docs" target="_blank" rel="noopener noreferrer" className="wl-btn wl-btn-ghost">Read the docs</a>
           </div>
         </section>
 
@@ -235,7 +235,7 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-6 px-6 py-10 sm:flex-row sm:items-center">
           <Brand />
           <nav aria-label="Footer" className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-            <a href="https://docs.whispey.pypeai.com" target="_blank" rel="noopener noreferrer" className="wl-link">Docs</a>
+            <a href="/docs" target="_blank" rel="noopener noreferrer" className="wl-link">Docs</a>
             <Link href="/privacy-policy" className="wl-link">Privacy policy</Link>
             <Link href="/terms-of-service" className="wl-link">Terms of service</Link>
             <a href="https://pypeai.com" target="_blank" rel="noopener noreferrer" className="wl-link">Pype AI</a>
