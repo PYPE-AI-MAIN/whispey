@@ -44,7 +44,6 @@ import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { canShowOrgSection } from '@/types/visibility'
 import { useAgentById } from '@/hooks/useAgentById'
 import AgentHeaderIdentity from './agents/AgentHeaderIdentity'
-import { agentDisplayName } from '@/lib/agentDisplayName'
 import { useCallLogsStore, DEFAULT_DATE_FILTER, scopeCallLogsStoreToUser } from '@/stores/callLogsStore'
 import { useUser } from '@clerk/nextjs'
 import { useCallLogsViewMode } from '@/hooks/useCallLogsViewMode'
@@ -148,8 +147,6 @@ function PeriodOptionButton({ onClick, disabled, className, children }: PeriodOp
 // Component for skeleton when agent data is loading
 // Simple No Calls component for VAPI agents
 function NoCallsMessage() {
-  const { isMobile } = useMobile(768)
-  
   return (
     <div className="flex-1 flex items-center justify-center h-full">
       <EmptyState
