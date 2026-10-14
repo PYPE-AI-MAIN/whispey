@@ -1090,7 +1090,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-muted/50">
       {/* Header - shows immediately with working controls */}
-      <header className="px-6 py-4 border-border bg-card border-b">
+      <header className="px-6 py-4 border-border bg-background border-b">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">

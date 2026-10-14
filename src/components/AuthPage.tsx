@@ -1,8 +1,9 @@
 'use client';
 
 /**
- * The /sign-in page in Pype's brand (pypeai.com): indigo and coral, Plus Jakarta Sans,
- * the same headline as the main site, pill-shaped fields and a coral button.
+ * The /sign-in page, in the same visual family as Pype's Shortwire site: a soft
+ * glow, an editorial serif headline with one italic blue word, pill-shaped fields,
+ * and a gradient button, in Whispey's own blue.
  *
  * One page, one column: brand and a link to Pype at the top, the headline, one
  * line, the form, the access note, a footer. Light and dark (the glow dims in
@@ -11,11 +12,12 @@
  */
 import { ClerkLoaded, ClerkLoading, SignIn } from '@clerk/nextjs';
 import Image from 'next/image';
-import { Plus_Jakarta_Sans } from 'next/font/google';
+import { Instrument_Serif, Plus_Jakarta_Sans } from 'next/font/google';
 import { useTheme } from 'next-themes';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 
-const sans = Plus_Jakarta_Sans({ subsets: ['latin'], weight: ['600', '700', '800'], variable: '--font-sw-sans', display: 'swap' });
+const serif = Instrument_Serif({ weight: '400', style: ['normal', 'italic'], subsets: ['latin'], variable: '--font-sw-serif', display: 'swap' });
+const sans = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-sw-sans', display: 'swap' });
 
 interface AuthPageProps {
   redirectUrl?: string
@@ -23,35 +25,37 @@ interface AuthPageProps {
 
 // Clerk's own CSS outranks Tailwind utilities, so its colours go through its variables.
 const CLERK_VARIABLES = {
-  light: { colorBackground: '#ffffff', colorText: '#1e0a52', colorTextSecondary: '#6b6485', colorInputBackground: '#ffffff', colorInputText: '#1e0a52', colorPrimary: '#4b0082', colorTextOnPrimaryBackground: '#ffffff', colorNeutral: '#1e0a52', borderRadius: '0.75rem', fontFamily: 'var(--font-satoshi), system-ui, sans-serif' },
-  dark: { colorBackground: '#0e0b16', colorText: '#f6f2f2', colorTextSecondary: '#a39cb5', colorInputBackground: '#1a1524', colorInputText: '#f6f2f2', colorPrimary: '#ff6b6b', colorTextOnPrimaryBackground: '#1e0a52', colorNeutral: '#fff5f5', borderRadius: '0.75rem', fontFamily: 'var(--font-satoshi), system-ui, sans-serif' },
+  light: { colorBackground: '#ffffff', colorText: '#0b1b3b', colorTextSecondary: '#5b6b86', colorInputBackground: '#ffffff', colorInputText: '#0b1b3b', colorPrimary: '#1d4ed8', colorTextOnPrimaryBackground: '#ffffff', colorNeutral: '#0b1b3b', borderRadius: '0.75rem', fontFamily: 'var(--font-sw-sans), system-ui, sans-serif' },
+  dark: { colorBackground: '#050a14', colorText: '#eef4ff', colorTextSecondary: '#9db0d0', colorInputBackground: '#0b1424', colorInputText: '#eef4ff', colorPrimary: '#60a5fa', colorTextOnPrimaryBackground: '#ffffff', colorNeutral: '#eef4ff', borderRadius: '0.75rem', fontFamily: 'var(--font-sw-sans), system-ui, sans-serif' },
 } as const;
 const FIELD = {
-  light: { background: 'rgba(255,255,255,0.88)', border: '1px solid #e3dcee', boxShadow: '0 6px 22px -12px rgba(30,10,82,0.3)' },
+  light: { background: 'rgba(255,255,255,0.88)', border: '1px solid rgba(37,99,235,0.16)', boxShadow: '0 6px 22px -12px rgba(30,64,160,0.35)' },
   dark: { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)', boxShadow: 'none' },
 } as const;
 
 const PAGE_CSS = `
   .sw-page { background:
-      radial-gradient(60% 52% at 6% 4%, #f1e6fa 0%, rgba(241,230,250,0) 70%),
-      radial-gradient(46% 46% at 96% 38%, #ffe9e6 0%, rgba(255,233,230,0) 70%),
-      radial-gradient(54% 42% at 50% 104%, #f6eefb 0%, rgba(246,238,251,0) 70%),
-      #fffafa;
-    color: #1e0a52; font-family: var(--font-satoshi), system-ui, sans-serif; }
+      radial-gradient(60% 52% at 6% 4%, #d3e2ff 0%, rgba(211,226,255,0) 70%),
+      radial-gradient(46% 46% at 96% 38%, #d9ecff 0%, rgba(217,236,255,0) 70%),
+      radial-gradient(54% 42% at 50% 104%, #e6eeff 0%, rgba(230,238,255,0) 70%),
+      #f8fbff;
+    color: #0b1b3b; font-family: var(--font-sw-sans), system-ui, sans-serif; }
   .dark .sw-page { background:
-      radial-gradient(60% 52% at 6% 4%, rgba(124,58,237,0.16) 0%, rgba(124,58,237,0) 70%),
-      radial-gradient(46% 46% at 96% 38%, rgba(255,107,107,0.14) 0%, rgba(255,107,107,0) 70%),
-      radial-gradient(54% 42% at 50% 104%, rgba(75,0,130,0.22) 0%, rgba(75,0,130,0) 70%),
-      #0e0b16;
-    color: #f6f2f2; }
-  .sw-title { font-family: var(--font-sw-sans), system-ui, sans-serif; font-weight: 700; color: #1e0a52;
-    font-size: clamp(2.2rem, 5vw, 3.6rem); line-height: 1.08; letter-spacing: -0.03em; text-wrap: balance; }
-  .dark .sw-title { color: #f6f2f2; }
-  .sw-em { color: #ff6b6b; }
-  .sw-muted { color: #6b6485; } .dark .sw-muted { color: #a39cb5; }
-  .sw-link { color: #1e0a52; text-decoration: none; } .sw-link:hover { text-decoration: underline; text-underline-offset: 4px; }
-  .dark .sw-link { color: #fff5f5; }
-  .sw-bar { width: 3px; border-radius: 2px; background: linear-gradient(to top, #4b0082, #ff6b6b); transform-origin: center; animation: sw-bar 1.5s ease-in-out infinite; }
+      radial-gradient(60% 52% at 6% 4%, rgba(59,130,246,0.28) 0%, rgba(59,130,246,0) 70%),
+      radial-gradient(46% 46% at 96% 38%, rgba(14,165,233,0.16) 0%, rgba(14,165,233,0) 70%),
+      radial-gradient(54% 42% at 50% 104%, rgba(99,102,241,0.14) 0%, rgba(99,102,241,0) 70%),
+      #050a14;
+    color: #eef4ff; }
+  .sw-title { font-family: var(--font-sw-serif), Georgia, serif; font-weight: 400; color: #0b1b3b;
+    font-size: clamp(2.3rem, 5.4vw, 4.1rem); line-height: 1.02; letter-spacing: -0.02em; }
+  .dark .sw-title { color: #eef4ff; }
+  .sw-em { font-style: italic; padding-right: 0.06em; color: transparent;
+    background-image: linear-gradient(90deg, #1d4ed8, #3b82f6); -webkit-background-clip: text; background-clip: text; }
+  .dark .sw-em { background-image: linear-gradient(90deg, #60a5fa, #7dd3fc); }
+  .sw-muted { color: #5b6b86; } .dark .sw-muted { color: #9db0d0; }
+  .sw-link { color: #0b1b3b; text-decoration: none; } .sw-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+  .dark .sw-link { color: #eef4ff; }
+  .sw-bar { width: 3px; border-radius: 2px; background: linear-gradient(to top, #93c5fd, #7dd3fc); transform-origin: center; animation: sw-bar 1.5s ease-in-out infinite; }
   @keyframes sw-bar { 0%, 100% { transform: scaleY(0.4); } 50% { transform: scaleY(1); } }
   @media (prefers-reduced-motion: reduce) { .sw-bar { animation: none; } }
 `;
@@ -109,7 +113,7 @@ export default function AuthPage({ redirectUrl }: Readonly<AuthPageProps>) {
   const field = FIELD[mode];
 
   return (
-    <div className={`${sans.variable} sw-page flex min-h-screen flex-col`}>
+    <div className={`${serif.variable} ${sans.variable} sw-page flex min-h-screen flex-col`}>
       <style>{PAGE_CSS}</style>
 
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4 sm:px-10">
@@ -119,11 +123,11 @@ export default function AuthPage({ redirectUrl }: Readonly<AuthPageProps>) {
 
       <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 py-3 text-center">
         <h1 className="sw-title">
-          AI that answers every patient call <span className="sw-em">reliably.</span>
+          Create voice agents and see how patients <span className="sw-em">engage.</span>
           <Waveform />
         </h1>
         <p className="sw-muted mt-5 max-w-xl text-base leading-relaxed sm:text-lg">
-          Sign in to Whispey, where Pype&apos;s healthcare voice agents are built and every call is reviewed.
+          Build agents, then follow every call: what was said, how the patient responded, and what to fix.
         </p>
 
         <div className="mt-7 w-full max-w-md text-left">
@@ -145,8 +149,8 @@ export default function AuthPage({ redirectUrl }: Readonly<AuthPageProps>) {
                   socialButtonsBlockButton: { minHeight: '3.25rem', borderRadius: '999px', ...field },
                   formFieldInput: { minHeight: '3.25rem', borderRadius: '999px', padding: '0 1.25rem', fontSize: '1rem', ...field },
                   formButtonPrimary: {
-                    minHeight: '3.25rem', borderRadius: '999px', fontSize: '1rem', fontWeight: 600, border: 'none', color: '#1e0a52',
-                    background: '#ff6b6b', boxShadow: '0 12px 28px -10px rgba(255,107,107,0.6)',
+                    minHeight: '3.25rem', borderRadius: '999px', fontSize: '1rem', fontWeight: 600, border: 'none', color: '#ffffff',
+                    background: 'linear-gradient(90deg, #1d4ed8, #3b82f6)', boxShadow: '0 12px 28px -10px rgba(37,99,235,0.6)',
                   },
                 },
                 layout: { socialButtonsPlacement: 'top' },
@@ -160,7 +164,7 @@ export default function AuthPage({ redirectUrl }: Readonly<AuthPageProps>) {
       </section>
 
       <footer className="mx-auto w-full max-w-6xl px-6 pb-4 sm:px-10">
-        <p className="border-t pt-4 text-center text-sm sw-muted" style={{ borderColor: 'rgba(75,0,130,0.14)' }}>
+        <p className="border-t pt-4 text-center text-sm sw-muted" style={{ borderColor: 'rgba(37,99,235,0.14)' }}>
           © {new Date().getFullYear()} Pype
         </p>
       </footer>

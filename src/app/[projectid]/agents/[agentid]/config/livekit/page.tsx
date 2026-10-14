@@ -1431,30 +1431,30 @@ const inboundLookupVariables = useMemo(() => {
 
               {((typeof formik.values.firstMessageMode === 'object' && formik.values.firstMessageMode.mode === 'assistant_speaks_first') ||
                 (typeof formik.values.firstMessageMode === 'string' && formik.values.firstMessageMode === 'assistant_speaks_first')) && (
-                <VariableTextarea
-                  placeholder="Enter the first message... Use {{variable_name}} for dynamic values."
+                <Textarea
+                  placeholder="Enter the first message..."
                   value={
-                    (typeof formik.values.firstMessageMode === 'object'
-                      ? formik.values.firstMessageMode.first_message
-                      : formik.values.customFirstMessage) || ''
+                    typeof formik.values.firstMessageMode === 'object' 
+                      ? formik.values.firstMessageMode.first_message 
+                      : formik.values.customFirstMessage
                   }
-                  onChange={(value) => {
+                  onChange={(e) => {
                     if (typeof formik.values.firstMessageMode === 'object') {
                       formik.setFieldValue('firstMessageMode', {
                         ...formik.values.firstMessageMode,
-                        first_message: value
+                        first_message: e.target.value
                       })
                     } else {
-                      formik.setFieldValue('customFirstMessage', value)
+                      formik.setFieldValue('customFirstMessage', e.target.value)
                       formik.setFieldValue('firstMessageMode', {
                         mode: formik.values.firstMessageMode || 'assistant_speaks_first',
                         allow_interruptions: true,
-                        first_message: value
+                        first_message: e.target.value
                       })
                     }
                   }}
-                  className="border-border"
-                  style={{ height: '84px', minHeight: '84px' }}
+                  className="text-xs resize-none border-border overflow-y-auto"
+                  style={{ fieldSizing: 'fixed' as any, height: '60px' }}
                 />
               )}
             </div>

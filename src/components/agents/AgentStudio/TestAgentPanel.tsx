@@ -512,7 +512,7 @@ const BUSY_BUTTON_STYLE = {
   boxShadow: 'none',
   cursor: 'not-allowed',
 }
-const READY_BUTTON_STYLE = { backgroundColor: '#4b0082', color: '#ffffff' }
+const READY_BUTTON_STYLE = { backgroundColor: '#2563eb', color: '#ffffff' }
 
 function PrimaryAction({
   tab, inCall, isConnected, isMuted, onToggleMute, onDisconnect, onConnect, blocked, isDeploying,
