@@ -22,10 +22,10 @@ export const V2_THEME = [
   "[--cl-red-line:rgba(225,29,72,.32)] dark:[--cl-red-line:rgba(244,63,94,.4)]",
   "[--cl-red-text:#be123c] dark:[--cl-red-text:#fda4af]",
   "[--cl-st-fail:#b45468] dark:[--cl-st-fail:#c0727f]",
-  "[--cl-violet:#7c3aed] dark:[--cl-violet:#a78bfa]",
-  "[--cl-violet-soft:rgba(124,58,237,.08)] dark:[--cl-violet-soft:rgba(167,139,250,.12)]",
-  "[--cl-violet-line:rgba(124,58,237,.32)] dark:[--cl-violet-line:rgba(167,139,250,.4)]",
-  "[--cl-violet-text:#6d28d9] dark:[--cl-violet-text:#c4b5fd]",
+  "[--cl-violet:#e5535b] dark:[--cl-violet:#e5535b]",
+  "[--cl-violet-soft:rgba(229,83,91,.09)] dark:[--cl-violet-soft:rgba(255,107,107,.14)]",
+  "[--cl-violet-line:rgba(229,83,91,.34)] dark:[--cl-violet-line:rgba(255,107,107,.4)]",
+  "[--cl-violet-text:#c0353f] dark:[--cl-violet-text:#ff9a9a]",
   "[--cl-shadow:0_12px_40px_rgba(30,10,82,.16)] dark:[--cl-shadow:0_12px_40px_rgba(0,0,0,.5)]",
 ].join(" ")
 
