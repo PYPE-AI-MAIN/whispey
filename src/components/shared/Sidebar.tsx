@@ -319,7 +319,7 @@ function renderContextHeader(config: SidebarConfig, isCollapsed: boolean, isMobi
       <div className="space-y-2">
         <Link
           href={config.backPath || '/'}
-          className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+          className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
           onClick={() => {
             if (isMobile && onMobileClose) {
               onMobileClose()
@@ -336,14 +336,14 @@ function renderContextHeader(config: SidebarConfig, isCollapsed: boolean, isMobi
 }
 
 function navItemTone(disabled: boolean | undefined, isActive: boolean): string {
-  if (disabled) return 'cursor-not-allowed text-gray-400 dark:text-gray-600'
-  if (isActive) return 'cursor-pointer bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
-  return 'cursor-pointer text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
+  if (disabled) return 'cursor-not-allowed text-muted-foreground'
+  if (isActive) return 'cursor-pointer bg-primary/10 text-primary border border-primary/30'
+  return 'cursor-pointer text-foreground hover:bg-muted/50 hover:text-foreground'
 }
 
 function navIconTone(disabled: boolean | undefined, isActive: boolean): string {
   if (disabled) return 'text-gray-300 dark:text-gray-700'
-  return isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'
+  return isActive ? 'text-primary' : 'text-muted-foreground'
 }
 
 function renderNavigationItem(
@@ -456,7 +456,7 @@ function SidebarUtilities({ collapsed, mounted, resolvedTheme, setTheme, onOpenS
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="right" align="start">
-            <DropdownMenuItem onClick={() => window.open('https://docs.whispey.pypeai.com', '_blank', 'noopener,noreferrer')}>
+            <DropdownMenuItem onClick={() => window.open('/docs', '_blank', 'noopener,noreferrer')}>
               <BookOpen className="mr-2 h-4 w-4" />Docs
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onOpenSupport}>
@@ -476,7 +476,7 @@ function SidebarUtilities({ collapsed, mounted, resolvedTheme, setTheme, onOpenS
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <a href="https://docs.whispey.pypeai.com" target="_blank" rel="noopener noreferrer" aria-label="Docs" className={ICON_BUTTON}>
+            <a href="/docs" target="_blank" rel="noopener noreferrer" aria-label="Docs" className={ICON_BUTTON}>
               <BookOpen className="h-4 w-4" />
             </a>
           </TooltipTrigger>
@@ -621,7 +621,7 @@ export default function Sidebar({
       <aside className={`
         ${isMobile ? 'fixed left-0 top-0 h-full w-64' : 'relative'}
         ${!isMobile && isCollapsed ? 'w-16 h-full' : 'w-64 h-full'}
-        bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 
+        bg-card  border-r border-border  
         flex flex-col transition-all duration-300 ease-in-out z-50
         ${isMobile ? 'shadow-lg' : ''}
       `}>
@@ -632,7 +632,7 @@ export default function Sidebar({
               variant="ghost"
               size="sm"
               onClick={onMobileClose}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="p-1 hover:bg-muted"
               aria-label="Close sidebar"
             >
               <X className="w-4 h-4" />
@@ -641,7 +641,7 @@ export default function Sidebar({
         )}
 
         {/* Logo & Context Header */}
-        <div className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
+        <div className="px-4 py-4 border-b border-border/60">
           <div className="flex items-center justify-between gap-3">
             {(!isCollapsed || isMobile) && (
               <div className="flex items-center gap-3 group flex-1 min-w-0">
@@ -679,14 +679,14 @@ export default function Sidebar({
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', height: '32px', justifyContent: 'space-between' }}>
                     <span
-                      className="text-gray-900 dark:text-gray-100"
+                      className="text-foreground"
                       style={{ fontSize: '17px', fontWeight: 600, lineHeight: 1, fontFamily: '-apple-system, "Segoe UI", sans-serif', alignSelf: 'flex-start' }}
                     >
                       Whispey
                     </span>
                     <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '5px' }}>
                       <span
-                        className="text-gray-400 dark:text-gray-500"
+                        className="text-muted-foreground"
                         style={{ fontSize: '10px', fontWeight: 600, fontFamily: '-apple-system, "Segoe UI", sans-serif' }}
                       >
                         by
@@ -704,20 +704,20 @@ export default function Sidebar({
                 variant="ghost"
                 size="sm"
                 onClick={onToggleCollapse}
-                className={`p-2 hover:bg-gray-100 hover:cursor-pointer dark:hover:bg-gray-800 transition-colors group ${
+                className={`p-2 hover:bg-muted hover:cursor-pointer  transition-colors group ${
                   isCollapsed ? 'w-full flex justify-center' : ''
                 }`}
                 aria-label={isCollapsed ? 'Expand sidebar (Cmd+B)' : 'Collapse sidebar (Cmd+B)'}
               >
                 {isCollapsed ? (
                   <>
-                    <PanelRightClose className="w-4 h-4 text-gray-600 dark:text-gray-400 group-hover:hidden transition-all" />
-                    <span className="text-gray-600 dark:text-gray-400 hidden group-hover:block text-lg">→</span>
+                    <PanelRightClose className="w-4 h-4 text-muted-foreground group-hover:hidden transition-all" />
+                    <span className="text-muted-foreground hidden group-hover:block text-lg">→</span>
                   </>
                 ) : (
                   <>
-                    <PanelRightOpen className="w-4 h-4 text-gray-600 dark:text-gray-400 group-hover:hidden transition-all" />
-                    <span className="text-gray-600 dark:text-gray-400 hidden group-hover:block text-lg">←</span>
+                    <PanelRightOpen className="w-4 h-4 text-muted-foreground group-hover:hidden transition-all" />
+                    <span className="text-muted-foreground hidden group-hover:block text-lg">←</span>
                   </>
                 )}
               </Button>
@@ -752,14 +752,14 @@ export default function Sidebar({
             <div key={group.id}>
               {group.name && (!isCollapsed || isMobile) && (
                 <div className={`px-3 py-2 ${groupIndex > 0 ? 'mt-4' : ''}`}>
-                  <h3 className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+                  <h3 className="text-xs font-medium text-muted-foreground">
                     {group.name}
                   </h3>
                 </div>
               )}
               
               {group.name && isCollapsed && !isMobile && groupIndex > 0 && (
-                <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
+                <div className="border-t border-border my-2" />
               )}
 
               <div className={`space-y-1 ${group.name && (!isCollapsed || isMobile) ? 'ml-0' : ''}`}>
@@ -828,15 +828,15 @@ function PricingBox({
   }
 
   return (
-    <div className="mx-3 mb-4 p-3 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+    <div className="mx-3 mb-4 p-3 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 border border-primary/30 rounded-lg">
       <div className="flex items-center gap-2 mb-2">
-        <Crown className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+        <Crown className="w-4 h-4 text-primary" />
         <span className="text-xs font-semibold text-blue-900 dark:text-blue-100">{pricingConfig.plan}</span>
       </div>
       {pricingConfig.features && pricingConfig.features.length > 0 && (
         <ul className="space-y-1 mb-3">
           {pricingConfig.features.map((feature: string) => (
-            <li key={feature} className="text-xs text-blue-700 dark:text-blue-300 flex items-center gap-1">
+            <li key={feature} className="text-xs text-primary flex items-center gap-1">
               <div className="w-1 h-1 bg-blue-400 rounded-full flex-shrink-0" />
               {feature}
             </li>
@@ -882,14 +882,14 @@ function SidebarUserMenu({
   onSignOut: () => void
 }>): React.ReactNode {
   return (
-    <div className="border-t border-gray-100 dark:border-gray-800 p-3">
+    <div className="border-t border-border/60 p-3">
       {!mounted || !isLoaded ? (
         <UserMenuSkeleton isCollapsed={isCollapsed} isMobile={isMobile} />
       ) : (
         <SignedIn>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className={`w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
+              <button className={`w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50  transition-colors ${
                 isCollapsed && !isMobile ? 'justify-center' : ''
               }`}>
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
@@ -901,11 +901,11 @@ function SidebarUserMenu({
             <DropdownMenuContent
               align={isCollapsed && !isMobile ? "center" : "start"}
               side={isCollapsed && !isMobile ? "right" : "top"}
-              className="w-56 shadow-lg border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800"
+              className="w-56 shadow-lg border border-border rounded-xl bg-card"
             >
-              <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700">
-                <p className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{getUserDisplayName(user)}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+              <div className="px-3 py-2 border-b border-border/60">
+                <p className="text-xs font-medium text-foreground truncate">{getUserDisplayName(user)}</p>
+                <p className="text-xs text-muted-foreground truncate">
                   {user?.emailAddresses?.[0]?.emailAddress}
                 </p>
               </div>
@@ -953,8 +953,8 @@ function UserMenuNameEmail({
 
   return (
     <div className="min-w-0 flex-1 text-left">
-      <p className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{getUserDisplayName(user)}</p>
-      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+      <p className="text-xs font-medium text-foreground truncate">{getUserDisplayName(user)}</p>
+      <p className="text-xs text-muted-foreground truncate">
         {user?.emailAddresses?.[0]?.emailAddress}
       </p>
     </div>
@@ -995,7 +995,7 @@ function SignOutMenuItem({
   return (
     <DropdownMenuItem
       onClick={onSignOut}
-      className="px-3 py-2 text-xs text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
+      className="px-3 py-2 text-xs text-destructive focus:text-destructive"
       disabled={isSigningOut}
     >
       <LogOut className={`w-4 h-4 mr-2 ${isSigningOut ? 'animate-spin' : ''}`} />

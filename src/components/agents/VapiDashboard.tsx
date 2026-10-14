@@ -106,14 +106,14 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen bg-muted/50">
         <div className="flex items-center justify-center h-screen">
           <div className="text-center space-y-4">
             <div className="w-12 h-12 bg-black dark:bg-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Image src="/vapi.svg" alt="Vapi Logo" width={24} height={24} />
             </div>
-            <div className="w-8 h-8 border-2 border-gray-300 dark:border-gray-600 border-t-blue-500 rounded-full animate-spin mx-auto"></div>
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Loading assistant details...</p>
+            <div className="w-8 h-8 border-2 border-border border-t-blue-500 rounded-full animate-spin mx-auto"></div>
+            <p className="text-sm font-medium text-muted-foreground">Loading assistant details...</p>
           </div>
         </div>
       </div>
@@ -122,19 +122,19 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
 
   if (error || !assistant) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen bg-muted/50">
         <div className="flex items-center justify-center h-screen">
           <div className="text-center space-y-6 max-w-md">
-            <div className="w-16 h-16 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 flex items-center justify-center mx-auto">
+            <div className="w-16 h-16 bg-card rounded-2xl border border-border flex items-center justify-center mx-auto">
               <AlertCircle className="w-8 h-8 text-red-400 dark:text-red-500" />
             </div>
             <div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Assistant Error</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{error}</p>
+              <h3 className="text-lg font-medium text-foreground">Assistant Error</h3>
+              <p className="text-sm text-muted-foreground mt-2">{error}</p>
               
-              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-left">
-                <p className="text-sm text-blue-800 dark:text-blue-200 font-medium mb-1">Troubleshooting:</p>
-                <ul className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+              <div className="mt-4 p-3 bg-primary/10 border border-primary/30 rounded-lg text-left">
+                <p className="text-sm text-primary font-medium mb-1">Troubleshooting:</p>
+                <ul className="text-xs text-primary space-y-1">
                   <li>• Make sure you used the correct Vapi API key format</li>
                   <li>• Check that the assistant exists in your Vapi dashboard</li>
                   <li>• Verify your Vapi API key has the correct permissions</li>
@@ -146,7 +146,7 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
               <Button 
                 onClick={handleBack}
                 variant="outline"
-                className="border-gray-300 dark:border-gray-600"
+                className="border-border"
               >
                 <ChevronLeft className="w-4 h-4 mr-2" />
                 Back to Agents
@@ -169,10 +169,10 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
   }
 
   return (
-    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden">
+    <div className="h-screen bg-muted/50 flex flex-col overflow-hidden">
       
       {/* Top Header Bar */}
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
+      <div className="bg-card border-b border-border flex-shrink-0">
         <div className="w-full px-8 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -180,9 +180,9 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
                 onClick={handleBack}
                 variant="ghost"
                 size="sm"
-                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+                className="p-1 hover:bg-muted"
               >
-                <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                <ChevronLeft className="w-5 h-5 text-muted-foreground" />
               </Button>
               
               <div>
@@ -191,18 +191,18 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
                     {assistant.name || 'Unnamed Assistant'}
                   </h1>
                   {isConnected ? (
-                    <Badge className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 text-xs">
+                    <Badge className="bg-success/15 text-success border-success/30 text-xs">
                       <CheckCircle className="w-2 h-2 mr-1" />
                       Connected
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800 text-xs">
+                    <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30 text-xs">
                       <AlertCircle className="w-2 h-2 mr-1" />
                       Not Connected
                     </Badge>
                   )}
                 </div>
-                <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Hash className="w-3 h-3" />
                     {agentId.slice(0, 8)}...
@@ -231,16 +231,16 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
       <div className="flex-1 flex gap-2 p-2 overflow-hidden">
         {/* Left Side - System Prompt */}
         <div className="w-2/3 flex-1 min-w-0">
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg flex flex-col h-full">
-            <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
+          <div className="bg-card border border-border rounded-lg flex flex-col h-full">
+            <div className="p-4 border-b border-border flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-                    <Bot className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                  <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center">
+                    <Bot className="w-4 h-4 text-muted-foreground" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">System Prompt</h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <h3 className="font-semibold text-foreground">System Prompt</h3>
+                    <p className="text-xs text-muted-foreground">
                       {getSystemPrompt().length.toLocaleString()} characters • 
                       {Math.ceil(getSystemPrompt().length / 4)} estimated tokens
                     </p>
@@ -250,7 +250,7 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
                   size="sm"
                   variant="outline"
                   onClick={() => copyToClipboard(getSystemPrompt(), 'prompt')}
-                  className="text-xs border-gray-300 dark:border-gray-600"
+                  className="text-xs border-border"
                 >
                   {copied === 'prompt' ? (
                     <>
@@ -270,7 +270,7 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
               <Textarea
                 value={getSystemPrompt()}
                 disabled
-                className="w-full h-full border-0 resize-none font-mono text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus-visible:ring-0"
+                className="w-full h-full border-0 resize-none font-mono text-sm bg-card text-foreground focus-visible:ring-0"
                 style={{
                   fontSize: '13px',
                   lineHeight: '1.5',
@@ -281,10 +281,10 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
         </div>
 
         {/* Right Side - Configuration Sidebar */}
-        <div className="w-1/3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-800 rounded-lg flex flex-col overflow-hidden">
+        <div className="w-1/3 bg-muted/50 border border-border rounded-lg flex flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto p-6 space-y-8">
             <div>
-              <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Configuration Overview</h3>
+              <h3 className="text-xs font-medium text-muted-foreground mb-2">Configuration Overview</h3>
               
               <div className="mb-6">
                 <div className="flex items-center gap-2 mb-2">
@@ -294,25 +294,25 @@ const VapiDashboard: React.FC<VapiDashboardProps> = ({ agentId }) => {
                   </span>
                 </div>
                 {!isConnected && (
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">Configure server URL for webhooks</p>
+                  <p className="text-xs text-muted-foreground mb-3">Configure server URL for webhooks</p>
                 )}
               </div>
 
               <div className="space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Model</span>
-                    <span className="text-xs text-gray-400 dark:text-gray-500">{assistant.model?.provider}</span>
+                    <span className="text-xs font-medium text-muted-foreground">Model</span>
+                    <span className="text-xs text-muted-foreground">{assistant.model?.provider}</span>
                   </div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{assistant.model?.model}</p>
+                  <p className="text-sm font-medium text-foreground">{assistant.model?.model}</p>
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Voice</span>
-                    <span className="text-xs text-gray-400 dark:text-gray-500">{assistant.voice?.provider}</span>
+                    <span className="text-xs font-medium text-muted-foreground">Voice</span>
+                    <span className="text-xs text-muted-foreground">{assistant.voice?.provider}</span>
                   </div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{assistant.voice?.voiceId}</p>
+                  <p className="text-sm font-medium text-foreground">{assistant.voice?.voiceId}</p>
                 </div>
               </div>
             </div>

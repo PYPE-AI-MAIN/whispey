@@ -1,0 +1,8 @@
+{
+  "theme.admonition.note": {"message": "Note"},
+  "theme.admonition.tip": {"message": "Tip"},
+  "theme.admonition.info": {"message": "Info"},
+  "theme.admonition.warning": {"message": "Warning"},
+  "theme.admonition.danger": {"message": "Danger"},
+  "theme.admonition.caution": {"message": "Caution"}
+}

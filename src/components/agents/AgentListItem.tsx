@@ -92,7 +92,7 @@ const getEnvironmentBadgeColor = (environment: string) => {
       return 'bg-destructive/10 text-destructive'
     case 'staging':
     case 'stage':
-      return 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+      return 'bg-amber-500/10 text-warning'
     default:
       return 'bg-primary/10 text-primary'
   }
@@ -165,13 +165,13 @@ const getStatusIndicator = (agent: Agent, runningAgents?: RunningAgent[], size: 
 
   if (!runningStatus) {
     return (
-      <div className={`${dotSize} rounded-full border border-white dark:border-gray-900 bg-gray-300 dark:bg-gray-600`}></div>
+      <div className={`${dotSize} rounded-full border border-white dark:border-gray-900 bg-muted-foreground/30`}></div>
     )
   }
   
   if (runningStatus.status === 'loading') {
     return (
-      <div className={`${dotSize} rounded-full border border-white dark:border-gray-900 bg-gray-400 dark:bg-gray-500`}></div>
+      <div className={`${dotSize} rounded-full border border-white dark:border-gray-900 bg-muted-foreground/40`}></div>
     )
   }
   
@@ -212,7 +212,7 @@ const getStatusColor = (agent: Agent, runningAgents?: RunningAgent[], isLoading?
   }
   
   return runningStatus.isRunning 
-    ? 'text-green-600 dark:text-green-400' 
+    ? 'text-success' 
     : 'text-muted-foreground'
 }
 
@@ -327,7 +327,7 @@ const MonitoringToggleMenuItem: React.FC<MonitoringToggleMenuItemProps> = ({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            {monitoringToggleLoading && <Loader2 className="w-4 h-4 animate-spin text-gray-500" />}
+            {monitoringToggleLoading && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
             <Switch
               aria-label="Enable monitoring"
               checked={monitoringEnabled}
@@ -438,14 +438,14 @@ const MobileAgentCard: React.FC<AgentViewProps> = ({
                 e.stopPropagation()
                 onCopyId(e)
               }}
-              className="ml-2 w-10 h-10 p-0 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg"
+              className="ml-2 w-10 h-10 p-0 text-muted-foreground hover:text-muted-foreground hover:bg-muted rounded-lg"
             >
               <Copy className="w-4 h-4" />
             </Button>
           </div>
           
           {isCopied && (
-            <div className="text-sm text-green-600 dark:text-green-400 font-medium">
+            <div className="text-sm text-success font-medium">
               ✓ Copied to clipboard
             </div>
           )}
@@ -471,13 +471,13 @@ const MobileAgentCard: React.FC<AgentViewProps> = ({
                   setCopiedNumber(true)
                   setTimeout(() => setCopiedNumber(false), 2000)
                 }}
-                className="ml-2 w-10 h-10 p-0 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg"
+                className="ml-2 w-10 h-10 p-0 text-muted-foreground hover:text-muted-foreground hover:bg-muted rounded-lg"
               >
                 <Copy className="w-4 h-4" />
               </Button>
             </div>
             {copiedNumber && (
-              <div className="text-sm text-green-600 dark:text-green-400 font-medium mt-1">✓ Copied!</div>
+              <div className="text-sm text-success font-medium mt-1">✓ Copied!</div>
             )}
           </div>
         )}
@@ -496,7 +496,7 @@ const MobileAgentCard: React.FC<AgentViewProps> = ({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="w-9 h-9 p-0 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                  className="w-9 h-9 p-0 text-muted-foreground hover:text-muted-foreground"
                   onClick={(e) => {
                     e.preventDefault()
                     e.stopPropagation()
@@ -531,7 +531,7 @@ const MobileAgentCard: React.FC<AgentViewProps> = ({
                   Settings
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <RemoveAgentMenuItem onDelete={onDelete} className="text-red-600 dark:text-red-400 text-sm py-3" iconClassName="h-4 w-4 mr-3" label="Remove Agent" />
+                <RemoveAgentMenuItem onDelete={onDelete} className="text-destructive text-sm py-3" iconClassName="h-4 w-4 mr-3" label="Remove Agent" />
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -607,11 +607,11 @@ const ListAgentRow: React.FC<AgentViewWithMobileProps> = ({
                   </button>
                 </span>
                 {assignedInboundNumber && (
-                  <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-mono">
+                  <span className="flex items-center gap-1 text-xs text-primary font-mono">
                     <Phone className="w-3 h-3" />
                     {assignedInboundNumber}
-                    <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigator.clipboard.writeText(assignedInboundNumber); setCopiedNumber(true); setTimeout(() => setCopiedNumber(false), 1500) }} className="ml-0.5 hover:text-blue-800 dark:hover:text-blue-200">
-                      {copiedNumber ? <span className="text-green-500">✓</span> : <Copy className="w-3 h-3" />}
+                    <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigator.clipboard.writeText(assignedInboundNumber); setCopiedNumber(true); setTimeout(() => setCopiedNumber(false), 1500) }} className="ml-0.5 hover:text-primary">
+                      {copiedNumber ? <span className="text-success">✓</span> : <Copy className="w-3 h-3" />}
                     </button>
                   </span>
                 )}
@@ -623,7 +623,7 @@ const ListAgentRow: React.FC<AgentViewWithMobileProps> = ({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="opacity-0 group-hover:opacity-100 w-7 h-7 p-0 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
+                    className="opacity-0 group-hover:opacity-100 w-7 h-7 p-0 text-muted-foreground hover:text-muted-foreground hover:bg-muted transition-all"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <MoreHorizontal className="h-4 w-4" />
@@ -657,7 +657,7 @@ const ListAgentRow: React.FC<AgentViewWithMobileProps> = ({
                     Copy ID
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <RemoveAgentMenuItem onDelete={onDelete} className="text-red-600 dark:text-red-400 text-sm" iconClassName="h-4 w-4 mr-2" label="Remove" />
+                  <RemoveAgentMenuItem onDelete={onDelete} className="text-destructive text-sm" iconClassName="h-4 w-4 mr-2" label="Remove" />
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -666,7 +666,7 @@ const ListAgentRow: React.FC<AgentViewWithMobileProps> = ({
         
         {isCopied && (
           <div className="mt-2 ml-11">
-            <p className="text-sm text-green-600 dark:text-green-400">✓ Copied!</p>
+            <p className="text-sm text-success">✓ Copied!</p>
           </div>
         )}
       </div>
@@ -728,7 +728,7 @@ return (
               <Button
                 variant="ghost"
                 size="sm"
-                className="opacity-0 group-hover:opacity-100 w-8 h-8 p-0 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                className="opacity-0 group-hover:opacity-100 w-8 h-8 p-0 text-muted-foreground hover:text-muted-foreground"
                 onClick={(e) => e.stopPropagation()}
               >
                 <MoreHorizontal className="h-4 w-4" />
@@ -757,7 +757,7 @@ return (
                 Copy ID
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <RemoveAgentMenuItem onDelete={onDelete} className="text-red-600 dark:text-red-400 text-sm" iconClassName="h-4 w-4 mr-2" label="Remove" />
+              <RemoveAgentMenuItem onDelete={onDelete} className="text-destructive text-sm" iconClassName="h-4 w-4 mr-2" label="Remove" />
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -786,13 +786,13 @@ return (
                 e.stopPropagation()
                 onCopyId(e)
               }}
-              className="w-7 h-7 p-0 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+              className="w-7 h-7 p-0 text-muted-foreground hover:text-muted-foreground"
             >
               <Copy className="w-3.5 h-3.5" />
             </Button>
           </div>
           {isCopied && (
-            <p className="text-xs text-green-600 dark:text-green-400 mt-1">✓ Copied!</p>
+            <p className="text-xs text-success mt-1">✓ Copied!</p>
           )}
         </div>
 
@@ -816,13 +816,13 @@ return (
                   setCopiedNumber(true)
                   setTimeout(() => setCopiedNumber(false), 2000)
                 }}
-                className="w-7 h-7 p-0 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+                className="w-7 h-7 p-0 text-muted-foreground hover:text-muted-foreground"
               >
                 <Copy className="w-3.5 h-3.5" />
               </Button>
             </div>
             {copiedNumber && (
-              <p className="text-xs text-green-600 dark:text-green-400 mt-1">✓ Copied!</p>
+              <p className="text-xs text-success mt-1">✓ Copied!</p>
             )}
           </div>
         )}

@@ -60,11 +60,11 @@ function NullableNumberField({
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <Label className="text-xs text-gray-600 dark:text-gray-400">{label}</Label>
+        <Label className="text-xs text-muted-foreground">{label}</Label>
         {tooltip && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Info className="w-3 h-3 text-gray-400 cursor-help" />
+              <Info className="w-3 h-3 text-muted-foreground cursor-help" />
             </TooltipTrigger>
             <TooltipContent side="right" className="max-w-xs">
               <p className="text-xs">{tooltip}</p>
@@ -81,7 +81,7 @@ function NullableNumberField({
         onBlur={e => commit(e.target.value)}
         className="h-8 text-xs"
       />
-      {hint && <p className="text-xs text-gray-500 dark:text-gray-400">{hint}</p>}
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   )
 }
@@ -110,11 +110,11 @@ function NumberField({
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <Label className="text-xs text-gray-600 dark:text-gray-400">{label}</Label>
+        <Label className="text-xs text-muted-foreground">{label}</Label>
         {tooltip && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Info className="w-3 h-3 text-gray-400 cursor-help" />
+              <Info className="w-3 h-3 text-muted-foreground cursor-help" />
             </TooltipTrigger>
             <TooltipContent side="right" className="max-w-xs">
               <p className="text-xs">{tooltip}</p>
@@ -130,7 +130,7 @@ function NumberField({
         onBlur={e => commit(e.target.value)}
         className="h-8 text-xs"
       />
-      {hint && <p className="text-xs text-gray-500 dark:text-gray-400">{hint}</p>}
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   )
 }
@@ -154,10 +154,10 @@ export default function CallBehaviorSettings({
         {/* Noise cancellation */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-gray-600 dark:text-gray-400">Noise Cancellation</Label>
+            <Label className="text-xs text-muted-foreground">Noise Cancellation</Label>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-gray-400 cursor-help" />
+                <Info className="w-3 h-3 text-muted-foreground cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">
@@ -183,8 +183,8 @@ export default function CallBehaviorSettings({
         {/* Metrics */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1">
-            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Enable Metrics</Label>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            <Label className="text-xs font-medium text-foreground">Enable Metrics</Label>
+            <p className="text-xs text-muted-foreground mt-0.5">
               Emits STT/LLM/TTS TTFB and usage metrics via PipelineParams.
             </p>
           </div>
@@ -194,8 +194,8 @@ export default function CallBehaviorSettings({
         {/* Interruptions */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1">
-            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Allow Interruptions</Label>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            <Label className="text-xs font-medium text-foreground">Allow Interruptions</Label>
+            <p className="text-xs text-muted-foreground mt-0.5">
               When off, the caller cannot cut off the bot mid-sentence.
             </p>
           </div>
@@ -218,8 +218,8 @@ export default function CallBehaviorSettings({
         {/* Mute while bot speaking */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1">
-            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Mute User While Bot Speaks</Label>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            <Label className="text-xs font-medium text-foreground">Mute User While Bot Speaks</Label>
+            <p className="text-xs text-muted-foreground mt-0.5">
               Blocks all user VAD frames while TTS is playing — prevents single-word &quot;yes/hmm/hello&quot; from cutting off mid-sentence replies.
             </p>
           </div>
@@ -229,8 +229,8 @@ export default function CallBehaviorSettings({
         {/* Mute during function calls */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1">
-            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Mute User During Tool Calls</Label>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            <Label className="text-xs font-medium text-foreground">Mute User During Tool Calls</Label>
+            <p className="text-xs text-muted-foreground mt-0.5">
               Suppresses interruptions while the agent is executing a tool (e.g. booking lookup). Prevents impatient &quot;hello?&quot; from cancelling in-flight API calls.
             </p>
           </div>
@@ -252,8 +252,8 @@ export default function CallBehaviorSettings({
         {/* DTMF (keypad) input */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1">
-            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Accept Keypad Input (DTMF)</Label>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            <Label className="text-xs font-medium text-foreground">Accept Keypad Input (DTMF)</Label>
+            <p className="text-xs text-muted-foreground mt-0.5">
               When on, digits the caller presses (0-9, *, #) are forwarded to the agent
               as &quot;[The caller pressed 123 on the keypad.]&quot;. Useful for IVR menus or OTP capture.
             </p>

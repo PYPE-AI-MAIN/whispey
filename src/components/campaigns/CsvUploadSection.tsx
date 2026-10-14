@@ -279,7 +279,7 @@ const validateCsvData = (data: RecipientRow[], headers: string[]): CsvValidation
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <Label className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+        <Label className="text-xs font-medium text-muted-foreground">
           Upload Recipients
         </Label>
         <Button
@@ -294,25 +294,26 @@ const validateCsvData = (data: RecipientRow[], headers: string[]): CsvValidation
         </Button>
       </div>
 
-      <div
+      <div /* NOSONAR: drag-and-drop target; the file picker inside is the keyboard control */
+        role="presentation"
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
           isDragging
-            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10'
-            : 'border-gray-300 dark:border-gray-600'
+            ? 'border-blue-500 bg-primary/10 dark:bg-blue-900/10'
+            : 'border-border'
         }`}
       >
         {csvFile ? (
-          <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+          <div className="flex items-center justify-between bg-muted/50 rounded-lg p-3">
             <div className="flex items-center gap-2">
-              <Upload className="w-4 h-4 text-green-600 dark:text-green-400" />
+              <Upload className="w-4 h-4 text-success" />
               <div className="text-left">
-                <p className="text-xs font-medium text-gray-900 dark:text-gray-100">
+                <p className="text-xs font-medium text-foreground">
                   {csvFile.name}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-muted-foreground">
                   {(csvFile.size / 1024).toFixed(2)} KB • {csvData.length} recipients
                 </p>
               </div>
@@ -329,11 +330,11 @@ const validateCsvData = (data: RecipientRow[], headers: string[]): CsvValidation
           </div>
         ) : (
           <>
-            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-            <p className="text-xs text-gray-900 dark:text-gray-100 mb-1">
+            <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-xs text-foreground mb-1">
               Choose a csv or drag & drop it here.
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            <p className="text-xs text-muted-foreground mb-3">
               Up to 50 MB
             </p>
             <Input
@@ -372,7 +373,7 @@ const validateCsvData = (data: RecipientRow[], headers: string[]): CsvValidation
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-red-600" />
+              <AlertTriangle className="w-5 h-5 text-destructive" />
               CSV Validation Errors
             </DialogTitle>
             <DialogDescription>
@@ -384,19 +385,19 @@ const validateCsvData = (data: RecipientRow[], headers: string[]): CsvValidation
             {validationErrors.map((error, index) => (
               <div 
                 key={index}
-                className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3"
+                className="bg-destructive/10 border border-destructive/30 rounded-lg p-3"
               >
                 <div className="flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                  <AlertCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-red-900 dark:text-red-100">
                       Row {error.row}: {error.field}
                     </p>
-                    <p className="text-xs text-red-700 dark:text-red-300 mt-1">
+                    <p className="text-xs text-destructive mt-1">
                       {error.error}
                     </p>
                     {error.value !== 'empty' && (
-                      <p className="text-xs text-red-600 dark:text-red-400 mt-1 font-mono bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded">
+                      <p className="text-xs text-destructive mt-1 font-mono bg-destructive/15 px-2 py-1 rounded">
                         Value: {error.value}
                       </p>
                     )}

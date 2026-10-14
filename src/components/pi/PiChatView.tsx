@@ -30,52 +30,52 @@ function PiLink({ children, href }: Readonly<{ children?: React.ReactNode; href?
   if (!target) return <>{children}</>
   // new tab for a link Pi drops inline (e.g. naming an agent) — clicking
   // it shouldn't navigate away from the chat you're in the middle of
-  return <Link href={target} target="_blank" rel="noreferrer" className="text-blue-600 underline underline-offset-2 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">{children}</Link>
+  return <Link href={target} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2 hover:text-primary">{children}</Link>
 }
 
 const MARKDOWN_COMPONENTS = {
   // a model-written image is a free GET to any URL — an exfiltration channel if text in the data steers it
   img: () => null,
   h1: ({ children }: { children?: React.ReactNode }) => (
-    <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100 mt-4 mb-2 first:mt-0">{children}</h1>
+    <h1 className="text-base font-semibold text-foreground mt-4 mb-2 first:mt-0">{children}</h1>
   ),
   h2: ({ children }: { children?: React.ReactNode }) => (
-    <h2 className="text-[15px] font-semibold text-gray-900 dark:text-gray-100 mt-4 mb-2 first:mt-0">{children}</h2>
+    <h2 className="text-[15px] font-semibold text-foreground mt-4 mb-2 first:mt-0">{children}</h2>
   ),
   h3: ({ children }: { children?: React.ReactNode }) => (
-    <h3 className="text-[15px] font-medium text-gray-900 dark:text-gray-100 mt-3 mb-1 first:mt-0">{children}</h3>
+    <h3 className="text-[15px] font-medium text-foreground mt-3 mb-1 first:mt-0">{children}</h3>
   ),
   p: ({ children }: { children?: React.ReactNode }) => (
-    <p className="whitespace-pre-wrap text-[15px] leading-7 text-gray-800 dark:text-gray-200 not-first:mt-3">{children}</p>
+    <p className="whitespace-pre-wrap text-[15px] leading-7 text-foreground not-first:mt-3">{children}</p>
   ),
-  strong: ({ children }: { children?: React.ReactNode }) => <strong className="font-semibold text-gray-900 dark:text-gray-100">{children}</strong>,
+  strong: ({ children }: { children?: React.ReactNode }) => <strong className="font-semibold text-foreground">{children}</strong>,
   code: ({ className, children }: { className?: string; children?: React.ReactNode }) => {
     const isBlock = className?.includes('language-')
     if (isBlock) {
       return (
-        <code className={`block overflow-x-auto rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 font-mono text-[13px] leading-relaxed text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 ${className ?? ''}`}>
+        <code className={`block overflow-x-auto rounded-lg border border-border bg-muted/50 px-3 py-2.5 font-mono text-[13px] leading-relaxed text-foreground ${className ?? ''}`}>
           {children}
         </code>
       )
     }
     return (
-      <code className="rounded border border-gray-200 bg-gray-50 px-1 py-0.5 font-mono text-[13px] text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100">
+      <code className="rounded border border-border bg-muted/50 px-1 py-0.5 font-mono text-[13px] text-foreground">
         {children}
       </code>
     )
   },
   pre: ({ children }: { children?: React.ReactNode }) => <pre className="not-first:mt-3 overflow-x-auto">{children}</pre>,
   ul: ({ children }: { children?: React.ReactNode }) => (
-    <ul className="list-disc pl-5 space-y-2 text-[15px] leading-7 text-gray-800 dark:text-gray-200 not-first:mt-3">{children}</ul>
+    <ul className="list-disc pl-5 space-y-2 text-[15px] leading-7 text-foreground not-first:mt-3">{children}</ul>
   ),
   ol: ({ children }: { children?: React.ReactNode }) => (
-    <ol className="list-decimal pl-5 space-y-2 text-[15px] leading-7 text-gray-800 dark:text-gray-200 not-first:mt-3">{children}</ol>
+    <ol className="list-decimal pl-5 space-y-2 text-[15px] leading-7 text-foreground not-first:mt-3">{children}</ol>
   ),
   li: ({ children }: { children?: React.ReactNode }) => <li>{children}</li>,
   blockquote: ({ children }: { children?: React.ReactNode }) => (
-    <blockquote className="border-l-2 border-gray-300 pl-3 not-first:mt-3 text-gray-600 dark:border-gray-600 dark:text-gray-400">{children}</blockquote>
+    <blockquote className="border-l-2 border-border pl-3 not-first:mt-3 text-muted-foreground">{children}</blockquote>
   ),
-  hr: () => <hr className="my-6 border-gray-200 dark:border-gray-800" />,
+  hr: () => <hr className="my-6 border-border" />,
   a: PiLink,
 }
 
@@ -166,7 +166,7 @@ function ThinkingIndicator() {
   }, [])
 
   return (
-    <span className="inline-flex items-center gap-2 py-2 text-[13px] text-gray-400 dark:text-gray-500">
+    <span className="inline-flex items-center gap-2 py-2 text-[13px] text-muted-foreground">
       <ThinkingOrb />
       {THINKING_PHRASES[phraseIndex]}
     </span>
@@ -215,7 +215,7 @@ function composeInput(recording: boolean, partialText: string, input: string): s
 
 function usageBarColor(pct: number): string {
   if (pct >= 90) return 'bg-red-500'
-  return pct >= 70 ? 'bg-amber-500' : 'bg-gray-500'
+  return pct >= 70 ? 'bg-amber-500' : 'bg-muted-foreground'
 }
 
 const CONFIRMED_TOOLS = new Set(['create_agent', 'edit_agent', 'buy_plivo_number', 'attach_inbound_number'])
@@ -306,10 +306,10 @@ function PiVoiceCall({ agentName, label }: Readonly<{ agentName: string; label: 
   const live = state.isConnected
   const speaking = state.agentState === 'speaking'
   return (
-    <div className="mt-3 rounded-xl border border-gray-200 bg-white px-3 py-3 dark:border-gray-800 dark:bg-gray-900">
+    <div className="mt-3 rounded-xl border border-border bg-card px-3 py-3">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[13px] font-medium text-gray-800 dark:text-gray-200">{label}</span>
-        <span className="text-[12px] text-gray-400">{live ? CALL_STATE[state.agentState] ?? state.agentState : 'Not on a call'}</span>
+        <span className="text-[13px] font-medium text-foreground">{label}</span>
+        <span className="text-[12px] text-muted-foreground">{live ? CALL_STATE[state.agentState] ?? state.agentState : 'Not on a call'}</span>
       </div>
       <SoundBars active={live || state.isConnecting} speaking={speaking} />
       {live && state.transcripts.length > 0 && (
@@ -324,7 +324,7 @@ function PiVoiceCall({ agentName, label }: Readonly<{ agentName: string; label: 
       <div className="flex flex-wrap items-center gap-2">
         {live ? (
           <>
-            <button type="button" onClick={() => void actions.toggleMute()} className="rounded-lg border border-gray-200 px-3 py-1.5 text-[13px] text-gray-800 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">
+            <button type="button" onClick={() => void actions.toggleMute()} className="rounded-lg border border-border px-3 py-1.5 text-[13px] text-foreground hover:bg-muted/50">
               {state.isMuted ? 'Unmute' : 'Mute'}
             </button>
             <button type="button" onClick={() => void actions.disconnect()} className="rounded-lg bg-gray-900 px-3 py-1.5 text-[13px] text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900">
@@ -342,7 +342,7 @@ function PiVoiceCall({ agentName, label }: Readonly<{ agentName: string; label: 
           </button>
         )}
       </div>
-      {state.connectionError && <p className="mt-2 text-[12px] text-red-600 dark:text-red-400">{state.connectionError}</p>}
+      {state.connectionError && <p className="mt-2 text-[12px] text-destructive">{state.connectionError}</p>}
     </div>
   )
 }
@@ -365,7 +365,7 @@ function UserMessage({ content }: Readonly<{ content: string }>) {
   const collapsed = overflows && !open
 
   return (
-    <div className="relative max-w-[85%] rounded-2xl bg-white px-4 py-3 text-[15px] leading-7 text-gray-900 shadow-sm ring-1 ring-gray-200/80 dark:bg-gray-900 dark:text-gray-100 dark:ring-gray-800">
+    <div className="relative max-w-[85%] rounded-2xl bg-card px-4 py-3 text-[15px] leading-7 text-foreground shadow-sm ring-1 ring-gray-200/80 dark:ring-gray-800">
       <div
         ref={bodyRef}
         className="whitespace-pre-wrap break-words overflow-hidden"
@@ -380,7 +380,7 @@ function UserMessage({ content }: Readonly<{ content: string }>) {
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="text-[13px] font-medium text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+            className="text-[13px] font-medium text-muted-foreground hover:text-foreground"
           >
             {open ? 'Show less' : 'Show more'}
           </button>
@@ -393,12 +393,12 @@ function UserMessage({ content }: Readonly<{ content: string }>) {
 function ToolCallLine({ tc }: Readonly<{ tc: ToolCall }>) {
   const label = TOOL_LABELS[tc.name] ?? tc.name
   if (tc.pending) {
-    return <span className="text-[12px] text-gray-400 dark:text-gray-500">{label}…</span>
+    return <span className="text-[12px] text-muted-foreground">{label}…</span>
   }
   if (tc.success === false) {
-    return <span className="text-[12px] text-red-600 dark:text-red-400">{label} failed</span>
+    return <span className="text-[12px] text-destructive">{label} failed</span>
   }
-  return <span className="text-[12px] text-gray-400 dark:text-gray-500">{label}</span>
+  return <span className="text-[12px] text-muted-foreground">{label}</span>
 }
 
 // --- Smooth streaming -------------------------------------------------------
@@ -436,7 +436,7 @@ const StreamedMarkdown = memo(function StreamedMarkdown({ content, isFinal }: Re
   return (
     <>
       {keyed.map((b) => <MarkdownBlock key={b.key} text={b.text} />)}
-      {live ? <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-gray-400 align-middle dark:bg-gray-500" /> : null}
+      {live ? <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-muted-foreground/40 align-middle" /> : null}
     </>
   )
 })
@@ -462,10 +462,10 @@ function PhoneActionOutcome({ tc, cancelled }: Readonly<{ tc: ToolCall; cancelle
   const isPhoneAction = tc.name === 'buy_plivo_number' || tc.name === 'attach_inbound_number'
   if (!isPhoneAction || !tc.result || tc.result.__pending || cancelled) return null
   if (tc.success === false || tc.result.error) {
-    return <p className="mt-2 max-w-md rounded-lg bg-red-50 px-3 py-2 text-[13px] text-red-700 dark:bg-red-950/30 dark:text-red-300">Failed: {String(tc.result.error ?? 'Something went wrong')}</p>
+    return <p className="mt-2 max-w-md rounded-lg bg-destructive/10 px-3 py-2 text-[13px] text-destructive">Failed: {String(tc.result.error ?? 'Something went wrong')}</p>
   }
   return (
-    <p className="mt-2 max-w-md rounded-lg bg-emerald-50 px-3 py-2 text-[13px] text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
+    <p className="mt-2 max-w-md rounded-lg bg-success/10 px-3 py-2 text-[13px] text-success">
       {tc.name === 'buy_plivo_number'
         ? `Bought ${tc.result.bought} ($${Number(tc.result.monthly_rental_rate_usd).toFixed(2)}/month). Ask me to attach it to an agent.`
         : `Attached ${tc.result.attached} to ${tc.result.agent} for inbound calls (${tc.result.alias}).`}
@@ -501,7 +501,7 @@ function ToolCallBlock({
               key={a.id}
               type="button"
               onClick={() => onChoose(a.display_name)}
-              className="rounded-full border border-gray-200 bg-white px-3.5 py-1.5 text-[13px] text-gray-700 transition hover:border-gray-300 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-600"
+              className="rounded-full border border-border bg-card px-3.5 py-1.5 text-[13px] text-foreground transition hover:border-border hover:bg-muted/50"
             >
               {a.display_name}
             </button>
@@ -509,7 +509,7 @@ function ToolCallBlock({
         </div>
       ) : null}
       {pending ? (
-        <div className="mt-3 max-w-md rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/60 dark:bg-amber-950/30">
+        <div className="mt-3 max-w-md rounded-xl border border-warning/30 bg-warning/10 px-4 py-3">
           <p className="text-[13px] text-amber-900 dark:text-amber-200">{pending.summary}</p>
           <div className="mt-2.5 flex gap-2">
             <button
@@ -524,15 +524,15 @@ function ToolCallBlock({
               type="button"
               disabled={resolving}
               onClick={() => onResolve(tc.id, 'cancel')}
-              className="rounded-lg border border-amber-300 px-3 py-1.5 text-[13px] font-medium text-amber-900 transition hover:bg-amber-100 disabled:cursor-wait disabled:opacity-50 dark:border-amber-800 dark:text-amber-200 dark:hover:bg-amber-900/40"
+              className="rounded-lg border border-warning/40 px-3 py-1.5 text-[13px] font-medium text-amber-900 transition hover:bg-warning/15 disabled:cursor-wait disabled:opacity-50 dark:text-amber-200"
             >
               Cancel
             </button>
           </div>
         </div>
       ) : null}
-      {pending && resolveError && <p role="alert" className="mt-2 max-w-md text-[12px] text-red-600 dark:text-red-400">{resolveError}</p>}
-      {cancelled && <p className="mt-2 text-[12px] text-gray-400">Cancelled.</p>}
+      {pending && resolveError && <p role="alert" className="mt-2 max-w-md text-[12px] text-destructive">{resolveError}</p>}
+      {cancelled && <p className="mt-2 text-[12px] text-muted-foreground">Cancelled.</p>}
       <PhoneActionOutcome tc={tc} cancelled={cancelled} />
     </div>
   )
@@ -895,9 +895,9 @@ export default function PiChatView({
   const showContextHint = messages.length > 0 || !!sessionIdRef.current
 
   return (
-    <div className="h-full min-h-0 flex flex-col bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+    <div className="h-full min-h-0 flex flex-col bg-muted/50 text-foreground">
       {readOnly && (
-        <div className="shrink-0 border-b border-gray-200 bg-white px-6 py-2 text-xs text-gray-500 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400">
+        <div className="shrink-0 border-b border-border bg-card px-6 py-2 text-xs text-muted-foreground">
           {readOnlyLabel ?? 'Read-only conversation'}
         </div>
       )}
@@ -907,8 +907,8 @@ export default function PiChatView({
         <div ref={contentRef} className="mx-auto min-w-0 max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
           {messages.length === 0 && !readOnly && (
             <div className="pt-[8vh] sm:pt-[10vh]">
-              <h1 className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-gray-50 sm:text-[28px]">Hi, I'm π.</h1>
-              <p className="mt-2 max-w-xl text-[15px] leading-7 text-gray-600 dark:text-gray-400">
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[28px]">Hi, I'm π.</h1>
+              <p className="mt-2 max-w-xl text-[15px] leading-7 text-muted-foreground">
                 Ask about your call analytics, create or update agents, attach inbound numbers, or check whether a phone number is spam — right here in this chat.
               </p>
 
@@ -918,9 +918,9 @@ export default function PiChatView({
                     key={label}
                     type="button"
                     onClick={() => (mode === 'send' ? sendMessage(prompt, messages) : fillInput(prompt))}
-                    className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3.5 py-2 text-left text-[13px] leading-snug text-gray-700 transition hover:border-gray-300 hover:bg-gray-50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-gray-700 dark:hover:bg-gray-900/80"
+                    className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3.5 py-2 text-left text-[13px] leading-snug text-foreground transition hover:border-border hover:bg-muted/50"
                   >
-                    <Icon aria-hidden className="h-3.5 w-3.5 shrink-0 text-gray-400 dark:text-gray-500" />
+                    <Icon aria-hidden className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                     {label}
                   </button>
                 ))}
@@ -968,7 +968,7 @@ export default function PiChatView({
             <button
               type="button"
               onClick={() => { const t = lastTurnRef.current; if (t) sendMessage(t.text, t.history) }}
-              className="rounded-full border border-red-200 bg-white px-3 py-1 text-[12px] text-red-600 shadow-sm hover:bg-red-50 dark:border-red-900 dark:bg-gray-900 dark:text-red-400"
+              className="rounded-full border border-destructive/30 bg-card px-3 py-1 text-[12px] text-destructive shadow-sm hover:bg-destructive/10"
             >
               Try again
             </button>
@@ -978,7 +978,7 @@ export default function PiChatView({
           <button
             type="button"
             onClick={() => { pinToBottom(true); scrollToBottom() }}
-            className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-gray-200 bg-white px-3 py-1 text-[12px] text-gray-600 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-border bg-card px-3 py-1 text-[12px] text-muted-foreground shadow-sm hover:bg-muted/50"
           >
             Latest messages
           </button>
@@ -986,9 +986,9 @@ export default function PiChatView({
       </div>
 
       {!readOnly && (
-        <div className="shrink-0 border-t border-gray-200 bg-white px-4 py-4 dark:border-gray-800 dark:bg-gray-900 sm:px-6">
+        <div className="shrink-0 border-t border-border bg-card px-4 py-4 sm:px-6">
           <div className="mx-auto max-w-3xl">
-            <div className="rounded-2xl border border-gray-300 bg-white px-3 py-2.5 focus-within:border-gray-400 dark:border-gray-700 dark:bg-gray-950 dark:focus-within:border-gray-600">
+            <div className="rounded-2xl border border-border bg-card px-3 py-2.5 focus-within:border-border">
               <textarea
                 ref={textareaRef}
                 value={composeInput(recording, partialText, input)}
@@ -997,7 +997,7 @@ export default function PiChatView({
                 placeholder="Ask Pi…"
                 rows={1}
                 disabled={isStreaming || recording}
-                className="w-full resize-none bg-transparent px-1 py-1 text-[15px] leading-6 text-gray-900 placeholder:text-gray-500 dark:text-gray-100 focus:outline-none disabled:opacity-60"
+                className="w-full resize-none bg-transparent px-1 py-1 text-[15px] leading-6 text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-60"
                 style={{ maxHeight: MAX_TEXTAREA_PX }}
               />
               <div className="mt-1 flex items-center justify-end gap-1.5">
@@ -1006,7 +1006,7 @@ export default function PiChatView({
                     type="button"
                     onClick={toggleRecording}
                     aria-label={recording ? 'Stop voice input' : 'Start voice input'}
-                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition disabled:cursor-wait ${recording ? 'animate-pulse bg-red-500/20 text-red-400' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200'}`}
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition disabled:cursor-wait ${recording ? 'animate-pulse bg-red-500/20 text-red-400' : 'text-gray-500 hover:bg-muted hover:text-foreground dark:text-gray-400 dark:hover:text-gray-200'}`}
                   >
                     <Mic className="h-4 w-4" />
                   </button>
@@ -1022,7 +1022,7 @@ export default function PiChatView({
                 </button>
               </div>
             </div>
-            <p className="mt-2 text-center text-[11px] text-gray-400 dark:text-gray-500">
+            <p className="mt-2 text-center text-[11px] text-muted-foreground">
               Pi is AI and can make mistakes — check key numbers against your call logs.
             </p>
             {micError && (
@@ -1032,13 +1032,13 @@ export default function PiChatView({
               const pct = Math.min(100, Math.round((contextUsage.used / contextUsage.limit) * 100))
               return (
                 <div className="mt-2 flex items-center justify-center gap-2" title={`${contextUsage.used.toLocaleString()} / ${contextUsage.limit.toLocaleString()} tokens used this turn`}>
-                  <div className="h-1 w-24 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800">
+                  <div className="h-1 w-24 overflow-hidden rounded-full bg-muted">
                     <div
                       className={`h-full rounded-full ${usageBarColor(pct)}`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
-                  <span className="text-[11px] text-gray-400">{pct}% of context used</span>
+                  <span className="text-[11px] text-muted-foreground">{pct}% of context used</span>
                 </div>
               )
             })()}
@@ -1052,22 +1052,22 @@ export default function PiChatView({
                     value={model}
                     disabled={isStreaming}
                     onChange={(e) => chooseModel(e.target.value)}
-                    className="appearance-none rounded-full border border-gray-200 bg-white py-0.5 pl-2.5 pr-6 text-[10px] font-medium leading-4 text-gray-500 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
+                    className="appearance-none rounded-full border border-border bg-card py-0.5 pl-2.5 pr-6 text-[10px] font-medium leading-4 text-muted-foreground disabled:opacity-50"
                   >
                     {PI_MODEL_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
                   </select>
-                  <ChevronDown aria-hidden className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400" />
+                  <ChevronDown aria-hidden className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
                 </span>
               )}
               <span
-                className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-2.5 py-0.5 text-[10px] font-medium leading-4 text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-0.5 text-[10px] font-medium leading-4 text-muted-foreground"
                 title="Phone numbers are masked before reaching the model, both when a field is deliberately grouped by and as a general backstop over every tool result — never sent to the LLM in full."
               >
                 Phone numbers masked
               </span>
             </div>
             {showContextHint && (
-              <p className="mt-2 text-center text-[11px] text-gray-400 dark:text-gray-500">
+              <p className="mt-2 text-center text-[11px] text-muted-foreground">
                 This chat is saved for your organization. Pi remembers recent messages in this thread when replying.
               </p>
             )}

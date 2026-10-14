@@ -342,14 +342,14 @@ const AgentList: React.FC<AgentListProps> = ({
 
   if (viewMode === 'list') {
     return (
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <div className="wp-stagger bg-card border border-border rounded-xl overflow-hidden">
         {agents.map((agent, index) => renderAgentItem(agent, index, 'list'))}
       </div>
     )
   }
 
   return (
-    <div className="grid gap-6 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+    <div className="wp-stagger grid gap-6 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
       {agents.map((agent, index) => renderAgentItem(agent, index, 'grid'))}
     </div>
   )

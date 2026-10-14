@@ -32,10 +32,10 @@ import { cn } from "@/lib/utils"
 // like the same one. Every tier is explicit now, one ladder, darkest to
 // lightest as you move from "just a call info column" to "a metric".
 export function getColumnGroupBgClass(columnId: string): string {
-  if (columnId.startsWith("metadata-")) return "bg-slate-100 dark:bg-slate-800"
-  if (columnId.startsWith("transcription-")) return "bg-slate-200 dark:bg-slate-700"
-  if (columnId.startsWith("metrics-")) return "bg-slate-300 dark:bg-slate-600"
-  return "bg-slate-50 dark:bg-slate-900"
+  if (columnId.startsWith("metadata-")) return "bg-muted"
+  if (columnId.startsWith("transcription-")) return "bg-muted"
+  if (columnId.startsWith("metrics-")) return "bg-muted-foreground/30"
+  return "bg-muted/50"
 }
 import { isViewerRole } from '@/utils/callLogsUtils'
 
@@ -56,7 +56,7 @@ function renderCustomerNumberCell(call: CallLog) {
           </div>
           <span
             className={cn(
-              "font-medium text-gray-900 dark:text-gray-100 text-sm",
+              "font-medium text-foreground text-sm",
               isLongNumber && "truncate"
             )}
             style={{ maxWidth: isLongNumber ? '140px' : 'none' }}
@@ -102,7 +102,7 @@ function CallIdCell({ callId }: Readonly<{ callId: string }>) {
         className="flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:hover:bg-gray-700/60 transition-colors shrink-0 cursor-pointer"
         aria-label="Copy call ID"
       >
-        {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+        {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
       </button>
     </div>
   )
@@ -359,7 +359,7 @@ export const createTableColumns = (
         // Special rendering for voicemail-detection
         if (key === 'voicemail-detection' && call.metadata?.['voicemail-detection'] === 'true') {
           return (
-            <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+            <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5 bg-warning/15 text-warning">
               Voicemail
             </Badge>
           )

@@ -21,8 +21,8 @@ export default function PipecatPhoneCallConfigPage() {
 
   if (isLoading) {
     return (
-      <div className="h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+      <div className="h-screen bg-muted/50 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     )
   }
@@ -32,8 +32,8 @@ export default function PipecatPhoneCallConfigPage() {
 
   if (!pipecatAgentId) {
     return (
-      <div className="h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-6">
-        <p className="text-sm text-red-500">Pipecat agent ID not found in configuration.</p>
+      <div className="h-screen bg-muted/50 flex items-center justify-center p-6">
+        <p className="text-sm text-destructive">Pipecat agent ID not found in configuration.</p>
       </div>
     )
   }

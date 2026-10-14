@@ -351,10 +351,10 @@ export default function PipecatPhoneCallConfig({
               </div>
               <div>
                 <h1 className="text-2xl font-semibold tracking-tight text-foreground">Dispatch Call</h1>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-sm text-muted-foreground">
                   with{' '}
-                  <span className="font-semibold text-gray-900 dark:text-gray-100">{agentName}</span>
-                  <span className="ml-2 text-xs px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded font-medium">
+                  <span className="font-semibold text-foreground">{agentName}</span>
+                  <span className="ml-2 text-xs px-1.5 py-0.5 bg-warning/15 text-warning rounded font-medium">
                     Pipecat
                   </span>
                 </p>
@@ -365,38 +365,40 @@ export default function PipecatPhoneCallConfig({
 
               {/* Calling From — display assigned numbers */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  Calling From <span className="text-red-500">*</span>
-                </label>
-                {loadingNumbers ? (
-                  <div className="h-12 w-full flex items-center justify-center border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800">
-                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                <div className="block text-sm font-semibold text-foreground mb-2">
+                  Calling From <span className="text-destructive">*</span>
+                </div>
+                {loadingNumbers && (
+                  <div className="h-12 w-full flex items-center justify-center border border-border rounded-xl bg-card">
+                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                   </div>
-                ) : numbers.length === 0 ? (
-                  <div className="h-12 flex items-center px-4 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800">
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                )}
+                {!loadingNumbers && numbers.length === 0 && (
+                  <div className="h-12 flex items-center px-4 border border-border rounded-xl bg-muted/50">
+                    <span className="text-sm text-muted-foreground">
                       No numbers assigned to this agent
                     </span>
                   </div>
-                ) : (
+                )}
+                {!loadingNumbers && numbers.length !== 0 && (
                   <Select value={selectedFromNumber} onValueChange={setSelectedFromNumber}>
-                    <SelectTrigger className="h-12 w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
+                    <SelectTrigger className="h-12 w-full bg-card border-border hover:border-border transition-colors">
                       <SelectValue placeholder="Select number to call from" />
                     </SelectTrigger>
-                    <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                    <SelectContent className="bg-card border-border">
                       {numbers.map(n => (
                         <SelectItem
                           key={n.number}
                           value={n.number}
-                          className="text-gray-900 dark:text-gray-100 focus:bg-gray-100 dark:focus:bg-gray-700"
+                          className="text-foreground focus:bg-muted"
                         >
                           <div className="flex items-center gap-2">
                             <span className="font-mono text-sm font-medium">{formatNumber(n.number)}</span>
                             {n.provider && (
-                              <span className="text-xs text-gray-500 dark:text-gray-400">({n.provider})</span>
+                              <span className="text-xs text-muted-foreground">({n.provider})</span>
                             )}
                             {n.alias && (
-                              <span className="text-xs text-gray-400 dark:text-gray-500">· {n.alias}</span>
+                              <span className="text-xs text-muted-foreground">· {n.alias}</span>
                             )}
                           </div>
                         </SelectItem>
@@ -408,34 +410,34 @@ export default function PipecatPhoneCallConfig({
 
               {/* Calling To */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                <div className="block text-sm font-semibold text-foreground mb-2">
                   <div className="flex gap-4 items-center">
-                    Calling To <span className="text-red-500">*</span>
+                    Calling To <span className="text-destructive">*</span>
                     <button
                       onClick={() => setShowDialer(!showDialer)}
                       className={`h-7 w-7 flex items-center justify-center rounded-xl border transition-all duration-200 active:scale-95 ${
                         showDialer
-                          ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30'
-                          : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-orange-300 dark:hover:border-orange-600 hover:text-orange-600 dark:hover:text-orange-400'
+                          ? 'bg-red-50 dark:bg-red-900/20 border-destructive/30  text-destructive  hover:bg-destructive/15 dark:hover:bg-red-900/30'
+                          : 'bg-card border-border text-muted-foreground hover:border-warning/40  hover:text-warning dark:hover:text-orange-400'
                       }`}
                       title={showDialer ? 'Hide dialer' : 'Show dialer'}
                     >
                       {showDialer ? <PhoneOff className="w-4 h-4" /> : <PhoneCall className="w-4 h-4" />}
                     </button>
                   </div>
-                </label>
+                </div>
                 <div className="flex gap-2">
                   <div className="flex h-12 flex-1">
                     <Select value={selectedCountry} onValueChange={setSelectedCountry}>
-                      <SelectTrigger className="w-[100px] h-full bg-gray-100 dark:bg-gray-800 border border-r-0 border-gray-200 dark:border-gray-700 rounded-r-none rounded-l-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                      <SelectTrigger className="w-[100px] h-full bg-muted border border-r-0 border-border rounded-r-none rounded-l-xl hover:bg-muted transition-colors">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                      <SelectContent className="bg-card border-border">
                         {COUNTRIES.map(country => (
                           <SelectItem
                             key={country.code}
                             value={country.code}
-                            className="text-gray-900 dark:text-gray-100 focus:bg-gray-100 dark:focus:bg-gray-700"
+                            className="text-foreground focus:bg-muted"
                           >
                             <div className="flex items-center gap-2">
                               <span className="text-base">{country.flag}</span>
@@ -450,7 +452,7 @@ export default function PipecatPhoneCallConfig({
                       placeholder={currentCountry.placeholder}
                       value={phoneNumber}
                       onChange={handlePhoneChange}
-                      className="flex-1 rounded-l-none rounded-r-xl bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-base font-mono focus:border-orange-500 dark:focus:border-orange-400 focus:ring-2 focus:ring-orange-500/20"
+                      className="flex-1 rounded-l-none rounded-r-xl bg-card border-border text-base font-mono focus:border-orange-500 dark:focus:border-orange-400 focus:ring-2 focus:ring-orange-500/20"
                     />
                   </div>
                 </div>
@@ -458,20 +460,20 @@ export default function PipecatPhoneCallConfig({
 
               {/* Dialer */}
               {showDialer && (
-                <div className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-800/50 dark:to-gray-900/50 rounded-xl p-3 border border-gray-200 dark:border-gray-700 shadow-inner">
+                <div className="bg-gradient-to-br from-gray-50 to-white dark:from-gray-800/50 dark:to-gray-900/50 rounded-xl p-3 border border-border shadow-inner">
                   <div className="grid grid-cols-3 gap-2">
                     {dialerButtons.map(({ digit, letters }) => (
                       <button
                         key={digit}
                         onClick={() => handleDialerClick(digit)}
-                        className="group relative h-11 bg-white dark:bg-gray-800 hover:bg-gradient-to-br hover:from-orange-50 hover:to-orange-100 dark:hover:from-orange-900/30 dark:hover:to-orange-800/30 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-600 transition-all duration-200 shadow-sm hover:shadow-md active:scale-95"
+                        className="group relative h-11 bg-card hover:bg-gradient-to-br hover:from-orange-50 hover:to-orange-100 dark:hover:from-orange-900/30 dark:hover:to-orange-800/30 rounded-lg border border-border hover:border-warning/40 transition-all duration-200 shadow-sm hover:shadow-md active:scale-95"
                       >
                         <div className="flex flex-col items-center justify-center h-full">
-                          <span className="text-lg font-bold text-gray-900 dark:text-gray-100 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
+                          <span className="text-lg font-bold text-foreground group-hover:text-warning transition-colors">
                             {digit}
                           </span>
                           {letters && (
-                            <span className="text-[8px] font-medium text-gray-500 dark:text-gray-400 group-hover:text-orange-500 tracking-wide">
+                            <span className="text-[8px] font-medium text-muted-foreground group-hover:text-warning tracking-wide">
                               {letters}
                             </span>
                           )}
@@ -482,10 +484,10 @@ export default function PipecatPhoneCallConfig({
                   <button
                     onClick={() => setPhoneNumber(prev => prev.slice(0, -1))}
                     disabled={!phoneNumber}
-                    className="mt-2 w-full h-10 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 hover:from-red-100 hover:to-red-200 dark:hover:from-red-900/30 dark:hover:to-red-800/30 rounded-lg border border-red-200 dark:border-red-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
+                    className="mt-2 w-full h-10 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 hover:from-red-100 hover:to-red-200 dark:hover:from-red-900/30 dark:hover:to-red-800/30 rounded-lg border border-destructive/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
                   >
-                    <Delete className="w-4 h-4 text-red-600 dark:text-red-400" />
-                    <span className="text-xs font-semibold text-red-700 dark:text-red-400">Backspace</span>
+                    <Delete className="w-4 h-4 text-destructive" />
+                    <span className="text-xs font-semibold text-destructive">Backspace</span>
                   </button>
                 </div>
               )}
@@ -493,19 +495,19 @@ export default function PipecatPhoneCallConfig({
               {/* Variables */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                    Variables <span className="text-xs font-normal text-gray-400">(optional)</span>
-                  </label>
+                  <div className="text-sm font-semibold text-foreground">
+                    Variables <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+                  </div>
                   <button
                     onClick={() => setVariables(prev => [...prev, { key: '', value: '' }])}
-                    className="flex items-center gap-1 text-xs text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 font-medium"
+                    className="flex items-center gap-1 text-xs text-warning hover:text-warning font-medium"
                   >
                     <Plus className="w-3.5 h-3.5" /> Add Variable
                   </button>
                 </div>
                 {variables.length === 0 ? (
-                  <p className="text-xs text-gray-400 dark:text-gray-500 italic">
-                    No variables. Use <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{'{{key}}'}</code> in your agent prompt.
+                  <p className="text-xs text-muted-foreground italic">
+                    No variables. Use <code className="bg-muted px-1 rounded">{'{{key}}'}</code> in your agent prompt.
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -515,17 +517,17 @@ export default function PipecatPhoneCallConfig({
                           placeholder="key"
                           value={v.key}
                           onChange={e => setVariables(prev => prev.map((x, j) => j === i ? { ...x, key: e.target.value } : x))}
-                          className="h-8 text-xs font-mono w-[35%] bg-white dark:bg-gray-800"
+                          className="h-8 text-xs font-mono w-[35%] bg-card"
                         />
                         <Input
                           placeholder="value"
                           value={v.value}
                           onChange={e => setVariables(prev => prev.map((x, j) => j === i ? { ...x, value: e.target.value } : x))}
-                          className="h-8 text-xs flex-1 bg-white dark:bg-gray-800"
+                          className="h-8 text-xs flex-1 bg-card"
                         />
                         <button
                           onClick={() => setVariables(prev => prev.filter((_, j) => j !== i))}
-                          className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                          className="p-1.5 hover:bg-destructive/10 rounded text-red-400 hover:text-destructive transition-colors"
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -539,8 +541,8 @@ export default function PipecatPhoneCallConfig({
               {message && (
                 <div className={`p-4 rounded-xl border backdrop-blur-sm transition-all ${
                   messageType === 'success'
-                    ? 'bg-green-50/80 dark:bg-green-900/20 text-green-800 dark:text-green-400 border-green-200 dark:border-green-800'
-                    : 'bg-red-50/80 dark:bg-red-900/20 text-red-800 dark:text-red-400 border-red-200 dark:border-red-800'
+                    ? 'bg-green-50/80 dark:bg-green-900/20 text-success  border-success/30 dark:border-green-800'
+                    : 'bg-red-50/80 dark:bg-red-900/20 text-destructive  border-destructive/30 dark:border-red-800'
                 }`}>
                   <div className="flex items-center gap-3">
                     {messageType === 'success'
@@ -554,7 +556,7 @@ export default function PipecatPhoneCallConfig({
             </div>
 
             {/* Dispatch Button */}
-            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-800">
+            <div className="mt-6 pt-6 border-t border-border">
               <Button
                 onClick={handleDispatchCall}
                 disabled={isLoading || !phoneNumber.trim() || !selectedFromNumber}
@@ -575,15 +577,15 @@ export default function PipecatPhoneCallConfig({
           <div className="p-8 pb-6 border-b border-gray-200 dark:border-gray-800 bg-white/50 dark:bg-gray-900/50 backdrop-blur-xl">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
-                <History className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Call History</h2>
+                <History className="w-6 h-6 text-foreground" />
+                <h2 className="text-xl font-bold text-foreground">Call History</h2>
               </div>
               {callHistory.length > 0 && (
                 <Button
                   onClick={clearAllHistory}
                   variant="ghost"
                   size="sm"
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
                 >
                   <Trash2 className="w-4 h-4 mr-1.5" />
                   Clear All
@@ -591,32 +593,32 @@ export default function PipecatPhoneCallConfig({
               )}
             </div>
             <div className="flex items-center gap-3 mt-4">
-              <Settings className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-              <span className="text-sm text-gray-600 dark:text-gray-400">Store last</span>
+              <Settings className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Store last</span>
               <Select value={historyLimit.toString()} onValueChange={v => updateHistoryLimit(parseInt(v))}>
-                <SelectTrigger className="w-20 h-8 text-sm bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <SelectTrigger className="w-20 h-8 text-sm bg-card border-border">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <SelectContent className="bg-card border-border">
                   <SelectItem value="5" className="text-sm">5</SelectItem>
                   <SelectItem value="10" className="text-sm">10</SelectItem>
                   <SelectItem value="15" className="text-sm">15</SelectItem>
                 </SelectContent>
               </Select>
-              <span className="text-sm text-gray-600 dark:text-gray-400">calls for 7 days</span>
+              <span className="text-sm text-muted-foreground">calls for 7 days</span>
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-8 pt-6">
             {callHistory.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
-                <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
-                  <Phone className="w-10 h-10 text-gray-400 dark:text-gray-600" />
+                <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mb-4">
+                  <Phone className="w-10 h-10 text-muted-foreground" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                <h3 className="text-lg font-semibold text-foreground mb-2">
                   No Call History Yet
                 </h3>
-                <p className="text-gray-600 dark:text-gray-400 max-w-sm">
+                <p className="text-muted-foreground max-w-sm">
                   Your recent calls will appear here. Click on any call to quickly redial with the same settings.
                 </p>
               </div>
@@ -631,29 +633,29 @@ export default function PipecatPhoneCallConfig({
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); loadCallFromHistory(call) } }}
                     className={`group relative p-5 rounded-xl border transition-all cursor-pointer ${
                       selectedCallId === call.id
-                        ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700 shadow-md'
-                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md'
+                        ? 'bg-orange-50 dark:bg-orange-900/20 border-warning/40  shadow-md'
+                        : 'bg-card border-border hover:border-border hover:shadow-md'
                     }`}
                   >
                     <button
                       onClick={e => deleteCallFromHistory(call.id, e)}
-                      className={`absolute top-4 right-4 transition-opacity p-1.5 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg z-10 ${
+                      className={`absolute top-4 right-4 transition-opacity p-1.5 hover:bg-destructive/15  rounded-lg z-10 ${
                         editingCallId === call.id ? 'opacity-0 pointer-events-none' : 'opacity-0 group-hover:opacity-100'
                       }`}
                     >
-                      <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
+                      <Trash2 className="w-4 h-4 text-destructive" />
                     </button>
 
                     <div className="flex items-start gap-4">
                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
                         selectedCallId === call.id
                           ? 'bg-orange-100 dark:bg-orange-800/30'
-                          : 'bg-gray-100 dark:bg-gray-700'
+                          : 'bg-muted'
                       }`}>
                         <Phone className={`w-6 h-6 ${
                           selectedCallId === call.id
                             ? 'text-orange-600 dark:text-orange-400'
-                            : 'text-gray-600 dark:text-gray-400'
+                            : 'text-muted-foreground'
                         }`} />
                       </div>
 
@@ -667,57 +669,57 @@ export default function PipecatPhoneCallConfig({
                                 onChange={e => setEditingName(e.target.value)}
                                 onClick={e => e.stopPropagation()}
                                 onKeyDown={e => { e.stopPropagation(); handleNameKeyDown(call.id, e) }}
-                                className="h-7 text-sm font-semibold bg-white dark:bg-gray-700 border-orange-300 dark:border-orange-600"
+                                className="h-7 text-sm font-semibold bg-card border-warning/40"
                                 placeholder="Enter name"
                                 autoFocus
                               />
-                              <button onClick={e => saveEditedName(call.id, e)} className="p-1 hover:bg-green-100 dark:hover:bg-green-900/30 rounded">
-                                <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
+                              <button onClick={e => saveEditedName(call.id, e)} className="p-1 hover:bg-success/15 rounded">
+                                <Check className="w-4 h-4 text-success" />
                               </button>
-                              <button onClick={e => cancelEditingName(e)} className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded">
-                                <X className="w-4 h-4 text-red-600 dark:text-red-400" />
+                              <button onClick={e => cancelEditingName(e)} className="p-1 hover:bg-destructive/15 rounded">
+                                <X className="w-4 h-4 text-destructive" />
                               </button>
                             </div>
                           ) : (
                             <>
-                              <span className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                              <span className="text-base font-semibold text-foreground">
                                 {call.name}
                                 {call.call_count && call.call_count > 1 && (
-                                  <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">
+                                  <span className="ml-2 text-sm text-muted-foreground">
                                     ({call.call_count})
                                   </span>
                                 )}
                               </span>
                               <button
                                 onClick={e => startEditingName(call.id, call.name, e)}
-                                className="p-1 opacity-0 group-hover:opacity-100 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded transition-opacity"
+                                className="p-1 opacity-0 group-hover:opacity-100 hover:bg-warning/15 rounded transition-opacity"
                               >
-                                <Pencil className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />
+                                <Pencil className="w-3.5 h-3.5 text-warning" />
                               </button>
                             </>
                           )}
                         </div>
 
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-base font-mono font-medium text-gray-700 dark:text-gray-300">
+                          <span className="text-base font-mono font-medium text-foreground">
                             {call.formatted_number}
                           </span>
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 font-medium">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
                             {COUNTRIES.find(c => c.code === call.country_code)?.flag}
                           </span>
                         </div>
 
                         <div className="flex items-center gap-2 text-sm">
-                          <span className="text-gray-500 dark:text-gray-400">From:</span>
-                          <span className="font-mono text-xs text-gray-700 dark:text-gray-300">
+                          <span className="text-muted-foreground">From:</span>
+                          <span className="font-mono text-xs text-foreground">
                             {formatNumber(call.from_number)}
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-2 mt-3 text-xs text-gray-500 dark:text-gray-400">
+                        <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
                           <Clock className="w-3.5 h-3.5" />
                           <span>{formatRelativeTime(call.timestamp)}</span>
-                          <span className="px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium">
+                          <span className="px-2 py-0.5 rounded-full bg-success/15 text-success font-medium">
                             {call.status}
                           </span>
                         </div>
