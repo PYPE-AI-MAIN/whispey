@@ -30,7 +30,7 @@ const config = {
         docsRouteBasePath: '/',
         indexBlog: false,
         indexPages: false,
-        highlightSearchTermsOnTargetPage: true,
+        highlightSearchTermsOnTargetPage: false,
         searchBarShortcutHint: false,
         searchResultLimits: 8,
       },
