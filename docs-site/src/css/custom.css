@@ -69,24 +69,24 @@ html[data-theme='dark'] {
   --ifm-color-primary-lighter: #ff9a9a;
   --ifm-color-primary-lightest: #ffbcbc;
 
-  --wp-ink: #fff5f5;
-  --wp-text: #d9d3ee;
-  --wp-muted: #b3a9d4;
-  --wp-faint: #8479b3;
+  --wp-ink: #f6f2f2;
+  --wp-text: #d6d0e2;
+  --wp-muted: #a39cb5;
+  --wp-faint: #7d7590;
   --wp-line: rgba(255, 255, 255, 0.1);
   --wp-line-strong: rgba(255, 255, 255, 0.16);
-  --wp-soft: #2a1365;
+  --wp-soft: #1e1829;
   --wp-accent-soft: rgba(255, 107, 107, 0.14);
-  --wp-card: #25105e;
-  --wp-surface: #25105e;
-  --wp-code-bg: #1a0846;
-  --wp-glow-a: rgba(124, 58, 237, 0.22);
+  --wp-card: #14101d;
+  --wp-surface: #14101d;
+  --wp-code-bg: #110d19;
+  --wp-glow-a: rgba(124, 58, 237, 0.12);
   --wp-glow-b: rgba(255, 107, 107, 0.08);
   --wp-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 30px rgba(0, 0, 0, 0.35);
 
-  --ifm-background-color: #1e0a52;
-  --ifm-background-surface-color: #1e0a52;
-  --ifm-navbar-background-color: rgba(30, 10, 82, 0.85);
+  --ifm-background-color: #0e0b16;
+  --ifm-background-surface-color: #0e0b16;
+  --ifm-navbar-background-color: rgba(14, 11, 22, 0.85);
   --docusaurus-highlighted-code-line-bg: rgba(255, 107, 107, 0.14);
 }
 
@@ -95,29 +95,29 @@ html[data-theme='dark'] {
 html[data-theme='dark'] {
   background-color: var(--ifm-background-color);
   background-image:
-    radial-gradient(900px 480px at 18% -8%, rgba(124, 58, 237, 0.22), transparent 65%),
+    radial-gradient(900px 480px at 18% -8%, rgba(124, 58, 237, 0.12), transparent 65%),
     radial-gradient(700px 420px at 92% 0%, rgba(255, 107, 107, 0.08), transparent 60%);
   background-attachment: fixed;
 }
 [data-theme='dark'] .navbar {
-  background-color: rgba(30, 10, 82, 0.72);
+  background-color: rgba(14, 11, 22, 0.72);
 }
 [data-theme='dark'] .theme-doc-sidebar-container {
-  background: rgba(30, 10, 82, 0.55);
+  background: rgba(14, 11, 22, 0.55);
 }
 [data-theme='dark'] .markdown table thead tr,
 [data-theme='dark'] .wp-window-bar {
-  background: #2d1570;
+  background: #1e1829;
 }
 [data-theme='dark'] .wp-page-actions,
 [data-theme='dark'] .pagination-nav__link,
 [data-theme='dark'] .wp-card {
-  background: rgba(37, 16, 94, 0.7);
+  background: rgba(20, 16, 29, 0.7);
 }
 [data-theme='dark'] .markdown h1,
 [data-theme='dark'] .markdown h2,
 [data-theme='dark'] .markdown h3 {
-  color: #fff5f5;
+  color: #f6f2f2;
 }
 [data-theme='dark'] .wp-nav-cta.navbar__item {
   color: #1e0a52 !important;

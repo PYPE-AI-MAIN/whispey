@@ -24,7 +24,7 @@ interface AuthPageProps {
 // Clerk's own CSS outranks Tailwind utilities, so its colours go through its variables.
 const CLERK_VARIABLES = {
   light: { colorBackground: '#ffffff', colorText: '#1e0a52', colorTextSecondary: '#6b6485', colorInputBackground: '#ffffff', colorInputText: '#1e0a52', colorPrimary: '#4b0082', colorTextOnPrimaryBackground: '#ffffff', colorNeutral: '#1e0a52', borderRadius: '0.75rem', fontFamily: 'var(--font-satoshi), system-ui, sans-serif' },
-  dark: { colorBackground: '#1e0a52', colorText: '#fff5f5', colorTextSecondary: '#b3a9d4', colorInputBackground: '#25105e', colorInputText: '#fff5f5', colorPrimary: '#ff6b6b', colorTextOnPrimaryBackground: '#1e0a52', colorNeutral: '#fff5f5', borderRadius: '0.75rem', fontFamily: 'var(--font-satoshi), system-ui, sans-serif' },
+  dark: { colorBackground: '#0e0b16', colorText: '#f6f2f2', colorTextSecondary: '#a39cb5', colorInputBackground: '#1a1524', colorInputText: '#f6f2f2', colorPrimary: '#ff6b6b', colorTextOnPrimaryBackground: '#1e0a52', colorNeutral: '#fff5f5', borderRadius: '0.75rem', fontFamily: 'var(--font-satoshi), system-ui, sans-serif' },
 } as const;
 const FIELD = {
   light: { background: 'rgba(255,255,255,0.88)', border: '1px solid #e3dcee', boxShadow: '0 6px 22px -12px rgba(30,10,82,0.3)' },
@@ -39,16 +39,16 @@ const PAGE_CSS = `
       #fffafa;
     color: #1e0a52; font-family: var(--font-satoshi), system-ui, sans-serif; }
   .dark .sw-page { background:
-      radial-gradient(60% 52% at 6% 4%, rgba(124,58,237,0.3) 0%, rgba(124,58,237,0) 70%),
+      radial-gradient(60% 52% at 6% 4%, rgba(124,58,237,0.16) 0%, rgba(124,58,237,0) 70%),
       radial-gradient(46% 46% at 96% 38%, rgba(255,107,107,0.14) 0%, rgba(255,107,107,0) 70%),
-      radial-gradient(54% 42% at 50% 104%, rgba(75,0,130,0.4) 0%, rgba(75,0,130,0) 70%),
-      #1e0a52;
-    color: #fff5f5; }
+      radial-gradient(54% 42% at 50% 104%, rgba(75,0,130,0.22) 0%, rgba(75,0,130,0) 70%),
+      #0e0b16;
+    color: #f6f2f2; }
   .sw-title { font-family: var(--font-sw-sans), system-ui, sans-serif; font-weight: 700; color: #1e0a52;
     font-size: clamp(2.2rem, 5vw, 3.6rem); line-height: 1.08; letter-spacing: -0.03em; text-wrap: balance; }
-  .dark .sw-title { color: #fff5f5; }
+  .dark .sw-title { color: #f6f2f2; }
   .sw-em { color: #ff6b6b; }
-  .sw-muted { color: #6b6485; } .dark .sw-muted { color: #b3a9d4; }
+  .sw-muted { color: #6b6485; } .dark .sw-muted { color: #a39cb5; }
   .sw-link { color: #1e0a52; text-decoration: none; } .sw-link:hover { text-decoration: underline; text-underline-offset: 4px; }
   .dark .sw-link { color: #fff5f5; }
   .sw-bar { width: 3px; border-radius: 2px; background: linear-gradient(to top, #4b0082, #ff6b6b); transform-origin: center; animation: sw-bar 1.5s ease-in-out infinite; }

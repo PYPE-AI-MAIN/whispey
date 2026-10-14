@@ -3,20 +3,20 @@
 // approved mockup's, light then dark, so the page reads as one solid surface
 // instead of the app-wide gray scale.
 export const V2_THEME = [
-  "[--cl-bg:#f8fafc] dark:[--cl-bg:#0b1120]",
-  "[--cl-panel:#ffffff] dark:[--cl-panel:#0f172a]",
-  "[--cl-panel2:#f8fafc] dark:[--cl-panel2:#111a2e]",
-  "[--cl-raised:#ffffff] dark:[--cl-raised:#162036]",
-  "[--cl-hover:#f1f5f9] dark:[--cl-hover:#1a2540]",
-  "[--cl-border:#e2e8f0] dark:[--cl-border:#1e293b]",
-  "[--cl-border2:#cbd5e1] dark:[--cl-border2:#273449]",
-  "[--cl-text:#0f172a] dark:[--cl-text:#e2e8f0]",
-  "[--cl-text2:#475569] dark:[--cl-text2:#94a3b8]",
-  "[--cl-text3:#64748b] dark:[--cl-text3:#64748b]",
+  "[--cl-bg:#fbf8fc] dark:[--cl-bg:#0e0b16]",
+  "[--cl-panel:#ffffff] dark:[--cl-panel:#14101d]",
+  "[--cl-panel2:#fbf8fc] dark:[--cl-panel2:#171220]",
+  "[--cl-raised:#ffffff] dark:[--cl-raised:#1d1829]",
+  "[--cl-hover:#f4eff8] dark:[--cl-hover:#221c2f]",
+  "[--cl-border:#ebe5f0] dark:[--cl-border:#2a2337]",
+  "[--cl-border2:#d8cfe3] dark:[--cl-border2:#352d44]",
+  "[--cl-text:#1e0a52] dark:[--cl-text:#f3eff6]",
+  "[--cl-text2:#5a5272] dark:[--cl-text2:#b0a8c0]",
+  "[--cl-text3:#7b7392] dark:[--cl-text3:#7d7590]",
   "[--cl-accent:#4b0082] dark:[--cl-accent:#ff6b6b]",
-  "[--cl-accent-soft:rgba(37,99,235,.08)] dark:[--cl-accent-soft:rgba(59,130,246,.14)]",
-  "[--cl-accent-line:rgba(37,99,235,.35)] dark:[--cl-accent-line:rgba(59,130,246,.45)]",
-  "[--cl-accent-text:#1d4ed8] dark:[--cl-accent-text:#93c5fd]",
+  "[--cl-accent-soft:rgba(75,0,130,.07)] dark:[--cl-accent-soft:rgba(255,107,107,.14)]",
+  "[--cl-accent-line:rgba(75,0,130,.35)] dark:[--cl-accent-line:rgba(255,107,107,.45)]",
+  "[--cl-accent-text:#4b0082] dark:[--cl-accent-text:#ff9a9a]",
   "[--cl-red:#e11d48] dark:[--cl-red:#f43f5e]",
   "[--cl-red-soft:rgba(225,29,72,.07)] dark:[--cl-red-soft:rgba(244,63,94,.12)]",
   "[--cl-red-line:rgba(225,29,72,.32)] dark:[--cl-red-line:rgba(244,63,94,.4)]",
@@ -26,7 +26,7 @@ export const V2_THEME = [
   "[--cl-violet-soft:rgba(124,58,237,.08)] dark:[--cl-violet-soft:rgba(167,139,250,.12)]",
   "[--cl-violet-line:rgba(124,58,237,.32)] dark:[--cl-violet-line:rgba(167,139,250,.4)]",
   "[--cl-violet-text:#6d28d9] dark:[--cl-violet-text:#c4b5fd]",
-  "[--cl-shadow:0_12px_40px_rgba(15,23,42,.16)] dark:[--cl-shadow:0_12px_40px_rgba(0,0,0,.5)]",
+  "[--cl-shadow:0_12px_40px_rgba(30,10,82,.16)] dark:[--cl-shadow:0_12px_40px_rgba(0,0,0,.5)]",
 ].join(" ")
 
 /** Toolbar button, as in the mockup. */
