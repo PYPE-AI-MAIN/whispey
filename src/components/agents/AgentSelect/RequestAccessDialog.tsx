@@ -73,13 +73,13 @@ export default function RequestAccessDialog({ open, onOpenChange, projectid, isM
 
   return (
           <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg w-[90vw] sm:w-full p-0 gap-0 rounded-xl border border-border shadow-2xl bg-card max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-lg w-[90vw] sm:w-full p-0 gap-0 rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xl bg-white dark:bg-gray-900 max-h-[90vh] flex flex-col">
         {/* Header */}
         <DialogHeader className={`${isMobile ? 'px-4 pt-4 pb-3' : 'px-6 pt-6 pb-4'} flex-shrink-0`}>
-          <DialogTitle className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-foreground`}>
+          <DialogTitle className={`${isMobile ? 'text-base' : 'text-lg'} font-semibold text-gray-900 dark:text-gray-100`}>
             Request Access
           </DialogTitle>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
             Tell us why you'd like to create agents with Pype
           </p>
         </DialogHeader>
@@ -88,20 +88,20 @@ export default function RequestAccessDialog({ open, onOpenChange, projectid, isM
         <div className={`flex-1 ${isMobile ? 'px-4 py-4' : 'px-6 py-6'} space-y-4`}>
           {success ? (
             <div className="py-8 text-center">
-              <div className="w-12 h-12 bg-success/15 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Send className="w-6 h-6 text-success" />
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Send className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
-              <h3 className="text-base font-medium text-foreground mb-1">
+              <h3 className="text-base font-medium text-gray-900 dark:text-gray-100 mb-1">
                 Request Sent Successfully!
               </h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 We'll review your request and get back to you soon.
               </p>
             </div>
           ) : (
             <>
               <div className="space-y-2">
-                <Label htmlFor="reason" className="text-sm font-medium text-foreground">
+                <Label htmlFor="reason" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Why do you want to create agents with Pype?
                 </Label>
                 <Textarea
@@ -113,14 +113,14 @@ export default function RequestAccessDialog({ open, onOpenChange, projectid, isM
                   disabled={loading}
                 />
                 {error && (
-                  <p className="text-sm text-destructive mt-1">
+                  <p className="text-sm text-red-600 dark:text-red-400 mt-1">
                     {error}
                   </p>
                 )}
               </div>
 
-              <div className="bg-muted/50 rounded-lg p-3">
-                <p className="text-xs text-muted-foreground">
+              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
                   <strong className="font-medium">Note:</strong> Pype agent creation is currently in beta. 
                   We'll review your request and enable access based on your use case.
                 </p>
@@ -131,7 +131,7 @@ export default function RequestAccessDialog({ open, onOpenChange, projectid, isM
 
         {/* Footer */}
         {!success && (
-          <div className={`${isMobile ? 'px-4 py-3' : 'px-6 py-4'} bg-muted/50 border-t border-border flex gap-3`}>
+          <div className={`${isMobile ? 'px-4 py-3' : 'px-6 py-4'} bg-gray-50/50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-800 flex gap-3`}>
             <Button
               variant="outline"
               onClick={() => onOpenChange(false)}

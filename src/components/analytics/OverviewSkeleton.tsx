@@ -20,7 +20,7 @@ export function OverviewSkeleton() {
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={`skeleton-kpi-${i}`} // NOSONAR: fixed-count placeholder loader, no data identity to key by
-            className="rounded-xl border border-border bg-card p-5 shadow-sm"
+            className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900"
           >
             <div className="flex items-center gap-2">
               <Skeleton className="h-7 w-7 rounded-lg" style={{ animationDelay: `${i * 40}ms` }} />
@@ -33,11 +33,11 @@ export function OverviewSkeleton() {
 
       <div>
         <Skeleton className="mb-3 h-5 w-36" />
-        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={`skeleton-row-${i}`} // NOSONAR: fixed-count placeholder loader, no data identity to key by
-              className="flex items-center gap-6 border-b border-border/60 px-6 py-4 last:border-0"
+              className="flex items-center gap-6 border-b border-gray-100 px-6 py-4 last:border-0 dark:border-gray-800/70"
             >
               <Skeleton className="h-4 w-28" style={{ animationDelay: `${(i + 4) * 40}ms` }} />
               <Skeleton className="h-4 w-12" style={{ animationDelay: `${(i + 4) * 40}ms` }} />

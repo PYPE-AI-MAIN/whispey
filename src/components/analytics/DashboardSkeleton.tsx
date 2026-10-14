@@ -16,7 +16,7 @@ export function DashboardSkeleton({ withHeader = false }: Readonly<{ withHeader?
     <div className="flex h-full min-h-0 flex-col">
       {/* only when nothing else has painted yet — inside the canvas the real toolbar is already there */}
       {withHeader && (
-        <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
+        <div className="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-2 dark:border-gray-800">
           <div className="flex items-center gap-2">
             <Skeleton className="h-6 w-14 rounded-md" />
             <Skeleton className="h-6 w-16 rounded-md" />

@@ -385,18 +385,18 @@ export function WorkflowChat({
         <div
           className={`pointer-events-auto w-[min(440px,100%)] ${
             collapsed ? '' : 'max-h-[60vh]'
-          } bg-card  border border-border  rounded-2xl shadow-2xl flex flex-col overflow-hidden`}
+          } bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden`}
         >
           {/* Header — the subtitle IS the "already loaded" answer: what's already
               built, right where you'd look for it, instead of a separate card
               repeating the same thing lower down. */}
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-border/60 shrink-0">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
             <div className="w-7 h-7 rounded-lg bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0">
               <Sparkles className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-semibold text-foreground">Ask Pi</h3>
-              <p className="text-[11px] text-muted-foreground leading-tight truncate">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Ask Pi</h3>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-tight truncate">
                 {formatContextSummary(contextSummary)}
               </p>
             </div>
@@ -431,7 +431,7 @@ export function WorkflowChat({
           <div ref={scrollRef} className={`flex-1 overflow-y-auto px-5 py-4 space-y-4 ${collapsed ? 'hidden' : ''}`}>
             {messages.length === 0 && (
               <div className="flex flex-col gap-2 py-1">
-                <p className="text-[11px] text-muted-foreground px-0.5">
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 px-0.5">
                   {contextSummary ? 'Try one of these, or describe your own change:' : 'Try one of these, or describe what to build:'}
                 </p>
                 {[
@@ -442,7 +442,7 @@ export function WorkflowChat({
                   <button
                     key={suggestion}
                     onClick={() => { setInput(suggestion); setTimeout(() => inputRef.current?.focus(), 0) }}
-                    className="w-full text-left px-3 py-2 rounded-lg text-xs text-muted-foreground bg-muted/50 hover:bg-muted transition-colors"
+                    className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   >
                     {suggestion}
                   </button>
@@ -461,7 +461,7 @@ export function WorkflowChat({
                   className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${
                     msg.role === 'user'
                       ? 'bg-blue-600 text-white'
-                      : 'bg-muted text-foreground'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
                   }`}
                 >
                   {msg.role === 'assistant' ? (
@@ -478,8 +478,8 @@ export function WorkflowChat({
                   )}
                 </div>
                 {msg.role === 'user' && (
-                  <div className="w-7 h-7 rounded-md bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
-                    <User className="w-3.5 h-3.5 text-primary" />
+                  <div className="w-7 h-7 rounded-md bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0 mt-0.5">
+                    <User className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                   </div>
                 )}
               </div>
@@ -491,7 +491,7 @@ export function WorkflowChat({
       {/* Composer — docked along the bottom, wide, separate from the status
           card above so it's always reachable without collapsing history. */}
       <div className="absolute left-64 right-4 bottom-4 z-50 flex justify-center pointer-events-none">
-        <div className="pointer-events-auto w-[min(760px,100%)] relative rounded-2xl border border-border bg-card shadow-2xl focus-within:border-violet-400 dark:focus-within:border-violet-500 transition-colors">
+        <div className="pointer-events-auto w-[min(760px,100%)] relative rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-2xl focus-within:border-violet-400 dark:focus-within:border-violet-500 transition-colors">
           <textarea
             ref={inputRef}
             value={input}
@@ -499,12 +499,12 @@ export function WorkflowChat({
             onKeyDown={handleKeyDown}
             placeholder="Describe what to build or change…"
             rows={1}
-            className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground resize-none outline-none max-h-[160px] leading-relaxed pl-4 pr-11 pt-3.5 pb-3.5"
+            className="w-full bg-transparent text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none outline-none max-h-[160px] leading-relaxed pl-4 pr-11 pt-3.5 pb-3.5"
             style={{ minHeight: '52px' }}
           />
           <Button
             size="icon"
-            className="absolute right-2.5 bottom-2.5 h-8 w-8 rounded-full bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-40 disabled:bg-muted-foreground/30"
+            className="absolute right-2.5 bottom-2.5 h-8 w-8 rounded-full bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-40 disabled:bg-gray-300 dark:disabled:bg-gray-700"
             onClick={() => handleSend()}
             disabled={!input.trim() || isStreaming}
           >
@@ -552,9 +552,9 @@ function AssistantMessage({
   if (!content && streaming) {
     return (
       <span className="inline-flex gap-1 py-1">
-        <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-        <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-        <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
       </span>
     )
   }
@@ -596,7 +596,7 @@ function AssistantMessage({
         )
       )}
       {streaming && hasOpenJsonBlock && (
-        <div className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-primary/10 text-primary text-[11px] font-medium">
+        <div className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[11px] font-medium">
           <Loader2 className="w-3 h-3 animate-spin" />
           Generating workflow...
         </div>
@@ -629,7 +629,7 @@ function AssistantMessageJsonPart({
 }>) {
   if (streaming) {
     return (
-      <div className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-primary/10  text-primary  text-[11px] font-medium">
+      <div className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[11px] font-medium">
         <Loader2 className="w-3 h-3 animate-spin" />
         Parsing workflow...
       </div>
@@ -637,7 +637,7 @@ function AssistantMessageJsonPart({
   }
   if (applyStatus === 'error') {
     return (
-      <div className="flex items-start gap-1.5 py-1 px-2 rounded-md bg-destructive/10  text-destructive  text-[11px] font-medium">
+      <div className="flex items-start gap-1.5 py-1 px-2 rounded-md bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-[11px] font-medium">
         <span>Failed to apply: {applyError || 'invalid workflow JSON'}</span>
       </div>
     )
@@ -651,8 +651,8 @@ function AssistantMessageJsonPart({
       <div
         className={`flex items-center gap-1.5 py-1 px-2 rounded-md text-[11px] font-medium ${
           isSuspiciouslySmall
-            ? 'bg-warning/10 text-warning'
-            : 'bg-success/10 text-success'
+            ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400'
+            : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
         }`}
       >
         <Sparkles className="w-3 h-3" />
@@ -662,7 +662,7 @@ function AssistantMessageJsonPart({
       {/* Same lint the canvas warning badge runs — shown here too since the
           whole point of chat-only building is never opening the canvas. */}
      {applyWarnings && applyWarnings.length > 0 && (
-        <div className="py-1 px-2 rounded-md bg-warning/10 text-warning text-[11px]">
+        <div className="py-1 px-2 rounded-md bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-[11px]">
           <p className="font-medium mb-0.5">
             {applyWarnings.length} warning{applyWarnings.length === 1 ? '' : 's'}:
           </p>

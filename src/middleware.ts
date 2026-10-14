@@ -154,8 +154,6 @@ export default clerkMiddleware(async (auth, request) => {
 
 export const config = {
   matcher: [
-    // The docs are signed-in only, files included (the search index holds every page)
-    '/docs/:path*',
     // Skip Next.js internals and all static files, unless found in search params
     '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)', // NOSONAR javascript:S7780 — String.raw breaks Next.js static analysis of config.matcher
     // Always run for API routes

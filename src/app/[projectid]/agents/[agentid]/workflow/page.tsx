@@ -251,16 +251,16 @@ function WorkflowPageInner() {
 
   if (!agentId || !projectId) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-muted/50">
-        <p className="text-sm text-muted-foreground">Invalid agent or organization.</p>
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-900">
+        <p className="text-sm text-gray-600 dark:text-gray-400">Invalid agent or organization.</p>
       </div>
     )
   }
 
   if (agentNotFound) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-3 p-4 bg-muted/50">
-        <p className="text-sm text-muted-foreground">This agent could not be found.</p>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 p-4 bg-gray-50 dark:bg-gray-900">
+        <p className="text-sm text-gray-600 dark:text-gray-400">This agent could not be found.</p>
         <Button variant="outline" size="sm" onClick={() => router.push(`/${projectId}/agents`)}>
           <ArrowLeft className="h-3.5 w-3.5 mr-1.5" /> Back to agents
         </Button>
@@ -270,20 +270,20 @@ function WorkflowPageInner() {
 
   if (agentLoading || (!workflow && !needsTemplate)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/50">
-        <LoaderFive text={LOADING_LINES[loadingLineIndex]} className="text-sm text-muted-foreground" />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <LoaderFive text={LOADING_LINES[loadingLineIndex]} className="text-sm text-gray-500 dark:text-gray-400" />
       </div>
     )
   }
 
   if (needsTemplate) {
     return (
-      <div className="h-screen flex flex-col bg-muted/50">
-        <div className="border-b border-border bg-card flex items-center gap-3 px-4 py-2.5 shrink-0">
+      <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+        <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center gap-3 px-4 py-2.5 shrink-0">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.push(`/${projectId}/agents/${agentId}`)}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-sm font-semibold text-foreground">{agentRow?.name || 'Workflow'}</h1>
+          <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{agentRow?.name || 'Workflow'}</h1>
         </div>
         <TemplatePicker onPick={handlePickTemplate} onStartWithPrompt={handleStartWithPrompt} />
       </div>
@@ -291,7 +291,7 @@ function WorkflowPageInner() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-muted/50">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <WorkflowHeader
         name={agentRow?.name || 'Workflow'}
         onBack={() => router.push(`/${projectId}/agents/${agentId}`)}

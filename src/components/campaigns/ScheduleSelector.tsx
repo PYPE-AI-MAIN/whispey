@@ -97,7 +97,7 @@ export function ScheduleSelector({
 
   return (
     <div>
-      <Label className="text-xs font-medium text-foreground mb-2 block">
+      <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 block">
         When to send the calls
       </Label>
       
@@ -107,18 +107,18 @@ export function ScheduleSelector({
           onClick={() => onSendTypeChange('now')}
           className={`p-3 border-2 rounded-lg text-left transition-all ${
             sendType === 'now'
-              ? 'border-blue-500 bg-primary/10 dark:bg-blue-900/10'
-              : 'border-border'
+              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10'
+              : 'border-gray-200 dark:border-gray-700'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-foreground">
+            <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
               Send Now
             </span>
             <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
               sendType === 'now'
                 ? 'border-blue-500'
-                : 'border-border'
+                : 'border-gray-300 dark:border-gray-600'
             }`}>
               {sendType === 'now' && (
                 <div className="w-2 h-2 rounded-full bg-blue-500" />
@@ -132,18 +132,18 @@ export function ScheduleSelector({
           onClick={() => onSendTypeChange('schedule')}
           className={`p-3 border-2 rounded-lg text-left transition-all ${
             sendType === 'schedule'
-              ? 'border-blue-500 bg-primary/10 dark:bg-blue-900/10'
-              : 'border-border'
+              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10'
+              : 'border-gray-200 dark:border-gray-700'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-foreground">
+            <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
               Schedule
             </span>
             <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
               sendType === 'schedule'
                 ? 'border-blue-500'
-                : 'border-border'
+                : 'border-gray-300 dark:border-gray-600'
             }`}>
               {sendType === 'schedule' && (
                 <div className="w-2 h-2 rounded-full bg-blue-500" />
@@ -157,7 +157,7 @@ export function ScheduleSelector({
       {sendType === 'schedule' && (
         <div className="grid grid-cols-2 gap-2 mb-3">
           <div>
-            <Label htmlFor="scheduleDate" className="text-xs text-muted-foreground mb-1 block">
+            <Label htmlFor="scheduleDate" className="text-xs text-gray-600 dark:text-gray-400 mb-1 block">
               Select date
             </Label>
             <Field
@@ -167,11 +167,11 @@ export function ScheduleSelector({
               name="scheduleDate"
               className="w-full h-8 text-xs"
             />
-            <ErrorMessage name="scheduleDate" component="p" className="text-xs text-destructive mt-1" />
+            <ErrorMessage name="scheduleDate" component="p" className="text-xs text-red-600 dark:text-red-400 mt-1" />
           </div>
 
           <div>
-            <Label htmlFor="timezone" className="text-xs text-muted-foreground mb-1 block">
+            <Label htmlFor="timezone" className="text-xs text-gray-600 dark:text-gray-400 mb-1 block">
               Timezone
             </Label>
             <Field name="timezone">
@@ -193,14 +193,14 @@ export function ScheduleSelector({
                 </Select>
               )}
             </Field>
-            <ErrorMessage name="timezone" component="p" className="text-xs text-destructive mt-1" />
+            <ErrorMessage name="timezone" component="p" className="text-xs text-red-600 dark:text-red-400 mt-1" />
           </div>
         </div>
       )}
 
       {/* Days of Week Selection - Dropdown */}
       <div className="mb-3">
-        <Label className="text-xs font-medium text-foreground mb-1.5 flex items-center gap-1.5">
+        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
           <Calendar className="w-3 h-3" />
           Days to Run
         </Label>
@@ -213,7 +213,7 @@ export function ScheduleSelector({
               role="combobox"
               aria-expanded={open}
               className={`w-full h-8 justify-between text-xs font-normal ${
-                selectedDays.length === 0 ? 'text-muted-foreground' : 'text-foreground'
+                selectedDays.length === 0 ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-gray-100'
               }`}
             >
               {getDisplayText()}
@@ -222,29 +222,29 @@ export function ScheduleSelector({
           </PopoverTrigger>
           <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-3" align="start">
             {/* Quick Actions */}
-            <div className="flex items-center justify-between mb-3 pb-2 border-b border-border">
-              <span className="text-xs font-medium text-foreground">Quick Select</span>
+            <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Quick Select</span>
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={selectAllWeekdays}
-                  className="text-xs text-primary hover:underline font-medium"
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
                 >
                   Weekdays
                 </button>
-                <span className="text-xs text-muted-foreground">•</span>
+                <span className="text-xs text-gray-400">•</span>
                 <button
                   type="button"
                   onClick={selectAllDays}
-                  className="text-xs text-primary hover:underline font-medium"
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
                 >
                   All Days
                 </button>
-                <span className="text-xs text-muted-foreground">•</span>
+                <span className="text-xs text-gray-400">•</span>
                 <button
                   type="button"
                   onClick={clearAll}
-                  className="text-xs text-destructive hover:underline font-medium"
+                  className="text-xs text-red-600 dark:text-red-400 hover:underline font-medium"
                 >
                   Clear
                 </button>
@@ -262,15 +262,15 @@ export function ScheduleSelector({
                     onClick={() => handleDayToggle(day.value)}
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all border ${
                       isSelected
-                        ? 'bg-blue-50 dark:bg-blue-900/20 border-primary/30 dark:border-blue-800'
-                        : 'bg-card border-border hover:bg-muted/50'
+                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
                         isSelected
                           ? 'bg-blue-600 border-blue-600'
-                          : 'border-border'
+                          : 'border-gray-300 dark:border-gray-600'
                       }`}>
                         {isSelected && (
                           <Check className="w-3 h-3 text-white" />
@@ -280,7 +280,7 @@ export function ScheduleSelector({
                         <span className={`text-sm font-medium ${
                           isSelected 
                             ? 'text-blue-900 dark:text-blue-100' 
-                            : 'text-foreground'
+                            : 'text-gray-900 dark:text-gray-100'
                         }`}>
                           {day.label}
                         </span>
@@ -289,7 +289,7 @@ export function ScheduleSelector({
                     <span className={`text-xs font-medium ${
                       isSelected 
                         ? 'text-blue-600 dark:text-blue-400' 
-                        : 'text-muted-foreground'
+                        : 'text-gray-400 dark:text-gray-500'
                     }`}>
                       {day.short}
                     </span>
@@ -299,8 +299,8 @@ export function ScheduleSelector({
             </div>
 
             {/* Selected Count */}
-            <div className="mt-3 pt-2 border-t border-border">
-              <p className="text-xs text-muted-foreground text-center">
+            <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+              <p className="text-xs text-gray-600 dark:text-gray-400 text-center">
                 {selectedDays.length === 0 
                   ? 'No days selected' 
                   : `${selectedDays.length} day${selectedDays.length !== 1 ? 's' : ''} selected`
@@ -311,7 +311,7 @@ export function ScheduleSelector({
         </Popover>
 
         {selectedDays.length === 0 && (
-          <p className="text-xs text-destructive mt-1">
+          <p className="text-xs text-red-600 dark:text-red-400 mt-1">
             Please select at least one day
           </p>
         )}
@@ -319,7 +319,7 @@ export function ScheduleSelector({
 
       {/* Call Window - Always shown for both */}
       <div>
-        <Label className="text-xs font-medium text-foreground mb-1.5 flex items-center gap-1.5">
+        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
           <Clock className="w-3 h-3" />
           Call Window
         </Label>
@@ -330,7 +330,7 @@ export function ScheduleSelector({
             onChange={(e) => onCallWindowChange('callWindowStart', e.target.value)}
             className="flex-1 h-8 text-xs"
           />
-          <span className="text-muted-foreground text-xs">to</span>
+          <span className="text-gray-500 text-xs">to</span>
           <Input
             type="time"
             value={callWindowEnd}
@@ -338,7 +338,7 @@ export function ScheduleSelector({
             className="flex-1 h-8 text-xs"
           />
         </div>
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
           Calls will only run between these hours on selected days
         </p>
       </div>

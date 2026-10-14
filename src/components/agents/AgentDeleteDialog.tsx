@@ -31,12 +31,12 @@ const AgentDeleteDialog: React.FC<AgentDeleteDialogProps> = ({
 }) => {
   return (
     <Dialog open={agent !== null} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md bg-card border border-border rounded-xl">
+      <DialogContent className="sm:max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl">
         <DialogHeader>
-          <DialogTitle className="text-lg font-medium text-foreground">
+          <DialogTitle className="text-lg font-medium text-gray-900 dark:text-gray-100">
             Remove Monitoring
           </DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground mt-1.5">
+          <DialogDescription className="text-sm text-gray-600 dark:text-gray-400 mt-1.5">
             Are you sure you want to stop monitoring "{agentDisplayName(agent)}"? This will remove all observability for this agent and cannot be undone.
           </DialogDescription>
         </DialogHeader>
@@ -45,7 +45,7 @@ const AgentDeleteDialog: React.FC<AgentDeleteDialogProps> = ({
             variant="outline" 
             onClick={onClose}
             disabled={isDeleting}
-            className="flex-1 border-border text-foreground"
+            className="flex-1 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300"
           >
             Cancel
           </Button>

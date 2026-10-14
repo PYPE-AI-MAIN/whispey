@@ -105,8 +105,8 @@ const CopyButton = ({ text, className = '' }: { text: string; className?: string
   return (
     <Button variant="ghost" size="sm" onClick={handleCopy} className={`w-7 h-7 p-0 ${className}`}>
       {copied
-        ? <Check className="w-3.5 h-3.5 text-success" />
-        : <Copy className="w-3.5 h-3.5 text-muted-foreground" />}
+        ? <Check className="w-3.5 h-3.5 text-green-600" />
+        : <Copy className="w-3.5 h-3.5 text-gray-400" />}
     </Button>
   )
 }
@@ -133,8 +133,8 @@ const SarvamVoiceCard = ({
     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
     className={`group cursor-pointer p-2 rounded-md border transition-all hover:shadow-sm ${
       isSelected
-        ? 'border-orange-300 dark:border-orange-600 bg-warning/10 dark:bg-orange-900/10'
-        : 'border-border hover:border-warning/30  hover:bg-orange-50/50 dark:hover:bg-orange-900/5'
+        ? 'border-orange-300 dark:border-orange-600 bg-orange-50 dark:bg-orange-900/10'
+        : 'border-gray-200 dark:border-gray-700 hover:border-orange-200 dark:hover:border-orange-700 hover:bg-orange-50/50 dark:hover:bg-orange-900/5'
     }`}
   >
     <div className="flex items-center gap-2">
@@ -143,23 +143,23 @@ const SarvamVoiceCard = ({
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <h3 className="font-medium text-xs text-foreground truncate">{voice.name}</h3>
-          {isSelected && <CheckCircle className="w-3 h-3 text-success flex-shrink-0" />}
-          <code className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+          <h3 className="font-medium text-xs text-gray-900 dark:text-gray-100 truncate">{voice.name}</h3>
+          {isSelected && <CheckCircle className="w-3 h-3 text-green-600 flex-shrink-0" />}
+          <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-600 dark:text-gray-300">
             {voice.id}
           </code>
         </div>
         <div className="flex items-center gap-1.5 mt-0.5">
-          <span className="text-xs px-1.5 py-0.5 bg-muted rounded text-muted-foreground">
+          <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-600 dark:text-gray-300">
             {voice.style}
           </span>
           {voice.gender && (
             <>
-              <span className="text-xs text-muted-foreground">{voice.gender}</span>
-              <span className="text-xs text-muted-foreground">•</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{voice.gender}</span>
+              <span className="text-xs text-gray-400">•</span>
             </>
           )}
-          <span className="text-xs text-muted-foreground">{voice.language}</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">{voice.language}</span>
         </div>
       </div>
       <div className="flex items-center gap-1">
@@ -168,7 +168,7 @@ const SarvamVoiceCard = ({
           size="sm"
           onClick={onPreview}
           disabled={isPreviewLoading}
-          className={`w-7 h-7 p-0 transition-opacity ${isPreviewing ? 'opacity-100 text-orange-500' : 'opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-orange-500'}`}
+          className={`w-7 h-7 p-0 transition-opacity ${isPreviewing ? 'opacity-100 text-orange-500' : 'opacity-0 group-hover:opacity-100 text-gray-400 hover:text-orange-500'}`}
           title={isPreviewing ? 'Stop preview' : 'Preview voice'}
         >
           {isPreviewLoading
@@ -206,7 +206,7 @@ const ElevenLabsVoiceCard = ({
     className={`group cursor-pointer p-2 rounded-md border transition-all hover:shadow-sm ${
       isSelected
         ? 'border-purple-300 dark:border-purple-600 bg-purple-50 dark:bg-purple-900/10'
-        : 'border-border hover:border-purple-200 dark:hover:border-purple-700 hover:bg-purple-50/50 dark:hover:bg-purple-900/5'
+        : 'border-gray-200 dark:border-gray-700 hover:border-purple-200 dark:hover:border-purple-700 hover:bg-purple-50/50 dark:hover:bg-purple-900/5'
     }`}
   >
     <div className="flex items-center gap-2">
@@ -215,17 +215,17 @@ const ElevenLabsVoiceCard = ({
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <h3 className="font-medium text-xs text-foreground truncate">{voice.name}</h3>
-          {isSelected && <CheckCircle className="w-3 h-3 text-success flex-shrink-0" />}
-          <code className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+          <h3 className="font-medium text-xs text-gray-900 dark:text-gray-100 truncate">{voice.name}</h3>
+          {isSelected && <CheckCircle className="w-3 h-3 text-green-600 flex-shrink-0" />}
+          <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-600 dark:text-gray-300">
             {voice.voice_id}
           </code>
         </div>
         <div className="flex items-center gap-1.5 mt-0.5">
-          <span className="text-xs px-1.5 py-0.5 bg-muted rounded text-muted-foreground">
+          <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-600 dark:text-gray-300">
             {voice.category === 'professional' ? 'Professional' : 'Personal'}
           </span>
-          <span className="text-xs text-muted-foreground">Multi-language</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">Multi-language</span>
         </div>
       </div>
       <div className="flex items-center gap-1">
@@ -234,7 +234,7 @@ const ElevenLabsVoiceCard = ({
           size="sm"
           onClick={onPreview}
           disabled={isPreviewLoading}
-          className={`w-7 h-7 p-0 transition-opacity ${isPreviewing ? 'opacity-100 text-purple-500' : 'opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-purple-500'}`}
+          className={`w-7 h-7 p-0 transition-opacity ${isPreviewing ? 'opacity-100 text-purple-500' : 'opacity-0 group-hover:opacity-100 text-gray-400 hover:text-purple-500'}`}
           title={isPreviewing ? 'Stop preview' : 'Preview voice'}
         >
           {isPreviewLoading
@@ -253,7 +253,7 @@ const ElevenLabsVoiceCard = ({
           }}
           className="w-5 h-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
         >
-          <ExternalLink className="w-3 h-3 text-muted-foreground" />
+          <ExternalLink className="w-3 h-3 text-gray-400" />
         </Button>
       </div>
     </div>
@@ -276,8 +276,8 @@ const GoogleTTSVoiceCard = ({
     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
     className={`group cursor-pointer p-2 rounded-md border transition-all hover:shadow-sm ${
       isSelected
-        ? 'border-blue-300 dark:border-blue-600 bg-primary/10 dark:bg-blue-900/10'
-        : 'border-border hover:border-primary/30  hover:bg-blue-50/50 dark:hover:bg-blue-900/5'
+        ? 'border-blue-300 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/10'
+        : 'border-gray-200 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-700 hover:bg-blue-50/50 dark:hover:bg-blue-900/5'
     }`}
   >
     <div className="flex items-center gap-2">
@@ -286,19 +286,19 @@ const GoogleTTSVoiceCard = ({
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <h3 className="font-medium text-xs text-foreground truncate">{voice.displayName}</h3>
-          {isSelected && <CheckCircle className="w-3 h-3 text-success flex-shrink-0" />}
-          <code className="text-xs bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+          <h3 className="font-medium text-xs text-gray-900 dark:text-gray-100 truncate">{voice.displayName}</h3>
+          {isSelected && <CheckCircle className="w-3 h-3 text-green-600 flex-shrink-0" />}
+          <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-gray-600 dark:text-gray-300">
             {voice.name}
           </code>
         </div>
         <div className="flex items-center gap-1.5 mt-0.5">
-          <span className="text-xs px-1.5 py-0.5 bg-muted rounded text-muted-foreground">
+          <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-600 dark:text-gray-300">
             {voice.gender}
           </span>
-          <span className="text-xs text-muted-foreground">{voice.primaryLanguage}</span>
-          <span className="text-xs text-muted-foreground">•</span>
-          <span className="text-xs text-muted-foreground">{voice.naturalSampleRateHertz}Hz</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">{voice.primaryLanguage}</span>
+          <span className="text-xs text-gray-400">•</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">{voice.naturalSampleRateHertz}Hz</span>
         </div>
       </div>
       <CopyButton text={voice.name} />
@@ -321,8 +321,8 @@ const EmptyState = ({
     <div className="text-center space-y-4 max-w-sm">
       <Icon className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto" />
       <div>
-        <h3 className="font-medium text-sm text-foreground mb-2">{title}</h3>
-        <p className="text-muted-foreground text-xs leading-relaxed">{description}</p>
+        <h3 className="font-medium text-sm text-gray-900 dark:text-gray-100 mb-2">{title}</h3>
+        <p className="text-gray-500 dark:text-gray-400 text-xs leading-relaxed">{description}</p>
       </div>
       {actions}
     </div>
@@ -568,7 +568,7 @@ const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
   return (
     <div
       className={`${showSettings ? 'w-1/2' : 'w-full'} transition-all duration-300 ${
-        showSettings ? 'border-r border-border' : ''
+        showSettings ? 'border-r border-gray-200 dark:border-gray-800' : ''
       } flex flex-col`}
     >
       {/* Provider switching lives in ProviderRail; the Tabs root is in index.tsx. */}
@@ -578,7 +578,7 @@ const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
           <TabsContent value="sarvam" className="h-full p-6 mt-0 flex flex-col overflow-hidden">
             <div className="flex gap-3 mb-6 flex-shrink-0">
               <div className="flex-1 relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <Input
                   placeholder="Search voices..."
                   value={searchTerm}
@@ -634,7 +634,7 @@ const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
           <TabsContent value="elevenlabs" className="h-full p-6 mt-0 flex flex-col overflow-hidden">
             <div className="flex gap-3 mb-6 flex-shrink-0">
               <div className="flex-1 relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <Input
                   placeholder="Search or enter voice ID..."
                   value={searchTerm}
@@ -713,7 +713,7 @@ const VoiceSelectionPanel: React.FC<VoiceSelectionPanelProps> = ({
           <TabsContent value="google" className="h-full p-6 mt-0 flex flex-col overflow-hidden">
             <div className="flex gap-3 mb-6 flex-shrink-0">
               <div className="flex-1 relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <Input
                   placeholder="Search voices..."
                   value={searchTerm}

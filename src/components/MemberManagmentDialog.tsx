@@ -160,12 +160,12 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case 'owner': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
-      case 'admin': return 'bg-primary/15 text-primary'
+      case 'admin': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
       case 'member':
       case 'user':
       case 'viewer':
-        return 'bg-muted text-foreground'
-      default: return 'bg-muted text-foreground'
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
     }
   }
 
@@ -191,9 +191,9 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto bg-card border-border">
+      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-foreground">
+          <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
             <Users className="h-5 w-5" />
             Manage Members - {project.name}
           </DialogTitle>
@@ -202,10 +202,10 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
         <div className="space-y-6">
           {/* Access Check */}
           {!canManageMembers && (
-            <div className="p-4 bg-warning/10 border border-warning/30 rounded-lg">
+            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
               <div className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-warning" />
-                <p className="text-sm text-warning">
+                <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                <p className="text-sm text-yellow-800 dark:text-yellow-300">
                   You need admin or owner access to manage project members.
                 </p>
               </div>
@@ -215,30 +215,30 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
           {/* Add Member Form */}
           {canManageMembers && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-foreground">Add New Member</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Add New Member</h3>
               
               <form onSubmit={handleAddMember} className="space-y-4">
                 <div>
-                  <label htmlFor="member-email" className="block text-sm font-medium text-foreground mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Email Address
                   </label>
-                  <input id="member-email"
+                  <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                     placeholder="colleague@example.com"
                     required
                   />
                 </div>
                 <div>
-                  <label htmlFor="member-role" className="block text-sm font-medium text-foreground mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Role
                   </label>
-                  <select id="member-role"
+                  <select
                     value={role}
                     onChange={(e) => setRole(e.target.value as 'admin' | 'viewer')}
-                    className="w-full px-3 py-2 border border-border rounded-md bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                   >
                     <option value="viewer">Viewer (Read only)</option>
                     <option value="admin">Admin (Read, Write & Delete)</option>
@@ -264,37 +264,35 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
           {/* Members List */}
           {canManageMembers && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-foreground">Current Members ({members.length})</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Current Members ({members.length})</h3>
               
-              {!!fetchingMembers && (
+              {fetchingMembers ? (
                 <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  <span className="ml-2 text-muted-foreground">Loading members...</span>
+                  <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400" />
+                  <span className="ml-2 text-gray-600 dark:text-gray-400">Loading members...</span>
                 </div>
-              )}
-              {!fetchingMembers && members.length === 0 && (
-                <p className="text-muted-foreground text-center py-4">No members found</p>
-              )}
-              {!fetchingMembers && members.length !== 0 && (
+              ) : members.length === 0 ? (
+                <p className="text-gray-500 dark:text-gray-400 text-center py-4">No members found</p>
+              ) : (
                 <div className="space-y-3">
                   {members.map((member) => (
-                    <div key={member.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                    <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                       <div className="flex items-center gap-3">
                         <Avatar className="h-10 w-10">
                           <AvatarImage src={member.user.profile_image_url || undefined} />
-                          <AvatarFallback className="bg-primary/15 text-primary">
+                          <AvatarFallback className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300">
                             {getUserInitials(member.user.first_name, member.user.last_name, member.user.email)}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-medium text-foreground">
+                          <p className="font-medium text-gray-900 dark:text-gray-100">
                             {member.user.first_name && member.user.last_name 
                               ? `${member.user.first_name} ${member.user.last_name}`
                               : member.user.email
                             }
                           </p>
-                          <p className="text-sm text-muted-foreground">{member.user.email}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{member.user.email}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-500">
                             Joined {new Date(member.joined_at).toLocaleDateString()}
                           </p>
                         </div>
@@ -303,7 +301,7 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
                         <Badge className={getRoleBadgeColor(member.role)}>
                           {member.role}
                         </Badge>
-                        <CheckCircle className="h-4 w-4 text-success" />
+                        <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-400" />
                       </div>
                     </div>
                   ))}
@@ -313,19 +311,19 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
               {/* Pending Email Mappings */}
               {pendingMappings.length > 0 && (
                 <div className="space-y-3">
-                  <h4 className="font-medium text-foreground flex items-center gap-2">
+                  <h4 className="font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
                     <Clock className="h-4 w-4" />
                     Pending Invitations ({pendingMappings.length})
                   </h4>
                   {pendingMappings.map((mapping) => (
-                    <div key={mapping.id} className="flex items-center justify-between p-3 bg-warning/10 rounded-lg border border-warning/30">
+                    <div key={mapping.id} className="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 bg-warning/20 rounded-full flex items-center justify-center">
-                          <Mail className="h-5 w-5 text-warning" />
+                        <div className="h-10 w-10 bg-yellow-200 dark:bg-yellow-700/50 rounded-full flex items-center justify-center">
+                          <Mail className="h-5 w-5 text-yellow-700 dark:text-yellow-300" />
                         </div>
                         <div>
-                          <p className="font-medium text-foreground">{mapping.email}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="font-medium text-gray-900 dark:text-gray-100">{mapping.email}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
                             Invited {new Date(mapping.created_at).toLocaleDateString()}
                           </p>
                         </div>
@@ -334,7 +332,7 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
                         <Badge className={getRoleBadgeColor(mapping.role)}>
                           {mapping.role}
                         </Badge>
-                        <Clock className="h-4 w-4 text-warning" />
+                        <Clock className="h-4 w-4 text-yellow-500 dark:text-yellow-400" />
                       </div>
                     </div>
                   ))}
@@ -344,8 +342,8 @@ const MemberManagementDialog: React.FC<MemberManagementDialogProps> = ({
           )}
 
           {/* Close Button */}
-          <div className="pt-4 border-t border-border">
-            <Button onClick={handleClose} variant="outline" className="w-full border-border text-foreground hover:bg-muted/50">
+          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+            <Button onClick={handleClose} variant="outline" className="w-full border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
               Close
             </Button>
           </div>

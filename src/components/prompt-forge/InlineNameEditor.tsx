@@ -49,7 +49,7 @@ export function InlineNameEditor({ name, onSave, forceEdit, onForceEditDone }: P
           if (e.key === 'Escape') { setEditing(false); setValue(name); onForceEditDone?.() }
         }}
         onClick={e => e.stopPropagation()}
-        className="bg-card border border-blue-400 dark:border-blue-500 rounded-md px-2 py-0.5 text-sm font-medium text-foreground outline-none w-full max-w-xs"
+        className="bg-white dark:bg-gray-800 border border-blue-400 dark:border-blue-500 rounded-md px-2 py-0.5 text-sm font-medium text-gray-900 dark:text-gray-100 outline-none w-full max-w-xs"
       />
     )
   }
@@ -59,7 +59,7 @@ export function InlineNameEditor({ name, onSave, forceEdit, onForceEditDone }: P
       type="button"
       onClick={startEdit}
       title="Click to rename"
-      className="text-left appearance-none bg-transparent border-0 p-0 max-w-full text-sm font-medium text-foreground cursor-pointer hover:text-primary transition-colors truncate"
+      className="text-left appearance-none bg-transparent border-0 p-0 max-w-full text-sm font-medium text-gray-900 dark:text-gray-100 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors truncate"
     >
       {name || 'Untitled session'}
     </button>

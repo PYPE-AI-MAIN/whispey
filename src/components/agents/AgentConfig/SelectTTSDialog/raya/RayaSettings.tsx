@@ -20,7 +20,7 @@ interface RayaSettingsProps {
 
 const Section = ({ title, children }: Readonly<{ title: string; children: React.ReactNode }>) => (
   <div className="space-y-4">
-    <h3 className="text-sm font-medium text-foreground border-b border-border pb-2">
+    <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-2">
       {title}
     </h3>
     {children}
@@ -55,12 +55,12 @@ export default function RayaSettings({ config, setConfig }: Readonly<RayaSetting
               {RAYA_LANGUAGES.map((l) => (
                 <SelectItem key={l.value} value={l.value}>
                   {l.label}
-                  {l.native && <span className="ml-2 text-muted-foreground">{l.native}</span>}
+                  {l.native && <span className="ml-2 text-gray-400">{l.native}</span>}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             Follows the voice you pick. Change it only if the agent will speak a different language than the voice
             is tuned for.
           </p>
@@ -82,7 +82,7 @@ export default function RayaSettings({ config, setConfig }: Readonly<RayaSetting
                     className={`rounded-md border px-2 py-0.5 text-[11px] transition-colors ${
                       config.speed === preset.value
                         ? 'border-teal-300 dark:border-teal-600 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300'
-                        : 'border-border text-muted-foreground hover:bg-muted/50'
+                        : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
                     }`}
                   >
                     {preset.label}
@@ -99,7 +99,7 @@ export default function RayaSettings({ config, setConfig }: Readonly<RayaSetting
               className="w-full"
               aria-label="Speech speed"
             />
-            <div className="flex justify-between text-xs text-muted-foreground">
+            <div className="flex justify-between text-xs text-gray-500">
               <span>Slower ({RAYA_SPEED.min}×)</span>
               <span>Faster ({RAYA_SPEED.max}×)</span>
             </div>
@@ -120,11 +120,11 @@ export default function RayaSettings({ config, setConfig }: Readonly<RayaSetting
                     className={`rounded-md border px-3 py-2 text-left transition-colors ${
                       active
                         ? 'border-teal-300 dark:border-teal-600 bg-teal-50 dark:bg-teal-900/20'
-                        : 'border-border hover:bg-muted/50'
+                        : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
                     }`}
                   >
-                    <span className="block text-xs font-medium text-foreground">{rate.label}</span>
-                    <span className="block text-[11px] text-muted-foreground">{rate.hint}</span>
+                    <span className="block text-xs font-medium text-gray-900 dark:text-gray-100">{rate.label}</span>
+                    <span className="block text-[11px] text-gray-500 dark:text-gray-400">{rate.hint}</span>
                   </button>
                 )
               })}
@@ -137,7 +137,7 @@ export default function RayaSettings({ config, setConfig }: Readonly<RayaSetting
         <div className="rounded-lg border border-teal-200/70 dark:border-teal-800/60 bg-teal-50/60 dark:bg-teal-950/20 p-3 space-y-2">
           <div className="flex items-start gap-2">
             <Lightbulb className="w-4 h-4 mt-0.5 text-teal-600 dark:text-teal-400 flex-shrink-0" />
-            <div className="text-xs leading-relaxed text-foreground space-y-1.5">
+            <div className="text-xs leading-relaxed text-gray-700 dark:text-gray-300 space-y-1.5">
               {isHindi && (
                 <p>
                   <b>Hindi must be in Devanagari.</b> Romanised Hindi (&ldquo;namaste&rdquo;) isn&apos;t supported
@@ -160,11 +160,11 @@ export default function RayaSettings({ config, setConfig }: Readonly<RayaSetting
             </div>
           </div>
           <div className="flex items-start gap-2">
-            <code className="flex-1 rounded bg-white/70 dark:bg-black/20 p-2 text-[11px] leading-relaxed text-foreground">
+            <code className="flex-1 rounded bg-white/70 dark:bg-black/20 p-2 text-[11px] leading-relaxed text-gray-700 dark:text-gray-300">
               {RAYA_PROMPT_SNIPPET}
             </code>
             <Button variant="outline" size="sm" className="h-8 flex-shrink-0" onClick={copySnippet}>
-              {copied ? <Check className="w-3.5 h-3.5 mr-1.5 text-success" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
+              {copied ? <Check className="w-3.5 h-3.5 mr-1.5 text-green-600" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
               {copied ? 'Copied' : 'Copy'}
             </Button>
           </div>

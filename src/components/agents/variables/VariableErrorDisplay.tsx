@@ -39,15 +39,15 @@ export const VariableValidationIndicator: React.FC<VariableValidationIndicatorPr
       {hasErrors && (
         <Popover>
           <PopoverTrigger asChild>
-            <button className="flex items-center gap-1.5 text-xs text-destructive hover:text-destructive transition-colors px-2 py-1 rounded-md hover:bg-destructive/10">
+            <button className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors px-2 py-1 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20">
               <AlertCircle className="w-3.5 h-3.5" />
               <span className="font-medium">{errors.length} {errors.length === 1 ? 'Error' : 'Errors'}</span>
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-80 p-0" align="start">
-            <div className="p-3 border-b border-border">
-              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-destructive" />
+            <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-500" />
                 Variable Validation Errors
               </h4>
             </div>
@@ -56,16 +56,16 @@ export const VariableValidationIndicator: React.FC<VariableValidationIndicatorPr
                 {errors.map((error, index) => (
                   <div
                     key={`${error.type}-${index}`}
-                    className="p-2 rounded-md bg-destructive/10 border border-destructive/30"
+                    className="p-2 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
                   >
                     <div className="flex items-start gap-2">
-                      <AlertCircle className="w-3.5 h-3.5 text-destructive flex-shrink-0 mt-0.5" />
+                      <AlertCircle className="w-3.5 h-3.5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs text-destructive font-medium">
+                        <p className="text-xs text-red-700 dark:text-red-300 font-medium">
                           {error.message}
                         </p>
                         {error.variable && (
-                          <code className="text-xs text-destructive bg-destructive/15 px-1.5 py-0.5 rounded mt-1 inline-block font-mono">
+                          <code className="text-xs text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/40 px-1.5 py-0.5 rounded mt-1 inline-block font-mono">
                             {error.variable}
                           </code>
                         )}
@@ -75,8 +75,8 @@ export const VariableValidationIndicator: React.FC<VariableValidationIndicatorPr
                 ))}
               </div>
             </div>
-            <div className="p-2 border-t border-border bg-muted/50">
-              <p className="text-xs text-muted-foreground">
+            <div className="p-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+              <p className="text-xs text-gray-600 dark:text-gray-400">
                 Fix these errors to enable config updates
               </p>
             </div>
@@ -88,15 +88,15 @@ export const VariableValidationIndicator: React.FC<VariableValidationIndicatorPr
       {!hasErrors && hasVariables && (
         <Popover>
           <PopoverTrigger asChild>
-            <button className="flex items-center gap-1.5 text-xs text-success hover:text-success transition-colors px-2 py-1 rounded-md hover:bg-success/10">
+            <button className="flex items-center gap-1.5 text-xs text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 transition-colors px-2 py-1 rounded-md hover:bg-green-50 dark:hover:bg-green-900/20">
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span className="font-medium">{validVariables.length} {validVariables.length === 1 ? 'Variable' : 'Variables'}</span>
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-80 p-0" align="start">
-            <div className="p-3 border-b border-border">
-              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-success" />
+            <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-green-500" />
                 Detected Variables
               </h4>
             </div>
@@ -105,15 +105,15 @@ export const VariableValidationIndicator: React.FC<VariableValidationIndicatorPr
                 {validVariables.map((variable) => (
                   <code
                     key={variable}
-                    className="px-2.5 py-1 rounded-md bg-success/10 text-success font-mono text-xs border border-success/30"
+                    className="px-2.5 py-1 rounded-md bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 font-mono text-xs border border-green-200 dark:border-green-800"
                   >
                     {`{{${variable}}}`}
                   </code>
                 ))}
               </div>
             </div>
-            <div className="p-2 border-t border-border bg-muted/50">
-              <p className="text-xs text-muted-foreground">
+            <div className="p-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+              <p className="text-xs text-gray-600 dark:text-gray-400">
                 These variables will be available in your agent
               </p>
             </div>

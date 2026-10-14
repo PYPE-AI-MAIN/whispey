@@ -51,7 +51,7 @@ export function VariablesPanel({ open, onOpenChange }: Readonly<{ open: boolean;
             </Button>
           </div>
           {variables.length > 0 && (
-            <div className="flex gap-1.5 text-[11px] font-medium text-muted-foreground">
+            <div className="flex gap-1.5 text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
               <span className="w-28">Name</span>
               <span className="w-24">Type</span>
               <span className="w-24">Starts as</span>
@@ -64,7 +64,7 @@ export function VariablesPanel({ open, onOpenChange }: Readonly<{ open: boolean;
             if (v.default === true) boolDefault = 'true'
             else if (v.default === false) boolDefault = 'false'
             return (
-            <div key={rowIds.current[i]} className="flex gap-1.5 items-start border-b border-border/60 pb-2">
+            <div key={rowIds.current[i]} className="flex gap-1.5 items-start border-b border-gray-100 dark:border-gray-800 pb-2">
               <Input
                 placeholder="e.g. customer_name"
                 value={v.key}
@@ -141,7 +141,7 @@ export function VariablesPanel({ open, onOpenChange }: Readonly<{ open: boolean;
             )
           })}
           {!variables.length && (
-            <p className="text-xs text-muted-foreground py-4 text-center">
+            <p className="text-xs text-gray-500 dark:text-gray-400 py-4 text-center">
               No variables yet. Add one for anything you want to reuse, like a name or a date.
             </p>
           )}

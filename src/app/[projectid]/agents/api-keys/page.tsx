@@ -1,6 +1,5 @@
 // src/app/[projectid]/agents/api-keys/page.tsx
 'use client'
-import { Page } from '@/components/shared/Page'
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
@@ -193,19 +192,28 @@ const ApiKeys = () => {
   // }
 
   return (
-    <Page
-      title="API Keys"
-      description="Manage API keys for secure programmatic access to this project. Keys are encrypted and can be viewed when needed."
-    >
+    <div className="min-h-screen bg-white dark:bg-gray-900 p-6">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-3">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+            API Keys
+          </h1>
+        </div>
+        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+          Manage API keys for secure programmatic access to this project. Keys are encrypted and can be viewed when needed.
+        </p>
+      </div>
+
       {/* Security Info */}
-      <div className="mb-6 p-3 bg-primary/10 border border-primary/30 rounded-lg">
+      <div className="mb-6 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
         <div className="flex items-start gap-3">
-          <Shield className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+          <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
           <div>
             <p className="text-xs font-medium text-blue-900 dark:text-blue-200 mb-1">
               Security Notice
             </p>
-            <p className="text-xs text-primary leading-relaxed">
+            <p className="text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
               Keys are securely encrypted. Use "View" to decrypt and copy when needed.
             </p>
           </div>
@@ -214,15 +222,15 @@ const ApiKeys = () => {
 
       {/* Keys List */}
       {apiKeys.length === 0 ? (
-        <Card className="border-border bg-card">
+        <Card className="border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
           <CardContent className="py-12 px-8 text-center">
-            <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <Key className="w-6 h-6 text-primary" />
+            <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <Key className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             </div>
-            <h3 className="text-sm font-medium text-foreground mb-2">
+            <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
               No API keys yet
             </h3>
-            <p className="text-xs text-muted-foreground mb-6 max-w-sm mx-auto leading-relaxed">
+            <p className="text-xs text-gray-600 dark:text-gray-400 mb-6 max-w-sm mx-auto leading-relaxed">
               Create your first project to generate an API key automatically.
             </p>
           </CardContent>
@@ -230,22 +238,22 @@ const ApiKeys = () => {
       ) : (
         <div className="space-y-3">
           {apiKeys.map((apiKey: APIKey) => (
-            <Card key={apiKey.id} className="border-border bg-card hover:shadow-sm dark:hover:shadow-gray-900/20 transition-all duration-200">
+            <Card key={apiKey.id} className="border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:shadow-sm dark:hover:shadow-gray-900/20 transition-all duration-200">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Key className="w-4 h-4 text-primary" />
+                    <div className="w-8 h-8 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Key className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                     </div>
                     <div>
                     <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-sm font-medium text-foreground">
+                        <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">
                           {apiKey.name}
                         </h3>
                         {apiKey.legacy && (
                           <Badge 
                             variant="outline"
-                            className="text-xs px-1.5 py-0 bg-warning/10 text-warning border-warning/30"
+                            className="text-xs px-1.5 py-0 bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800"
                           >
                             Legacy
                           </Badge>
@@ -253,31 +261,31 @@ const ApiKeys = () => {
                         <Badge 
                           variant="outline"
                           className={apiKey.is_active ? 
-                            "text-xs px-1.5 py-0 bg-primary/10 text-primary border-primary/30" : 
-                            "text-xs px-1.5 py-0 bg-muted/50 text-muted-foreground border-border"
+                            "text-xs px-1.5 py-0 bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800" : 
+                            "text-xs px-1.5 py-0 bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700"
                           }
                         >
                           {apiKey.is_active ? 'Active' : 'Inactive'}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
+                      <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 mb-2">
                         <span className="font-mono tracking-wider">{apiKey.masked_key}</span>
                       </div>
 
                       {apiKey.full_key && (
-                        <div className="flex items-center gap-2 mb-2 p-2 bg-muted/50 rounded border">
+                        <div className="flex items-center gap-2 mb-2 p-2 bg-gray-50 dark:bg-gray-800 rounded border">
                           <Input
                             type={showFullKey ? 'text' : 'password'}
                             value={apiKey.full_key}
                             readOnly
-                            className="font-mono min-w-[700px] w-full text-xs h-7 pr-10 bg-transparent border-none p-0 text-foreground focus-visible:ring-0"
+                            className="font-mono min-w-[700px] w-full text-xs h-7 pr-10 bg-transparent border-none p-0 text-gray-900 dark:text-gray-100 focus-visible:ring-0"
                           />
                           <div className="flex gap-1">
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => setShowFullKey(!showFullKey)}
-                              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                              className="h-7 w-7 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                             >
                               {showFullKey ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                             </Button>
@@ -285,7 +293,7 @@ const ApiKeys = () => {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleCopyKey(apiKey.full_key || '')}
-                              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                              className="h-7 w-7 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                             >
                               <Copy className="w-3 h-3" />
                             </Button>
@@ -294,12 +302,12 @@ const ApiKeys = () => {
                       )}
 
                       {copiedKey && (
-                        <p className="text-xs text-success mb-2">
+                        <p className="text-xs text-green-600 dark:text-green-400 mb-2">
                           Copied to clipboard
                         </p>
                       )}
 
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                         <div className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
                           <span>Created {formatDate(apiKey.created_at)}</span>
@@ -325,7 +333,7 @@ const ApiKeys = () => {
                               size="sm"
                               onClick={() => handleViewFullKey(apiKey)}
                               disabled={viewingKey === apiKey.id}
-                              className="h-7 px-2 text-muted-foreground hover:text-success hover:bg-success/10"
+                              className="h-7 px-2 text-gray-500 dark:text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 dark:hover:text-green-400"
                             >
                               {viewingKey === apiKey.id ? (
                                 <Loader2 className="w-3 h-3 animate-spin" />
@@ -348,7 +356,7 @@ const ApiKeys = () => {
                               variant="ghost"
                               size="sm"
                               disabled
-                              className="h-7 px-2 text-muted-foreground"
+                              className="h-7 px-2 text-gray-400 dark:text-gray-500"
                             >
                               <Shield className="w-3 h-3" />
                             </Button>
@@ -368,7 +376,7 @@ const ApiKeys = () => {
                             size="sm"
                             onClick={() => setShowRegenerateConfirm(apiKey)}
                             disabled={regeneratingKey === apiKey.id}
-                            className="h-7 px-2 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                            className="h-7 px-2 text-gray-500 dark:text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
                           >
                             {regeneratingKey === apiKey.id ? (
                               <Loader2 className="w-3 h-3 animate-spin" />
@@ -394,15 +402,15 @@ const ApiKeys = () => {
 
       {/* View Key Dialog */}
       <Dialog open={showViewKeyDialog !== null} onOpenChange={() => setShowViewKeyDialog(null)}>
-        <DialogContent className="sm:max-w-lg bg-card border-border">
+        <DialogContent className="sm:max-w-lg bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
           <DialogHeader>
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 bg-success/10 rounded-lg flex items-center justify-center">
-                <Eye className="w-4 h-4 text-success" />
+              <div className="w-8 h-8 bg-green-50 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
+                <Eye className="w-4 h-4 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <DialogTitle className="text-base font-semibold text-foreground">API Key</DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground mt-1">
+                <DialogTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">API Key</DialogTitle>
+                <DialogDescription className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                   Copy this key for your applications.
                 </DialogDescription>
               </div>
@@ -416,14 +424,14 @@ const ApiKeys = () => {
                   type={showFullKey ? 'text' : 'password'}
                   value={showViewKeyDialog.full_key || ''}
                   readOnly
-                  className="font-mono text-xs h-9 pr-16 bg-muted/50 border-border text-foreground"
+                  className="font-mono text-xs h-9 pr-16 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                 />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowFullKey(!showFullKey)}
-                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                    className="h-7 w-7 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                   >
                     {showFullKey ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                   </Button>
@@ -431,14 +439,14 @@ const ApiKeys = () => {
                     variant="ghost"
                     size="sm"
                     onClick={() => handleCopyKey(showViewKeyDialog.full_key || '')}
-                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                    className="h-7 w-7 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                   >
                     <Copy className="w-3 h-3" />
                   </Button>
                 </div>
               </div>
               {copiedKey && (
-                <p className="text-xs text-success mt-2">
+                <p className="text-xs text-green-600 dark:text-green-400 mt-2">
                   Copied to clipboard
                 </p>
               )}
@@ -462,15 +470,15 @@ const ApiKeys = () => {
 
       {/* Regenerate Success Dialog */}
       <Dialog open={showNewKeyDialog} onOpenChange={setShowNewKeyDialog}>
-        <DialogContent className="sm:max-w-lg bg-card border-border">
+        <DialogContent className="sm:max-w-lg bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
           <DialogHeader>
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                <CheckCircle2 className="w-4 h-4 text-primary" />
+              <div className="w-8 h-8 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
+                <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <DialogTitle className="text-base font-semibold text-foreground">Key regenerated successfully</DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground mt-1">
+                <DialogTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">Key regenerated successfully</DialogTitle>
+                <DialogDescription className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                   Your new API key is ready. The old key has been invalidated.
                 </DialogDescription>
               </div>
@@ -484,14 +492,14 @@ const ApiKeys = () => {
                   type={showFullKey ? 'text' : 'password'}
                   value={newKeyData.full_key || ''}
                   readOnly
-                  className="font-mono text-xs h-9 pr-16 bg-muted/50 border-border text-foreground"
+                  className="font-mono text-xs h-9 pr-16 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
                 />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowFullKey(!showFullKey)}
-                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                    className="h-7 w-7 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                   >
                     {showFullKey ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                   </Button>
@@ -499,14 +507,14 @@ const ApiKeys = () => {
                     variant="ghost"
                     size="sm"
                     onClick={() => handleCopyKey(newKeyData.full_key || '')}
-                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                    className="h-7 w-7 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                   >
                     <Copy className="w-3 h-3" />
                   </Button>
                 </div>
               </div>
               {copiedKey && (
-                <p className="text-xs text-primary mt-2">
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
                   Copied to clipboard
                 </p>
               )}
@@ -531,22 +539,22 @@ const ApiKeys = () => {
 
       {/* Regenerate Confirm */}
       <Dialog open={showRegenerateConfirm !== null} onOpenChange={() => setShowRegenerateConfirm(null)}>
-        <DialogContent className="sm:max-w-md bg-card border-border">
+        <DialogContent className="sm:max-w-md bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
           <DialogHeader>
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-8 h-8 bg-warning/10 rounded-lg flex items-center justify-center">
-                <AlertTriangle className="w-4 h-4 text-warning" />
+              <div className="w-8 h-8 bg-amber-50 dark:bg-amber-900/20 rounded-lg flex items-center justify-center">
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
-                <DialogTitle className="text-base font-semibold text-foreground">Regenerate key</DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground mt-1">
+                <DialogTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">Regenerate key</DialogTitle>
+                <DialogDescription className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                   This will immediately invalidate the current key.
                 </DialogDescription>
               </div>
             </div>
           </DialogHeader>
           <div className="py-2">
-            <p className="text-xs text-muted-foreground leading-relaxed">
+            <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
               Applications using this API key will lose access until updated with the new key.
             </p>
           </div>
@@ -554,7 +562,7 @@ const ApiKeys = () => {
             <Button 
               variant="outline" 
               onClick={() => setShowRegenerateConfirm(null)}
-              className="h-8 px-3 text-xs border-border text-foreground hover:bg-muted/50"
+              className="h-8 px-3 text-xs border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               Cancel
             </Button>
@@ -573,7 +581,7 @@ const ApiKeys = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Page>
+    </div>
   )
 }
 

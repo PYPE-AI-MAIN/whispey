@@ -86,19 +86,20 @@ function EnhancedInsights({
     <div className="space-y-6">
       {/* Cost Breakdown */}
       {trace.trace_cost_usd && (
-        <div className="bg-muted/50 border border-border rounded-lg p-4">
-          <h4 className="text-lg font-semibold mb-4 text-foreground">Cost Breakdown</h4>
+        <div className="bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+          <h4 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Cost Breakdown</h4>
           <div className="space-y-3">
-            <div className="flex justify-between items-center p-3 bg-card rounded border border-border">
-              <span className="font-medium text-foreground">Total Trace Cost:</span>
-              <span className="font-mono text-lg text-foreground">
+            <div className="flex justify-between items-center p-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+              <span className="font-medium text-gray-900 dark:text-gray-100">Total Trace Cost:</span>
+              <span className="font-mono text-lg text-gray-900 dark:text-gray-100">
                 {formatCost(Number.parseFloat(trace.trace_cost_usd))}
               </span>
             </div>
-            {trace.otel_spans?.map((span: any, index: number) => (
-                <div key={index} /* NOSONAR: static list, spans have no unique id */ className="flex justify-between items-center p-2 bg-card rounded text-sm border border-border">
-                  <span className="text-muted-foreground">{span.operation}:</span>
-                  <span className="font-mono text-foreground">
+            {trace.otel_spans &&
+              trace.otel_spans.map((span: any, index: number) => (
+                <div key={index} className="flex justify-between items-center p-2 bg-white dark:bg-gray-800 rounded text-sm border border-gray-200 dark:border-gray-700">
+                  <span className="text-gray-600 dark:text-gray-400">{span.operation}:</span>
+                  <span className="font-mono text-gray-900 dark:text-gray-100">
                     ~{formatCost(Number.parseFloat(trace.trace_cost_usd) / trace.otel_spans.length)}
                   </span>
                 </div>
@@ -108,16 +109,16 @@ function EnhancedInsights({
       )}
 
       {/* Enhanced Latency Analysis */}
-      <div className="bg-muted/50 border border-border rounded-lg p-4">
+      <div className="bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 rounded-lg p-4">
         <div className="flex items-center justify-between mb-4">
-          <h4 className="text-lg font-semibold text-foreground">Latency Analysis</h4>
+          <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Latency Analysis</h4>
           <Badge variant="outline" className="text-xs">
             {isVapiAgent ? "Vapi Pipeline" : "LiveKit Pipeline"}
           </Badge>
         </div>
 
         {/* Platform-specific explanation — informational, not a warning */}
-        <div className="text-xs rounded-md px-3 py-2 mb-4 text-muted-foreground bg-muted border border-border">
+        <div className="text-xs rounded-md px-3 py-2 mb-4 text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           {isVapiAgent
             ? "Vapi: STT processing is sequential and included in total pipeline duration"
             : "LiveKit: STT processing runs in parallel with audio streaming, excluded from pipeline duration"}
@@ -134,20 +135,20 @@ function EnhancedInsights({
 
               return (
                 <div key={stage.id} className={cn(
-                  "flex justify-between items-center p-3 bg-card rounded border border-border",
+                  "flex justify-between items-center p-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700",
                   !isIncludedInPipeline && "opacity-60"
                 )}>
                   <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 rounded bg-muted flex items-center justify-center text-muted-foreground">
+                    <div className="w-4 h-4 rounded bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-400">
                       {stage.icon}
                     </div>
-                    <span className="font-medium capitalize text-foreground">
+                    <span className="font-medium capitalize text-gray-900 dark:text-gray-100">
                       {stage.name}
                     </span>
 
                     {/* Subtle inclusion indicator */}
                     {stage.id === "stt" && !isVapiAgent && (
-                      <span className="text-xs px-2 py-1 rounded-full text-muted-foreground bg-muted">
+                      <span className="text-xs px-2 py-1 rounded-full text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800">
                         parallel
                       </span>
                     )}
@@ -156,7 +157,7 @@ function EnhancedInsights({
                   <div className="text-right">
                     <span className={cn(
                       "font-mono text-sm",
-                      isIncludedInPipeline ? "text-foreground" : "text-muted-foreground"
+                      isIncludedInPipeline ? "text-gray-900 dark:text-gray-100" : "text-gray-400 dark:text-gray-500"
                     )}>
                       {stage.id === "stt" && stage.metrics?.duration && formatDuration(stage.metrics.duration * 1000)}
                       {stage.id === "llm" && stage.metrics?.ttft && formatDuration(stage.metrics.ttft * 1000)}
@@ -169,14 +170,14 @@ function EnhancedInsights({
             })}
           
           {/* Simple total with formula */}
-          <div className="p-3 bg-card rounded border-2 border-primary/30 font-medium mt-4">
+          <div className="p-3 bg-white dark:bg-gray-800 rounded border-2 border-blue-200 dark:border-blue-700 font-medium mt-4">
             <div className="flex justify-between items-center">
-              <span className="text-foreground">Total Pipeline Duration:</span>
-              <span className="font-mono text-lg text-primary">{formatDuration(actualPipelineDuration)}</span>
+              <span className="text-gray-900 dark:text-gray-100">Total Pipeline Duration:</span>
+              <span className="font-mono text-lg text-blue-600 dark:text-blue-400">{formatDuration(actualPipelineDuration)}</span>
             </div>
             
             {/* Show the calculation formula */}
-            <div className="text-xs text-muted-foreground mt-2 font-mono">
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 font-mono">
               {[
                 isVapiAgent && trace.stt_metrics?.duration && "STT",
                 trace.eou_metrics?.end_of_utterance_delay && "EOU", 
@@ -184,7 +185,7 @@ function EnhancedInsights({
                 trace.tts_metrics?.ttfb && "TTS"
               ].filter(Boolean).join(" + ")}
               {!isVapiAgent && trace.stt_metrics?.duration && (
-                <span className="text-muted-foreground ml-2">(STT excluded - parallel)</span>
+                <span className="text-gray-400 dark:text-gray-500 ml-2">(STT excluded - parallel)</span>
               )}
             </div>
           </div>
@@ -192,30 +193,30 @@ function EnhancedInsights({
       </div>
       
       {/* Session Information */}
-      <div className="rounded-xl border border-border bg-muted/50 shadow-sm p-4">
-        <h4 className="text-lg font-semibold mb-4 text-foreground">Session Information</h4>
+      <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 shadow-sm p-4">
+        <h4 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Session Information</h4>
         <div className="grid grid-cols-1 gap-3">
-          <div className="flex justify-between items-center p-3 bg-card border border-border rounded">
-            <span className="text-muted-foreground">Session ID:</span>
+          <div className="flex justify-between items-center p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded">
+            <span className="text-gray-600 dark:text-gray-400">Session ID:</span>
             <div className="flex items-center gap-2">
-              <code className="text-sm bg-muted text-foreground px-2 py-1 rounded">{trace.session_id.slice(0, 16)}...</code>
+              <code className="text-sm bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2 py-1 rounded">{trace.session_id.slice(0, 16)}...</code>
               <Button variant="ghost" size="sm" onClick={() => copyToClipboard(trace.session_id, "session_id")}>
                 {copiedField === "session_id" ? "✓" : <Copy className="w-3 h-3" />}
               </Button>
             </div>
           </div>
-          <div className="flex justify-between items-center p-3 bg-card border border-border rounded">
-            <span className="text-muted-foreground">Trace ID:</span>
+          <div className="flex justify-between items-center p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded">
+            <span className="text-gray-600 dark:text-gray-400">Trace ID:</span>
             <div className="flex items-center gap-2">
-              <code className="text-sm bg-muted text-foreground px-2 py-1 rounded">{trace.trace_id?.slice(0, 16)}...</code>
+              <code className="text-sm bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2 py-1 rounded">{trace.trace_id?.slice(0, 16)}...</code>
               <Button variant="ghost" size="sm" onClick={() => copyToClipboard(trace.trace_id, "trace_id")}>
                 {copiedField === "trace_id" ? "✓" : <Copy className="w-3 h-3" />}
               </Button>
             </div>
           </div>
-          <div className="flex justify-between items-center p-3 bg-card border border-border rounded">
-            <span className="text-muted-foreground">Turn ID:</span>
-            <code className="text-sm bg-muted text-foreground px-2 py-1 rounded">{trace.turn_id}</code>
+          <div className="flex justify-between items-center p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded">
+            <span className="text-gray-600 dark:text-gray-400">Turn ID:</span>
+            <code className="text-sm bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-2 py-1 rounded">{trace.turn_id}</code>
           </div>
         </div>
       </div>

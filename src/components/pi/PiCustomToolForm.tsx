@@ -31,7 +31,7 @@ const TYPES = [
 
 const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
 
-const field = 'w-full rounded-lg border border-border bg-card px-2.5 py-1.5 text-[13px] text-foreground'
+const field = 'w-full rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-[13px] text-gray-900 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100'
 
 function addedKey(toolCallId: string) {
   return `pi-tool-added:${toolCallId}`
@@ -130,61 +130,61 @@ export default function PiCustomToolForm({
 
   if (status === 'saved') {
     return (
-      <div className="mt-3 rounded-xl border border-border bg-card px-3 py-2.5 text-[13px] text-foreground">
+      <div className="mt-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[13px] text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-200">
         {savedName || 'Tool'} added to {label}.
       </div>
     )
   }
 
   return (
-    <div className="mt-3 min-w-0 max-w-full space-y-2 overflow-hidden rounded-xl border border-border bg-card p-3">
-      <p className="text-[13px] font-medium text-foreground">Add a tool to {label}</p>
-      <label className="block text-[12px] text-muted-foreground">
+    <div className="mt-3 min-w-0 max-w-full space-y-2 overflow-hidden rounded-xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
+      <p className="text-[13px] font-medium text-gray-800 dark:text-gray-200">Add a tool to {label}</p>
+      <label className="block text-[12px] text-gray-500">
         <span>Type</span>
         <select className={`${field} mt-1`} value={type} onChange={(e) => setType(e.target.value)}>
           {TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
         </select>
       </label>
-      <label className="block text-[12px] text-muted-foreground">
+      <label className="block text-[12px] text-gray-500">
         <span>Name</span>
         <input className={`${field} mt-1`} value={name} onChange={(e) => setName(e.target.value)} placeholder="book_slot" />
       </label>
-      <label className="block text-[12px] text-muted-foreground">
+      <label className="block text-[12px] text-gray-500">
         <span>Description</span>
         <input className={`${field} mt-1`} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What the tool does" />
       </label>
       {custom && (
         <>
           <div className="grid grid-cols-2 gap-2">
-            <label className="block text-[12px] text-muted-foreground">
+            <label className="block text-[12px] text-gray-500">
               <span>Method</span>
               <select className={`${field} mt-1`} value={method} onChange={(e) => setMethod(e.target.value)}>
                 {METHODS.map((m) => <option key={m}>{m}</option>)}
               </select>
             </label>
-            <label className="block text-[12px] text-muted-foreground">
+            <label className="block text-[12px] text-gray-500">
               <span>Timeout (seconds)</span>
               <input className={`${field} mt-1`} type="number" min={1} max={120} value={timeoutSec} onChange={(e) => setTimeoutSec(e.target.value)} />
             </label>
           </div>
-          <label className="block text-[12px] text-muted-foreground">
+          <label className="block text-[12px] text-gray-500">
             <span>API URL</span>
             <input className={`${field} mt-1`} value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} placeholder="https://api.example.com/book" />
           </label>
-          <label className="flex items-center gap-2 text-[12px] text-muted-foreground">
+          <label className="flex items-center gap-2 text-[12px] text-gray-600 dark:text-gray-300">
             <input type="checkbox" checked={asyncExec} onChange={(e) => setAsyncExec(e.target.checked)} />
             <span>Run async</span>
           </label>
           <div className="space-y-1">
-            <p className="text-[12px] text-muted-foreground">Parameters</p>
+            <p className="text-[12px] text-gray-500">Parameters</p>
             {params.map((p) => (
-              <div key={p.id} className="min-w-0 space-y-1 rounded-lg border border-border p-2">
+              <div key={p.id} className="min-w-0 space-y-1 rounded-lg border border-gray-200 p-2 dark:border-gray-800">
                 <input className={field} placeholder="name" value={p.name} onChange={(e) => updateParam(p.id, { name: e.target.value })} />
                 <div className="flex min-w-0 items-center gap-2">
                   <select className={`${field} max-w-[8rem]`} value={p.type || 'str'} onChange={(e) => updateParam(p.id, { type: e.target.value })}>
                     {['str', 'int', 'float', 'bool'].map((t) => <option key={t}>{t}</option>)}
                   </select>
-                  <label className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <label className="flex items-center gap-1 text-[11px] text-gray-500">
                     <input type="checkbox" checked={p.required} onChange={(e) => updateParam(p.id, { required: e.target.checked })} />
                     <span>required</span>
                   </label>
@@ -192,15 +192,15 @@ export default function PiCustomToolForm({
                 <input className={field} placeholder="description" value={p.description} onChange={(e) => updateParam(p.id, { description: e.target.value })} />
               </div>
             ))}
-            <button type="button" className="text-[12px] text-primary" onClick={() => setParams((rows) => [...rows, withId({ name: '', type: 'str', description: '', required: false })])}>
+            <button type="button" className="text-[12px] text-blue-600 dark:text-blue-400" onClick={() => setParams((rows) => [...rows, withId({ name: '', type: 'str', description: '', required: false })])}>
               Add parameter
             </button>
           </div>
-          <label className="block text-[12px] text-muted-foreground">
+          <label className="block text-[12px] text-gray-500">
             <span>Body template</span>
             <textarea className={`${field} mt-1 font-mono`} rows={3} value={payload} onChange={(e) => setPayload(e.target.value)} placeholder='{"when":"__date__","at":"__timestamp__"}' />
           </label>
-          <label className="block text-[12px] text-muted-foreground">
+          <label className="block text-[12px] text-gray-500">
             <span>Headers (JSON)</span>
             <textarea className={`${field} mt-1 font-mono`} rows={3} value={headers} onChange={(e) => setHeaders(e.target.value)} />
           </label>
@@ -209,7 +209,7 @@ export default function PiCustomToolForm({
       <button type="button" disabled={status === 'saving'} onClick={() => void submit()} className="rounded-lg bg-gray-900 px-3 py-1.5 text-[13px] text-white disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900">
         {status === 'saving' ? 'Adding…' : 'Add tool'}
       </button>
-      {error && <p role="alert" className="text-[12px] text-destructive">{error}</p>}
+      {error && <p role="alert" className="text-[12px] text-red-600 dark:text-red-400">{error}</p>}
     </div>
   )
 }

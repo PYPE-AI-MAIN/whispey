@@ -23,8 +23,8 @@ export default function PipecatKnowledgeBasePage() {
 
   if (isLoading) {
     return (
-      <div className="h-screen bg-muted/50 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
       </div>
     )
   }
@@ -34,16 +34,16 @@ export default function PipecatKnowledgeBasePage() {
 
   if (!pipecatAgentId) {
     return (
-      <div className="h-screen bg-muted/50 flex items-center justify-center p-6">
-        <p className="text-sm text-destructive">Pipecat agent ID not found in configuration.</p>
+      <div className="h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-6">
+        <p className="text-sm text-red-500">Pipecat agent ID not found in configuration.</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-muted/50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
       {/* Header */}
-      <div className="px-6 py-4 border-border bg-card border-b flex-shrink-0">
+      <div className="px-6 py-4 border-border bg-background border-b flex-shrink-0">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center gap-4">
             <Button
@@ -63,7 +63,7 @@ export default function PipecatKnowledgeBasePage() {
                 <h1 className="text-2xl font-semibold tracking-tight text-foreground">
                   Knowledge Base
                 </h1>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   {agentDisplayName(agent)} · Pipecat
                 </p>
               </div>

@@ -76,13 +76,13 @@ function getRoleBadgeColor(role: string) {
     case 'owner':
       return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800'
     case 'admin':
-      return 'bg-primary/15 text-primary border-primary/30'
+      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-800'
     case 'member':
     case 'user':
     case 'viewer':
-      return 'bg-muted text-foreground border-border'
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 border-gray-300 dark:border-gray-600'
     default:
-      return 'bg-muted text-foreground border-border'
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 border-gray-300 dark:border-gray-600'
   }
 }
 
@@ -121,7 +121,7 @@ function MemberRowActions({
           variant="ghost"
           size="sm"
           onClick={onReactivate}
-          className="text-success hover:text-success hover:bg-success/10 h-7 px-2 text-xs"
+          className="text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20 dark:text-green-400 dark:hover:text-green-300 h-7 px-2 text-xs"
         >
           <RefreshCw className="w-3 h-3 mr-1" />
           Reactivate
@@ -130,7 +130,7 @@ function MemberRowActions({
           variant="ghost"
           size="sm"
           onClick={onRemoveHard}
-          className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 w-7 p-0"
+          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-red-400 dark:hover:text-red-300 h-7 w-7 p-0"
         >
           <Trash2 className="w-3 h-3" />
         </Button>
@@ -142,7 +142,7 @@ function MemberRowActions({
       variant="ghost"
       size="sm"
       onClick={onRemoveSoft}
-      className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 w-7 p-0"
+      className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-red-400 dark:hover:text-red-300 h-7 w-7 p-0"
     >
       <X className="w-4 h-4" />
     </Button>
@@ -167,15 +167,15 @@ function MemberRow({
   const showActions = canManageMembers && member.role !== 'owner' && !isCurrentUser
 
   return (
-    <tr className={`border-b border-border/60 last:border-0 ${isInactive ? 'opacity-60' : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'}`}>
+    <tr className={`border-b border-gray-100 last:border-0 dark:border-gray-800/70 ${isInactive ? 'opacity-60' : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'}`}>
       <td className="px-4 py-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
             {member.email.charAt(0).toUpperCase()}
           </div>
-          <span className="truncate font-medium text-foreground">
+          <span className="truncate font-medium text-gray-900 dark:text-gray-100">
             {member.email}
-            {isCurrentUser && <span className="ml-2 text-xs font-normal text-muted-foreground">(You)</span>}
+            {isCurrentUser && <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">(You)</span>}
           </span>
         </div>
       </td>
@@ -194,7 +194,7 @@ function MemberRow({
                 </div>
               </SelectValue>
             </SelectTrigger>
-            <SelectContent className="bg-card border-border">
+            <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
               <SelectItem value="viewer" className="text-xs">
                 <div className="flex items-center gap-2">
                   <Eye className="w-3 h-3" />
@@ -218,20 +218,20 @@ function MemberRow({
       </td>
       <td className="px-4 py-3">
         {member.status === 'inactive' && (
-          <Badge variant="outline" className="text-xs border-border text-muted-foreground flex w-fit items-center gap-1">
+          <Badge variant="outline" className="text-xs border-gray-400 dark:border-gray-600 text-gray-600 dark:text-gray-400 flex w-fit items-center gap-1">
             <UserX className="w-3 h-3" />
             Inactive
           </Badge>
         )}
         {member.status === 'pending' && (
-          <Badge variant="outline" className="text-xs border-border text-foreground flex w-fit items-center gap-1">
+          <Badge variant="outline" className="text-xs border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 flex w-fit items-center gap-1">
             <Clock className="w-3 h-3" />
             Pending
           </Badge>
         )}
         {member.status === 'active' && !isInactive && (
-          <span className="text-xs text-muted-foreground flex items-center gap-1 whitespace-nowrap">
-            <CheckCircle2 className="w-3 h-3 text-success" />
+          <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 whitespace-nowrap">
+            <CheckCircle2 className="w-3 h-3 text-green-500" />
             Joined {formatDate(member.joinedAt)}
           </span>
         )}
@@ -272,21 +272,21 @@ function MembersTableBody({
   if (loadingMembers) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
-        <span className="ml-2 text-sm text-muted-foreground">Loading members...</span>
+        <Loader2 className="w-6 h-6 animate-spin text-blue-600 dark:text-blue-400" />
+        <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">Loading members...</span>
       </div>
     )
   }
   if (allMembers.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
+      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
         <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
         <p className="text-sm">No members yet</p>
       </div>
     )
   }
   if (filteredMembers.length === 0) {
-    return <p className="py-8 text-center text-sm text-muted-foreground">No members match &ldquo;{memberSearch}&rdquo;.</p>
+    return <p className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">No members match &ldquo;{memberSearch}&rdquo;.</p>
   }
 
   return (
@@ -294,7 +294,7 @@ function MembersTableBody({
     // at least one real mobile browser, hiding the table entirely with no
     // error. vh is resolved against the actual viewport, independent of any
     // ancestor's height math.
-    <div className="h-[50vh] overflow-hidden rounded-lg border border-border">
+    <div className="h-[50vh] overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">
       {/* scrollbar-thin (globals.css): the default OS scrollbar track sits
           right where the sticky header's right edge is, and its lighter
           track color was being mistaken for a gap in the header background. */}
@@ -306,12 +306,12 @@ function MembersTableBody({
               positioning, table-layout: fixed, and a horizontally scrolling
               ancestor (our exact combination here); per-cell background
               can't have that problem since each cell paints its own box. */}
-          <thead className="sticky top-0 z-10 text-left text-xs font-medium text-muted-foreground">
+          <thead className="sticky top-0 z-10 text-left text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
             <tr>
-              <th className="px-4 py-2 font-medium border-b border-border bg-muted/50">Member</th>
-              <th className="px-4 py-2 font-medium border-b border-border bg-muted/50 w-40">Role</th>
-              <th className="px-4 py-2 font-medium border-b border-border bg-muted/50 w-44">Status</th>
-              <th className="px-4 py-2 font-medium border-b border-border bg-muted/50 text-right w-44">&nbsp;</th>
+              <th className="px-4 py-2 font-medium border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800">Member</th>
+              <th className="px-4 py-2 font-medium border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800 w-40">Role</th>
+              <th className="px-4 py-2 font-medium border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800 w-44">Status</th>
+              <th className="px-4 py-2 font-medium border-b border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-800 text-right w-44">&nbsp;</th>
             </tr>
           </thead>
           <tbody>
@@ -652,10 +652,10 @@ export default function OrganizationSettings({
           <Settings className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-foreground">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             Organization Settings
           </h1>
-          <p className="text-sm text-muted-foreground flex items-center gap-2">
+          <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
             <Building2 className="w-3 h-3" />
             {organizationName}
           </p>
@@ -663,20 +663,20 @@ export default function OrganizationSettings({
       </div>
 
       {/* Team Management Section */}
-        <Card className="bg-card border-border">
+        <Card className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <CardTitle className="flex items-center gap-2 text-foreground">
+                <CardTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
                   <Users className="w-5 h-5" />
                   Team Members
                 </CardTitle>
-                <CardDescription className="text-muted-foreground">
+                <CardDescription className="text-gray-500 dark:text-gray-400">
                   Manage who has access to this organization
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="bg-muted text-foreground">
+                <Badge variant="secondary" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
                   {allMembers.length} {allMembers.length === 1 ? 'member' : 'members'}
                 </Badge>
                 {canManageMembers && (
@@ -692,17 +692,17 @@ export default function OrganizationSettings({
             {/* Team Members List */}
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h3 className="text-sm font-medium text-foreground">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Current Members
                 </h3>
                 {allMembers.length > 5 && (
                   <div className="relative w-full sm:w-56">
-                    <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
                     <Input
                       value={memberSearch}
                       onChange={(e) => setMemberSearch(e.target.value)}
                       placeholder="Search by email"
-                      className="h-8 pl-8 text-xs bg-card border-border"
+                      className="h-8 pl-8 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
                     />
                   </div>
                 )}
@@ -726,28 +726,28 @@ export default function OrganizationSettings({
 
         {/* Danger Zone */}
         {currentUserRole === 'owner' && (
-          <Card className="border-destructive/30 bg-card">
+          <Card className="border-red-200 dark:border-red-900 bg-white dark:bg-gray-900">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-destructive">
+              <CardTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
                 <AlertTriangle className="w-5 h-5" />
                 Danger Zone
               </CardTitle>
-              <CardDescription className="text-muted-foreground">
+              <CardDescription className="text-gray-500 dark:text-gray-400">
                 Irreversible and destructive actions
               </CardDescription>
             </CardHeader>
             <CardContent>
               {organizations.length === 0 ? (
-                <Alert className="mb-4 bg-warning/10 border-warning/30">
-                  <AlertTriangle className="h-4 w-4 text-warning" />
-                  <AlertDescription className="text-warning">
+                <Alert className="mb-4 bg-yellow-50 dark:bg-yellow-900/10 border-yellow-200 dark:border-yellow-800">
+                  <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                  <AlertDescription className="text-yellow-800 dark:text-yellow-300">
                     You cannot delete your only organization. Create another organization first before deleting this one.
                   </AlertDescription>
                 </Alert>
               ) : (
-                <Alert variant="destructive" className="mb-4 bg-destructive/10 border-destructive/30">
-                  <AlertTriangle className="h-4 w-4 text-destructive" />
-                  <AlertDescription className="text-destructive">
+                <Alert variant="destructive" className="mb-4 bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800">
+                  <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                  <AlertDescription className="text-red-800 dark:text-red-300">
                     Deleting this organization will permanently remove all agents, call logs, 
                     configurations, and team member access. This action cannot be undone.
                   </AlertDescription>
@@ -768,42 +768,42 @@ export default function OrganizationSettings({
 
       {/* Invite Team Member Dialog */}
       <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
-        <DialogContent className="bg-card border-border">
+        <DialogContent className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-foreground">
+            <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
               <UserPlus className="w-4 h-4" />
               Invite Team Member
             </DialogTitle>
-            <DialogDescription className="text-muted-foreground">
+            <DialogDescription className="text-gray-500 dark:text-gray-400">
               They'll get an email invite to join this organization.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label htmlFor="invite-email" className="text-xs text-foreground">Email Address</Label>
+              <Label htmlFor="invite-email" className="text-xs text-gray-700 dark:text-gray-300">Email Address</Label>
               <Input
                 id="invite-email"
                 type="email"
                 placeholder="colleague@company.com"
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
-                className="bg-card border-border text-foreground"
+                className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="invite-role" className="text-xs text-foreground">Role</Label>
+              <Label htmlFor="invite-role" className="text-xs text-gray-700 dark:text-gray-300">Role</Label>
               <Select value={inviteRole} onValueChange={(value: 'admin' | 'viewer') => setInviteRole(value)}>
-                <SelectTrigger id="invite-role" className="w-full bg-card border-border text-foreground">
+                <SelectTrigger id="invite-role" className="w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="viewer" className="text-foreground">
+                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                  <SelectItem value="viewer" className="text-gray-900 dark:text-gray-100">
                     <div className="flex items-center gap-2">
                       <Eye className="w-3 h-3" />
                       Viewer
                     </div>
                   </SelectItem>
-                  <SelectItem value="admin" className="text-foreground">
+                  <SelectItem value="admin" className="text-gray-900 dark:text-gray-100">
                     <div className="flex items-center gap-2">
                       <Shield className="w-3 h-3" />
                       Admin
@@ -818,7 +818,7 @@ export default function OrganizationSettings({
               variant="outline"
               onClick={() => setShowInviteDialog(false)}
               disabled={isInviting}
-              className="border-border text-foreground hover:bg-muted/50"
+              className="border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               Cancel
             </Button>
@@ -841,12 +841,12 @@ export default function OrganizationSettings({
 
       {/* Remove Member Confirmation Dialog */}
       <Dialog open={!!memberToRemove} onOpenChange={() => setMemberToRemove(null)}>
-        <DialogContent className="bg-card border-border">
+        <DialogContent className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
           <DialogHeader>
-            <DialogTitle className="text-foreground">
+            <DialogTitle className="text-gray-900 dark:text-gray-100">
               {deleteType === 'hard' ? 'Permanently Delete Member' : 'Remove Team Member'}
             </DialogTitle>
-            <DialogDescription className="text-muted-foreground">
+            <DialogDescription className="text-gray-500 dark:text-gray-400">
               {deleteType === 'hard' ? (
                 <>
                   Are you sure you want to <strong>permanently delete</strong> this member? 
@@ -865,7 +865,7 @@ export default function OrganizationSettings({
               variant="outline"
               onClick={() => setMemberToRemove(null)}
               disabled={isRemoving}
-              className="border-border text-foreground hover:bg-muted/50"
+              className="border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               Cancel
             </Button>
@@ -894,26 +894,26 @@ export default function OrganizationSettings({
 
       {/* Delete Organization Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="max-w-md bg-card border-border">
+        <DialogContent className="max-w-md bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
+            <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
               <AlertTriangle className="w-5 h-5" />
               Delete Organization
             </DialogTitle>
-            <DialogDescription className="text-muted-foreground">
+            <DialogDescription className="text-gray-500 dark:text-gray-400">
               This action cannot be undone. This will permanently delete the organization 
               and remove all associated data.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <Alert variant="destructive" className="bg-destructive/10 border-destructive/30">
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-              <AlertDescription className="text-destructive">
+            <Alert variant="destructive" className="bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800">
+              <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
+              <AlertDescription className="text-red-800 dark:text-red-300">
                 All agents, call logs, and configurations will be permanently deleted.
               </AlertDescription>
             </Alert>
             <div className="space-y-2">
-              <Label htmlFor="delete-confirm" className="text-sm text-foreground">
+              <Label htmlFor="delete-confirm" className="text-sm text-gray-900 dark:text-gray-100">
                 Type <span className="font-mono font-semibold">{organizationName}</span> to confirm
               </Label>
               <Input
@@ -921,7 +921,7 @@ export default function OrganizationSettings({
                 value={deleteConfirmation}
                 onChange={(e) => setDeleteConfirmation(e.target.value)}
                 placeholder={organizationName}
-                className="font-mono bg-card border-border text-foreground"
+                className="font-mono bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
               />
             </div>
           </div>
@@ -933,7 +933,7 @@ export default function OrganizationSettings({
                 setDeleteConfirmation('')
               }}
               disabled={isDeleting}
-              className="border-border text-foreground hover:bg-muted/50"
+              className="border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               Cancel
             </Button>

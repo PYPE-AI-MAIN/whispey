@@ -45,11 +45,11 @@ function NumericField({
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <Label className="text-xs text-muted-foreground">{label}</Label>
+        <Label className="text-xs text-gray-600 dark:text-gray-400">{label}</Label>
         {tooltip && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+              <Info className="w-3 h-3 text-gray-400 cursor-help" />
             </TooltipTrigger>
             <TooltipContent side="right" className="max-w-xs">
               <p className="text-xs">{tooltip}</p>
@@ -67,7 +67,7 @@ function NumericField({
         onBlur={e => commit(e.target.value)}
         className="h-8 text-xs"
       />
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      {hint && <p className="text-xs text-gray-500 dark:text-gray-400">{hint}</p>}
     </div>
   )
 }
@@ -84,7 +84,7 @@ export default function VadSettings({
   return (
     <TooltipProvider>
       <div className="space-y-4">
-        <div className="text-xs text-muted-foreground">
+        <div className="text-xs text-gray-600 dark:text-gray-400">
           Controls when the agent detects speech start and stop.
         </div>
 
@@ -124,7 +124,7 @@ export default function VadSettings({
           onCommit={v => onVadChange('minVolume', v)}
         />
 
-        <div className="h-px bg-muted" />
+        <div className="h-px bg-gray-100 dark:bg-gray-700" />
 
         <NumericField
           label="Min Utterance Duration (s)"

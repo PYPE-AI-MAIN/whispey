@@ -130,7 +130,7 @@ const ColumnSelector: React.FC<ColumnSelectorProps> = ({
                 className={cn(
                   "flex items-center space-x-3 px-3 py-2 rounded-md transition-colors",
                   isVisible 
-                    ? "bg-primary/10 border border-primary/30" 
+                    ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800" 
                     : "hover:bg-muted/50"
                 )}
               >

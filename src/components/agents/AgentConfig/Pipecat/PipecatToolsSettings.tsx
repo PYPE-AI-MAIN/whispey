@@ -79,19 +79,19 @@ export default function PipecatToolsSettings({
   }
 
   return (
-    <div className="bg-card border border-border rounded-lg overflow-y-auto h-full">
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-y-auto h-full">
       <div className="p-4 space-y-4">
-        <h3 className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+        <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-2">
           <WrenchIcon className="w-3.5 h-3.5" />
           Tools & Actions
         </h3>
 
         {/* Built-in tools */}
         <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">Built-in Tools</Label>
+          <Label className="text-xs text-gray-500 dark:text-gray-400">Built-in Tools</Label>
           {BUILTIN_TOOLS.map(tool => (
             <div key={tool} className="flex items-center justify-between py-1.5">
-              <span className="text-xs font-mono text-foreground">{tool}</span>
+              <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{tool}</span>
               <Switch
                 checked={tools.includes(tool)}
                 onCheckedChange={() => toggleBuiltinTool(tool)}
@@ -101,12 +101,12 @@ export default function PipecatToolsSettings({
           ))}
         </div>
 
-        <div className="h-px bg-muted" />
+        <div className="h-px bg-gray-200 dark:bg-gray-700" />
 
         {/* Custom tools */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label className="text-xs text-muted-foreground">
+            <Label className="text-xs text-gray-500 dark:text-gray-400">
               Custom HTTP Tools
               {customTools.length > 0 && (
                 <Badge variant="outline" className="ml-2 text-xs px-1 py-0 h-4">{customTools.length}</Badge>
@@ -119,7 +119,7 @@ export default function PipecatToolsSettings({
           </div>
 
           {customTools.length === 0 && (
-            <p className="text-xs text-muted-foreground italic">No custom tools added</p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 italic">No custom tools added</p>
           )}
 
           {customTools.map((tool, index) => (
@@ -128,27 +128,27 @@ export default function PipecatToolsSettings({
               open={expandedTool === index}
               onOpenChange={(open) => setExpandedTool(open ? index : null)}
             >
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-muted/50 rounded transition-colors">
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors">
                 <div className="flex items-center gap-2 min-w-0">
-                  <WrenchIcon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-                  <span className="text-xs font-mono text-foreground truncate">
+                  <WrenchIcon className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                  <span className="text-xs font-mono text-gray-700 dark:text-gray-300 truncate">
                     {tool.name || `Tool ${index + 1}`}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={e => { e.stopPropagation(); removeCustomTool(index) }}
-                    className="p-1 text-red-400 hover:text-destructive rounded"
+                    className="p-1 text-red-400 hover:text-red-600 rounded"
                   >
                     <Trash2 className="w-3 h-3" />
                   </button>
-                  <ChevronDown className={`w-3 h-3 text-muted-foreground transition-transform ${expandedTool === index ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-3 h-3 text-gray-400 transition-transform ${expandedTool === index ? 'rotate-180' : ''}`} />
                 </div>
               </CollapsibleTrigger>
 
               <CollapsibleContent className="mt-2 ml-2 space-y-3 pr-1">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Name</Label>
+                  <Label className="text-xs text-gray-500">Name</Label>
                   <Input
                     value={tool.name}
                     onChange={e => updateCustomTool(index, 'name', e.target.value)}
@@ -157,7 +157,7 @@ export default function PipecatToolsSettings({
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Description</Label>
+                  <Label className="text-xs text-gray-500">Description</Label>
                   <Textarea
                     value={tool.description}
                     onChange={e => updateCustomTool(index, 'description', e.target.value)}
@@ -168,7 +168,7 @@ export default function PipecatToolsSettings({
                 </div>
                 <div className="flex gap-2">
                   <div className="flex-1 space-y-1">
-                    <Label className="text-xs text-muted-foreground">URL</Label>
+                    <Label className="text-xs text-gray-500">URL</Label>
                     <Input
                       value={tool.url}
                       onChange={e => updateCustomTool(index, 'url', e.target.value)}
@@ -177,7 +177,7 @@ export default function PipecatToolsSettings({
                     />
                   </div>
                   <div className="w-24 space-y-1">
-                    <Label className="text-xs text-muted-foreground">Method</Label>
+                    <Label className="text-xs text-gray-500">Method</Label>
                     <Select value={tool.method} onValueChange={v => updateCustomTool(index, 'method', v)}>
                       <SelectTrigger className="h-7 text-xs">
                         <SelectValue />
@@ -192,7 +192,7 @@ export default function PipecatToolsSettings({
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Parameters (JSON)</Label>
+                  <Label className="text-xs text-gray-500">Parameters (JSON)</Label>
                   <Textarea
                     value={JSON.stringify(tool.parameters, null, 2)}
                     onChange={e => {
@@ -206,7 +206,7 @@ export default function PipecatToolsSettings({
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Headers (JSON)</Label>
+                  <Label className="text-xs text-gray-500">Headers (JSON)</Label>
                   <Textarea
                     value={JSON.stringify(tool.headers, null, 2)}
                     onChange={e => {

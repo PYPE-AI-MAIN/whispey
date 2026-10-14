@@ -138,7 +138,7 @@ function CampaignHeaderSkeleton() {
 // Skeleton for table
 function CampaignTableSkeleton() {
   return (
-    <div className="flex-1 overflow-hidden bg-muted/50">
+    <div className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-950">
       <div className="h-full flex flex-col">
         <div className="flex-1 overflow-auto">
           <div className="min-w-full" style={{ minWidth: "1500px" }}>
@@ -200,16 +200,16 @@ function UploadDialogContent({
   return (
     <div className="space-y-4">
       <div className="text-center">
-        <div className="w-12 h-12 mx-auto mb-4 bg-primary/15 rounded-full flex items-center justify-center">
-          <Upload className="w-6 h-6 text-primary" />
+        <div className="w-12 h-12 mx-auto mb-4 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
+          <Upload className="w-6 h-6 text-blue-600 dark:text-blue-400" />
         </div>
-        <DialogTitle className="text-xs font-medium text-muted-foreground mb-2">Upload CSV File</DialogTitle>
-        <p className="text-sm text-muted-foreground">Select a CSV file to upload to S3</p>
+        <DialogTitle className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">Upload CSV File</DialogTitle>
+        <p className="text-sm text-gray-600 dark:text-gray-400">Select a CSV file to upload to S3</p>
       </div>
 
       <div className="space-y-4">
         <div>
-          <label htmlFor="upload-csv-file" className="block text-sm font-medium text-foreground mb-2">
+          <label htmlFor="upload-csv-file" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             CSV File
           </label>
           <input
@@ -217,12 +217,12 @@ function UploadDialogContent({
             type="file"
             accept=".csv"
             onChange={(e) => onFileChange(e.target.files?.[0] || null)}
-            className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/15"
+            className="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 dark:file:bg-blue-900/20 file:text-blue-700 dark:file:text-blue-400 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/30"
           />
         </div>
 
         {csvFile && (
-          <div className="text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
+          <div className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-md p-3">
             <strong>Selected:</strong> {csvFile.name} ({(csvFile.size / 1024).toFixed(1)} KB)
           </div>
         )}
@@ -233,7 +233,7 @@ function UploadDialogContent({
           variant="outline"
           onClick={onCancel}
           disabled={uploading}
-          className="flex-1 border-border hover:bg-muted/50"
+          className="flex-1 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
         >
           Cancel
         </Button>
@@ -276,23 +276,23 @@ function DeleteDialogContent({
     return (
       <div className="space-y-4">
         <div className="text-center">
-          <div className="w-12 h-12 mx-auto mb-4 bg-destructive/15 rounded-full flex items-center justify-center">
-            <Trash2 className="w-6 h-6 text-destructive" />
+          <div className="w-12 h-12 mx-auto mb-4 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+            <Trash2 className="w-6 h-6 text-red-600 dark:text-red-400" />
           </div>
-          <DialogTitle className="text-xs font-medium uppercase tracking-wide text-destructive mb-2">Delete All Campaign Logs</DialogTitle>
-          <p className="text-sm text-destructive">This will permanently delete all campaign logs from DynamoDB</p>
+          <DialogTitle className="text-xs font-medium uppercase tracking-wide text-red-600 dark:text-red-400 mb-2">Delete All Campaign Logs</DialogTitle>
+          <p className="text-sm text-red-700 dark:text-red-300">This will permanently delete all campaign logs from DynamoDB</p>
         </div>
 
-        <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3">
-          <p className="text-sm text-destructive mb-2">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3">
+          <p className="text-sm text-red-800 dark:text-red-300 mb-2">
             <strong>Warning:</strong> This action cannot be undone!
           </p>
         </div>
 
         <div className="space-y-3">
           <div>
-            <label htmlFor="delete-confirm-text" className="block text-sm font-medium text-foreground mb-2">
-              Type <span className="font-mono bg-muted px-1 rounded">DELETE ALL LOGS</span> to confirm:
+            <label htmlFor="delete-confirm-text" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Type <span className="font-mono bg-gray-100 dark:bg-gray-800 px-1 rounded">DELETE ALL LOGS</span> to confirm:
             </label>
             <input
               id="delete-confirm-text"
@@ -301,12 +301,12 @@ function DeleteDialogContent({
               onChange={(e) => onConfirmTextChange(e.target.value)}
               placeholder="DELETE ALL LOGS"
               disabled={deleting}
-              className="w-full px-3 py-2 border border-border rounded-md font-mono text-sm focus:border-red-500 focus:ring-2 focus:ring-red-100 bg-card text-foreground"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md font-mono text-sm focus:border-red-500 focus:ring-2 focus:ring-red-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             />
           </div>
 
           {pagination && (
-            <div className="text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
+            <div className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-md p-3">
               <strong>Records to be deleted:</strong> {pagination.totalItems} campaign log entries
             </div>
           )}
@@ -317,7 +317,7 @@ function DeleteDialogContent({
             variant="outline"
             onClick={onCancel}
             disabled={deleting}
-            className="flex-1 border-border hover:bg-muted/50"
+            className="flex-1 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
           >
             Cancel
           </Button>
@@ -351,9 +351,9 @@ function DeleteDialogContent({
           deleteResult.success ? 'bg-green-100 dark:bg-green-900/20' : 'bg-red-100 dark:bg-red-900/20'
         }`}>
           {deleteResult.success ? (
-            <CheckCircle className="w-6 h-6 text-success" />
+            <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
           ) : (
-            <AlertCircle className="w-6 h-6 text-destructive" />
+            <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
           )}
         </div>
         <DialogTitle className={`text-xs font-medium uppercase tracking-wide mb-2 ${
@@ -368,7 +368,7 @@ function DeleteDialogContent({
         </p>
 
         {deleteResult.success && (
-          <div className="mt-3 text-sm text-muted-foreground bg-muted/50 rounded-md p-3">
+          <div className="mt-3 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-md p-3">
             <strong>Deleted:</strong> {deleteResult.count} records in {deleteResult.batchCount} batches
           </div>
         )}
@@ -378,7 +378,7 @@ function DeleteDialogContent({
         <Button
           variant="outline"
           onClick={onClose}
-          className="w-full border-border hover:bg-muted/50"
+          className="w-full border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
         >
           Close
         </Button>
@@ -407,11 +407,11 @@ function ScheduleDialogContent({
   return (
     <div className="space-y-4">
       <div className="text-center">
-        <div className="w-12 h-12 mx-auto mb-4 bg-primary/15 rounded-full flex items-center justify-center">
-          <Calendar className="w-6 h-6 text-primary" />
+        <div className="w-12 h-12 mx-auto mb-4 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
+          <Calendar className="w-6 h-6 text-blue-600 dark:text-blue-400" />
         </div>
-        <DialogTitle className="text-xs font-medium text-muted-foreground mb-2">Schedule Campaign</DialogTitle>
-        <p className="text-sm text-muted-foreground">Configure your campaign schedule settings</p>
+        <DialogTitle className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">Schedule Campaign</DialogTitle>
+        <p className="text-sm text-gray-600 dark:text-gray-400">Configure your campaign schedule settings</p>
       </div>
 
       {/* Schedule form content - with dark mode */}
@@ -419,7 +419,7 @@ function ScheduleDialogContent({
         {/* Date Range */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="schedule-start-date" className="block text-sm font-medium text-foreground mb-2">
+            <label htmlFor="schedule-start-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Start Date
             </label>
             <input
@@ -428,11 +428,11 @@ function ScheduleDialogContent({
               value={scheduleData.start_date}
               onChange={(e) => onScheduleDataChange({ start_date: e.target.value })}
               disabled={scheduling}
-              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-card text-foreground"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             />
           </div>
           <div>
-            <label htmlFor="schedule-end-date" className="block text-sm font-medium text-foreground mb-2">
+            <label htmlFor="schedule-end-date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               End Date
             </label>
             <input
@@ -441,7 +441,7 @@ function ScheduleDialogContent({
               value={scheduleData.end_date}
               onChange={(e) => onScheduleDataChange({ end_date: e.target.value })}
               disabled={scheduling}
-              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-card text-foreground"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             />
           </div>
         </div>
@@ -449,37 +449,35 @@ function ScheduleDialogContent({
         {/* Time Range and other fields */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label htmlFor="schedule-start-time" className="block text-sm font-medium text-foreground mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               <Clock className="w-4 h-4 inline mr-1" />
               Start Time
             </label>
             <input
-              id="schedule-start-time"
               type="time"
               value={scheduleData.start_time}
               onChange={(e) => onScheduleDataChange({ start_time: e.target.value })}
               disabled={scheduling}
-              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-card text-foreground"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             />
           </div>
           <div>
-            <label htmlFor="schedule-end-time" className="block text-sm font-medium text-foreground mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               <Clock className="w-4 h-4 inline mr-1" />
               End Time
             </label>
             <input
-              id="schedule-end-time"
               type="time"
               value={scheduleData.end_time}
               onChange={(e) => onScheduleDataChange({ end_time: e.target.value })}
               disabled={scheduling}
-              className="w-full px-3 py-2 border border-border rounded-md text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-card text-foreground"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             />
           </div>
         </div>
 
         <div>
-          <label htmlFor="schedule-concurrency" className="block text-sm font-medium text-foreground mb-2">
+          <label htmlFor="schedule-concurrency" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Concurrency
           </label>
           <input
@@ -490,7 +488,7 @@ function ScheduleDialogContent({
             value={scheduleData.concurrency}
             onChange={(e) => onScheduleDataChange({ concurrency: Number.parseInt(e.target.value) || 1 })}
             disabled={scheduling}
-            className="w-full px-3 py-2 border border-border rounded-md text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-card text-foreground"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
           />
         </div>
       </div>
@@ -500,7 +498,7 @@ function ScheduleDialogContent({
           variant="outline"
           onClick={onCancel}
           disabled={scheduling}
-          className="flex-1 border-border hover:bg-muted/50"
+          className="flex-1 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
         >
           Cancel
         </Button>
@@ -709,15 +707,15 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'completed':
-        return 'bg-success/15 text-success border-success/30'
+        return 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 border-green-200 dark:border-green-800'
       case 'failed':
-        return 'bg-destructive/15 text-destructive border-destructive/30'
+        return 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300 border-red-200 dark:border-red-800'
       case 'in_progress':
-        return 'bg-primary/15 text-primary border-primary/30'
+        return 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800'
       case 'pending':
-        return 'bg-warning/15 text-warning border-warning/30'
+        return 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800'
       default:
-        return 'bg-muted text-foreground border-border'
+        return 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700'
     }
   }
 
@@ -751,11 +749,11 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
 
   const getSortIcon = (column: string) => {
     if (sortBy !== column) {
-      return <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+      return <ArrowUpDown className="h-4 w-4 text-gray-400" />
     }
     return sortOrder === 'asc' 
-      ? <ArrowUp className="h-4 w-4 text-primary" />
-      : <ArrowDown className="h-4 w-4 text-primary" />
+      ? <ArrowUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+      : <ArrowDown className="h-4 w-4 text-blue-600 dark:text-blue-400" />
   }
 
   const goToPage = (page: number) => {
@@ -943,8 +941,8 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
     const pageNumbers = getPageNumbers()
 
     return (
-      <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-card">
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+      <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
           <div>
             Showing {((page - 1) * pagination.itemsPerPage) + 1} to{' '}
             {Math.min(page * pagination.itemsPerPage, pagination.totalItems)} of{' '}
@@ -959,7 +957,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                 setItemsPerPage(Number(e.target.value))
                 setCurrentPage(1)
               }}
-              className="px-2 py-1 text-sm border border-border rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-100 bg-card text-foreground"
+              className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-700 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-100 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
             >
               {ITEMS_PER_PAGE_OPTIONS.map(option => (
                 <option key={option} value={option}>{option}</option>
@@ -974,7 +972,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
             size="sm"
             onClick={() => goToPage(page - 1)}
             disabled={!hasPreviousPage || loading}
-            className="border-border hover:bg-muted/50"
+            className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
           >
             <ChevronLeft className="h-4 w-4" />
             Previous
@@ -988,12 +986,12 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                   size="sm"
                   onClick={() => goToPage(1)}
                   disabled={loading}
-                  className="border-border hover:bg-muted/50"
+                  className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
                   1
                 </Button>
                 {pageNumbers[0] > 2 && (
-                  <span className="px-2 text-muted-foreground">...</span>
+                  <span className="px-2 text-gray-400 dark:text-gray-500">...</span>
                 )}
               </>
             )}
@@ -1005,7 +1003,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                 size="sm"
                 onClick={() => goToPage(pageNum)}
                 disabled={loading}
-                className={pageNum === page ? "bg-blue-600 text-white" : "border-border hover:bg-muted/50"}
+                className={pageNum === page ? "bg-blue-600 text-white" : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"}
               >
                 {pageNum}
               </Button>
@@ -1014,14 +1012,14 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
             {pageNumbers[pageNumbers.length - 1] < totalPages && (
               <>
                 {pageNumbers[pageNumbers.length - 1] < totalPages - 1 && (
-                  <span className="px-2 text-muted-foreground">...</span>
+                  <span className="px-2 text-gray-400 dark:text-gray-500">...</span>
                 )}
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => goToPage(totalPages)}
                   disabled={loading}
-                  className="border-border hover:bg-muted/50"
+                  className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
                   {totalPages}
                 </Button>
@@ -1034,7 +1032,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
             size="sm"
             onClick={() => goToPage(page + 1)}
             disabled={!hasNextPage || loading}
-            className="border-border hover:bg-muted/50"
+            className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
           >
             Next
             <ChevronRight className="h-4 w-4" />
@@ -1057,15 +1055,15 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
   if (error) {
     return (
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        <header className="px-6 py-4 border-b border-border/60 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
+        <header className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center justify-between">
-              <div className="h-8 bg-destructive/15 text-destructive px-4 rounded-lg flex items-center">
+              <div className="h-8 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-4 rounded-lg flex items-center">
                 <AlertCircle className="w-4 h-4 mr-2" />
                 Unable to Load Campaign Logs
               </div>
               <div className="flex gap-3">
-                <Button variant="outline" onClick={onBack} className="border-border hover:bg-muted/50">
+                <Button variant="outline" onClick={onBack} className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
                   <ChevronLeft className="h-4 w-4 mr-2" />
                   Go Back
                 </Button>
@@ -1077,10 +1075,10 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
             </div>
           </div>
         </header>
-        <div className="flex-1 flex items-center justify-center bg-muted/50">
+        <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
           <div className="text-center space-y-4 max-w-md">
-            <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
-            <h2 className="text-xl font-semibold text-foreground">{error}</h2>
+            <AlertCircle className="w-12 h-12 text-red-500 dark:text-red-400 mx-auto" />
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{error}</h2>
           </div>
         </div>
       </div>
@@ -1088,9 +1086,9 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-muted/50">
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-gray-50 dark:bg-gray-900">
       {/* Header - shows immediately with working controls */}
-      <header className="px-6 py-4 border-border bg-card border-b">
+      <header className="px-6 py-4 border-border bg-background border-b">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
@@ -1104,7 +1102,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                 variant="outline" 
                 size="sm" 
                 onClick={() => setShowUploadDialog(true)}
-                className="bg-primary/10 hover:bg-primary/15 text-primary border-primary/30"
+                className="bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
               >
                 <Upload className="h-4 w-4 mr-2" />
                 Upload CSV
@@ -1113,7 +1111,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                 variant="outline" 
                 size="sm" 
                 onClick={() => setShowScheduleDialog(true)}
-                className="bg-success/10 hover:bg-success/15 text-success border-success/30"
+                className="bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800"
               >
                 <Calendar className="h-4 w-4 mr-2" />
                 Schedule
@@ -1123,7 +1121,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                 size="sm" 
                 onClick={exportLogs}
                 disabled={logs.length === 0}
-                className="border-border hover:bg-muted/50"
+                className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 <Download className="h-4 w-4 mr-2" />
                 Export CSV
@@ -1133,7 +1131,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                 size="sm" 
                 onClick={refresh}
                 disabled={refreshing || parentLoading}
-                className="border-border hover:bg-muted/50"
+                className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
               >
                 {refreshing ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -1157,7 +1155,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
           {/* Filters - show immediately and work client-side */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
               <Input
                 placeholder="Search contacts..."
                 value={searchQuery}
@@ -1219,35 +1217,33 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
       </header>
 
       {/* Table - show loading state only for data */}
-      <div className="flex-1 overflow-hidden bg-muted/50 flex flex-col">
-        {(loading && logs.length === 0) && (
+      <div className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900 flex flex-col">
+        {loading && logs.length === 0 ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
-              <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
-              <p className="text-muted-foreground">Loading campaign logs...</p>
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
+              <p className="text-gray-600 dark:text-gray-400">Loading campaign logs...</p>
             </div>
           </div>
-        )}
-        {!(loading && logs.length === 0) && logs.length === 0 && (
+        ) : logs.length === 0 ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
               <Building2 className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-foreground mb-2">No campaign logs found</h3>
-              <p className="text-muted-foreground mb-6">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No campaign logs found</h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
                 {searchQuery || statusFilter !== 'all' || sourceFileFilter 
                   ? 'Try adjusting your search criteria' 
                   : 'No contacts have been uploaded yet'
                 }
               </p>
               {(searchQuery || statusFilter !== 'all' || sourceFileFilter) && (
-                <Button variant="outline" onClick={clearFilters} className="border-border hover:bg-muted/50">
+                <Button variant="outline" onClick={clearFilters} className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
                   Clear Filters
                 </Button>
               )}
             </div>
           </div>
-        )}
-        {!(loading && logs.length === 0) && logs.length !== 0 && (
+        ) : (
           <>
             {/* Scrollable Table Area */}
             <div className="flex-1 overflow-hidden">
@@ -1301,23 +1297,23 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                               <div className="w-8 h-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
                                 <Phone className="w-4 h-4 text-primary dark:text-primary" />
                               </div>
-                              <span className="font-medium text-foreground">{log.masterMobileNo}</span>
+                              <span className="font-medium text-gray-900 dark:text-gray-100">{log.masterMobileNo}</span>
                             </div>
                           </TableCell>
 
                           <TableCell className="py-4">
-                            <span className="text-sm text-muted-foreground">{log.alternateMobile || '-'}</span>
+                            <span className="text-sm text-gray-600 dark:text-gray-400">{log.alternateMobile || '-'}</span>
                           </TableCell>
 
                           <TableCell className="py-4">
                             <div className="flex items-center gap-2">
                               <Building2 className="w-3 h-3 text-muted-foreground dark:text-gray-400" />
-                              <span className="font-medium text-foreground">{log.fpoName}</span>
+                              <span className="font-medium text-gray-900 dark:text-gray-100">{log.fpoName}</span>
                             </div>
                           </TableCell>
 
                           <TableCell className="py-4">
-                            <code className="text-xs bg-muted/60 dark:bg-gray-700/60 px-2 py-1 rounded font-mono text-foreground">
+                            <code className="text-xs bg-muted/60 dark:bg-gray-700/60 px-2 py-1 rounded font-mono text-gray-900 dark:text-gray-100">
                               {log.fpoLoginId}
                             </code>
                           </TableCell>
@@ -1331,14 +1327,14 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                           </TableCell>
 
                           <TableCell className="py-4">
-                            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                            <div className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">
                               <Clock className="w-3 h-3 text-muted-foreground dark:text-gray-400" />
                               {log.real_attempt_count}
                             </div>
                           </TableCell>
 
                           <TableCell className="py-4">
-                            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                            <div className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">
                               <Clock className="w-3 h-3 text-muted-foreground dark:text-gray-400" />
                               {log.system_error_count}
                             </div>
@@ -1353,9 +1349,9 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
                   </Table>
 
                   {loading && logs.length > 0 && (
-                    <div className="text-center py-4 bg-card">
-                      <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto" />
-                      <p className="text-sm text-muted-foreground mt-2">Loading more data...</p>
+                    <div className="text-center py-4 bg-white dark:bg-gray-800">
+                      <Loader2 className="w-6 h-6 animate-spin text-blue-500 mx-auto" />
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">Loading more data...</p>
                     </div>
                   )}
                 </div>
@@ -1364,7 +1360,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
 
             {/* Fixed Pagination Footer */}
             {pagination && pagination.totalPages > 1 && (
-              <div className="flex-shrink-0 border-t border-border bg-card">
+              <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
                 {renderPagination()}
               </div>
             )}
@@ -1374,7 +1370,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
 
       {/* All dialog components with dark mode support */}
       <Dialog open={showUploadDialog} onOpenChange={(open) => { setShowUploadDialog(open); if (!open) setCsvFile(null) }}>
-        <DialogContent className="max-w-md bg-card border-border">
+        <DialogContent className="max-w-md bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
           <UploadDialogContent
             csvFile={csvFile}
             onFileChange={setCsvFile}
@@ -1395,7 +1391,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
           }
         }}
       >
-        <DialogContent className="max-w-md bg-card border-border">
+        <DialogContent className="max-w-md bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
           <DeleteDialogContent
             deleteConfirmText={deleteConfirmText}
             onConfirmTextChange={setDeleteConfirmText}
@@ -1411,7 +1407,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
 
       {/* Schedule Dialog - with dark mode support */}
       <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
-        <DialogContent className="max-w-md bg-card border-border max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-md bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 max-h-[90vh] overflow-y-auto">
           <ScheduleDialogContent
             scheduleData={scheduleData}
             onScheduleDataChange={(update) => setScheduleData({ ...scheduleData, ...update })}

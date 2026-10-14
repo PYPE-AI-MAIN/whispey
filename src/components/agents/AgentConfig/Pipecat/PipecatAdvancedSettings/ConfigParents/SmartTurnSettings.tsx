@@ -45,11 +45,11 @@ function NumericField({
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <Label className="text-xs text-muted-foreground">{label}</Label>
+        <Label className="text-xs text-gray-600 dark:text-gray-400">{label}</Label>
         {tooltip && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+              <Info className="w-3 h-3 text-gray-400 cursor-help" />
             </TooltipTrigger>
             <TooltipContent side="right" className="max-w-xs">
               <p className="text-xs">{tooltip}</p>
@@ -67,7 +67,7 @@ function NumericField({
         onBlur={e => commit(e.target.value)}
         className="h-8 text-xs"
       />
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      {hint && <p className="text-xs text-gray-500 dark:text-gray-400">{hint}</p>}
     </div>
   )
 }
@@ -85,10 +85,10 @@ export default function SmartTurnSettings({
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1">
-            <Label className="text-xs font-medium text-foreground">
+            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
               Enable Smart Turn Detection
             </Label>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
               Off = plain Silero VAD (faster). On = LocalSmartTurnAnalyzerV3 prosody analysis.
             </p>
           </div>
@@ -97,7 +97,7 @@ export default function SmartTurnSettings({
 
         {smartTurnEnabled && (
           <>
-            <div className="text-xs text-muted-foreground">
+            <div className="text-xs text-gray-600 dark:text-gray-400">
               LocalSmartTurnAnalyzerV3 analyses prosody and intonation for accurate end-of-turn detection.
             </div>
 

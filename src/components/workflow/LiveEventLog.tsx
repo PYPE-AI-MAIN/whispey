@@ -53,9 +53,9 @@ export function LiveEventLog({ events, onClear }: Readonly<{ events: WorkflowEve
   }, [events.length])
 
   return (
-    <div className="border-t border-border bg-card shrink-0">
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/60">
-        <span className="text-[11px] font-medium text-muted-foreground">
+    <div className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-100 dark:border-gray-800">
+        <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
           Live workflow events {events.length > 0 && `(${events.length})`}
         </span>
         <Button variant="ghost" size="sm" className="h-5 text-[11px] px-1.5" onClick={onClear} disabled={!events.length}>
@@ -64,7 +64,7 @@ export function LiveEventLog({ events, onClear }: Readonly<{ events: WorkflowEve
       </div>
       <div className="h-28 overflow-y-auto px-3 py-1.5 font-mono text-[11px] space-y-0.5">
         {!events.length && (
-          <p className="text-muted-foreground italic">
+          <p className="text-gray-400 dark:text-gray-500 italic">
             No activity yet — start a Talk to Assistant call to watch node transitions and tool calls live.
           </p>
         )}
@@ -77,7 +77,7 @@ export function LiveEventLog({ events, onClear }: Readonly<{ events: WorkflowEve
               className={`flex items-start gap-1.5 ${isError ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}
             >
               <Icon className="h-3 w-3 mt-0.5 shrink-0" />
-              <span className="text-muted-foreground">{new Date(e._ts).toLocaleTimeString()}</span>
+              <span className="text-gray-400 dark:text-gray-500">{new Date(e._ts).toLocaleTimeString()}</span>
               <span className="truncate">{summarize(e)}</span>
             </div>
           )

@@ -52,7 +52,7 @@ export default function PiSessionPage() {
 
   if (isLoading && !data) return <PiLoading />
   if (error || !data) {
-    return <div className="h-full flex items-center justify-center text-sm text-destructive">{(error as Error)?.message ?? 'Chat not found'}</div>
+    return <div className="h-full flex items-center justify-center text-sm text-red-500">{(error as Error)?.message ?? 'Chat not found'}</div>
   }
 
   const isOwner = data.user_id === user?.id

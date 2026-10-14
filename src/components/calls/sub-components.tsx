@@ -33,7 +33,7 @@ export const TableSkeleton = memo(() => (
       <div className="h-full overflow-y-auto" style={{ minWidth: "1020px" }}>
         <table className="w-full">
           <thead className="sticky top-0 z-10 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b-2">
-            <tr className="bg-muted/80 hover:bg-muted/80">
+            <tr className="bg-gray-100/80 dark:bg-gray-800/80 hover:bg-gray-100/80 dark:hover:bg-gray-800/80">
               <th className="p-3 font-semibold text-foreground min-w-[120px]">Customer Number</th>
               <th className="p-3 font-semibold text-foreground min-w-[120px]">Call ID</th>
               <th className="p-3 font-semibold text-foreground min-w-[120px]">Call Status</th>
@@ -253,7 +253,7 @@ export const ReanalyzeDialogWrapper = memo<ReanalyzeDialogWrapperProps>(({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="border-border hover:bg-muted/50">
+        <Button variant="outline" size="sm" className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
           <Sparkles className="w-4 h-4 mr-2" />
           Re-analyze Logs
         </Button>
@@ -261,7 +261,7 @@ export const ReanalyzeDialogWrapper = memo<ReanalyzeDialogWrapperProps>(({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
-            <Sparkles className="w-5 h-5 text-primary" />
+            <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             Re-analyze Call Logs
           </DialogTitle>
           <DialogDescription>

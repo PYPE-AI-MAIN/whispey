@@ -122,13 +122,13 @@ function VoiceActivitySettings({
   return (
     <TooltipProvider>
       <div className="space-y-3">
-        <div className="text-xs text-muted-foreground mb-3">
+        <div className="text-xs text-gray-600 dark:text-gray-400 mb-3">
           Configure voice activity detection settings
         </div>
         
         {/* VAD Provider */}
         <div className="space-y-1.5">
-          <Label className="text-xs font-medium text-foreground">
+          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
             VAD Provider
           </Label>
           <Select 
@@ -147,12 +147,12 @@ function VoiceActivitySettings({
         {/* Min Silence Duration */}
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <Label className="text-xs font-medium text-foreground">
+            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
               Min Silence Duration (seconds)
             </Label>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">
@@ -187,12 +187,12 @@ function VoiceActivitySettings({
         {/* Min Speech Duration */}
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <Label className="text-xs font-medium text-foreground">
+            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
               Min Speech Duration (seconds)
             </Label>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">
@@ -227,12 +227,12 @@ function VoiceActivitySettings({
         {/* Prefix Padding Duration */}
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <Label className="text-xs font-medium text-foreground">
+            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
               Prefix Padding Duration (seconds)
             </Label>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">
@@ -267,12 +267,12 @@ function VoiceActivitySettings({
         {/* Max Buffered Speech */}
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <Label className="text-xs font-medium text-foreground">
+            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
               Max Buffered Speech (seconds)
             </Label>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">
@@ -307,12 +307,12 @@ function VoiceActivitySettings({
         {/* Activation Threshold */}
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <Label className="text-xs font-medium text-foreground">
+            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
               Activation Threshold
             </Label>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">
@@ -350,12 +350,12 @@ function VoiceActivitySettings({
         {/* Sample Rate */}
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
-            <Label className="text-xs font-medium text-foreground">
+            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
               Sample Rate (Hz)
             </Label>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">
@@ -382,12 +382,12 @@ function VoiceActivitySettings({
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Label className="text-xs font-medium text-foreground">
+              <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
                 Force CPU
               </Label>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                  <Info className="w-3 h-3 text-gray-400 cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent side="right" className="max-w-xs">
                   <p className="text-xs">
