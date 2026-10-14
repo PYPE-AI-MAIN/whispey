@@ -84,7 +84,7 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
   return (
     <div className="flex flex-col h-screen bg-muted/50">
       
-      <div className="px-6 py-4 border-border bg-card border-b shadow-sm">
+      <div className="px-6 py-4 border-border bg-background border-b shadow-sm">
         <div className="px-4 py-2">
           <div className="flex items-center gap-2">
             <button

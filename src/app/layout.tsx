@@ -4,8 +4,7 @@ import {
   SignedIn,
   SignedOut,
 } from '@clerk/nextjs'
-import { Geist, Geist_Mono, Plus_Jakarta_Sans } from 'next/font/google'
-import localFont from 'next/font/local'
+import { Geist, Geist_Mono, Poppins } from 'next/font/google'
 import { ThemeProvider } from 'next-themes'
 import Script from 'next/script'
 import { Toaster } from 'react-hot-toast' // ADD THIS LINE
@@ -24,18 +23,10 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 })
 
-// Pype's brand type: Plus Jakarta Sans for headings, Satoshi for text (the same pair as pypeai.com).
-const jakarta = Plus_Jakarta_Sans({
-  variable: '--font-jakarta',
-  weight: ['500', '600', '700', '800'],
+const brandFont = Poppins({
+  variable: '--font-brand',
+  weight: ['700', '800'],
   subsets: ['latin'],
-})
-
-const satoshi = localFont({
-  src: './fonts/Satoshi-Variable.woff2',
-  variable: '--font-satoshi',
-  weight: '300 900',
-  display: 'swap',
 })
 
 export const metadata: Metadata = {
@@ -59,13 +50,13 @@ export default function RootLayout({
     <ClerkProvider
       appearance={{
         variables: {
-          colorPrimary: "#4b0082",
+          colorPrimary: "#2563eb",
         }
       }}
     >
       <html lang="en" suppressHydrationWarning>
         <body
-          className={`${geistSans.variable} ${geistMono.variable} ${jakarta.variable} ${satoshi.variable} antialiased`}
+          className={`${geistSans.variable} ${geistMono.variable} ${brandFont.variable} antialiased`}
         >
           {/* Sonic Linker AI Traffic Monitoring - Only loads if org ID is provided */}
           {sonicLinkerOrgId && (

@@ -8,7 +8,7 @@ const SDK_PAGES = 'sdk|configuration|complete-implementation|observability|examp
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'Whispey Docs',
-  tagline: 'AI voice agents for healthcare, by Pype',
+  tagline: 'Observability for voice AI agents, by Pype',
   favicon: 'img/favicon.ico',
   // DOCS_BASE_URL=/docs/ when the site is built into the Whispey app, which serves it behind sign-in.
   url: process.env.DOCS_SITE_URL || 'https://www.whispey.xyz',
@@ -17,7 +17,7 @@ const config = {
   // (signed-in only), and the app's /docs route already sends X-Robots-Tag: noindex.
   onBrokenLinks: 'throw',
   stylesheets: [
-    {href: 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap', type: 'text/css'},
+    {href: 'https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap', type: 'text/css'},
   ],
   i18n: {defaultLocale: 'en', locales: ['en']},
   clientModules: ['./src/clientModules/searchShortcut.js', './src/clientModules/reloadOnStaleChunk.js'],
