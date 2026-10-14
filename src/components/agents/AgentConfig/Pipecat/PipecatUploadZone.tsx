@@ -99,25 +99,25 @@ export default function PipecatUploadZone({ pipecatAgentId, onUploadSuccess }: P
           'relative rounded-xl border-2 border-dashed transition-colors flex flex-col items-center justify-center min-h-[140px] p-4 cursor-pointer w-full appearance-none bg-transparent',
           isDragging
             ? 'border-primary bg-primary/5'
-            : 'border-border bg-muted/50 hover:border-border',
+            : 'border-gray-300 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-800/50 hover:border-gray-400 dark:hover:border-gray-500',
           uploading && 'pointer-events-none opacity-70'
         )}
       >
         {uploading
           ? <Loader2 className="h-8 w-8 text-primary animate-spin mb-1" />
-          : <Upload className="h-8 w-8 text-muted-foreground mb-1" />
+          : <Upload className="h-8 w-8 text-gray-400 mb-1" />
         }
-        <p className="text-xs font-medium text-foreground">
+        <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
           {uploading ? 'Uploading…' : 'Drop file or click to upload'}
         </p>
-        <p className="text-xs text-muted-foreground mt-0.5">
+        <p className="text-xs text-gray-400 mt-0.5">
           PDF, TXT, DOCX, CSV · max {KNOWLEDGE_MAX_FILE_SIZE_MB}MB
         </p>
       </button>
 
       {/* URL input */}
-      <div className="rounded-xl border border-border bg-card p-3">
-        <p className="text-xs font-medium text-foreground flex items-center gap-1.5 mb-2">
+      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-3">
+        <p className="text-xs font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1.5 mb-2">
           <LinkIcon className="h-3.5 w-3.5" />
           Add from URL
         </p>

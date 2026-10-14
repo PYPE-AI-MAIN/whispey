@@ -497,12 +497,12 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
           size="sm"
           className={`justify-start text-xs font-normal w-full text-ellipsis overflow-hidden ${
             isVoiceInputError
-              ? 'border-amber-400 dark:border-amber-600 text-warning  hover:border-amber-500'
+              ? 'border-amber-400 dark:border-amber-600 text-amber-600 dark:text-amber-400 hover:border-amber-500'
               : ''
           }`}
         >
           {isVoiceInputError
-            ? <AlertTriangle className="w-3.5 h-3.5 mr-2 text-warning flex-shrink-0" />
+            ? <AlertTriangle className="w-3.5 h-3.5 mr-2 text-amber-500 flex-shrink-0" />
             : <Volume2 className="w-3.5 h-3.5 mr-2 flex-shrink-0" />
           }
           {triggerLabel.kind === 'loading' ? <LabelSkeleton /> : triggerLabel.text}
@@ -512,15 +512,15 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
       {/* w-[calc(100vw-1rem)] + sm:min-w-7xl: min-w-7xl alone forced a 1280px
           floor on every screen, including phone and tablet — its sibling
           SelectSTTDialog already gets this right, this one didn't match it */}
-      <DialogContent className="flex flex-col justify-start w-[calc(100vw-1rem)] sm:min-w-7xl h-screen p-0 gap-0 bg-card mx-2 sm:mx-auto">
-        <DialogHeader className="p-4 sm:p-6 border-b border-border flex-shrink-0 h-fit">
+      <DialogContent className="flex flex-col justify-start w-[calc(100vw-1rem)] sm:min-w-7xl h-screen p-0 gap-0 bg-white dark:bg-gray-900 mx-2 sm:mx-auto">
+        <DialogHeader className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-800 flex-shrink-0 h-fit">
           <div className="flex items-center justify-between gap-3 pr-5">
             <div>
               <DialogTitle className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-primary" />
+                <Sparkles className="w-5 h-5 text-blue-500" />
                 Configure TTS Voice & Settings
               </DialogTitle>
-              <p className="text-sm text-muted-foreground">Choose voice and configure speech synthesis settings</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Choose voice and configure speech synthesis settings</p>
             </div>
             
             {/* Header Voice Display - uses internal state */}
@@ -607,8 +607,8 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
         </Tabs>
         
         {/* Footer */}
-        <div className="p-6 border-t border-border bg-muted/50 flex justify-between items-center flex-shrink-0">
-          <div className="text-sm text-muted-foreground">
+        <div className="p-6 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 flex justify-between items-center flex-shrink-0">
+          <div className="text-sm text-gray-500 dark:text-gray-400">
             {currentVoiceId && currentProvider && (
               <span>Voice and settings configured</span>
             )}

@@ -13,7 +13,7 @@ interface VariableHighlighterProps {
 
 /**
  * Highlights variables in text with different colors based on validation status
- * - Valid variables: brand colour
+ * - Valid variables: blue
  * - Invalid variables: red with squiggly underline
  * - Unclosed braces: yellow warning
  */
@@ -37,7 +37,7 @@ export const VariableHighlighter: React.FC<VariableHighlighterProps> = ({
       .replace(/>/g, '&gt;')
       .replace(/\n/g, '<br/>');
 
-    // Highlight valid variables (brand colour)
+    // Highlight valid variables (blue)
     highlighted = highlighted.replace(
       /\{\{([^{}]+)\}\}/g,
       (match, content, offset) => {
@@ -48,7 +48,7 @@ export const VariableHighlighter: React.FC<VariableHighlighterProps> = ({
           // Invalid variable - red with squiggly underline
           return `<span class="variable-invalid">${match}</span>`;
         } else {
-          // Valid variable - brand colour
+          // Valid variable - blue
           return `<span class="variable-valid">${match}</span>`;
         }
       }
@@ -87,20 +87,20 @@ export const variableStyles = `
 }
 
 .variable-valid {
-  background-color: rgba(75, 0, 130, 0.08); /* bg-primary/10 */
-  color: rgb(75, 0, 130); /* text-primary */
+  background-color: rgb(219, 234, 254); /* bg-blue-100 */
+  color: rgb(29, 78, 216); /* text-blue-700 */
   padding: 1px 2px;
   border-radius: 2px;
 }
 
 .dark .variable-valid {
-  background-color: rgba(255, 107, 107, 0.16); /* bg-primary/15 */
-  color: rgb(255, 180, 162);
+  background-color: rgba(30, 58, 138, 0.3); /* bg-blue-900/30 */
+  color: rgb(147, 197, 253); /* text-blue-300 */
 }
 
 .variable-invalid {
-  background-color: rgb(254, 226, 226); /* bg-destructive/15 */
-  color: rgb(185, 28, 28); /* text-destructive */
+  background-color: rgb(254, 226, 226); /* bg-red-100 */
+  color: rgb(185, 28, 28); /* text-red-700 */
   padding: 1px 2px;
   border-radius: 2px;
   text-decoration: wavy underline;
@@ -116,8 +116,8 @@ export const variableStyles = `
 }
 
 .variable-unclosed {
-  background-color: rgb(254, 249, 195); /* bg-warning/15 */
-  color: rgb(161, 98, 7); /* text-warning */
+  background-color: rgb(254, 249, 195); /* bg-yellow-100 */
+  color: rgb(161, 98, 7); /* text-yellow-700 */
   padding: 1px 2px;
   border-radius: 2px;
 }

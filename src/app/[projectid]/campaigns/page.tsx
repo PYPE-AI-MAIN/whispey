@@ -70,9 +70,9 @@ function Pagination({
   }
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-1 py-3 border-t border-border/60">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-1 py-3 border-t border-gray-100 dark:border-gray-800">
       {/* Count label */}
-      <p className="text-xs text-muted-foreground whitespace-nowrap">
+      <p className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
         {total === 0 ? 'No campaigns' : `Showing ${from}–${to} of ${total} campaign${total !== 1 ? 's' : ''}`}
       </p>
 
@@ -109,7 +109,7 @@ function Pagination({
               p === '...' ? (
                 <span
                   key={`ellipsis-${i}`}
-                  className="px-1 text-xs text-muted-foreground select-none"
+                  className="px-1 text-xs text-gray-400 dark:text-gray-500 select-none"
                 >
                   …
                 </span>
@@ -121,7 +121,7 @@ function Pagination({
                   className={`h-7 min-w-[28px] rounded-md px-2 text-xs font-medium transition-colors
                     ${p === currentPage
                       ? 'bg-blue-600 text-white shadow-sm cursor-default'
-                      : 'text-muted-foreground hover:bg-muted disabled:opacity-50'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50'
                     }`}
                 >
                   {p}
@@ -211,13 +211,13 @@ function Campaigns() {
 
   const getStatusBadge = (status: string) => {
     const map: Record<string, string> = {
-      active:    'bg-success/15 text-success border-success/30',
-      running:   'bg-success/15 text-success border-success/30',
-      paused:    'bg-warning/15 text-warning border-warning/30',
-      completed: 'bg-primary/15 text-primary border-primary/30',
+      active:    'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800',
+      running:   'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800',
+      paused:    'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800',
+      completed: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border-blue-200 dark:border-blue-800',
       scheduled: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 border-purple-200 dark:border-purple-800',
-      failed:    'bg-destructive/15 text-destructive border-destructive/30',
-      draft:     'bg-muted text-foreground border-border',
+      failed:    'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800',
+      draft:     'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400 border-gray-200 dark:border-gray-800',
       ready:     'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800',
     }
     const cls = map[status.toLowerCase()] ?? map.active
@@ -326,15 +326,15 @@ function Campaigns() {
       return (
         /* Empty states */
         <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
-          <div className="w-12 h-12 bg-primary/15 rounded-full flex items-center justify-center mb-3">
-            <Phone className="w-6 h-6 text-primary" />
+          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-3">
+            <Phone className="w-6 h-6 text-blue-600 dark:text-blue-400" />
           </div>
           {search ? (
             <>
-              <h3 className="text-sm font-medium text-foreground mb-1">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
                 No results for "{search}"
               </h3>
-              <p className="text-xs text-muted-foreground mb-3 max-w-xs">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 max-w-xs">
                 Try a different name or clear the search.
               </p>
               <Button variant="outline" size="sm" onClick={() => setSearchInput('')} className="text-xs h-7">
@@ -343,10 +343,10 @@ function Campaigns() {
             </>
           ) : (
             <>
-              <h3 className="text-sm font-medium text-foreground mb-1">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
                 No campaigns yet
               </h3>
-              <p className="text-xs text-muted-foreground mb-3 max-w-xs">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 max-w-xs">
                 Create your first campaign to start managing calls.
               </p>
               <Button onClick={() => router.push(`/${projectId}/campaigns/create`)} size="sm" className="h-9 text-xs gap-2">
@@ -369,45 +369,45 @@ function Campaigns() {
             role="button"
             tabIndex={0}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); router.push(`/${projectId}/campaigns/${campaign.campaignId}`) } }}
-            className={`relative bg-card  border border-border 
-              rounded-lg p-4 hover:border-primary/40  hover:shadow-sm
+            className={`relative bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700
+              rounded-lg p-4 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm
               transition-all cursor-pointer group
               ${isFetching ? 'opacity-60 pointer-events-none' : ''}`}
           >
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-2">
-                  <h3 className="text-sm font-semibold text-foreground truncate">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
                     {campaign.campaignName}
                   </h3>
                   {getStatusBadge(campaign.status)}
                 </div>
 
                 <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <span className="font-medium text-muted-foreground">ID:</span>
+                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                    <span className="font-medium text-gray-500 dark:text-gray-500">ID:</span>
                     <span className="font-mono truncate">{campaign.campaignId}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
+                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                     <Phone className="w-3 h-3 flex-shrink-0" />
                     <span className="truncate">{campaign.callConfig.provider}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
+                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                     <User className="w-3 h-3 flex-shrink-0" />
                     <span className="truncate">{resolveStoredAgentName(agents, campaign.callConfig.agentName)}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
+                  <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                     <Calendar className="w-3 h-3 flex-shrink-0" />
                     <span className="truncate">{formatDate(campaign.createdAt)}</span>
                   </div>
                 </div>
 
                 {/* Stats row */}
-                <div className="flex items-center gap-4 mt-3 pt-2.5 border-t border-border/60">
+                <div className="flex items-center gap-4 mt-3 pt-2.5 border-t border-gray-100 dark:border-gray-700">
                   <Stat label="Total"   value={campaign.callStats?.total     ?? campaign.totalContacts}  />
-                  <Stat label="Success" value={campaign.callStats?.completed ?? campaign.successCalls}   color="text-success" />
-                  <Stat label="Failed"  value={campaign.callStats?.failed    ?? campaign.failedCalls}    color="text-destructive" />
-                  <Stat label="Pending" value={campaign.callStats?.pending   ?? 0}                       color="text-muted-foreground" />
+                  <Stat label="Success" value={campaign.callStats?.completed ?? campaign.successCalls}   color="text-green-600 dark:text-green-400" />
+                  <Stat label="Failed"  value={campaign.callStats?.failed    ?? campaign.failedCalls}    color="text-red-600 dark:text-red-400" />
+                  <Stat label="Pending" value={campaign.callStats?.pending   ?? 0}                       color="text-gray-500 dark:text-gray-400" />
                 </div>
               </div>
 
@@ -416,7 +416,7 @@ function Campaigns() {
                 <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
                   <Button
                     variant="ghost" size="sm"
-                    className="h-8 w-8 p-0 opacity-60 group-hover:opacity-100 hover:bg-muted"
+                    className="h-8 w-8 p-0 opacity-60 group-hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
                     <MoreVertical className="h-4 w-4" />
                   </Button>
@@ -453,7 +453,7 @@ function Campaigns() {
 
                   {['paused', 'draft', 'completed', 'ready'].includes(campaign.status) && (
                     <DropdownMenuItem
-                      className="text-xs text-destructive cursor-pointer"
+                      className="text-xs text-red-600 dark:text-red-400 cursor-pointer"
                       disabled={actionLoading === campaign.campaignId}
                       onClick={e => handleDeleteCampaign(campaign.campaignId, e)}
                     >
@@ -479,8 +479,8 @@ function Campaigns() {
     <div className="flex flex-col h-screen bg-background">
 
       {/* ── Header ── */}
-      <div className="bg-background flex-shrink-0">
-        <div className="mx-auto w-full max-w-6xl px-4 sm:px-8 flex items-center justify-between pt-6 pb-4 sm:pt-8">
+      <div className="px-6 pt-6 pb-4 bg-background flex-shrink-0">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-foreground">Campaigns</h1>
@@ -515,9 +515,9 @@ function Campaigns() {
       </div>
 
       {/* ── Search ── */}
-      <div className="bg-background flex-shrink-0">
-        <div className="mx-auto w-full max-w-6xl px-4 sm:px-8 pb-4"><div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+      <div className="px-6 pb-4 bg-background flex-shrink-0">
+        <div className="relative max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
           <Input
             placeholder="Search campaigns by name or ID…"
             value={searchInput}
@@ -527,63 +527,60 @@ function Campaigns() {
           {searchInput && (
             <button
               onClick={() => setSearchInput('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground text-xs"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs"
             >
               ✕
             </button>
           )}
-        </div></div>
+        </div>
       </div>
 
       {/* ── Error banner ── */}
       {isError && (
-        <div className="mx-4 mt-3 flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+        <div className="mx-4 mt-3 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20 px-3 py-2 text-xs text-red-700 dark:text-red-400">
           <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
           Failed to load campaigns. Check your connection and try refreshing.
         </div>
       )}
 
       {/* ── Content ── */}
-      <div className="flex-1 overflow-auto">
-        <div className="mx-auto w-full max-w-6xl px-4 pb-6 sm:px-8">
-          {/* Initial loading skeletons / empty states / campaign list */}
-          {renderCampaignsContent()}
-        </div>
+      <div className="flex-1 overflow-auto px-6 pb-6">
+
+        {/* Initial loading skeletons / empty states / campaign list */}
+        {renderCampaignsContent()}
       </div>
 
       {/* ── Pagination bar ── */}
       {!isLoading && !isError && pagination && (
-        <div className="bg-card border-t border-border/60 flex-shrink-0">
-          <div className="mx-auto w-full max-w-6xl px-4 pb-2 sm:px-8">
-            <Pagination
-              currentPage={pagination.currentPage}
-              totalPages={pagination.totalPages}
-              total={pagination.total}
-              pageSize={PAGE_SIZE}
-              isFetching={isFetching}
-              onPageChange={setPage}
-            />
-          </div>
+        <div className="px-4 pb-2 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex-shrink-0">
+          <Pagination
+            currentPage={pagination.currentPage}
+            totalPages={pagination.totalPages}
+            total={pagination.total}
+            pageSize={PAGE_SIZE}
+            isFetching={isFetching}
+            onPageChange={setPage}
+          />
         </div>
       )}
 
       {/* ── Detail sheet ── */}
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetContent className="w-full sm:max-w-xl overflow-y-auto bg-muted/50 p-0">
-          <div className="sticky top-0 z-10 bg-muted/50 px-6 py-5 border-b border-border">
-            <SheetTitle className="text-xl font-bold text-foreground">Campaign Details</SheetTitle>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto bg-gray-50 dark:bg-gray-900 p-0">
+          <div className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900 px-6 py-5 border-b border-gray-200 dark:border-gray-800">
+            <SheetTitle className="text-xl font-bold text-gray-900 dark:text-gray-100">Campaign Details</SheetTitle>
           </div>
 
           {selectedCampaign && (
             <div className="p-4 sm:p-6 space-y-6">
               {/* Header */}
-              <div className="rounded-xl border border-border bg-card shadow-sm p-4 sm:p-6">
-                <h3 className="text-xl font-bold text-foreground mb-4">
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 sm:p-6">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
                   {selectedCampaign.campaignName}
                 </h3>
                 <div className="flex items-center gap-3 flex-wrap">
                   {getStatusBadge(selectedCampaign.status)}
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                     <Calendar className="w-4 h-4" />
                     <span>{formatDate(selectedCampaign.createdAt)}</span>
                   </div>
@@ -591,28 +588,28 @@ function Campaigns() {
               </div>
 
               {/* Info */}
-              <div className="rounded-xl border border-border bg-card shadow-sm p-4 sm:p-6">
-                <h4 className="text-xs font-medium text-muted-foreground mb-4">Campaign Information</h4>
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 sm:p-6">
+                <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-4">Campaign Information</h4>
                 <InfoRow label="Campaign ID"  value={<span className="font-mono">{selectedCampaign.campaignId}</span>} />
                 <InfoRow label="Organization ID"   value={<span className="font-mono">{selectedCampaign.projectId}</span>} />
                 <InfoRow label="Provider"     value={selectedCampaign.callConfig.provider} />
               </div>
 
               {/* Agent */}
-              <div className="rounded-xl border border-border bg-card shadow-sm p-4 sm:p-6">
-                <h4 className="text-xs font-medium text-muted-foreground mb-4">Agent Details</h4>
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 sm:p-6">
+                <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-4">Agent Details</h4>
                 <InfoRow label="Agent Name"  value={resolveStoredAgentName(agents, selectedCampaign.callConfig.agentName)} />
                 <InfoRow label="SIP Trunk"   value={<span className="font-mono">{selectedCampaign.callConfig.sipTrunkId}</span>} />
               </div>
 
               {/* Metrics */}
-              <div className="rounded-xl border border-border bg-card shadow-sm p-4 sm:p-6">
-                <h4 className="text-xs font-medium text-muted-foreground mb-5">Performance Metrics</h4>
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 sm:p-6">
+                <h4 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-5">Performance Metrics</h4>
                 <div className="space-y-4">
                   <MetricRow label="Total Contacts" value={selectedCampaign.callStats?.total   ?? selectedCampaign.totalContacts} />
-                  <MetricRow label="Successful"      value={selectedCampaign.callStats?.completed ?? selectedCampaign.successCalls} color="text-success" />
-                  <MetricRow label="Failed"          value={selectedCampaign.callStats?.failed    ?? selectedCampaign.failedCalls}  color="text-destructive" />
-                  <MetricRow label="Pending"         value={selectedCampaign.callStats?.pending   ?? 0}                             color="text-muted-foreground" />
+                  <MetricRow label="Successful"      value={selectedCampaign.callStats?.completed ?? selectedCampaign.successCalls} color="text-green-600 dark:text-green-400" />
+                  <MetricRow label="Failed"          value={selectedCampaign.callStats?.failed    ?? selectedCampaign.failedCalls}  color="text-red-600 dark:text-red-400" />
+                  <MetricRow label="Pending"         value={selectedCampaign.callStats?.pending   ?? 0}                             color="text-gray-500 dark:text-gray-400" />
                 </div>
 
                 {/* Progress bar */}
@@ -621,12 +618,12 @@ function Campaigns() {
                   const completed = selectedCampaign.callStats?.completed ?? selectedCampaign.successCalls
                   const rate      = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0
                   return (
-                    <div className="mt-5 pt-4 border-t border-border/60">
+                    <div className="mt-5 pt-4 border-t border-gray-100 dark:border-gray-700">
                       <div className="flex justify-between mb-2">
-                        <span className="text-sm font-semibold text-foreground">Completion Rate</span>
-                        <span className="text-sm font-bold text-foreground">{rate}%</span>
+                        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">Completion Rate</span>
+                        <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{rate}%</span>
                       </div>
-                      <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
                         <div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${rate}%` }} />
                       </div>
                     </div>
@@ -650,10 +647,10 @@ function Campaigns() {
 
 // ─── Tiny shared sub-components ───────────────────────────────────────────────
 
-function Stat({ label, value, color = 'text-foreground' }: Readonly<{ label: string; value: number; color?: string }>) {
+function Stat({ label, value, color = 'text-gray-900 dark:text-gray-100' }: { label: string; value: number; color?: string }) {
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-xs text-muted-foreground">{label}:</span>
+      <span className="text-xs text-gray-500 dark:text-gray-500">{label}:</span>
       <span className={`text-xs font-semibold ${color}`}>{value}</span>
     </div>
   )
@@ -661,17 +658,17 @@ function Stat({ label, value, color = 'text-foreground' }: Readonly<{ label: str
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between py-3 border-b border-border/60 last:border-0">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="text-sm font-semibold text-foreground">{value}</span>
+    <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-700 last:border-0">
+      <span className="text-sm text-gray-500 dark:text-gray-400">{label}</span>
+      <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{value}</span>
     </div>
   )
 }
 
-function MetricRow({ label, value, color = 'text-foreground' }: Readonly<{ label: string; value: number; color?: string }>) {
+function MetricRow({ label, value, color = 'text-gray-900 dark:text-gray-100' }: { label: string; value: number; color?: string }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="text-sm text-gray-600 dark:text-gray-400">{label}</span>
       <span className={`text-3xl font-bold ${color}`}>{value}</span>
     </div>
   )

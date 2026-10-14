@@ -59,7 +59,7 @@ export function FilterBar({
 
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-muted-foreground">
+          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-gray-500">
             {filters.length ? <Plus className="mr-1 h-3 w-3" /> : <Filter className="mr-1 h-3 w-3" />}
             Filter
           </Button>
@@ -80,9 +80,9 @@ export function FilterBar({
 
 export function Chip({ label, onRemove }: Readonly<{ label: string; onRemove: () => void }>) {
   return (
-    <span className="inline-flex max-w-xs items-center gap-1 rounded-full bg-primary/10 py-0.5 pl-2.5 pr-1 text-xs text-primary">
+    <span className="inline-flex max-w-xs items-center gap-1 rounded-full bg-blue-50 py-0.5 pl-2.5 pr-1 text-xs text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
       <span className="truncate">{label}</span>
-      <button onClick={onRemove} aria-label={`Remove filter ${label}`} className="rounded-full p-0.5 hover:bg-primary/15">
+      <button onClick={onRemove} aria-label={`Remove filter ${label}`} className="rounded-full p-0.5 hover:bg-blue-100 dark:hover:bg-blue-900">
         <X className="h-3 w-3" />
       </button>
     </span>
@@ -117,7 +117,7 @@ export function FilterEditor({ fields, onAdd }: Readonly<{ fields: CatalogField[
       {/* what the field holds, in the values it holds: "is yes" on a column
           full of 1 and 0 is how somebody stops trusting the dashboard */}
       {field && (
-        <p className="px-0.5 text-[11px] leading-snug text-muted-foreground">
+        <p className="px-0.5 text-[11px] leading-snug text-gray-400">
           {field.description ? `${field.description} ` : ''}
           <FieldShape field={field} />
         </p>
@@ -157,7 +157,7 @@ export function FilterEditor({ fields, onAdd }: Readonly<{ fields: CatalogField[
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="Value"
-            className="h-8 w-full rounded-md border border-border bg-transparent px-2 text-sm outline-none focus:border-blue-400"
+            className="h-8 w-full rounded-md border border-gray-200 bg-transparent px-2 text-sm outline-none focus:border-blue-400 dark:border-gray-800"
           />
         )
       )}
@@ -224,7 +224,7 @@ export function ChartFilters({
       )}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="sm" disabled={disabled} className="h-6 px-2 text-xs text-muted-foreground">
+          <Button variant="ghost" size="sm" disabled={disabled} className="h-6 px-2 text-xs text-gray-500">
             <Plus className="mr-1 h-3 w-3" />
             {filters.length ? 'Add' : 'Only where…'}
           </Button>

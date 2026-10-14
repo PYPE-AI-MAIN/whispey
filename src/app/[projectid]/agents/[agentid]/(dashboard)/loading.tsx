@@ -8,7 +8,7 @@ import { DashboardSkeleton } from '@/components/analytics/DashboardSkeleton'
  */
 export default function AgentDashboardLoading() {
   return (
-    <div className="h-screen bg-card">
+    <div className="h-screen bg-white dark:bg-gray-950">
       <DashboardSkeleton withHeader />
     </div>
   )

@@ -217,7 +217,7 @@ const TableRow = React.memo(function TableRow({
                 are clipped here and stay readable through the cell's hover tooltip. */}
             {cell.column.id === "select" ? (
               // the whole cell is the checkbox's hit area: a click just beside the box ticks it
-              <label aria-label="Select this call" className={cn("flex cursor-pointer items-center", compact ? "-mx-3.5 -my-[9px] px-3.5 py-[9px]" : "-mx-4 -my-[15px] px-4 py-[15px]")}>
+              <label className={cn("flex cursor-pointer items-center", compact ? "-mx-3.5 -my-[9px] px-3.5 py-[9px]" : "-mx-4 -my-[15px] px-4 py-[15px]")}>
                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
               </label>
             ) : (

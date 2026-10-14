@@ -40,8 +40,8 @@ const TokenRegenerationConfirmDialog: React.FC<TokenRegenerationConfirmDialogPro
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-warning/15">
-              <AlertTriangle className="h-5 w-5 text-warning" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100">
+              <AlertTriangle className="h-5 w-5 text-orange-600" />
             </div>
             <div>
               <DialogTitle className="text-left">Regenerate API Token</DialogTitle>
@@ -55,9 +55,9 @@ const TokenRegenerationConfirmDialog: React.FC<TokenRegenerationConfirmDialogPro
 
         <div className="py-4">
           <div className="space-y-3">
-            <div className="flex items-start gap-3 p-3 bg-warning/10 border border-warning/30 rounded-lg">
-              <AlertTriangle className="h-4 w-4 text-warning mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-warning">
+            <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm text-amber-800">
                 <p className="font-medium mb-1">This action will:</p>
                 <ul className="list-disc list-inside space-y-1 text-xs">
                   <li>Generate a new API token</li>
@@ -67,8 +67,8 @@ const TokenRegenerationConfirmDialog: React.FC<TokenRegenerationConfirmDialogPro
               </div>
             </div>
 
-            <div className="p-3 bg-primary/10 border border-primary/30 rounded-lg">
-              <p className="text-sm text-primary">
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
                 <strong>Note:</strong> The new token will only be displayed once. 
                 Make sure to save it securely before closing the dialog.
               </p>

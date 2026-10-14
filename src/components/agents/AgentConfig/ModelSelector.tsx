@@ -46,7 +46,7 @@ const isNew = (addedAt?: string): boolean => {
 }
 
 const NewBadge = () => (
-  <span className="ml-1 rounded-full bg-success/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-success flex-shrink-0">
+  <span className="ml-1 rounded-full bg-green-100 dark:bg-green-900/40 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none tracking-wide text-green-700 dark:text-green-300 flex-shrink-0">
     New
   </span>
 )
@@ -106,9 +106,9 @@ function ProviderModelItems({
   onSelect: (providerKey: string, model: string) => void
 }>) {
   const itemClass = (modelValue: string, extra: string) =>
-    `flex items-center justify-between ${extra} text-foreground  hover:bg-muted/50  focus:bg-muted/50  ${
+    `flex items-center justify-between ${extra} text-gray-900 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800 focus:bg-gray-50 dark:focus:bg-slate-800 ${
       selectedProvider === providerKey && selectedModel === modelValue
-        ? 'bg-blue-50 dark:bg-blue-950/30 text-primary dark:text-blue-300'
+        ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
         : ''
     } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`
 
@@ -126,7 +126,7 @@ function ProviderModelItems({
               {isNew(model.addedAt) && <NewBadge />}
             </span>
             {selectedProvider === providerKey && selectedModel === model.value && (
-              <Check className="h-3 w-3 sm:h-4 sm:w-4 text-primary flex-shrink-0" />
+              <Check className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
             )}
           </DropdownMenuItem>
         ))}
@@ -139,9 +139,9 @@ function ProviderModelItems({
       <>
         {provider.groups?.map((group, groupIndex) => (
           <React.Fragment key={group.name}>
-            {groupIndex > 0 && <DropdownMenuSeparator className="bg-muted" />}
-            <div className="px-2 py-1.5 bg-muted/50 sticky top-0 z-10">
-              <h4 className="text-xs font-medium text-muted-foreground truncate">
+            {groupIndex > 0 && <DropdownMenuSeparator className="bg-gray-200 dark:bg-slate-700" />}
+            <div className="px-2 py-1.5 bg-gray-50 dark:bg-slate-800 sticky top-0 z-10">
+              <h4 className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide truncate">
                 {group.name}
               </h4>
             </div>
@@ -188,7 +188,7 @@ function GroupModelItems({
         >
           <span className="text-sm truncate pr-2">{model.label}</span>
           {selectedProvider === providerKey && selectedModel === model.value && (
-            <Check className="h-3 w-3 text-primary flex-shrink-0" />
+            <Check className="h-3 w-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
           )}
         </DropdownMenuItem>
       ))}
@@ -219,370 +219,17 @@ function MobileGroupModelItems({
           onClick={() => onSelect(providerKey, model.value)}
           className={`flex items-center justify-between px-6 py-2 ${
             selectedProvider === providerKey && selectedModel === model.value
-              ? 'bg-blue-50 dark:bg-blue-950/30 text-primary dark:text-blue-300'
-              : 'hover:bg-muted/50'
+              ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
+              : 'hover:bg-gray-50 dark:hover:bg-slate-800'
           }`}
         >
           <span className="text-sm">{model.label}</span>
           {selectedProvider === providerKey && selectedModel === model.value && (
-            <Check className="h-3 w-3 text-primary" />
+            <Check className="h-3 w-3 text-blue-600" />
           )}
         </DropdownMenuItem>
       ))}
     </>
-  )
-}
-
-const GPT5_MODELS = new Set(['gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-5.6-terra', 'gpt-5.6-luna'])
-const isGPT5Model = (modelValue: string): boolean => GPT5_MODELS.has(modelValue)
-
-const getTemperatureLabel = (temp: number) => {
-  if (temp <= 0.3) return 'Precise'
-  if (temp <= 0.7) return 'Balanced'
-  return 'Creative'
-}
-
-function MobileProviderMenu({ selectedProvider, selectedModel, expandedProvider, setExpandedProvider, handleProviderSelect, handleModelSelect }: Readonly<{
-  selectedProvider: string
-  selectedModel: string
-  expandedProvider: string | null
-  setExpandedProvider: (v: string | null) => void
-  handleProviderSelect: (providerKey: string) => void
-  handleModelSelect: (providerKey: string, modelValue: string) => void
-}>) {
-  return (
-    <>
-{Object.entries(modelProviders).map(([providerKey, provider]) => (
-      <div key={providerKey}>
-        {/* Provider Header */}
-        <DropdownMenuItem
-          onClick={(e) => {
-            if (provider.type === 'config') {
-              handleProviderSelect(providerKey)
-            } else {
-              e.preventDefault() // Prevent dropdown from closing
-              e.stopPropagation() // Stop event bubbling
-              setExpandedProvider(expandedProvider === providerKey ? null : providerKey)
-            }
-          }}
-          className="flex items-center justify-between p-3 bg-muted/50 hover:bg-muted"
-        >
-          <div className="flex items-center gap-3">
-            <div className={`w-5 h-5 rounded-full ${provider.color} flex items-center justify-center text-white flex-shrink-0`}>
-              {getProviderIcon(providerKey) || <span className="text-xs font-bold">{provider.icon}</span>}
-            </div>
-            <span className="font-medium text-sm">{provider.label}</span>
-            {isNew(provider.addedAt) && <NewBadge />}
-            {provider.type === 'config' && <ExternalLink className="h-3 w-3 text-muted-foreground" />}
-            {selectedProvider === providerKey && <Check className="h-3 w-3 text-primary" />}
-          </div>
-          {(provider.type === 'direct' || provider.type === 'grouped') && (
-            <ChevronDown className={`h-4 w-4 transition-transform ${
-              expandedProvider === providerKey ? 'rotate-180' : ''
-            }`} />
-          )}
-        </DropdownMenuItem>
-        
-        {/* Expanded Models */}
-        {expandedProvider === providerKey && provider.type === 'direct' && provider.models && (
-          <div className="bg-card border-l-2 border-border ml-4">
-            {provider.models.map((model) => (
-              <DropdownMenuItem
-                key={model.value}
-                onClick={() => handleModelSelect(providerKey, model.value)}
-                className={`flex items-center justify-between px-4 py-3 ${
-                  selectedProvider === providerKey && selectedModel === model.value
-                    ? 'bg-blue-50 dark:bg-blue-950/30 text-primary dark:text-blue-300'
-                    : 'hover:bg-muted/50'
-                }`}
-              >
-                <span className="flex items-center text-sm">
-                  {model.label}
-                  {isNew(model.addedAt) && <NewBadge />}
-                </span>
-                {selectedProvider === providerKey && selectedModel === model.value && (
-                  <Check className="h-3 w-3 text-primary" />
-                )}
-              </DropdownMenuItem>
-            ))}
-          </div>
-        )}
-        
-        {/* Grouped Models */}
-        {expandedProvider === providerKey && provider.type === 'grouped' && provider.groups && (
-          <div className="bg-card border-l-2 border-border ml-4">
-            {provider.groups.map((group, groupIndex) => (
-              <div key={group.name}>
-                {groupIndex > 0 && <div className="border-t border-border" />}
-                <div className="px-4 py-2 bg-muted">
-                  <h4 className="text-xs font-medium text-muted-foreground">
-                    {group.name}
-                  </h4>
-                </div>
-                <MobileGroupModelItems
-                  models={group.models}
-                  providerKey={providerKey}
-                  selectedProvider={selectedProvider}
-                  selectedModel={selectedModel}
-                  onSelect={handleModelSelect}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    ))}
-    </>
-  )
-}
-
-function DesktopProviderMenu({ selectedProvider, selectedModel, disabled, handleProviderSelect, handleModelSelect }: Readonly<{
-  selectedProvider: string
-  selectedModel: string
-  disabled: boolean
-  handleProviderSelect: (providerKey: string) => void
-  handleModelSelect: (providerKey: string, modelValue: string) => void
-}>) {
-  const DISABLE_SETTINGS = disabled
-  return (
-    <>
-{Object.entries(modelProviders).map(([providerKey, provider]) => {
-      // Providers with submenus (direct models or grouped models)
-      if (provider.type === 'direct' || provider.type === 'grouped') {
-        return (
-          <DropdownMenuSub key={providerKey}>
-            <DropdownMenuSubTrigger className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-foreground  hover:bg-muted/50  focus:bg-muted/50  ${
-              DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : ''
-            }`}>
-              <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full ${provider.color} flex items-center justify-center text-white flex-shrink-0`}>
-                {getProviderIcon(providerKey) || <span className="text-xs font-bold">{provider.icon}</span>}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm truncate">{provider.label}</span>
-                  {isNew(provider.addedAt) && <NewBadge />}
-                  {selectedProvider === providerKey && (
-                    <Check className="h-3 w-3 text-primary flex-shrink-0" />
-                  )}
-                </div>
-                {provider.description && (
-                  <p className="text-xs text-muted-foreground truncate">{provider.description}</p>
-                )}
-              </div>
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent 
-              className="w-64 max-h-96 overflow-y-auto bg-card border-border"
-              sideOffset={8}
-              alignOffset={-4}
-              avoidCollisions={true}
-              collisionPadding={16}
-            >
-              <ProviderModelItems
-                provider={provider}
-                providerKey={providerKey}
-                selectedProvider={selectedProvider}
-                selectedModel={selectedModel}
-                disabled={DISABLE_SETTINGS}
-                onSelect={handleModelSelect}
-              />
-            </DropdownMenuSubContent>
-          </DropdownMenuSub>
-        )
-      } else {
-        // Config providers (no submenu)
-        return (
-          <DropdownMenuItem
-            key={providerKey}
-            onClick={() => handleProviderSelect(providerKey)}
-            className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-foreground  hover:bg-muted/50  focus:bg-muted/50  ${
-              DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-          >
-            <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full ${provider.color} flex items-center justify-center text-white flex-shrink-0`}>
-              {getProviderIcon(providerKey) || <span className="text-xs font-bold">{provider.icon}</span>}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-sm truncate">{provider.label}</span>
-                <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                {selectedProvider === providerKey && (
-                  <Check className="h-3 w-3 text-primary flex-shrink-0" />
-                )}
-              </div>
-              {provider.description && (
-                <p className="text-xs text-muted-foreground truncate">{provider.description}</p>
-              )}
-            </div>
-          </DropdownMenuItem>
-        )
-      }
-    })}
-    </>
-  )
-}
-
-function TemperaturePanel({ selectedProvider, selectedModel, temperature, disabled, currentProvider, currentModel, onTemperatureChange }: Readonly<{
-  selectedProvider: string
-  selectedModel: string
-  temperature: number
-  disabled: boolean
-  currentProvider: any
-  currentModel: any
-  onTemperatureChange: (t: number) => void
-}>) {
-  const DISABLE_SETTINGS = disabled
-  return (
-    <div className="space-y-4">
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h4 className="font-medium text-sm text-foreground">Temperature</h4>
-            <p className="text-xs text-muted-foreground">
-              {isGPT5Model(selectedModel)
-                ? 'Selected model only supports temperature of 1'
-                : 'Controls response creativity'}
-            </p>
-          </div>
-          <div className="flex items-center gap-1 sm:gap-2">
-            <Badge variant="outline" className="font-mono text-xs border-border text-foreground">
-              {temperature.toFixed(2)}
-            </Badge>
-            {!isGPT5Model(selectedModel) && (
-              <Badge variant="secondary" className="text-xs bg-muted text-muted-foreground hidden sm:inline-flex">
-                {getTemperatureLabel(temperature)}
-              </Badge>
-            )}
-          </div>
-        </div>
-        <div title={isGPT5Model(selectedModel) ? 'Selected model only supports temperature of 1' : undefined}>
-          <Slider
-            value={[isGPT5Model(selectedModel) ? 1 : temperature]}
-            onValueChange={DISABLE_SETTINGS || isGPT5Model(selectedModel) ? () => {} : (value) => onTemperatureChange(value[0])}
-            max={1}
-            min={0}
-            step={0.01}
-            className={`w-full ${DISABLE_SETTINGS || isGPT5Model(selectedModel) ? 'opacity-50 cursor-not-allowed' : ''}`}
-            disabled={DISABLE_SETTINGS || isGPT5Model(selectedModel)}
-          />
-        </div>
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>Focused</span>
-          <span className="hidden sm:inline">Balanced</span>
-          <span>Creative</span>
-        </div>
-      </div>
-      
-      {currentProvider && (
-        <div className="border-t pt-3 border-border">
-          <div className="space-y-2">
-            <h4 className="font-medium text-sm text-foreground">Current Selection</h4>
-            <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-muted/50 rounded-lg">
-              <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full ${currentProvider.color} flex items-center justify-center text-white flex-shrink-0`}>
-                {getProviderIcon(selectedProvider) || <span className="text-xs font-bold">{currentProvider.icon}</span>}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{currentProvider.label}</p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {currentModel?.label || 'No model selected'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function AzureConfigDialog({ open, onOpenChange, disabled, tempAzureModel, setTempAzureModel, tempAzureConfig, setTempAzureConfig, onSave }: Readonly<{
-  open: boolean
-  onOpenChange: (v: boolean) => void
-  disabled: boolean
-  tempAzureModel: string
-  setTempAzureModel: (v: string) => void
-  tempAzureConfig: AzureConfig
-  setTempAzureConfig: React.Dispatch<React.SetStateAction<AzureConfig>>
-  onSave: () => void
-}>) {
-  const DISABLE_SETTINGS = disabled
-  const setIsAzureDialogOpen = onOpenChange
-  const isAzureDialogOpen = open
-  const handleAzureConfigSave = onSave
-  return (
-    <Dialog open={isAzureDialogOpen && !DISABLE_SETTINGS} onOpenChange={DISABLE_SETTINGS ? () => {} : setIsAzureDialogOpen}>
-      <DialogContent className="w-[calc(100vw-2rem)] sm:w-full max-w-md bg-card border-border mx-4">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-foreground">
-            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-500 flex items-center justify-center text-white flex-shrink-0">
-              <Cloud className="h-3 w-3" />
-            </div>
-            <span className="truncate">Configure Azure OpenAI</span>
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label className="text-foreground">Model</Label>
-            <div className="grid grid-cols-2 gap-1.5">
-              {modelProviders.azure_openai.models?.map((model) => (
-                <button
-                  key={model.value}
-                  type="button"
-                  onClick={DISABLE_SETTINGS ? undefined : () => setTempAzureModel(model.value)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs font-medium transition-colors text-left ${
-                    tempAzureModel === model.value
-                      ? 'border-blue-500 bg-primary/10  text-primary dark:text-blue-300'
-                      : 'border-border hover:bg-muted/50 text-foreground'
-                  } ${DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                >
-                  {tempAzureModel === model.value && (
-                    <Check className="h-3 w-3 text-primary shrink-0" />
-                  )}
-                  <span className="truncate">{model.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="endpoint" className="text-foreground">Azure Endpoint</Label>
-            <Input
-              id="endpoint"
-              placeholder="https://your-resource.cognitiveservices.azure.com/"
-              value={tempAzureConfig.endpoint || "https://pype-azure-openai.cognitiveservices.azure.com/"}
-              onChange={DISABLE_SETTINGS ? () => {} : (e) => setTempAzureConfig(prev => ({ ...prev, endpoint: e.target.value }))}
-              className="bg-card border-border text-foreground text-sm"
-              disabled={DISABLE_SETTINGS}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="apiVersion" className="text-foreground">API Version</Label>
-            <Input
-              id="apiVersion"
-              placeholder="2024-12-01-preview"
-              value={tempAzureConfig.apiVersion || "2024-12-01-preview"}
-              onChange={DISABLE_SETTINGS ? () => {} : (e) => setTempAzureConfig(prev => ({ ...prev, apiVersion: e.target.value }))}
-              className="bg-card border-border text-foreground text-sm"
-              disabled={DISABLE_SETTINGS}
-            />
-          </div>
-        </div>
-        <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
-          <Button 
-            variant="outline" 
-            onClick={() => setIsAzureDialogOpen(false)}
-            className="border-border text-foreground w-full sm:w-auto"
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleAzureConfigSave} 
-            className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
-            disabled={DISABLE_SETTINGS}
-          >
-            Save Configuration
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   )
 }
 
@@ -615,8 +262,52 @@ export default function ModelSelector({
   const [expandedProvider, setExpandedProvider] = useState<string | null>(null)
 
 
+  // Add this function inside the ModelSelector component, after the mobile detection
+const getFlattenedMenuItems = () => {
+  const items: Array<{ 
+    type: 'provider' | 'model' | 'separator', 
+    providerKey?: string, 
+    provider?: Provider, 
+    model?: Model, 
+    groupName?: string 
+  }> = []
+
+  Object.entries(modelProviders).forEach(([providerKey, provider]) => {
+    if (provider.type === 'config') {
+      // Config providers go directly as providers
+      items.push({ type: 'provider', providerKey, provider })
+    } else {
+      // Add provider header
+      items.push({ type: 'provider', providerKey, provider })
+      
+      if (provider.type === 'direct' && provider.models) {
+        // Add direct models
+        provider.models.forEach(model => {
+          items.push({ type: 'model', providerKey, model })
+        })
+      } else if (provider.type === 'grouped' && provider.groups) {
+        // Add grouped models
+        provider.groups.forEach(group => {
+          group.models.forEach(model => {
+            items.push({ type: 'model', providerKey, model, groupName: group.name })
+          })
+        })
+      }
+      
+      // Add separator after each provider
+      items.push({ type: 'separator' })
+    }
+  })
+
+  return items
+}
+  
   // Mobile detection
   const { isMobile } = useMobile(768)
+
+  const isGPT5Model = (modelValue: string): boolean => {
+    return ['gpt-5', 'gpt-5-mini', 'gpt-5-nano', 'gpt-5.6-terra', 'gpt-5.6-luna'].includes(modelValue)
+  }
 
   useEffect(() => {
     setTempAzureConfig(azureConfig)
@@ -707,6 +398,12 @@ export default function ModelSelector({
     return currentModel?.label || currentProvider?.label || 'Select Provider'
   }
 
+  const getTemperatureLabel = (temp: number) => {
+    if (temp <= 0.3) return 'Precise'
+    if (temp <= 0.7) return 'Balanced'
+    return 'Creative'
+  }
+
   // Reset mobile navigation when dropdown closes
   useEffect(() => {
     if (!isOpen) {
@@ -721,7 +418,7 @@ export default function ModelSelector({
         <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
-            className={`cursor-pointer flex-1 justify-between h-9 min-w-0 rounded-r-none border-r-0 bg-card hover:bg-muted/50 border-border text-foreground`}
+            className={`cursor-pointer flex-1 justify-between h-9 min-w-0 rounded-r-none border-r-0 bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-slate-100`}
           >
             <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
               {currentProvider && (
@@ -733,13 +430,13 @@ export default function ModelSelector({
                 {getDisplayText()}
               </span>
             </div>
-            <ChevronDown className={`ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4 shrink-0 transition-transform text-muted-foreground  ${isOpen ? 'rotate-180' : ''} ${
+            <ChevronDown className={`ml-1 sm:ml-2 h-3 w-3 sm:h-4 sm:w-4 shrink-0 transition-transform text-gray-400 dark:text-slate-500 ${isOpen ? 'rotate-180' : ''} ${
               DISABLE_SETTINGS ? 'opacity-50' : ''
             }`} />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent 
-          className="w-[calc(100vw-2rem)] sm:w-80 max-w-[380px] bg-card border-border" 
+          className="w-[calc(100vw-2rem)] sm:w-80 max-w-[380px] bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700" 
           align="start"
           side="bottom"
           sideOffset={4}
@@ -748,23 +445,159 @@ export default function ModelSelector({
         >
           {isMobile ? (
             // Mobile: Flattened menu
-            <MobileProviderMenu
-              selectedProvider={selectedProvider}
-              selectedModel={selectedModel}
-              expandedProvider={expandedProvider}
-              setExpandedProvider={setExpandedProvider}
-              handleProviderSelect={handleProviderSelect}
-              handleModelSelect={handleModelSelect}
-            />
+            Object.entries(modelProviders).map(([providerKey, provider]) => (
+              <div key={providerKey}>
+                {/* Provider Header */}
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    if (provider.type === 'config') {
+                      handleProviderSelect(providerKey)
+                    } else {
+                      e.preventDefault() // Prevent dropdown from closing
+                      e.stopPropagation() // Stop event bubbling
+                      setExpandedProvider(expandedProvider === providerKey ? null : providerKey)
+                    }
+                  }}
+                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-800 hover:bg-gray-100 dark:hover:bg-slate-700"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-5 h-5 rounded-full ${provider.color} flex items-center justify-center text-white flex-shrink-0`}>
+                      {getProviderIcon(providerKey) || <span className="text-xs font-bold">{provider.icon}</span>}
+                    </div>
+                    <span className="font-medium text-sm">{provider.label}</span>
+                    {isNew(provider.addedAt) && <NewBadge />}
+                    {provider.type === 'config' && <ExternalLink className="h-3 w-3 text-gray-400" />}
+                    {selectedProvider === providerKey && <Check className="h-3 w-3 text-blue-600" />}
+                  </div>
+                  {(provider.type === 'direct' || provider.type === 'grouped') && (
+                    <ChevronDown className={`h-4 w-4 transition-transform ${
+                      expandedProvider === providerKey ? 'rotate-180' : ''
+                    }`} />
+                  )}
+                </DropdownMenuItem>
+                
+                {/* Expanded Models */}
+                {expandedProvider === providerKey && provider.type === 'direct' && provider.models && (
+                  <div className="bg-white dark:bg-slate-900 border-l-2 border-gray-200 dark:border-slate-700 ml-4">
+                    {provider.models.map((model) => (
+                      <DropdownMenuItem
+                        key={model.value}
+                        onClick={() => handleModelSelect(providerKey, model.value)}
+                        className={`flex items-center justify-between px-4 py-3 ${
+                          selectedProvider === providerKey && selectedModel === model.value
+                            ? 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
+                            : 'hover:bg-gray-50 dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        <span className="flex items-center text-sm">
+                          {model.label}
+                          {isNew(model.addedAt) && <NewBadge />}
+                        </span>
+                        {selectedProvider === providerKey && selectedModel === model.value && (
+                          <Check className="h-3 w-3 text-blue-600" />
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                  </div>
+                )}
+                
+                {/* Grouped Models */}
+                {expandedProvider === providerKey && provider.type === 'grouped' && provider.groups && (
+                  <div className="bg-white dark:bg-slate-900 border-l-2 border-gray-200 dark:border-slate-700 ml-4">
+                    {provider.groups.map((group, groupIndex) => (
+                      <div key={group.name}>
+                        {groupIndex > 0 && <div className="border-t border-gray-200 dark:border-slate-700" />}
+                        <div className="px-4 py-2 bg-gray-100 dark:bg-slate-800">
+                          <h4 className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wide">
+                            {group.name}
+                          </h4>
+                        </div>
+                        <MobileGroupModelItems
+                          models={group.models}
+                          providerKey={providerKey}
+                          selectedProvider={selectedProvider}
+                          selectedModel={selectedModel}
+                          onSelect={handleModelSelect}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))
           ) : (
             // Desktop: Original submenu structure
-            <DesktopProviderMenu
-              selectedProvider={selectedProvider}
-              selectedModel={selectedModel}
-              disabled={DISABLE_SETTINGS}
-              handleProviderSelect={handleProviderSelect}
-              handleModelSelect={handleModelSelect}
-            />
+            Object.entries(modelProviders).map(([providerKey, provider]) => {
+              // Providers with submenus (direct models or grouped models)
+              if (provider.type === 'direct' || provider.type === 'grouped') {
+                return (
+                  <DropdownMenuSub key={providerKey}>
+                    <DropdownMenuSubTrigger className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-gray-900 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-gray-800 focus:bg-gray-50 dark:focus:bg-gray-800 ${
+                      DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}>
+                      <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full ${provider.color} flex items-center justify-center text-white flex-shrink-0`}>
+                        {getProviderIcon(providerKey) || <span className="text-xs font-bold">{provider.icon}</span>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm truncate">{provider.label}</span>
+                          {isNew(provider.addedAt) && <NewBadge />}
+                          {selectedProvider === providerKey && (
+                            <Check className="h-3 w-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                          )}
+                        </div>
+                        {provider.description && (
+                          <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{provider.description}</p>
+                        )}
+                      </div>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent 
+                      className="w-64 max-h-96 overflow-y-auto bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700"
+                      sideOffset={8}
+                      alignOffset={-4}
+                      avoidCollisions={true}
+                      collisionPadding={16}
+                    >
+                      <ProviderModelItems
+                        provider={provider}
+                        providerKey={providerKey}
+                        selectedProvider={selectedProvider}
+                        selectedModel={selectedModel}
+                        disabled={DISABLE_SETTINGS}
+                        onSelect={handleModelSelect}
+                      />
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                )
+              } else {
+                // Config providers (no submenu)
+                return (
+                  <DropdownMenuItem
+                    key={providerKey}
+                    onClick={() => handleProviderSelect(providerKey)}
+                    className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 text-gray-900 dark:text-slate-100 hover:bg-gray-50 dark:hover:bg-slate-800 focus:bg-gray-50 dark:focus:bg-slate-800 ${
+                      DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full ${provider.color} flex items-center justify-center text-white flex-shrink-0`}>
+                      {getProviderIcon(providerKey) || <span className="text-xs font-bold">{provider.icon}</span>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm truncate">{provider.label}</span>
+                        <ExternalLink className="h-3 w-3 text-gray-400 dark:text-slate-500 flex-shrink-0" />
+                        {selectedProvider === providerKey && (
+                          <Check className="h-3 w-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                        )}
+                      </div>
+                      {provider.description && (
+                        <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{provider.description}</p>
+                      )}
+                    </div>
+                  </DropdownMenuItem>
+                )
+              }
+            })
           )}
         </DropdownMenuContent>
       </DropdownMenu>
@@ -775,42 +608,156 @@ export default function ModelSelector({
           <Button
             variant="outline"
             size="sm"
-            className={`cursor-pointer h-9 w-8 sm:w-9 rounded-l-none border-l-0 bg-card hover:bg-muted/50 border-border flex-shrink-0`}
+            className={`cursor-pointer h-9 w-8 sm:w-9 rounded-l-none border-l-0 bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 border-gray-200 dark:border-slate-700 flex-shrink-0`}
           >
-            <Settings className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+            <Settings className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500 dark:text-slate-400" />
           </Button>
         </PopoverTrigger>
         <PopoverContent 
-          className="w-[calc(100vw-2rem)] sm:w-80 max-w-[380px] p-3 sm:p-4 bg-card border-border" 
+          className="w-[calc(100vw-2rem)] sm:w-80 max-w-[380px] p-3 sm:p-4 bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700" 
           align="end"
           side="bottom"
           sideOffset={4}
           avoidCollisions={true}
           collisionPadding={16}
         >
-          <TemperaturePanel
-            selectedProvider={selectedProvider}
-            selectedModel={selectedModel}
-            temperature={temperature}
-            disabled={DISABLE_SETTINGS}
-            currentProvider={currentProvider}
-            currentModel={currentModel}
-            onTemperatureChange={onTemperatureChange}
-          />
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium text-sm text-gray-900 dark:text-slate-100">Temperature</h4>
+                  <p className="text-xs text-gray-500 dark:text-slate-400">
+                    {isGPT5Model(selectedModel)
+                      ? 'Selected model only supports temperature of 1'
+                      : 'Controls response creativity'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 sm:gap-2">
+                  <Badge variant="outline" className="font-mono text-xs border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-300">
+                    {temperature.toFixed(2)}
+                  </Badge>
+                  {!isGPT5Model(selectedModel) && (
+                    <Badge variant="secondary" className="text-xs bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hidden sm:inline-flex">
+                      {getTemperatureLabel(temperature)}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              <div title={isGPT5Model(selectedModel) ? 'Selected model only supports temperature of 1' : undefined}>
+                <Slider
+                  value={[isGPT5Model(selectedModel) ? 1 : temperature]}
+                  onValueChange={DISABLE_SETTINGS || isGPT5Model(selectedModel) ? () => {} : (value) => onTemperatureChange(value[0])}
+                  max={1}
+                  min={0}
+                  step={0.01}
+                  className={`w-full ${DISABLE_SETTINGS || isGPT5Model(selectedModel) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={DISABLE_SETTINGS || isGPT5Model(selectedModel)}
+                />
+              </div>
+              <div className="flex justify-between text-xs text-gray-500 dark:text-slate-400">
+                <span>Focused</span>
+                <span className="hidden sm:inline">Balanced</span>
+                <span>Creative</span>
+              </div>
+            </div>
+            
+            {currentProvider && (
+              <div className="border-t pt-3 border-gray-200 dark:border-slate-700">
+                <div className="space-y-2">
+                  <h4 className="font-medium text-sm text-gray-900 dark:text-slate-100">Current Selection</h4>
+                  <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-50 dark:bg-slate-800 rounded-lg">
+                    <div className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full ${currentProvider.color} flex items-center justify-center text-white flex-shrink-0`}>
+                      {getProviderIcon(selectedProvider) || <span className="text-xs font-bold">{currentProvider.icon}</span>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-slate-100 truncate">{currentProvider.label}</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 truncate">
+                        {currentModel?.label || 'No model selected'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </PopoverContent>
       </Popover>
 
       {/* Azure Configuration Dialog */}
-      <AzureConfigDialog
-        open={isAzureDialogOpen}
-        onOpenChange={setIsAzureDialogOpen}
-        disabled={DISABLE_SETTINGS}
-        tempAzureModel={tempAzureModel}
-        setTempAzureModel={setTempAzureModel}
-        tempAzureConfig={tempAzureConfig}
-        setTempAzureConfig={setTempAzureConfig}
-        onSave={handleAzureConfigSave}
-      />
+      <Dialog open={isAzureDialogOpen && !DISABLE_SETTINGS} onOpenChange={DISABLE_SETTINGS ? () => {} : setIsAzureDialogOpen}>
+        <DialogContent className="w-[calc(100vw-2rem)] sm:w-full max-w-md bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700 mx-4">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-slate-100">
+              <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-blue-500 flex items-center justify-center text-white flex-shrink-0">
+                <Cloud className="h-3 w-3" />
+              </div>
+              <span className="truncate">Configure Azure OpenAI</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-gray-700 dark:text-slate-300">Model</Label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {modelProviders.azure_openai.models?.map((model) => (
+                  <button
+                    key={model.value}
+                    type="button"
+                    onClick={DISABLE_SETTINGS ? undefined : () => setTempAzureModel(model.value)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs font-medium transition-colors text-left ${
+                      tempAzureModel === model.value
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300'
+                        : 'border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-300'
+                    } ${DISABLE_SETTINGS ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  >
+                    {tempAzureModel === model.value && (
+                      <Check className="h-3 w-3 text-blue-600 dark:text-blue-400 shrink-0" />
+                    )}
+                    <span className="truncate">{model.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="endpoint" className="text-gray-700 dark:text-slate-300">Azure Endpoint</Label>
+              <Input
+                id="endpoint"
+                placeholder="https://your-resource.cognitiveservices.azure.com/"
+                value={tempAzureConfig.endpoint || "https://pype-azure-openai.cognitiveservices.azure.com/"}
+                onChange={DISABLE_SETTINGS ? () => {} : (e) => setTempAzureConfig(prev => ({ ...prev, endpoint: e.target.value }))}
+                className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 text-gray-900 dark:text-slate-100 text-sm"
+                disabled={DISABLE_SETTINGS}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="apiVersion" className="text-gray-700 dark:text-slate-300">API Version</Label>
+              <Input
+                id="apiVersion"
+                placeholder="2024-12-01-preview"
+                value={tempAzureConfig.apiVersion || "2024-12-01-preview"}
+                onChange={DISABLE_SETTINGS ? () => {} : (e) => setTempAzureConfig(prev => ({ ...prev, apiVersion: e.target.value }))}
+                className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-600 text-gray-900 dark:text-slate-100 text-sm"
+                disabled={DISABLE_SETTINGS}
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsAzureDialogOpen(false)}
+              className="border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-300 w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleAzureConfigSave} 
+              className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
+              disabled={DISABLE_SETTINGS}
+            >
+              Save Configuration
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

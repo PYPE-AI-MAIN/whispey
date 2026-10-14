@@ -126,7 +126,7 @@ export function formatTotalCountLabel(
 
 function getHeaderCellClassName(columnId: string): string {
   return cn(
-    "px-6 truncate border-2 border-r-black border-b-2 border-border py-1.5 text-left font-semibold text-sm leading-tight text-foreground dark:text-gray-100",
+    "px-6 truncate border-2 border-r-black border-b-2 border-gray-200 dark:border-gray-800 py-1.5 text-left font-semibold text-sm leading-tight text-foreground dark:text-gray-100",
     getColumnGroupBgClass(columnId)
   )
 }
@@ -215,12 +215,12 @@ function getRowClassName(isNavigatingRow: boolean, isSelected: boolean, isFlagge
 
 function getCellClassName(rowIndex: number, isSelected: boolean): string {
   return cn(
-    "px-4 py-1 text-sm border-2 dark:text-gray-100 border-border leading-tight h-20",
+    "px-4 py-1 text-sm border-2 dark:text-gray-100 border-gray-200 dark:border-gray-800 leading-tight h-20",
     rowIndex === 0 && "border-t-0",
     // Cells already carry their own color (score badges, status pills) —
     // tinting the cell background too just fights with that. The header tint
     // alone is enough to tell which section a column belongs to.
-    isSelected && "bg-primary/15",
+    isSelected && "bg-blue-100 dark:bg-blue-900/40",
   )
 }
 
@@ -806,14 +806,14 @@ const CallLogs: React.FC<CallLogsProps> = ({
     return (
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <div className="flex-none p-4 border-b bg-background/95 dark:bg-gray-900/95">
-          <div className="h-8 bg-destructive/15 text-destructive px-4 rounded-lg flex items-center w-fit">
+          <div className="h-8 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-4 rounded-lg flex items-center w-fit">
             <AlertCircle className="w-4 h-4 mr-2" />
             Unable to load calls
           </div>
         </div>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
-            <AlertCircle className="w-12 h-12 text-destructive mx-auto" />
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
             <h3 className="text-lg font-semibold">{error}</h3>
             {activeFilters.length > 0 && (
               <Button variant="outline" size="sm" onClick={handleClearFilters}>
@@ -827,10 +827,10 @@ const CallLogs: React.FC<CallLogsProps> = ({
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-muted/50">
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-gray-50 dark:bg-gray-900">
 
       {/* ── Header ────────────────────────────────────────────────────────── */}
-      <div className="flex-none relative p-4 border-b border-border bg-background/95 dark:bg-gray-900/95">
+      <div className="flex-none relative p-4 border-b border-gray-200 dark:border-gray-700 bg-background/95 dark:bg-gray-900/95">
         <div className="flex items-center justify-between flex-wrap gap-y-2">
           <div className="flex items-center flex-wrap gap-2">
             <CallFilter
@@ -861,28 +861,28 @@ const CallLogs: React.FC<CallLogsProps> = ({
               <RefreshCw className={cn('h-3 w-3', (isLoading || isRefetching) && 'animate-spin')} />
             </Button>
             {selectedIds.size > 0 && (
-              <div className="flex h-8 items-center gap-1 rounded-md border border-border bg-muted pl-3 pr-1">
-                <span className="whitespace-nowrap text-xs font-medium text-foreground">
+              <div className="flex h-8 items-center gap-1 rounded-md border border-gray-200 bg-gray-100 pl-3 pr-1 dark:border-gray-700 dark:bg-gray-800">
+                <span className="whitespace-nowrap text-xs font-medium text-gray-700 dark:text-gray-300">
                   {selectedIds.size} selected
                 </span>
-                <div className="mx-1 h-4 w-px bg-muted-foreground/30" />
+                <div className="mx-1 h-4 w-px bg-gray-300 dark:bg-gray-600" />
                 <Button
                   variant="ghost" size="sm"
-                  className="h-6 px-2 text-xs font-normal text-foreground"
+                  className="h-6 px-2 text-xs font-normal text-gray-700 dark:text-gray-300"
                   onClick={handleCopySelected}
                 >
                   {copyFeedback ? 'Copied!' : 'Copy JSON'}
                 </Button>
                 <Button
                   variant="ghost" size="sm"
-                  className="h-6 px-2 text-xs font-normal text-foreground"
+                  className="h-6 px-2 text-xs font-normal text-gray-700 dark:text-gray-300"
                   onClick={handleExportSelected}
                 >
                   Export CSV
                 </Button>
                 <Button
                   variant="ghost" size="sm"
-                  className="h-6 w-6 p-0 text-foreground"
+                  className="h-6 w-6 p-0 text-gray-700 dark:text-gray-300"
                   aria-label="Clear selection"
                   onClick={() => setSelectedIds(new Set())}
                 >
@@ -1001,7 +1001,7 @@ const CallLogs: React.FC<CallLogsProps> = ({
         </div>
 
         {/* ── Pagination bar ────────────────────────────────────────────────── */}
-        <div className="flex-none flex items-center justify-between px-4 py-2 border-t border-border bg-background/95 dark:bg-gray-900/95">
+        <div className="flex-none flex items-center justify-between px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-background/95 dark:bg-gray-900/95">
 
           {/* Row range label */}
           <span className="text-sm text-muted-foreground min-w-[100px]">

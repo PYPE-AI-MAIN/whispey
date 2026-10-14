@@ -4,8 +4,8 @@ import React, { useState } from 'react'
 import { buildSideBySideRows, hasChanges } from '@/lib/configDiff'
 
 const TONE_STYLES = {
-  left: { bg: 'bg-red-500/10', marker: '−', color: 'text-destructive' },
-  right: { bg: 'bg-green-500/10', marker: '+', color: 'text-success' },
+  left: { bg: 'bg-red-500/10', marker: '−', color: 'text-red-500' },
+  right: { bg: 'bg-green-500/10', marker: '+', color: 'text-green-500' },
 } as const
 
 function cellKey(row: { left: { num: number } | null; right: { num: number } | null }, prefix: string): string {

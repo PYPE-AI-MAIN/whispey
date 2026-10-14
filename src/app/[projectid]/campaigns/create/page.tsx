@@ -531,9 +531,9 @@ function CreateCampaign() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-card">
+    <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
       {/* Header */}
-      <div className="px-6 py-4 border-border bg-card border-b shadow-sm">
+      <div className="px-6 py-4 border-border bg-background border-b shadow-sm">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -565,8 +565,8 @@ function CreateCampaign() {
               <div className="max-w-2xl mx-auto p-4 space-y-4">
                 {loadingConfig ? (
                   <div className="flex items-center justify-center p-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                    <span className="ml-2 text-sm text-muted-foreground">Loading configuration...</span>
+                    <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                    <span className="ml-2 text-sm text-gray-500">Loading configuration...</span>
                   </div>
                 ) : (
                   <>

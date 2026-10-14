@@ -4,8 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "echo 'Node version:' && node --version && echo 'NPM version:' && npm --version && npm run build:docs && next build",
-    "build:docs": "npm --prefix docs-site ci && DOCS_BASE_URL=/docs/ DOCUSAURUS_GENERATED_FILES_DIR_NAME=.docusaurus-app DOCUSAURUS_NO_PERSISTENT_CACHE=1 npm --prefix docs-site run build -- --out-dir ../.docs-build",
+    "build": "echo 'Node version:' && node --version && echo 'NPM version:' && npm --version && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",

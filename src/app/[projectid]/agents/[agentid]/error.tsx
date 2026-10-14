@@ -18,9 +18,9 @@ export default function AgentPageError({ error, reset }: Readonly<{ error: Error
 
   return (
     <div className="flex h-full min-h-[60vh] flex-col items-center justify-center gap-3 p-8 text-center">
-      <AlertTriangle className="h-5 w-5 text-muted-foreground" />
-      <p className="text-sm text-muted-foreground">Something on this page stopped working.</p>
-      <p className="max-w-md text-xs text-muted-foreground">
+      <AlertTriangle className="h-5 w-5 text-gray-400" />
+      <p className="text-sm text-gray-600 dark:text-gray-300">Something on this page stopped working.</p>
+      <p className="max-w-md text-xs text-gray-400">
         Nothing was lost — your dashboard is saved. Try again, and if it keeps happening the reference is{' '}
         <span className="font-mono">{error.digest ?? 'not recorded'}</span>.
       </p>

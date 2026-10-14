@@ -10,12 +10,12 @@ const ToolbarSkeleton = () => (
     <div className="flex items-center gap-4">
       {/* Search skeleton */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
         <Skeleton className="h-9 w-64" />
       </div>
 
       {/* View toggle skeleton */}
-      <div className="flex items-center border border-border rounded-md">
+      <div className="flex items-center border border-gray-200 dark:border-gray-700 rounded-md">
         <Skeleton className="h-8 w-8 m-0.5" />
         <Skeleton className="h-8 w-8 m-0.5" />
       </div>
@@ -30,7 +30,7 @@ const ToolbarSkeleton = () => (
 
 // Agent Card Skeleton (for grid view)
 const AgentCardSkeleton = () => (
-  <div className="rounded-xl border border-border bg-card shadow-sm p-4 space-y-4">
+  <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 space-y-4">
     <div className="flex items-start justify-between">
       <div className="space-y-2 flex-1">
         <Skeleton className="h-5 w-3/4" />
@@ -60,7 +60,7 @@ const AgentCardSkeleton = () => (
 
 // Agent Row Skeleton (for list view)
 const AgentRowSkeleton = () => (
-  <div className="rounded-xl border border-border bg-card shadow-sm p-4">
+  <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4">
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-4 flex-1">
         <div className="space-y-2">
@@ -92,7 +92,7 @@ const AgentRowSkeleton = () => (
 
 const AgentSelectionSkeleton = () => {
   return (
-    <div className="min-h-screen bg-muted/50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="max-w-6xl mx-auto px-8 py-8">
         <ToolbarSkeleton />
         <div className="space-y-4">

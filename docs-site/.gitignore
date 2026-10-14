@@ -1,6 +1,3 @@
 node_modules
 build
 .docusaurus
-
-# generated files for the in-app build (npm run build:docs in the app)
-.docusaurus-app

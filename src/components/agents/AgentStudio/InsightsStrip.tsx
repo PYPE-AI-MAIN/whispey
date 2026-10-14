@@ -66,14 +66,14 @@ function InsightValue({
 }: Readonly<{ def: InsightDef; value: number | null; loading: boolean; failure?: string }>) {
   if (value !== null) {
     return (
-      <span className="text-2xl font-semibold tabular-nums text-foreground">
+      <span className="text-2xl font-semibold tabular-nums text-gray-900 dark:text-gray-50">
         {def.format(value)}
       </span>
     )
   }
   if (loading) return <Loader2 className="h-4 w-4 animate-spin text-gray-300 dark:text-gray-600" />
   if (failure) {
-    return <span className="text-xs text-muted-foreground">Unavailable — refresh to retry</span>
+    return <span className="text-xs text-gray-400 dark:text-gray-500">Unavailable — refresh to retry</span>
   }
   return <span className="text-2xl font-semibold text-gray-300 dark:text-gray-700">—</span>
 }
@@ -91,9 +91,9 @@ function InsightCard({
 }: Readonly<{ def: InsightDef; value: number | null; loading: boolean; failure?: string }>) {
   const defined = !!def.spec
   return (
-    <div className="flex flex-col rounded-xl border border-border bg-card px-4 pb-3 pt-3 shadow-sm transition-colors hover:border-border">
+    <div className="flex flex-col rounded-xl border border-gray-200 bg-white px-4 pb-3 pt-3 shadow-sm transition-colors hover:border-gray-300 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700">
       <div className="flex items-center gap-1.5">
-        <h3 className="truncate text-xs font-medium text-muted-foreground">
+        <h3 className="truncate text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
           {def.title}
         </h3>
         <TooltipProvider>
@@ -146,7 +146,7 @@ export default function InsightsStrip({ agentId }: Readonly<{ agentId: string }>
   return (
     <div>
       <div className="mb-2 flex items-center justify-between px-0.5">
-        <span className="text-[11px] text-muted-foreground">Overall</span>
+        <span className="text-[11px] text-gray-400 dark:text-gray-500">Overall</span>
         {isFetching && <Loader2 className="h-3 w-3 animate-spin text-gray-300 dark:text-gray-600" />}
       </div>
       <div className="grid grid-cols-2 gap-3">

@@ -45,10 +45,10 @@ export function FormulaCard({
   return (
     <div
       className={cn(
-        'group relative flex h-full flex-col overflow-hidden rounded-xl border bg-card shadow-sm transition-colors',
+        'group relative flex h-full flex-col overflow-hidden rounded-xl border bg-white shadow-sm transition-colors dark:bg-gray-900',
         selected
           ? 'border-blue-500 ring-1 ring-blue-500/30 dark:border-blue-400'
-          : 'border-border hover:border-border'
+          : 'border-gray-200 hover:border-gray-300 dark:border-gray-800 dark:hover:border-gray-700'
       )}
     >
       <button
@@ -72,7 +72,7 @@ export function FormulaCard({
                 <GripVertical className="h-3.5 w-3.5" />
               </button>
             )}
-            <h3 className="truncate text-xs font-medium text-muted-foreground">
+            <h3 className="truncate text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
               {widget.title}
             </h3>
             {/* the same "how is this calculated" affordance every other card
@@ -97,8 +97,8 @@ export function FormulaCard({
             </TooltipProvider>
           </div>
 
-          <div className="mt-0.5 min-w-0 text-[11px] text-muted-foreground">
-            <span className="line-clamp-1 text-muted-foreground/80" title={definition}>
+          <div className="mt-0.5 min-w-0 text-[11px] text-gray-400">
+            <span className="line-clamp-1 text-gray-400/80 dark:text-gray-500" title={definition}>
               {definition}
             </span>
           </div>
@@ -109,7 +109,7 @@ export function FormulaCard({
             type="button"
             aria-label={`Remove ${widget.title}`}
             onClick={onRemove}
-            className="pointer-events-auto shrink-0 rounded p-1 text-muted-foreground opacity-0 transition hover:bg-muted hover:text-destructive group-hover:opacity-100 focus:opacity-100"
+            className="pointer-events-auto shrink-0 rounded p-1 text-gray-400 opacity-0 transition hover:bg-gray-100 hover:text-red-600 group-hover:opacity-100 focus:opacity-100 dark:hover:bg-gray-800"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
@@ -150,9 +150,9 @@ function FormulaValue({
     <div className="flex h-full flex-col justify-center overflow-hidden">
       <div
         className={cn(
-          'truncate font-semibold tabular-nums text-foreground',
+          'truncate font-semibold tabular-nums text-gray-900 dark:text-gray-50',
           short ? 'text-2xl' : 'text-3xl',
-          value === null && 'text-muted-foreground'
+          value === null && 'text-gray-400 dark:text-gray-500'
         )}
       >
         {value === null
@@ -165,8 +165,8 @@ function FormulaValue({
 
 function State({ icon, text, tone }: Readonly<{ icon: React.ReactNode; text: string; tone: 'warn' | 'muted' }>) {
   return (
-    <div className="flex h-full items-center gap-1.5 text-xs text-muted-foreground">
-      <span className={tone === 'warn' ? 'text-warning' : 'text-muted-foreground'}>{icon}</span>
+    <div className="flex h-full items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+      <span className={tone === 'warn' ? 'text-amber-500' : 'text-gray-400'}>{icon}</span>
       <span className="line-clamp-2">{text}</span>
     </div>
   )

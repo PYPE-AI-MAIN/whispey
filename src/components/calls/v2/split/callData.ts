@@ -43,15 +43,7 @@ export function splitTranscriptionMetrics(call: CallLog) {
 
 export function visibleMetadata(call: CallLog): Array<[string, unknown]> {
   const meta: Record<string, unknown> = call.metadata && typeof call.metadata === "object" ? call.metadata : {}
-  return Object.entries(meta).filter(([key]) => key !== WORKFLOW_PATH_KEY && !EXCLUDED_METADATA_COLUMNS.includes(key))
-}
-
-const WORKFLOW_PATH_KEY = "workflow_path"
-
-/** The steps a workflow call went through, in order (the voice agent writes them joined by " > "). */
-export function workflowPath(call: CallLog): string[] {
-  const raw = call.metadata && typeof call.metadata === "object" ? (call.metadata as Record<string, unknown>)[WORKFLOW_PATH_KEY] : null
-  return typeof raw === "string" && raw ? raw.split(" > ") : []
+  return Object.entries(meta).filter(([key]) => !EXCLUDED_METADATA_COLUMNS.includes(key))
 }
 
 /**

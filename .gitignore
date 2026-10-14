@@ -78,5 +78,3 @@ Thumbs.db
 # local scratch tooling (personal, not part of the shipped repo)
 /_sonar-check.mjs
 .scannerwork
-# docs-site built for the app (npm run build:docs)
-/.docs-build

@@ -54,28 +54,28 @@ export function SuggestedStrip({
 
   return (
     <div className="mt-4">
-      <h2 className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+      <h2 className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
         <Sparkles className="h-3 w-3" /> Suggested
       </h2>
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         {offers.map((s) => (
           <div
             key={s.title}
-            className="group/suggestion flex items-start gap-2 rounded-lg border border-dashed border-border bg-muted/50 px-3 py-2.5 transition hover:border-blue-400 hover:bg-blue-50/40 dark:hover:border-blue-500 dark:hover:bg-blue-950/20"
+            className="group/suggestion flex items-start gap-2 rounded-lg border border-dashed border-gray-300 bg-gray-50/50 px-3 py-2.5 transition hover:border-blue-400 hover:bg-blue-50/40 dark:border-gray-700 dark:bg-gray-900/40 dark:hover:border-blue-500 dark:hover:bg-blue-950/20"
           >
-            <span className="mt-0.5 shrink-0 text-muted-foreground">{ICON[s.kind] ?? ICON.bar}</span>
+            <span className="mt-0.5 shrink-0 text-gray-400">{ICON[s.kind] ?? ICON.bar}</span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-medium text-foreground" title={s.title}>
+              <p className="truncate text-xs font-medium text-gray-700 dark:text-gray-200" title={s.title}>
                 {s.title}
               </p>
               {/* a suggestion without a reason is noise (§11.3) */}
-              <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">{s.why}</p>
+              <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-gray-400 dark:text-gray-500">{s.why}</p>
             </div>
             <div className="flex shrink-0 items-center gap-0.5">
               <button
                 onClick={() => onAdd(s.title, s.kind, s.spec)}
                 aria-label={`Add ${s.title}`}
-                className="rounded p-1 text-muted-foreground transition hover:bg-primary/15 hover:text-primary"
+                className="rounded p-1 text-gray-400 transition hover:bg-blue-100 hover:text-blue-700 dark:hover:bg-blue-900/50 dark:hover:text-blue-300"
               >
                 <Plus className="h-3.5 w-3.5" />
               </button>

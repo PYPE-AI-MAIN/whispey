@@ -212,7 +212,7 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
       </div>
     )
   }
@@ -222,17 +222,17 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
       {/* Call-back Window Section */}
       <div className="space-y-4">
         <div className="space-y-1">
-          <h3 className="text-sm font-semibold text-foreground">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
             Allowed Call-back Window
           </h3>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             Callbacks requested outside this window are deferred to the next available slot. 24-hour format.
           </p>
         </div>
 
         <div className="flex items-end gap-2">
           <div className="flex-1 space-y-2">
-            <Label htmlFor="cb-start" className="text-xs font-medium text-foreground">
+            <Label htmlFor="cb-start" className="text-xs font-medium text-gray-700 dark:text-gray-300">
               Start (From)
             </Label>
             <Input
@@ -245,9 +245,9 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
               className="text-sm"
             />
           </div>
-          <ArrowRight className="w-4 h-4 text-muted-foreground mb-2.5 shrink-0" />
+          <ArrowRight className="w-4 h-4 text-gray-400 mb-2.5 shrink-0" />
           <div className="flex-1 space-y-2">
-            <Label htmlFor="cb-end" className="text-xs font-medium text-foreground">
+            <Label htmlFor="cb-end" className="text-xs font-medium text-gray-700 dark:text-gray-300">
               End (To)
             </Label>
             <Input
@@ -262,7 +262,7 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
           </div>
         </div>
 
-        <div className="text-xs px-3 py-2 bg-muted/50 rounded border border-border text-muted-foreground">
+        <div className="text-xs px-3 py-2 bg-gray-50 dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300">
           Callbacks allowed from{' '}
           <span className="font-mono font-semibold">{formatTime12h(form.timeWindow.startTime)}</span>{' '}
           to{' '}
@@ -271,14 +271,14 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
         </div>
 
         {crossesMidnight && (
-          <div className="flex items-start gap-2 text-xs px-3 py-2 bg-warning/10 rounded border border-warning/30 text-warning">
+          <div className="flex items-start gap-2 text-xs px-3 py-2 bg-amber-50 dark:bg-amber-900/20 rounded border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300">
             <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
             <span>End time must be after start time. Overnight windows are not supported.</span>
           </div>
         )}
 
         <div className="space-y-2">
-          <Label className="text-xs font-medium text-foreground">Timezone</Label>
+          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Timezone</Label>
           <Select
             value={form.timezone}
             onValueChange={(v) => setForm((p) => ({ ...p, timezone: v }))}
@@ -295,7 +295,7 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
         </div>
 
         <div className="space-y-2">
-          <Label className="text-xs font-medium text-foreground">Allowed Days</Label>
+          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Allowed Days</Label>
           <div className="flex flex-wrap gap-1.5">
             {DAYS.map((day) => (
               <button
@@ -305,7 +305,7 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
                 className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                   form.allowedDays.includes(day)
                     ? 'bg-blue-600 border-blue-600 text-white'
-                    : 'bg-card border-border text-muted-foreground hover:border-blue-400'
+                    : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-blue-400'
                 }`}
               >
                 {DAY_LABELS[day]}
@@ -318,26 +318,24 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
       {/* Phone Number Configuration Section */}
       <div className="space-y-4">
         <div className="space-y-1">
-          <h3 className="text-sm font-semibold text-foreground">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
             Outbound Phone Number
           </h3>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             Number used to place callbacks. Leave as &quot;None&quot; to reuse the original call&apos;s number.
           </p>
         </div>
 
-        {loadingPhones && (
+        {loadingPhones ? (
           <div className="flex items-center gap-2 py-2">
-            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Loading phone numbers...</span>
+            <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+            <span className="text-xs text-gray-500">Loading phone numbers...</span>
           </div>
-        )}
-        {!loadingPhones && phoneNumbers.length === 0 && (
-          <div className="text-xs text-muted-foreground py-2 px-3 bg-muted/50 rounded border border-border">
+        ) : phoneNumbers.length === 0 ? (
+          <div className="text-xs text-gray-500 dark:text-gray-400 py-2 px-3 bg-gray-50 dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-700">
             No outbound phone numbers available. Configure phone numbers in SIP Management.
           </div>
-        )}
-        {!loadingPhones && phoneNumbers.length !== 0 && (
+        ) : (
           <Select
             value={
               form.phoneNumberId
@@ -366,12 +364,12 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
               {phoneNumbers.map((phone) => (
                 <SelectItem key={`${phone.source}-${phone.id}`} value={`${phone.source}:${phone.id}`}>
                   <div className="flex items-center gap-2">
-                    <Phone className="w-3.5 h-3.5 text-muted-foreground" />
+                    <Phone className="w-3.5 h-3.5 text-gray-400" />
                     <span className="font-mono text-xs">{phone.phone_number}</span>
                     {phone.provider && (
-                      <span className="text-muted-foreground text-xs">({phone.provider})</span>
+                      <span className="text-gray-500 text-xs">({phone.provider})</span>
                     )}
-                    <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                    <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                       {phone.source}
                     </span>
                   </div>
@@ -381,7 +379,7 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
           </Select>
         )}
         {selectedPhone && (
-          <div className="text-xs text-muted-foreground space-y-1 px-2 py-1.5 bg-muted/50 rounded border border-border">
+          <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1 px-2 py-1.5 bg-gray-50 dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-700">
             <p>
               <span className="font-medium">Selected:</span>{' '}
               <span className="font-mono">{selectedPhone.phone_number}</span>
@@ -399,15 +397,15 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
       {/* Limits Section */}
       <div className="space-y-4">
         <div className="space-y-1">
-          <h3 className="text-sm font-semibold text-foreground">Limits &amp; Defaults</h3>
-          <p className="text-xs text-muted-foreground">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Limits &amp; Defaults</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             Bounds that protect against abusive or malformed callback requests.
           </p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label className="text-xs font-medium text-foreground">Max Future Days</Label>
+            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Max Future Days</Label>
             <Input
               type="number"
               min={1}
@@ -418,13 +416,13 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
               }
               className="text-sm"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               Rejects requests beyond this horizon (e.g. &quot;call me in 5 years&quot;).
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs font-medium text-foreground">
+            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
               Max Callbacks / Contact
             </Label>
             <Input
@@ -437,13 +435,13 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
               }
               className="text-sm"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               Prevents infinite callback loops for the same phone number.
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs font-medium text-foreground">Min Delay (min)</Label>
+            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Min Delay (min)</Label>
             <Input
               type="number"
               min={1}
@@ -454,13 +452,13 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
               }
               className="text-sm"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               Floor for every callback (processor runs every 1 min).
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-xs font-medium text-foreground">Default Delay (min)</Label>
+            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Default Delay (min)</Label>
             <Input
               type="number"
               min={form.minDelayMinutes}
@@ -471,7 +469,7 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
               }
               className="text-sm"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
               Used when the caller&apos;s timing is vague.
             </p>
           </div>
@@ -479,13 +477,13 @@ export default function CallbackSettings({ agentId, projectId, agentRuntime, pip
       </div>
 
       {/* Enable/Disable + Save (matches DropOffCallSettings) */}
-      <div className="pt-4 space-y-3 border-t border-border">
-        <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border">
+      <div className="pt-4 space-y-3 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="flex flex-col">
-            <Label className="text-sm font-medium text-foreground">
+            <Label className="text-sm font-medium text-gray-900 dark:text-gray-100">
               Enable Callback Scheduling
             </Label>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
               Auto-schedule callbacks when a caller asks to be called back.
             </p>
           </div>

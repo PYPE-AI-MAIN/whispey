@@ -244,7 +244,7 @@ const DynamicTTSSwitch: React.FC<Readonly<DynamicTTSSwitchProps>> = ({
   return (
     <div className="w-full space-y-3">
       <div className="flex flex-col gap-2">
-        <CardDescription className="text-xs text-muted-foreground">
+        <CardDescription className="text-xs text-gray-600 dark:text-gray-400">
           Add TTS providers that can be switched during conversation
         </CardDescription>
         <Button
@@ -259,7 +259,7 @@ const DynamicTTSSwitch: React.FC<Readonly<DynamicTTSSwitchProps>> = ({
       </div>
       <div className="space-y-2">
         {dynamicTTSList.length === 0 ? (
-          <div className="text-center py-8 text-sm text-muted-foreground">
+          <div className="text-center py-8 text-sm text-gray-500 dark:text-gray-400">
             <Sparkles className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
             <p>No dynamic TTS configurations</p>
             <p className="text-xs mt-1">Click "Add" to create a new TTS switch</p>
@@ -269,18 +269,18 @@ const DynamicTTSSwitch: React.FC<Readonly<DynamicTTSSwitchProps>> = ({
             {dynamicTTSList.map((config, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors"
+                className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-medium text-foreground">
+                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       {config.tool_name}
                     </span>
                     <Badge variant="secondary" className="text-xs">
                       {getProviderDisplayName(config.name)}
                     </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground line-clamp-2">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">
                     {config.description}
                   </p>
                 </div>
@@ -297,7 +297,7 @@ const DynamicTTSSwitch: React.FC<Readonly<DynamicTTSSwitchProps>> = ({
                     variant="ghost"
                     size="sm"
                     onClick={() => handleDelete(index)}
-                    className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </Button>
@@ -310,9 +310,9 @@ const DynamicTTSSwitch: React.FC<Readonly<DynamicTTSSwitchProps>> = ({
 
       {/* Add/Edit Dialog */}
         <Dialog open={isAddDialogOpen} onOpenChange={(v) => { setIsAddDialogOpen(v); if (!v) setToolNameError(null) }}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-card border border-border">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <DialogHeader>
-              <DialogTitle className="text-foreground">
+              <DialogTitle className="text-gray-900 dark:text-gray-100">
                 {editingIndex !== null ? 'Edit Dynamic TTS' : 'Add Dynamic TTS'}
               </DialogTitle>
             </DialogHeader>
@@ -320,8 +320,8 @@ const DynamicTTSSwitch: React.FC<Readonly<DynamicTTSSwitchProps>> = ({
             <div className="space-y-6 py-4">
               {/* Tool Name */}
               <div className="space-y-2">
-                <Label htmlFor="tool-name" className="text-sm font-medium text-foreground">
-                  Tool Name <span className="text-destructive">*</span>
+                <Label htmlFor="tool-name" className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  Tool Name <span className="text-red-500">*</span>
                 </Label>
                 <input
                   id="tool-name"
@@ -330,37 +330,37 @@ const DynamicTTSSwitch: React.FC<Readonly<DynamicTTSSwitchProps>> = ({
                   maxLength={30}
                   onChange={(e) => { setCurrentConfig(prev => ({ ...prev, tool_name: e.target.value.replaceAll(/\s/g, '_') })); setToolNameError(null) }}
                   placeholder="e.g., switch_to_hindi"
-                  className={`w-full px-3 py-2 text-sm border rounded-md bg-card text-foreground placeholder:text-muted-foreground ${toolNameError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                  className={`w-full px-3 py-2 text-sm border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 ${toolNameError ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                 />
                 {toolNameError
-                  ? <p className="text-xs text-destructive">{toolNameError}</p>
-                  : <p className="text-xs text-muted-foreground">Unique identifier for this TTS switch (used as tool name)</p>
+                  ? <p className="text-xs text-red-500">{toolNameError}</p>
+                  : <p className="text-xs text-gray-500 dark:text-gray-400">Unique identifier for this TTS switch (used as tool name)</p>
                 }
               </div>
 
               {/* When to Switch - Description */}
               <div className="space-y-2">
-                <Label htmlFor="description" className="text-sm font-medium text-foreground">
-                  When to Switch <span className="text-destructive">*</span>
+                <Label htmlFor="description" className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  When to Switch <span className="text-red-500">*</span>
                 </Label>
                 <Textarea
                   id="description"
                   value={currentConfig.description || ''}
                   onChange={(e) => setCurrentConfig(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="e.g., Switch to Hindi voice when user speaks in Hindi or requests Hindi"
-                  className="min-h-[80px] text-sm resize-none bg-card text-foreground border-border"
+                  className="min-h-[80px] text-sm resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600"
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   Describe when the agent should switch to this TTS provider. This will be used as the tool description for the LLM.
                 </p>
               </div>
 
               {/* TTS Configuration */}
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-foreground">
-                  TTS Configuration <span className="text-destructive">*</span>
+                <Label className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  TTS Configuration <span className="text-red-500">*</span>
                 </Label>
-                <div className="border border-border rounded-lg p-4">
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                   <SelectTTS
                     selectedVoice={currentConfig.voice_id || currentConfig.speaker || currentConfig.voice_name || ''}
                     initialProvider={currentConfig.name}
@@ -403,7 +403,7 @@ const DynamicTTSSwitch: React.FC<Readonly<DynamicTTSSwitchProps>> = ({
                     onVoiceSelect={handleVoiceSelect}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   Configure the TTS provider, voice, and settings for this dynamic switch
                 </p>
               </div>

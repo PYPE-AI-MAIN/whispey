@@ -813,9 +813,9 @@ export default function AgentConfig() {
       case 'running': return 'bg-green-500'
       case 'starting': return 'bg-yellow-500'
       case 'stopping': return 'bg-orange-500'
-      case 'stopped': return 'bg-muted-foreground'
+      case 'stopped': return 'bg-gray-500'
       case 'error': return 'bg-red-500'
-      default: return 'bg-muted-foreground'
+      default: return 'bg-gray-500'
     }
   }
 
@@ -904,7 +904,7 @@ const inboundLookupVariables = useMemo(() => {
   // Loading state
   if (agentLoading || isConfigLoading) {
     return (
-      <div className="h-screen bg-muted/50 p-6">
+      <div className="h-screen bg-gray-50 dark:bg-gray-950 p-6">
         <div className="max-w-7xl mx-auto space-y-4">
           <Skeleton className="h-8 w-64" />
           <Skeleton className="h-4 w-96" />
@@ -916,28 +916,28 @@ const inboundLookupVariables = useMemo(() => {
 
   if (isConfigError) {
     return (
-      <div className="h-screen bg-muted/50 flex items-center justify-center p-6">
+      <div className="h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-6">
         <div className="max-w-md w-full">
-          <div className="bg-card border border-border rounded-xl p-8 text-center shadow-lg">
-            <div className="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
-              <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-8 text-center shadow-lg">
+            <div className="w-16 h-16 mx-auto mb-4 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
   
-            <h3 className="text-lg font-semibold text-foreground mb-2">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
               Agent Not Found in Command Center
             </h3>
   
-            <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
               This agent exists in your organization but couldn't be found in the current command center environment. 
               It might be deployed to a different environment or needs to be created.
             </p>
   
-            <div className="bg-muted/50 rounded-lg p-3 mb-6 text-left">
+            <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3 mb-6 text-left">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Current Environment:</span>
-                <code className="bg-muted px-2 py-1 rounded text-foreground">
+                <span className="text-gray-500 dark:text-gray-400">Current Environment:</span>
+                <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-gray-700 dark:text-gray-300">
                   {process.env.NODE_ENV === 'development' ? 'Development' : 'Production'}
                 </code>
               </div>
@@ -955,13 +955,13 @@ const inboundLookupVariables = useMemo(() => {
                 onClick={() => window.history.back()} 
                 variant="ghost"
                 size="sm"
-                className="w-full text-muted-foreground"
+                className="w-full text-gray-600 dark:text-gray-400"
               >
                 Go Back
               </Button>
             </div>
   
-            <p className="text-xs text-muted-foreground mt-4">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
               Need help? Check if the agent was deployed to the correct environment.
             </p>
           </div>
@@ -971,19 +971,19 @@ const inboundLookupVariables = useMemo(() => {
   }
 
   return (
-    <div className="h-screen bg-muted/50 flex flex-col">
+    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
       {isProdLocked && (
         <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/30 shrink-0">
-          <AlertCircle className="w-4 h-4 text-warning shrink-0" />
-          <p className="text-xs text-warning">
+          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+          <p className="text-xs text-amber-700 dark:text-amber-400">
             <span className="font-semibold">Production agent — read only.</span>{' '}
             Edit the dev agent and use Merge to Prod to update this prompt.
           </p>
         </div>
       )}
       {agentConfigData?.backendUnavailable && (
-        <Alert className="rounded-none border-x-0 border-t-0 shrink-0 border-warning/30 bg-warning/10 text-amber-950 dark:text-amber-100">
-          <AlertCircle className="text-warning" />
+        <Alert className="rounded-none border-x-0 border-t-0 shrink-0 border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+          <AlertCircle className="text-amber-600 dark:text-amber-400" />
           <AlertTitle>Voice backend unreachable</AlertTitle>
           <AlertDescription>
             {agentConfigData.backendUnavailableMessage ??
@@ -992,21 +992,21 @@ const inboundLookupVariables = useMemo(() => {
         </Alert>
       )}
       {/* Mobile Header */}
-      <div className="lg:hidden bg-card border-b border-border px-4 py-3 flex-shrink-0">
+      <div className="lg:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 py-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={() => router.push(`/${projectId}/agents/${agentid}`)}
-              className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:text-muted-foreground hover:bg-muted/50 rounded-lg transition-all duration-200 flex-shrink-0"
+              className="w-8 h-8 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-all duration-200 flex-shrink-0"
             >
               <ArrowLeft className="h-4 w-4" />
             </button>
             <div className={`w-2 h-2 rounded-full flex-shrink-0 ${getAgentStatusColor()}`}></div>
             <div className="min-w-0">
-              <div className="text-sm font-medium text-foreground truncate">
+              <div className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                 {agentNameHeader || 'Loading...'}
               </div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-xs text-gray-500 dark:text-gray-400">
                 {getMobileAgentStatusText()}
               </div>
             </div>
@@ -1106,21 +1106,21 @@ const inboundLookupVariables = useMemo(() => {
       </div>
 
       {/* Desktop Header */}
-      <div className="hidden lg:block bg-card border-b border-border px-6 py-4 flex-shrink-0">
+      <div className="hidden lg:block bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex-shrink-0">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push(`/${projectId}/agents/${agentid}`)}
-              className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-muted-foreground hover:bg-muted/50 rounded-xl transition-all duration-200"
+              className="w-9 h-9 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-xl transition-all duration-200"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div className={`w-2 h-2 rounded-full ${getAgentStatusColor()}`}></div>
             <div className="flex flex-col">
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-gray-600 dark:text-gray-400">
                 {agentNameHeader || 'Loading...'}
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-gray-500">
                 {getAgentStatusText()}
               </span>
             </div>
@@ -1275,18 +1275,18 @@ const inboundLookupVariables = useMemo(() => {
           <div className="flex-1 min-w-0 flex flex-col space-y-3">
             
             {/* Quick Setup Row */}
-            <div className="flex-shrink-0 rounded-xl border border-border bg-card shadow-sm p-3 space-y-3">
+            <div className="flex-shrink-0 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3 space-y-3">
               {/* Pipeline mode toggle */}
               <div className="flex items-center justify-between">
 
-                <div className="flex items-center bg-muted rounded-lg p-0.5 gap-0.5">
+                <div className="flex items-center bg-gray-100 dark:bg-gray-900 rounded-lg p-0.5 gap-0.5">
                   <button
                     type="button"
                     onClick={enterPrimaryMode}
                     className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-150 ${
                       !showFallback
-                        ? 'bg-card text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
+                        ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                     }`}
                   >
                     Primary
@@ -1297,7 +1297,7 @@ const inboundLookupVariables = useMemo(() => {
                     className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-150 ${
                       showFallback
                         ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-100 shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                     }`}
                   >
                     Fallback
@@ -1307,7 +1307,7 @@ const inboundLookupVariables = useMemo(() => {
                 {/* Global fallback on/off — only visible in fallback panel */}
                 {showFallback && (
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">Enable Fallback</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">Enable Fallback</span>
                     <Switch
                       checked={!!formik.values.fallbackGlobalEnabled}
                       onCheckedChange={(checked) => formik.setFieldValue('fallbackGlobalEnabled', checked)}
@@ -1387,9 +1387,9 @@ const inboundLookupVariables = useMemo(() => {
             </div>
 
             {/* Conversation Flow */}
-            <div className="rounded-xl border border-border bg-card shadow-sm p-3 space-y-3 flex-shrink-0">
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-3 space-y-3 flex-shrink-0">
               <div className="space-y-2">
-                <label htmlFor="firstMessageMode" className="text-xs font-medium text-muted-foreground">
+                <label htmlFor="firstMessageMode" className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                   Conversation Start
                 </label>
                 <Select
@@ -1424,43 +1424,43 @@ const inboundLookupVariables = useMemo(() => {
 
               {((typeof formik.values.firstMessageMode === 'object' && formik.values.firstMessageMode.mode === 'assistant_speaks_first') ||
                 (typeof formik.values.firstMessageMode === 'string' && formik.values.firstMessageMode === 'assistant_speaks_first')) && (
-                <VariableTextarea
-                  placeholder="Enter the first message... Use {{variable_name}} for dynamic values."
+                <Textarea
+                  placeholder="Enter the first message..."
                   value={
-                    (typeof formik.values.firstMessageMode === 'object'
-                      ? formik.values.firstMessageMode.first_message
-                      : formik.values.customFirstMessage) || ''
+                    typeof formik.values.firstMessageMode === 'object' 
+                      ? formik.values.firstMessageMode.first_message 
+                      : formik.values.customFirstMessage
                   }
-                  onChange={(value) => {
+                  onChange={(e) => {
                     if (typeof formik.values.firstMessageMode === 'object') {
                       formik.setFieldValue('firstMessageMode', {
                         ...formik.values.firstMessageMode,
-                        first_message: value
+                        first_message: e.target.value
                       })
                     } else {
-                      formik.setFieldValue('customFirstMessage', value)
+                      formik.setFieldValue('customFirstMessage', e.target.value)
                       formik.setFieldValue('firstMessageMode', {
                         mode: formik.values.firstMessageMode || 'assistant_speaks_first',
                         allow_interruptions: true,
-                        first_message: value
+                        first_message: e.target.value
                       })
                     }
                   }}
-                  className="border-border"
-                  style={{ height: '84px', minHeight: '84px' }}
+                  className="text-xs resize-none border-gray-200 dark:border-gray-700 overflow-y-auto"
+                  style={{ fieldSizing: 'fixed' as any, height: '60px' }}
                 />
               )}
             </div>
 
             {/* System Prompt */}
-            <div className="flex-1 min-h-0 rounded-xl border border-border bg-card shadow-sm p-4 flex flex-col">
+            <div className="flex-1 min-h-0 rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm p-4 flex flex-col">
               <div className="flex items-center justify-between mb-3 flex-shrink-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-muted-foreground">System Prompt</span>
+                  <span className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">System Prompt</span>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <button className="p-1 hover:bg-muted rounded">
-                        <TypeIcon className="w-3 h-3 text-muted-foreground hover:text-muted-foreground" />
+                      <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+                        <TypeIcon className="w-3 h-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300" />
                       </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-48 p-3" align="start">
@@ -1490,8 +1490,8 @@ const inboundLookupVariables = useMemo(() => {
                           onClick={() => setIsPromptSettingsOpen(true)}
                           className={`flex items-center gap-1 text-xs transition-colors ${
                             unmappedVariablesCount > 0
-                              ? 'text-red-600 dark:text-red-400 hover:text-destructive dark:hover:text-red-300' 
-                              : 'text-muted-foreground hover:text-foreground'
+                              ? 'text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300' 
+                              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                           }`}
                         >
                           <SettingsIcon className="w-4 h-4" />
@@ -1514,13 +1514,13 @@ const inboundLookupVariables = useMemo(() => {
 
                   <button
                     onClick={copyToClipboard}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                    className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer transition-colors"
                     disabled={!formik.values.prompt}
                   >
                     {isCopied ? (
                       <>
-                        <CheckIcon className="w-4 h-4 text-success" />
-                        <span className="text-success">Copied!</span>
+                        <CheckIcon className="w-4 h-4 text-green-500" />
+                        <span className="text-green-500">Copied!</span>
                       </>
                     ) : (
                       <>
@@ -1538,14 +1538,14 @@ const inboundLookupVariables = useMemo(() => {
                 onChange={(value) => { if (!isProdLocked) formik.setFieldValue('prompt', value) }}
                 onValidationChange={setPromptValidation}
                 placeholder="Define your agent's behavior and personality... Use {{variable_name}} for dynamic values."
-                className={`flex-1 min-h-0 font-mono resize-none leading-relaxed border-border ${isProdLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
+                className={`flex-1 min-h-0 font-mono resize-none leading-relaxed border-gray-200 dark:border-gray-700 ${isProdLocked ? 'opacity-70 cursor-not-allowed' : ''}`}
                 style={getTextareaStyles()}
                 disabled={isProdLocked}
               />
               
               {/* Compact Validation Indicator */}
               <div className="mt-2 flex justify-between items-center flex-shrink-0">
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-gray-400 dark:text-gray-500">
                   {formik.values.prompt.length.toLocaleString()} chars
                 </span>
                 
@@ -1665,7 +1665,7 @@ const inboundLookupVariables = useMemo(() => {
       {/* Dynamic TTS Dialog */}
       <Sheet open={isDynamicTTSDialogOpen} onOpenChange={setIsDynamicTTSDialogOpen}>
         <SheetContent side="right" className="w-full sm:w-[500px] p-0 overflow-y-auto">
-          <SheetHeader className="px-4 py-3 border-b sticky top-0 bg-card z-10">
+          <SheetHeader className="px-4 py-3 border-b sticky top-0 bg-white dark:bg-gray-800 z-10">
             <SheetTitle className="text-sm">Dynamic TTS Switch</SheetTitle>
           </SheetHeader>
           <div className="p-4">
@@ -1754,7 +1754,7 @@ const inboundLookupVariables = useMemo(() => {
           {/* Footer — pinned, always visible */}
           <div className="flex-shrink-0 flex items-center justify-between gap-2 px-6 py-4 border-t border-border">
             <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-              <AlertCircle className="w-3 h-3 text-warning" />
+              <AlertCircle className="w-3 h-3 text-amber-500" />
               Seeing changes you didn't make? Refresh and try again.
             </p>
             <div className="flex gap-2">

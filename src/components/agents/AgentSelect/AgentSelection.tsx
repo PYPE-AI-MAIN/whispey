@@ -163,15 +163,15 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
 
   if (error) {
     return (
-      <div className="min-h-screen bg-muted/50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <div className="flex items-center justify-center py-32">
           <div className="text-center space-y-5 max-w-sm">
-            <div className="w-14 h-14 bg-card rounded-2xl border border-border flex items-center justify-center mx-auto">
+            <div className="w-14 h-14 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 flex items-center justify-center mx-auto">
               <AlertCircle className="w-7 h-7 text-red-400 dark:text-red-500" />
             </div>
             <div>
-              <h3 className="text-lg font-medium text-foreground">Unable to Load Monitoring</h3>
-              <p className="text-sm text-muted-foreground mt-1.5">{error.message}</p>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Unable to Load Monitoring</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">{error.message}</p>
             </div>
             <Button 
               onClick={() => window.location.reload()} 
@@ -187,7 +187,7 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="wp-enter max-w-6xl mx-auto px-4 py-6 sm:px-8 sm:py-8">
+      <div className={`max-w-7xl mx-auto py-6 ${isMobile ? 'px-4' : 'px-8 py-8'}`}>
         <AgentToolbar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -249,13 +249,13 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
           <Sheet open={showHelpDialog} onOpenChange={setShowHelpDialog}>
             <SheetContent 
               side="right" 
-              className="min-w-3/4 p-0 bg-card border-l border-border"
+              className="min-w-3/4 p-0 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800"
             >
-              <SheetHeader className="p-6 border-b border-border bg-muted/50">
-                <SheetTitle className="text-xl font-semibold text-foreground">
+              <SheetHeader className="p-6 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
+                <SheetTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                   Integration Guide
                 </SheetTitle>
-                <SheetDescription className="text-sm text-muted-foreground">
+                <SheetDescription className="text-sm text-gray-600 dark:text-gray-400">
                   Add monitoring to your voice agents
                 </SheetDescription>
               </SheetHeader>

@@ -13,7 +13,7 @@ function RetellDashboardContent() {
   const agentId = Array.isArray(params?.agentid) ? params.agentid[0] : params.agentid
 
   if (!agentId) {
-    return <div className="flex items-center justify-center h-screen text-destructive">Invalid agent ID</div>
+    return <div className="flex items-center justify-center h-screen text-red-500">Invalid agent ID</div>
   }
 
   return <RetellDashboard agentId={agentId} />
@@ -22,8 +22,8 @@ function RetellDashboardContent() {
 export default function RetellDashboardPage() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center h-screen bg-muted/50">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
+        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
       </div>
     }>
       <RetellDashboardContent />

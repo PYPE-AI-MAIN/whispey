@@ -58,7 +58,7 @@ export function StepGuide({ node, workflow }: Readonly<{ node: WorkflowNode; wor
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-amber-900 dark:text-amber-200">
+    <div className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
       {unreachable && (
         <div className="space-y-1.5">
           <p className="font-medium">Nothing leads to this step yet.</p>

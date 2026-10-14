@@ -41,12 +41,12 @@ function KnowledgeBaseRAGSettings({
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs text-gray-600 dark:text-gray-400">
         When enabled, the voice agent will use your Knowledge Base (RAG) with the configured Top K for retrieval.
       </p>
 
       <div className="flex items-center justify-between">
-        <Label className="text-xs font-medium text-foreground">
+        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
           Enable Knowledge Base search
         </Label>
         <Switch
@@ -58,10 +58,10 @@ function KnowledgeBaseRAGSettings({
 
       {enabled && (
         <div className="space-y-1.5">
-          <Label htmlFor="knowledge-top-k" className="text-xs font-medium text-foreground">
+          <Label htmlFor="knowledge-top-k" className="text-xs font-medium text-gray-700 dark:text-gray-300">
             Top K
           </Label>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             Number of chunks to retrieve from the knowledge base per query (1–{MAX_TOP_K}). Default: {DEFAULT_TOP_K}.
           </p>
           <Input

@@ -31,11 +31,11 @@ function BlockField({
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <Label className="text-xs text-muted-foreground">{label}</Label>
+        <Label className="text-xs text-gray-600 dark:text-gray-400">{label}</Label>
         {tooltip && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+              <Info className="w-3 h-3 text-gray-400 cursor-help" />
             </TooltipTrigger>
             <TooltipContent side="right" className="max-w-xs">
               <p className="text-xs">{tooltip}</p>
@@ -47,9 +47,9 @@ function BlockField({
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className="text-xs font-mono min-h-[90px] resize-y border-border"
+        className="text-xs font-mono min-h-[90px] resize-y border-gray-200 dark:border-gray-700"
       />
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      {hint && <p className="text-xs text-gray-500 dark:text-gray-400">{hint}</p>}
     </div>
   )
 }
@@ -58,7 +58,7 @@ export default function PromptRulesSettings(props: PromptRulesSettingsProps) {
   return (
     <TooltipProvider>
       <div className="space-y-4">
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-gray-600 dark:text-gray-400">
           These blocks are appended to the system prompt by the bot. Leave empty to use the
           sensible Pipecat defaults.
         </p>

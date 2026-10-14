@@ -65,9 +65,9 @@ export default function ProjectsPage() {
 
   // Show loading state
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-card">
-      <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
-      <p className="text-sm text-muted-foreground">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-gray-900">
+      <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400 mb-4" />
+      <p className="text-sm text-gray-600 dark:text-gray-400">
         {!isLoaded ? 'Loading...' : isRedirecting ? 'Redirecting...' : 'Loading organizations...'}
       </p>
     </div>

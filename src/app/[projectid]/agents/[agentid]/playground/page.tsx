@@ -244,11 +244,11 @@ function AgentStatusBanner({ isRunning }: Readonly<{ isRunning: boolean }>) {
       "rounded-lg border-2 p-4 flex items-center gap-3",
       isRunning ? "border-green-500/50 bg-green-500/10" : "border-red-500/50 bg-red-500/10"
     )}>
-      <AlertCircle className={cn("h-5 w-5 flex-shrink-0", isRunning ? "text-success" : "text-destructive")} />
+      <AlertCircle className={cn("h-5 w-5 flex-shrink-0", isRunning ? "text-green-500" : "text-red-500")} />
       <div className="flex-1">
         <div className={cn(
           "text-sm font-medium",
-          isRunning ? "text-success" : "text-destructive"
+          isRunning ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"
         )}>
           {isRunning ? 'Agent is Live' : 'Agent not found'}
         </div>
@@ -434,7 +434,7 @@ function SessionView({
             </p>
           )}
           {voiceUpdateStatus === 'failed' && voiceUpdateError && (
-            <p className="text-xs text-center text-destructive">{voiceUpdateError}</p>
+            <p className="text-xs text-center text-red-500">{voiceUpdateError}</p>
           )}
           {!isAgentRunning && (
             <p className="text-xs text-center text-muted-foreground">

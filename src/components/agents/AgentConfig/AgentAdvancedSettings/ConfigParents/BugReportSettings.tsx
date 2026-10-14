@@ -57,13 +57,13 @@ function BugReportSettings({
 
   return (
     <div className="space-y-4">
-      <div className="text-xs text-muted-foreground mb-3">
+      <div className="text-xs text-gray-600 dark:text-gray-400 mb-3">
         Configure bug reporting functionality for your assistant
       </div>
       
       {/* Enable Bug Report System Toggle */}
       <div className="flex items-center justify-between">
-        <Label className="text-xs font-medium text-foreground">
+        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
           Enable Bug Report System
         </Label>
         <Switch
@@ -78,7 +78,7 @@ function BugReportSettings({
           {/* Bug Start Commands */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium text-foreground">
+              <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
                 Bug Start Commands
               </Label>
               <Button
@@ -105,14 +105,14 @@ function BugReportSettings({
                     variant="ghost"
                     size="sm"
                     onClick={() => removeCommand('start', index)}
-                    className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
                   >
                     <XIcon className="w-3 h-3" />
                   </Button>
                 </div>
               ))}
               {bugStartCommands.length === 0 && (
-                <div className="text-xs text-muted-foreground italic py-2 text-center">
+                <div className="text-xs text-gray-400 italic py-2 text-center">
                   No start commands added yet
                 </div>
               )}
@@ -122,7 +122,7 @@ function BugReportSettings({
           {/* Bug End Commands */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium text-foreground">
+              <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
                 Bug End Commands
               </Label>
               <Button
@@ -149,14 +149,14 @@ function BugReportSettings({
                     variant="ghost"
                     size="sm"
                     onClick={() => removeCommand('end', index)}
-                    className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
                   >
                     <XIcon className="w-3 h-3" />
                   </Button>
                 </div>
               ))}
               {bugEndCommands.length === 0 && (
-                <div className="text-xs text-muted-foreground italic py-2 text-center">
+                <div className="text-xs text-gray-400 italic py-2 text-center">
                   No end commands added yet
                 </div>
               )}
@@ -165,7 +165,7 @@ function BugReportSettings({
 
           {/* Initial Response */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-foreground">
+            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
               Initial Response
             </Label>
             <Textarea
@@ -178,7 +178,7 @@ function BugReportSettings({
 
           {/* Collection Prompt */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-foreground">
+            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
               Collection Prompt
             </Label>
             <Textarea

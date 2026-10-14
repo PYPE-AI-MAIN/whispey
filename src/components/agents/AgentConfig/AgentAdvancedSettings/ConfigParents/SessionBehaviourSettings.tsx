@@ -150,12 +150,12 @@ export default function SessionBehaviourSettings({
         {/* Preemptive Generation */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
               Preemptive Generation
             </Label>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">
@@ -183,12 +183,12 @@ export default function SessionBehaviourSettings({
         {/* Turn Detection */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
               Turn Detection
             </Label>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">
@@ -214,9 +214,9 @@ export default function SessionBehaviourSettings({
             </SelectContent>
           </Select>
           {turn_detection === 'disabled' && (
-            <div className="flex items-start gap-2 p-2.5 bg-destructive/10 rounded-md border border-destructive/30">
-              <AlertTriangle className="w-3.5 h-3.5 text-destructive mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-destructive">
+            <div className="flex items-start gap-2 p-2.5 bg-red-50 dark:bg-red-900/20 rounded-md border border-red-200 dark:border-red-800">
+              <AlertTriangle className="w-3.5 h-3.5 text-red-600 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-red-700 dark:text-red-300">
                 Turn detection is disabled — the agent falls back to VAD-only silence detection with no semantic understanding of speech. Users may get interrupted mid-thought.
               </p>
             </div>
@@ -227,12 +227,12 @@ export default function SessionBehaviourSettings({
         {(turn_detection === 'english' || turn_detection === 'multilingual') && (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Label className="text-xs text-muted-foreground">
+              <Label className="text-xs text-gray-600 dark:text-gray-400">
                 Unlikely Threshold
               </Label>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                  <Info className="w-3 h-3 text-gray-400 cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent side="right" className="max-w-xs">
                   <p className="text-xs">
@@ -270,12 +270,12 @@ export default function SessionBehaviourSettings({
         {/* Min Endpointing Delay */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
               Min Endpointing Delay (seconds)
             </Label>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">
@@ -309,12 +309,12 @@ export default function SessionBehaviourSettings({
         {/* Max Endpointing Delay */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
               Max Endpointing Delay (seconds)
             </Label>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">
@@ -348,12 +348,12 @@ export default function SessionBehaviourSettings({
         {/* Endpointing Mode */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
               Endpointing Mode
             </Label>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">
@@ -384,12 +384,12 @@ export default function SessionBehaviourSettings({
         {/* User Away Timeout */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
               User Away Timeout (seconds)
             </Label>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">
@@ -439,12 +439,12 @@ export default function SessionBehaviourSettings({
         {/* User Away Timeout Message */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
               User Away Timeout Message
             </Label>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">
@@ -469,12 +469,12 @@ export default function SessionBehaviourSettings({
         {/* User Away Timeout Max Count */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
               User Away Timeout Max Count
             </Label>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">
@@ -519,12 +519,12 @@ export default function SessionBehaviourSettings({
         {/* User Away Timeout End Message */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
               User Away End Message
             </Label>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">
@@ -549,12 +549,12 @@ export default function SessionBehaviourSettings({
         {/* Wait after the agent says its goodbye (<eod/>) before the call is ended */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
               End-of-call wait (seconds)
             </Label>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">

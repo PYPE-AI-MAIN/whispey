@@ -29,16 +29,16 @@ export default function KeyboardSoundSettings({
 }: KeyboardSoundSettingsProps) {
   return (
     <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs text-gray-500 dark:text-gray-400">
         Plays a keyboard typing sound after the user stops speaking to simulate a human agent looking up information.
       </p>
 
       <div className="flex items-center justify-between py-1">
         <div>
-          <Label className="text-xs font-medium text-foreground">
+          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
             Keyboard Sound
           </Label>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-xs text-gray-400 mt-0.5">
             {keyboardSoundEnabled ? 'Typing sound is active' : 'Typing sound is disabled'}
           </p>
         </div>
@@ -53,10 +53,10 @@ export default function KeyboardSoundSettings({
         <div className="space-y-4">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium text-foreground">
+              <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
                 Volume
               </Label>
-              <span className="text-xs text-muted-foreground font-mono">
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
                 {Math.round(keyboardSoundVolume * 100)}%
               </span>
             </div>
@@ -68,7 +68,7 @@ export default function KeyboardSoundSettings({
               onValueChange={([v]) => onKeyboardSoundVolumeChange(v)}
               className="w-full"
             />
-            <div className="flex justify-between text-[10px] text-muted-foreground">
+            <div className="flex justify-between text-[10px] text-gray-400">
               <span>0%</span>
               <span>100%</span>
             </div>
@@ -76,10 +76,10 @@ export default function KeyboardSoundSettings({
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium text-foreground">
+              <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
                 Probability
               </Label>
-              <span className="text-xs text-muted-foreground font-mono">
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
                 {Math.round(keyboardSoundProbability * 100)}%
               </span>
             </div>
@@ -91,7 +91,7 @@ export default function KeyboardSoundSettings({
               onValueChange={([v]) => onKeyboardSoundProbabilityChange(v)}
               className="w-full"
             />
-            <div className="flex justify-between text-[10px] text-muted-foreground">
+            <div className="flex justify-between text-[10px] text-gray-400">
               <span>Never</span>
               <span>Always</span>
             </div>
@@ -99,10 +99,10 @@ export default function KeyboardSoundSettings({
 
           <div className="flex items-center justify-between py-1">
             <div>
-              <Label className="text-xs font-medium text-foreground">
+              <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
                 Play on Tool Calls
               </Label>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-xs text-gray-400 mt-0.5">
                 Loop sound while the agent is running a tool
               </p>
             </div>

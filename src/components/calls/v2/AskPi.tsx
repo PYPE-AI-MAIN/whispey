@@ -1,6 +1,6 @@
 "use client"
 
-// Ask Pi on the Call Logs page, as in the mockup: a brand-coloured button floating
+// Ask Pi on the Call Logs page, as in the mockup: a violet button floating
 // bottom-right (drag it up or down), opening a small chat box above it that can
 // be expanded. It talks to the existing Pi backend with this page's context, so
 // "today's calls", "these calls" and "this call" mean what is on screen. Pi can
@@ -157,8 +157,8 @@ export function AskPi(props: Readonly<AskPiProps>) {
         }}
         className={cn(
           "fixed bottom-24 right-5 z-[85] inline-flex h-10 cursor-pointer touch-none select-none items-center gap-2 rounded-full bg-[var(--cl-violet)] pl-1.5 pr-4 text-[14px] font-semibold text-white",
-          "shadow-[0_8px_24px_rgba(229,83,91,.35),0_2px_6px_rgba(0,0,0,.25)] transition-shadow hover:shadow-[0_10px_28px_rgba(124,58,237,.45),0_2px_6px_rgba(0,0,0,.25)] data-[dragging]:cursor-grabbing",
-          open && "shadow-[0_0_0_3px_var(--cl-violet-soft),0_8px_24px_rgba(229,83,91,.35)]"
+          "shadow-[0_8px_24px_rgba(124,58,237,.35),0_2px_6px_rgba(0,0,0,.25)] transition-shadow hover:shadow-[0_10px_28px_rgba(124,58,237,.45),0_2px_6px_rgba(0,0,0,.25)] data-[dragging]:cursor-grabbing",
+          open && "shadow-[0_0_0_3px_var(--cl-violet-soft),0_8px_24px_rgba(124,58,237,.35)]"
         )}
       >
         <span className="grid h-7 w-7 place-items-center rounded-full bg-white/20"><PiMark className="h-3.5 w-3.5" /></span>
@@ -397,7 +397,7 @@ function filterFieldLabel(f: FilterProposal["filters"][number]): string {
 
 function FilterCardActions({ state, onApply, onDismiss }: Readonly<{ state?: "applied" | "dismissed"; onApply: () => void; onDismiss: () => void }>) {
   if (state === "applied") {
-    return <span className="inline-flex items-center gap-1 text-[13px] text-success"><Check className="h-3.5 w-3.5" /> Applied</span>
+    return <span className="inline-flex items-center gap-1 text-[13px] text-emerald-600 dark:text-emerald-400"><Check className="h-3.5 w-3.5" /> Applied</span>
   }
   if (state === "dismissed") return <span className="text-[13px] text-[var(--cl-text3)]">Not applied</span>
   return (

@@ -26,7 +26,7 @@ import SelectTTS from '@/components/agents/AgentConfig/SelectTTSDialog'
 function OutboundTrunkHint({ workflow }: Readonly<{ workflow: Workflow | null }>) {
   const outbound = workflow?.transports?.telephony?.outbound as { sip_trunk_id?: string; sms_from?: string } | undefined
   return (
-    <p className="text-[11px] text-muted-foreground">
+    <p className="text-[11px] text-gray-500 dark:text-gray-400">
       {outbound?.sip_trunk_id
         ? `Uses this agent's outbound number (set in Agent settings): ${outbound.sms_from || outbound.sip_trunk_id}.`
         : "No outbound number set for this agent — it's using the deployment's shared default trunk. Set one in Agent settings (top toolbar) → Telephony → Outbound number."}
@@ -38,7 +38,7 @@ function OutboundTrunkHint({ workflow }: Readonly<{ workflow: Workflow | null }>
 function MaxTurnsField({ value, onChange }: Readonly<{ value?: number | null; onChange: (v: number | undefined) => void }>) {
   return (
     <details>
-      <summary className="cursor-pointer text-xs text-muted-foreground">Advanced</summary>
+      <summary className="cursor-pointer text-xs text-gray-500 dark:text-gray-400">Advanced</summary>
       <div className="pt-2">
     <Field label="Give up after this many replies (default 8)" hint="If the caller never gives an answer that moves the call on, the agent takes the default next step.">
       <Input
@@ -78,7 +78,7 @@ function JsonField({ label, value, onChange }: Readonly<{ label: string; value: 
           }
         }}
       />
-      {error && <p className="text-[11px] text-destructive">Invalid JSON — not saved until fixed</p>}
+      {error && <p className="text-[11px] text-red-500">Invalid JSON — not saved until fixed</p>}
     </div>
   )
 }
@@ -86,9 +86,9 @@ function JsonField({ label, value, onChange }: Readonly<{ label: string; value: 
 function Field({ label, hint, children }: Readonly<{ label: string; hint?: string; children: React.ReactNode }>) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-[11px] font-medium text-muted-foreground">{label}</Label>
+      <Label className="text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">{label}</Label>
       {children}
-      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+      {hint && <p className="text-[11px] text-gray-500 dark:text-gray-400">{hint}</p>}
     </div>
   )
 }
@@ -102,7 +102,7 @@ function ToolsField({
   return (
     <Field label="Actions the agent can take here">
       {functionNodes.length === 0 ? (
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-[11px] text-gray-500 dark:text-gray-400">
           No "Call an API" steps yet. Add one from More nodes, then tick it here so the agent can use it during this step.
         </p>
       ) : (
@@ -149,8 +149,8 @@ function NodeFields({
           </div>
           <MaxTurnsField value={node.maxTurns} onChange={(v) => patch({ maxTurns: v } as any)} />
           <ToolsField workflow={workflow} functions={node.functions ?? []} onChange={(fns) => patch({ functions: fns } as any)} />
-          <details className="space-y-2 border-t border-border/60 pt-2">
-            <summary className="cursor-pointer text-xs text-muted-foreground">Different voice or model for this step only (optional)</summary>
+          <details className="space-y-2 border-t border-gray-100 pt-2 dark:border-gray-800">
+            <summary className="cursor-pointer text-xs text-gray-500 dark:text-gray-400">Different voice or model for this step only (optional)</summary>
             <Field label="Model">
               <ModelSelector
                 selectedProvider={node.model?.name ?? ''}
@@ -216,7 +216,7 @@ function NodeFields({
                   }}
                   className="h-7 text-xs"
                 />
-                <label className="flex h-7 shrink-0 items-center gap-1 text-[11px] text-muted-foreground" title="If off, the agent will not hold the call back waiting for this detail">
+                <label className="flex h-7 shrink-0 items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400" title="If off, the agent will not hold the call back waiting for this detail">
                   <Checkbox
                     checked={ex.required !== false}
                     onCheckedChange={(v) => {
@@ -350,8 +350,8 @@ function NodeFields({
           </Field>
           <MaxTurnsField value={node.maxTurns} onChange={(v) => patch({ maxTurns: v } as any)} />
           <ToolsField workflow={workflow} functions={node.functions ?? []} onChange={(fns) => patch({ functions: fns } as any)} />
-          <details className="space-y-2 border-t border-border/60 pt-2">
-            <summary className="cursor-pointer text-xs text-muted-foreground">Different voice or model for this step only (optional)</summary>
+          <details className="space-y-2 border-t border-gray-100 pt-2 dark:border-gray-800">
+            <summary className="cursor-pointer text-xs text-gray-500 dark:text-gray-400">Different voice or model for this step only (optional)</summary>
             <Field label="Model">
               <ModelSelector
                 selectedProvider={node.model?.name ?? ''}
@@ -491,19 +491,19 @@ export function Inspector() {
     >
       <SheetContent
         side="right"
-        className="w-full sm:max-w-md overflow-y-auto bg-card border-l border-border p-0"
+        className="w-full sm:max-w-md overflow-y-auto bg-white dark:bg-zinc-900 border-l border-gray-200 dark:border-white/10 p-0"
       >
         {node && (
           <>
-            <SheetHeader className="border-b border-border/60 bg-muted/50 dark:bg-white/[0.02] gap-0.5">
+            <SheetHeader className="border-b border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/[0.02] gap-0.5">
               <SheetTitle className="flex items-center gap-2 text-base">
                 {NODE_REGISTRY[node.type]?.label}
                 {node.id === workflow?.start && <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />}
               </SheetTitle>
-              <p className="text-xs text-muted-foreground">{NODE_REGISTRY[node.type]?.useCase}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{NODE_REGISTRY[node.type]?.useCase}</p>
             </SheetHeader>
             <div className="p-4">
-              <div className="rounded-xl border border-border bg-muted/50 dark:bg-white/[0.03] p-4 space-y-4">
+              <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/[0.03] p-4 space-y-4">
                 {workflow && <StepGuide node={node} workflow={workflow} />}
                 {nodeIssues.length > 0 && (
                   <div className="space-y-1">
@@ -512,8 +512,8 @@ export function Inspector() {
                         key={`${iss.severity}-${iss.message}`}
                         className={`text-[11px] rounded-md px-2 py-1.5 ${
                           iss.severity === 'error'
-                            ? 'bg-red-50 text-destructive dark:bg-red-950/40 dark:text-red-400'
-                            : 'bg-amber-50 text-warning dark:bg-amber-950/40 dark:text-amber-400'
+                            ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400'
+                            : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
                         }`}
                       >
                         {iss.severity === 'error' ? 'Fix: ' : 'Check: '}
@@ -533,7 +533,7 @@ export function Inspector() {
                 <NodeFields key={node.id} node={node} patch={(p) => updateNode(node.id, p)} workflow={workflow} />
               </div>
             </div>
-            <SheetFooter className="flex-row justify-between border-t border-border/60 bg-muted/50 dark:bg-white/[0.02]">
+            <SheetFooter className="flex-row justify-between border-t border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/[0.02]">
               {node.id !== workflow?.start && (
                 <Button variant="outline" size="sm" onClick={() => setStart(node.id)}>
                   Make this the first step
@@ -547,16 +547,16 @@ export function Inspector() {
         )}
         {edge && workflow && (
           <>
-            <SheetHeader className="border-b border-border/60 bg-muted/50 dark:bg-white/[0.02] gap-0.5">
+            <SheetHeader className="border-b border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/[0.02] gap-0.5">
               <SheetTitle className="text-base">Connection</SheetTitle>
-              <p className="text-xs text-muted-foreground">Decides when the call moves from one step to the next.</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Decides when the call moves from one step to the next.</p>
             </SheetHeader>
             <div className="p-4">
-              <div className="rounded-xl border border-border bg-muted/50 dark:bg-white/[0.03] p-4 space-y-4">
+              <div className="rounded-xl border border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/[0.03] p-4 space-y-4">
                 <EdgeFields edge={edge} workflow={workflow} patch={(p) => updateEdge(edge.id, p)} />
               </div>
             </div>
-            <SheetFooter className="border-t border-border/60 bg-muted/50 dark:bg-white/[0.02]">
+            <SheetFooter className="border-t border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/[0.02]">
               <Button variant="destructive" size="sm" onClick={() => removeEdge(edge.id)}>
                 <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete connection
               </Button>

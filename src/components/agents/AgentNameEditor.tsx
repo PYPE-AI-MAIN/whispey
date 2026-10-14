@@ -81,7 +81,7 @@ export default function AgentNameEditor({
             placeholder={agent.name ?? 'Agent name'}
             className={`${isMobile ? 'h-8 w-[180px] text-base' : 'h-9 w-[260px] text-lg'} font-semibold`}
           />
-          {error && <span className="text-xs text-destructive">{error}</span>}
+          {error && <span className="text-xs text-red-600 dark:text-red-400">{error}</span>}
         </div>
         <Button
           {...ICON_BUTTON}
@@ -111,7 +111,7 @@ export default function AgentNameEditor({
         <Tooltip>
           <TooltipTrigger asChild>
             <h1
-              className={`${isMobile ? 'text-lg max-w-[180px]' : 'text-2xl max-w-[250px]'} font-semibold text-foreground tracking-tight truncate cursor-default`}
+              className={`${isMobile ? 'text-lg max-w-[180px]' : 'text-2xl max-w-[250px]'} font-semibold text-gray-900 dark:text-gray-100 tracking-tight truncate cursor-default`}
             >
               {shown}
             </h1>
@@ -127,7 +127,7 @@ export default function AgentNameEditor({
       {canEdit && (
         <Button
           {...ICON_BUTTON}
-          className="h-7 w-7 text-muted-foreground hover:text-muted-foreground flex-shrink-0"
+          className="h-7 w-7 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0"
           onClick={startEditing}
           aria-label="Rename agent"
         >

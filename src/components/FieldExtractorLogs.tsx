@@ -243,7 +243,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
                     <SelectItem key={m.value} value={m.value}>
                       {m.label}
                       {m.value === DEFAULT_FIELD_EXTRACTOR_MODEL && <span className="ml-1.5 text-xs text-muted-foreground">default</span>}
-                      {m.beta && <span className="ml-1.5 rounded border border-warning/40 px-1 text-[10px] font-medium uppercase text-warning">beta</span>}
+                      {m.beta && <span className="ml-1.5 rounded border border-amber-300 px-1 text-[10px] font-medium uppercase text-amber-600 dark:border-amber-700 dark:text-amber-400">beta</span>}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -260,7 +260,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-foreground">Extraction Fields</h3>
                 <div className="flex items-center gap-2">
-                  {pasteError && <span className="text-xs text-destructive">{pasteError}</span>}
+                  {pasteError && <span className="text-xs text-red-500">{pasteError}</span>}
                   <Button
                     type="button"
                     variant="outline"
@@ -269,7 +269,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
                     className="h-7 text-xs"
                     title="Replace all fields with a pasted JSON array"
                   >
-                    {pastedAll ? <Check className="w-3.5 h-3.5 mr-1 text-success" /> : <ClipboardPaste className="w-3.5 h-3.5 mr-1" />}
+                    {pastedAll ? <Check className="w-3.5 h-3.5 mr-1 text-emerald-500" /> : <ClipboardPaste className="w-3.5 h-3.5 mr-1" />}
                     Paste all
                   </Button>
                   <Button
@@ -280,7 +280,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
                     className="h-7 text-xs"
                     title="Copy all fields as a JSON array"
                   >
-                    {copiedAll ? <Check className="w-3.5 h-3.5 mr-1 text-success" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
+                    {copiedAll ? <Check className="w-3.5 h-3.5 mr-1 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
                     Copy all
                   </Button>
                 </div>
@@ -346,7 +346,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
                           title="Copy as JSON"
                           className="h-8 w-8 p-0 rounded-full text-muted-foreground hover:text-foreground"
                         >
-                          {copiedIndex === index ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+                          {copiedIndex === index ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                         </Button>
                       </div>
                       <div className="col-span-1 flex items-center justify-center">
@@ -355,7 +355,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
                           size="icon"
                           onClick={() => removeField(index)}
                           aria-label={`Remove field ${index + 1}`}
-                          className="h-8 w-8 p-0 rounded-full text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
+                          className="h-8 w-8 p-0 rounded-full text-muted-foreground hover:bg-red-100 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400"
                         >
                           <X className="w-4 h-4" />
                         </Button>
@@ -403,9 +403,9 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
                 Variables used in descriptions: {detectedVariables.length > 0 ? detectedVariables.map(v => `{{${v}}}`).join(', ') : 'None detected'}
               </p>
               {unmappedVariables.length > 0 && (
-                <div className="flex items-center gap-2 p-2 rounded-md bg-warning/10 border border-warning/30">
-                  <AlertCircle className="w-4 h-4 text-warning flex-shrink-0" />
-                  <p className="text-xs text-warning">
+                <div className="flex items-center gap-2 p-2 rounded-md bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                  <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                  <p className="text-xs text-amber-800 dark:text-amber-200">
                     {unmappedVariables.map(v => `{{${v}}}`).join(', ')} need mapping
                   </p>
                 </div>
@@ -449,7 +449,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
                         size="icon"
                         onClick={() => removeVariable(index)}
                         aria-label={`Remove variable ${index + 1}`}
-                        className="h-8 w-8 p-0 rounded-full text-muted-foreground hover:bg-destructive/15 hover:text-destructive"
+                        className="h-8 w-8 p-0 rounded-full text-muted-foreground hover:bg-red-100 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:text-red-400"
                       >
                         <X className="w-4 h-4" />
                       </Button>

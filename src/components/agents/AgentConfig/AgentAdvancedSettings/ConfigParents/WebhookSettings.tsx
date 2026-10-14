@@ -123,22 +123,22 @@ function WebhookSettings({
     <div className="space-y-4">
       {isLoading && (
         <div className="flex items-center justify-center py-4">
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mr-2" />
-          <span className="text-xs text-muted-foreground">Loading webhook configuration...</span>
+          <Loader2 className="h-4 w-4 animate-spin text-gray-500 mr-2" />
+          <span className="text-xs text-gray-500 dark:text-gray-400">Loading webhook configuration...</span>
         </div>
       )}
 
       {!isLoading && (
         <>
-          <div className="text-xs text-muted-foreground mb-3">
+          <div className="text-xs text-gray-600 dark:text-gray-400 mb-3">
             Configure webhooks to receive call log data in real-time. When enabled, call logs will be sent to your specified endpoint.
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-foreground">
+            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
               Webhook URL
             </Label>
-            <div className="text-xs text-muted-foreground mb-1">
+            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
               The endpoint URL where call log data will be sent
             </div>
             <Input
@@ -152,12 +152,12 @@ function WebhookSettings({
               className="h-8 text-xs"
             />
             {webhookUrlError && (
-              <p className="text-xs text-destructive mt-1">{webhookUrlError}</p>
+              <p className="text-xs text-red-500 mt-1">{webhookUrlError}</p>
             )}
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-foreground">
+            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
               HTTP Method
             </Label>
             <Select
@@ -176,10 +176,10 @@ function WebhookSettings({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-foreground">
+            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
               Headers
             </Label>
-            <div className="text-xs text-muted-foreground mb-1">
+            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
               Custom headers to include in the webhook request (e.g., Authorization, Content-Type)
             </div>
             <div className="space-y-2">
@@ -207,7 +207,7 @@ function WebhookSettings({
                       onClick={() => removeHeaderEntry(index)}
                       className="h-8 w-8 p-0"
                     >
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      <Trash2 className="h-3.5 w-3.5 text-red-500" />
                     </Button>
                   )}
                 </div>
@@ -227,10 +227,10 @@ function WebhookSettings({
 
           <div className="flex items-center justify-between">
             <div>
-              <Label className="text-xs font-medium text-foreground">
+              <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
                 Active
               </Label>
-              <div className="text-xs text-muted-foreground mt-0.5">
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                 Enable or disable this webhook
               </div>
             </div>

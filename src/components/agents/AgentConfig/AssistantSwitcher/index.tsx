@@ -80,7 +80,7 @@ export default function AssistantSwitcher({
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           "fixed right-0 top-1/2 -translate-y-1/2 z-50",
-          "bg-card border border-l-0 border-border",
+          "bg-white dark:bg-gray-900 border border-l-0 border-gray-200 dark:border-gray-800",
           "rounded-l-lg shadow-sm hover:shadow-md transition-all duration-200",
           "p-3 pr-2 group",
           "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
@@ -89,7 +89,7 @@ export default function AssistantSwitcher({
         )}
         aria-label="Toggle assistant panel"
       >
-        <ChevronLeft className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+        <ChevronLeft className="w-4 h-4 text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors" />
       </button>
 
       {/* Floating Panel */}
@@ -97,7 +97,7 @@ export default function AssistantSwitcher({
         ref={panelRef}
         className={cn(
           "fixed right-0 top-1/2 -translate-y-1/2 z-50",
-          "bg-card border border-border",
+          "bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800",
           "rounded-l-lg shadow-xl transition-all duration-300",
           "max-h-[60vh] overflow-hidden flex flex-col",
           isOpen ? "translate-x-0 opacity-100" : "translate-x-full opacity-0 pointer-events-none"
@@ -105,21 +105,21 @@ export default function AssistantSwitcher({
         style={{ width: '280px' }}
       >
         {/* Panel Header */}
-        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-foreground">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
               Assistants ({assistants.length})
             </h3>
           </div>
           <div className="flex items-center gap-2">
-            <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border border-border bg-muted/50 px-1.5 text-xs text-muted-foreground">
+            <kbd className="hidden sm:inline-flex h-5 items-center gap-1 rounded border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 px-1.5 text-xs text-gray-600 dark:text-gray-400">
               <Command className="w-3 h-3" />K
             </kbd>
             <button
               onClick={() => setIsOpen(false)}
-              className="p-1 hover:bg-muted rounded transition-colors"
+              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
             >
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              <ChevronRight className="w-4 h-4 text-gray-500 dark:text-gray-400" />
             </button>
           </div>
         </div>
@@ -131,9 +131,9 @@ export default function AssistantSwitcher({
               key={`${assistant.name}-${index}`}
               onClick={() => handleAssistantClick(index)}
               className={cn(
-                "w-full px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors",
+                "w-full px-4 py-3 flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors",
                 "text-left group relative",
-                index === currentAssistantIndex && "bg-primary/10 hover:bg-primary/10"
+                index === currentAssistantIndex && "bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-50 dark:hover:bg-blue-900/20"
               )}
             >
               {/* Active Indicator */}
@@ -148,8 +148,8 @@ export default function AssistantSwitcher({
               <div className={cn(
                 "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
                 index === currentAssistantIndex 
-                  ? "bg-primary/15 text-primary" 
-                  : "bg-muted text-muted-foreground"
+                  ? "bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400" 
+                  : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
               )}>
                 <User className="w-4 h-4" />
               </div>
@@ -158,12 +158,15 @@ export default function AssistantSwitcher({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className={cn(
-                    "text-sm font-medium truncate text-foreground"
+                    "text-sm font-medium truncate",
+                    index === currentAssistantIndex 
+                      ? "text-gray-900 dark:text-gray-100" 
+                      : "text-gray-700 dark:text-gray-300"
                   )}>
                     {assistant.name}
                   </span>
                   {assistant.isPrimary && (
-                    <span className="text-xs bg-primary/15 text-primary px-1.5 py-0.5 rounded">
+                    <span className="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded">
                       Primary
                     </span>
                   )}
@@ -172,12 +175,12 @@ export default function AssistantSwitcher({
                 {/* Status Indicators */}
                 <div className="flex items-center gap-2 mt-1">
                   {assistant.isConfigured ? (
-                    <span className="flex items-center gap-1 text-xs text-success">
+                    <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                       <Check className="w-3 h-3" />
                       <span>Configured</span>
                     </span>
                   ) : (
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-[11px] text-gray-400 dark:text-gray-500">
                       Not configured
                     </span>
                   )}
@@ -190,19 +193,19 @@ export default function AssistantSwitcher({
 
               {/* Current Indicator */}
               {index === currentAssistantIndex && (
-                <ChevronRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity" />
               )}
             </button>
           ))}
         </div>
 
         {/* Add Assistant Button */}
-        <div className="p-2 border-t border-border">
+        <div className="p-2 border-t border-gray-200 dark:border-gray-800">
           <Button
             onClick={onAssistantCreate}
             variant="ghost"
             size="sm"
-            className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
+            className="w-full justify-start gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
           >
             <Plus className="w-4 h-4" />
             Add Assistant

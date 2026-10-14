@@ -62,14 +62,14 @@ function TranscriptCard({
   emptyText: string
 }>) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-muted/50 text-left">
-      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-2.5">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-gray-50 text-left dark:border-gray-800 dark:bg-gray-800/40">
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-gray-200 px-4 py-2.5 dark:border-gray-800">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="text-[11px] font-medium text-muted-foreground">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
             Last call
           </span>
           {meta && meta.length > 0 && (
-            <span className="truncate text-[11px] text-muted-foreground">{meta.join(' · ')}</span>
+            <span className="truncate text-[11px] text-gray-400 dark:text-gray-500">{meta.join(' · ')}</span>
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -81,7 +81,7 @@ function TranscriptCard({
               rel="noopener noreferrer"
               aria-label="View full details"
               title="View full details"
-              className="flex cursor-pointer items-center justify-center rounded p-1 text-muted-foreground transition hover:bg-card hover:text-foreground"
+              className="flex cursor-pointer items-center justify-center rounded p-1 text-gray-400 transition hover:bg-white hover:text-gray-700 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-200"
             >
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
@@ -90,12 +90,12 @@ function TranscriptCard({
       </div>
 
       {turns.length === 0 ? (
-        <p className="py-6 text-center text-xs text-muted-foreground">{emptyText}</p>
+        <p className="py-6 text-center text-xs text-gray-400 dark:text-gray-500">{emptyText}</p>
       ) : (
         <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto px-4 py-3">
           {turns.map((t) => (
             <div key={t.id} className={cn('flex flex-col', t.speaker === 'user' ? 'items-end' : 'items-start')}>
-              <span className="mb-0.5 px-1 text-[10px] font-medium text-muted-foreground">
+              <span className="mb-0.5 px-1 text-[10px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">
                 {t.speaker === 'user' ? 'You' : 'Agent'}
               </span>
               <p
@@ -104,7 +104,7 @@ function TranscriptCard({
                   'rounded-2xl px-3 py-1.5 text-[13px] leading-relaxed',
                   t.speaker === 'user'
                     ? 'rounded-br-md bg-blue-600 text-white'
-                    : 'rounded-bl-md bg-card text-foreground'
+                    : 'rounded-bl-md bg-white text-gray-800 dark:bg-gray-900 dark:text-gray-100'
                 )}
               >
                 {t.text}
@@ -128,8 +128,8 @@ export default function LastCallCard({
 }>) {
   if (state.status === 'loading') {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-xl border border-border bg-muted/50 px-4 py-5 text-center">
-        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      <div className="flex flex-col items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-5 text-center dark:border-gray-800 dark:bg-gray-800/40">
+        <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
       </div>
     )
   }
@@ -140,7 +140,7 @@ export default function LastCallCard({
         turns={state.turns}
         emptyText="Saving your call…"
         chip={
-          <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <span className="flex items-center gap-1.5 text-[11px] text-gray-400 dark:text-gray-500">
             <Loader2 className="h-3 w-3 animate-spin" /> Saving call…
           </span>
         }
@@ -157,7 +157,7 @@ export default function LastCallCard({
           onRetry ? (
             <button
               onClick={onRetry}
-              className="flex cursor-pointer items-center gap-1 rounded-md border border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition hover:bg-card"
+              className="flex cursor-pointer items-center gap-1 rounded-md border border-gray-200 px-2 py-0.5 text-[11px] font-medium text-gray-600 transition hover:bg-white dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
             >
               <RefreshCw className="h-3 w-3" /> Check again
             </button>

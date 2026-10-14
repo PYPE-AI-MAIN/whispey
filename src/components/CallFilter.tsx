@@ -174,79 +174,6 @@ export function buildRows(filters: FilterOperation[], distinctConfig?: DistinctC
 
 // ── Single filter row ────────────────────────────────────────────────────────
 
-function initialDate(row: RowState): Date | undefined {
-  if (row.column !== 'call_started_at' || !row.value) return undefined
-  const d = new Date(row.value)
-  return Number.isNaN(d.getTime()) ? undefined : d
-}
-
-function opsForColumn(columnDef: (typeof COLUMNS)[number] | undefined) {
-  if (!columnDef) return []
-  const base = OPERATIONS[columnDef.type as keyof typeof OPERATIONS] ?? []
-  const hideNotEquals = columnDef.type === 'text' && !TEXT_NOT_EQUALS_COLUMNS.has(columnDef.value)
-  return hideNotEquals ? base.filter(o => o.value !== 'not_equals') : base
-}
-
-function opLabel(v: string): string {
-  const all = Object.values(OPERATIONS).flat()
-  return all.find(o => o.value === v)?.label ?? v
-}
-
-function ValueEditor({ row, onChange }: Readonly<{ row: RowState; onChange: (updated: RowState) => void }>) {
-  const [calOpen, setCalOpen] = useState(false)
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => initialDate(row))
-
-  if (row.column === 'call_started_at') {
-    return (
-      <Popover open={calOpen} onOpenChange={setCalOpen}>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
-            {selectedDate ? format(selectedDate, 'MMM dd, yyyy') : 'Pick date'}
-            <CalendarIcon className="h-3 w-3 opacity-60" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start" side="bottom">
-          <Calendar mode="single" selected={selectedDate} onSelect={(d) => {
-            if (d) { setSelectedDate(d); onChange({ ...row, value: format(d, 'yyyy-MM-dd') }); setCalOpen(false) }
-          }} initialFocus />
-        </PopoverContent>
-      </Popover>
-    )
-  }
-
-  if (row.column === 'wcall_event') {
-    const current = CALL_EVENT_OPTIONS.find(o => o.value === row.value)?.label ?? row.value
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1 min-w-[80px] justify-between" disabled={!row.operation}>
-            <span className="truncate">{current || 'Event'}</span>
-            <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          {CALL_EVENT_OPTIONS.map(opt => (
-            <DropdownMenuItem key={opt.value} className="text-xs" onClick={() => onChange({ ...row, value: opt.value })}>
-              {opt.label}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    )
-  }
-
-  return (
-    <Input
-      value={row.value}
-      onChange={e => onChange({ ...row, value: e.target.value })}
-      placeholder="Value…"
-      title={row.value || undefined}
-      className="h-7 text-xs w-28"
-      disabled={!row.operation}
-    />
-  )
-}
-
 interface FilterRowProps {
   row: RowState
   onChange: (updated: RowState) => void
@@ -261,15 +188,36 @@ export const FilterRow: React.FC<FilterRowProps> = ({
 }) => {
   const isJsonb = row.column === 'metadata' || row.column === 'transcription_metrics'
   const columnDef = COLUMNS.find(c => c.value === row.column)
+  const [calOpen, setCalOpen] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => {
+    if (row.column === 'call_started_at' && row.value) {
+      try { return new Date(row.value) } catch { return undefined }
+    }
+    return undefined
+  })
 
-  const availableOps = useMemo(() => opsForColumn(columnDef), [columnDef])
+  const availableOps = useMemo(() => {
+    if (!columnDef) return []
+    const base = OPERATIONS[columnDef.type as keyof typeof OPERATIONS] ?? []
+    if (columnDef.type === 'text' && !TEXT_NOT_EQUALS_COLUMNS.has(columnDef.value)) {
+      return base.filter(o => o.value !== 'not_equals')
+    }
+    return base
+  }, [columnDef])
 
   const jsonFields = row.column === 'metadata' ? availableMetadataFields : availableTranscriptionFields
   const getColLabel = (v: string) => columnsForRole.find(c => c.value === v)?.label ?? v
-  const getOpLabel = opLabel
+  const getOpLabel = (v: string) => {
+    for (const ops of Object.values(OPERATIONS)) {
+      const f = ops.find(o => o.value === v)
+      if (f) return f.label
+    }
+    return v
+  }
 
   const handleColChange = (col: string) => {
     onChange({ ...row, column: col, operation: '', value: '', jsonField: '' })
+    setSelectedDate(undefined)
   }
 
   const noValue = row.operation === 'json_exists' || row.operation === 'exists'
@@ -284,7 +232,7 @@ export const FilterRow: React.FC<FilterRowProps> = ({
         className={cn(
           'shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded border select-none transition-colors',
           row.type === 'distinct'
-            ? 'border-blue-400 bg-primary/10 text-primary'
+            ? 'border-blue-400 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400'
             : 'border-border bg-muted/40 text-muted-foreground hover:text-foreground'
         )}
       >
@@ -353,7 +301,50 @@ export const FilterRow: React.FC<FilterRowProps> = ({
           </DropdownMenu>
 
           {/* Value */}
-          {!noValue && <ValueEditor key={row.column} row={row} onChange={onChange} />}
+          {!noValue && (
+            row.column === 'call_started_at' ? (
+              <Popover open={calOpen} onOpenChange={setCalOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5">
+                    {selectedDate ? format(selectedDate, 'MMM dd, yyyy') : 'Pick date'}
+                    <CalendarIcon className="h-3 w-3 opacity-60" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start" side="bottom">
+                  <Calendar mode="single" selected={selectedDate} onSelect={(d) => {
+                    if (d) { setSelectedDate(d); onChange({ ...row, value: format(d, 'yyyy-MM-dd') }); setCalOpen(false) }
+                  }} initialFocus />
+                </PopoverContent>
+              </Popover>
+            ) : row.column === 'wcall_event' ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 text-xs gap-1 min-w-[80px] justify-between" disabled={!row.operation}>
+                    <span className="truncate">
+                      {row.value ? CALL_EVENT_OPTIONS.find(o => o.value === row.value)?.label ?? row.value : 'Event'}
+                    </span>
+                    <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {CALL_EVENT_OPTIONS.map(opt => (
+                    <DropdownMenuItem key={opt.value} className="text-xs" onClick={() => onChange({ ...row, value: opt.value })}>
+                      {opt.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Input
+                value={row.value}
+                onChange={e => onChange({ ...row, value: e.target.value })}
+                placeholder="Value…"
+                title={row.value || undefined}
+                className="h-7 text-xs w-28"
+                disabled={!row.operation}
+              />
+            )
+          )}
         </>
       ) : (
         /* Distinct: sort direction */
@@ -375,7 +366,7 @@ export const FilterRow: React.FC<FilterRowProps> = ({
       <button
         type="button"
         onClick={onRemove}
-        className="shrink-0 text-muted-foreground hover:text-destructive transition-colors p-0.5 rounded"
+        className="shrink-0 text-muted-foreground hover:text-red-500 transition-colors p-0.5 rounded"
       >
         <X className="h-3.5 w-3.5" />
       </button>
@@ -471,7 +462,7 @@ const CallFilter: React.FC<CallFilterProps> = ({
           <span className="text-sm font-semibold">Filters</span>
           {rows.length > 0 && (
             <button type="button" onClick={handleClearAll}
-              className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+              className="text-xs text-muted-foreground hover:text-red-500 transition-colors"
             >
               Clear all
             </button>
