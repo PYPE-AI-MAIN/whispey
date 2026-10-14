@@ -23,8 +23,10 @@ const config = {
     removeConsole:process.env.NODE_ENV === 'production'
   },
   skipTrailingSlashRedirect: true,
-  async redirects() {
-    return [{ source: '/docs/:path*', destination: 'https://docs.whispey.pypeai.com/:path*', permanent: true }];
+  // The docs site is built into .docs-build (npm run build:docs) and served by
+  // src/app/docs/[[...path]]/route.ts behind sign-in; ship its files with that route.
+  outputFileTracingIncludes: {
+    '/docs/[[...path]]': ['./.docs-build/**/*'],
   },
 };
 

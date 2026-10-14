@@ -456,7 +456,7 @@ function SidebarUtilities({ collapsed, mounted, resolvedTheme, setTheme, onOpenS
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="right" align="start">
-            <DropdownMenuItem onClick={() => window.open('https://docs.whispey.pypeai.com', '_blank', 'noopener,noreferrer')}>
+            <DropdownMenuItem onClick={() => window.open('/docs', '_blank', 'noopener,noreferrer')}>
               <BookOpen className="mr-2 h-4 w-4" />Docs
             </DropdownMenuItem>
             <DropdownMenuItem onClick={onOpenSupport}>
@@ -476,7 +476,7 @@ function SidebarUtilities({ collapsed, mounted, resolvedTheme, setTheme, onOpenS
       <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
-            <a href="https://docs.whispey.pypeai.com" target="_blank" rel="noopener noreferrer" aria-label="Docs" className={ICON_BUTTON}>
+            <a href="/docs" target="_blank" rel="noopener noreferrer" aria-label="Docs" className={ICON_BUTTON}>
               <BookOpen className="h-4 w-4" />
             </a>
           </TooltipTrigger>

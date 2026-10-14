@@ -46,7 +46,7 @@ export default function SupportSheet({ isOpen, onClose }: SupportSheetProps) {
               variant="outline"
               className="w-full text-xs h-8 border-border bg-card hover:bg-muted/50 text-foreground"
               onClick={() => {
-                window.open('https://docs.whispey.pypeai.com', '_blank', 'noopener,noreferrer')
+                window.open('/docs', '_blank', 'noopener,noreferrer')
                 onClose()
               }}
             >

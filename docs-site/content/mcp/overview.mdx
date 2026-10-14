@@ -1,0 +1,58 @@
+---
+title: Use Whispey from your AI assistant
+description: Connect Claude, ChatGPT or Cursor to Whispey through MCP. Ask about your calls in plain words, and build voice agents by describing them.
+---
+
+Whispey works inside the AI assistant you already use. Connect it once, and you can ask Claude, ChatGPT or Cursor about your calls, or have it build a voice agent for you, without opening the dashboard.
+
+New to this? Follow [Build a voice agent from Claude](./quickstart) for the whole path, step by step.
+
+The connection uses **MCP** (Model Context Protocol), the standard way for AI assistants to use outside tools. You do not need to know how it works.
+
+## What you can do
+
+| With | You can |
+|---|---|
+| Every key | Ask about calls, costs, trends and campaigns. Read transcripts. Search an agent's knowledge base. Get weekly reports. |
+| Keys with building access | Also create voice agents, change their prompt, greeting, voice, variables and dispositions, and build multi-step conversation flows. |
+
+See [What you can ask](./what-you-can-ask) for examples, and [Build an agent with AI](./build-an-agent) for the builder.
+
+## What you need
+
+- An AI assistant that supports MCP, such as Claude (desktop app, web or Claude Code), ChatGPT or Cursor.
+- **The server address and your key.** The Pype team sends you both when they set up your access. Don't have them? Ask your Pype contact, or open **Help Center** in Whispey.
+
+:::note
+Keep your key private. Anyone with it can use your project through MCP. If it leaks, tell the Pype team and they will replace it.
+:::
+
+## Connect
+
+[Build a voice agent from Claude](./quickstart#step-2-connect-whispey-to-claude) has the exact steps for every Claude plan and for Claude Code. In short:
+
+- **Claude (Free, Pro or Max):** **Customize** → **Connectors** → **+ Add** → **Add custom connector**. Name it `Whispey`, paste the server address, choose **Sign in now**, then paste your key on the **Pype MCP** page and click **Authorize**.
+- **Claude Team or Enterprise:** an owner adds Whispey once in **Organization settings** → **Connectors**. Each person then clicks **Connect** in **Customize** → **Connectors** and uses their own key.
+- **Claude Code:** `claude mcp add --transport http whispey <server-address>`, then `/mcp` → **whispey** → **Authenticate**.
+
+### Cursor and other assistants
+
+Add a remote MCP server with:
+
+- **URL**: the server address Pype gave you.
+- **Header**: `Authorization: Bearer <your-key>`.
+
+## Check it works
+
+Ask your assistant:
+
+> List my Whispey agents.
+
+It should list the agents in your project. If it says it has no Whispey tools, the connection was not added. If it says the key is invalid, check you copied the whole key.
+
+## What stays private
+
+- **Phone numbers** are never shown in full. They are masked before they reach your assistant.
+- **Prompts** of existing agents are never sent back. The assistant can change a prompt but cannot read the current one.
+- **Your project only.** A key sees only the projects it belongs to.
+- **Agents you did not build here** cannot be changed through MCP. The builder only edits agents it created.

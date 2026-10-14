@@ -16,7 +16,7 @@ export default function NotFound() {
             <Link href="/projects">Go to your workspace</Link>
           </Button>
           <Button asChild variant="outline">
-            <a href="https://docs.whispey.pypeai.com" target="_blank" rel="noopener noreferrer">Read the docs</a>
+            <a href="/docs" target="_blank" rel="noopener noreferrer">Read the docs</a>
           </Button>
         </div>
       </div>

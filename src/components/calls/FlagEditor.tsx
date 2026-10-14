@@ -167,7 +167,7 @@ function iconTriggerLook({ isFlagged, open, saving, flags }: FlagTriggerState): 
       'grid h-5 w-5 shrink-0 place-items-center rounded-full transition cursor-pointer',
       isFlagged
         ? 'text-[var(--cl-red)] hover:bg-[var(--cl-red-soft)]'
-        : cn('text-[var(--cl-text3)] hover:bg-[var(--cl-red-soft)] hover:text-[var(--cl-red-text)]', !open && 'opacity-0 group-hover:opacity-100'),
+        : cn('text-[var(--cl-text3)] hover:bg-[var(--cl-red-soft)] hover:text-[var(--cl-red-text)]', !open && 'opacity-50 group-hover:opacity-100'),
       saving && 'opacity-40 pointer-events-none'
     ),
     content: <Flag className="h-3.5 w-3.5" style={isFlagged ? { fill: 'currentColor' } : undefined} />,
@@ -492,10 +492,9 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
             onClick={(e) => { stop(e); startAdding(); setOpen(true) }}
             className={cn(
               'inline-flex items-center justify-center w-5 h-5 shrink-0 rounded-full select-none transition-all cursor-pointer',
-              'border border-dashed border-border',
-              'text-muted-foreground',
-              'hover:border-rose-400 hover:text-destructive dark:hover:border-rose-500 active:scale-95',
-              quiet && 'opacity-0 group-hover:opacity-100',
+              'border border-dashed border-gray-300 dark:border-gray-600',
+              'text-gray-400 dark:text-gray-500',
+              'hover:border-rose-400 hover:text-rose-500 dark:hover:border-rose-500 dark:hover:text-rose-400 active:scale-95',
               saving && 'opacity-40 pointer-events-none'
             )}
           >
