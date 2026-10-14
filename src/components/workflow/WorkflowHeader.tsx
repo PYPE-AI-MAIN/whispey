@@ -121,7 +121,7 @@ export function WorkflowHeader(p: HeaderProps) {
         variant={p.chatOpen ? 'default' : 'outline'}
         size="sm"
         onClick={p.onToggleChat}
-        className={p.chatOpen ? 'bg-violet-500 text-white hover:bg-violet-600' : ''}
+        className={p.chatOpen ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}
         title="Describe what you want and Pi builds or edits the flow"
       >
         <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Ask Pi

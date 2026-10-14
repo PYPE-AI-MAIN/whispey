@@ -176,7 +176,7 @@ export default function SimplifiedSipManagement() {
   return (
     <div className="flex flex-col h-screen bg-muted/50">
       {/* Header */}
-      <div className="px-6 py-4 border-border bg-card border-b">
+      <div className="px-6 py-4 border-border bg-background border-b">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-primary/15 rounded-lg flex items-center justify-center">

@@ -104,7 +104,7 @@ export default function KnowledgeBasePage() {
   return (
     <div className="min-h-screen bg-muted/50 flex flex-col">
       {/* Header */}
-      <div className="px-6 py-4 border-border bg-card border-b flex-shrink-0">
+      <div className="px-6 py-4 border-border bg-background border-b flex-shrink-0">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center gap-4">
             <Button
