@@ -139,6 +139,18 @@
 }
 
 .dark {
+  /* In dark mode "blue" follows the coral primary: buttons and links keep their emphasis on the near-black surfaces. */
+  --color-blue-50: #fff1f1;
+  --color-blue-100: #ffe0e0;
+  --color-blue-200: #ffc2c2;
+  --color-blue-300: #ff9a9a;
+  --color-blue-400: #ff7a7a;
+  --color-blue-500: #e5535b;
+  --color-blue-600: #cc3f48;
+  --color-blue-700: #a8323a;
+  --color-blue-800: #85282e;
+  --color-blue-900: #5e1d22;
+  --color-blue-950: #3a1014;
   --background: #0e0b16;
   --foreground: #f6f2f2;
   --card: #14101d;
