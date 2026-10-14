@@ -87,6 +87,8 @@ export const VariableTextarea: React.FC<VariableTextareaProps> = ({
         ],
         colors: {
         'editor.background': '#ffffff',
+        'editor.selectionBackground': '#4b008233',
+        'editor.inactiveSelectionBackground': '#4b008222',
         }
     });
 
@@ -104,6 +106,8 @@ export const VariableTextarea: React.FC<VariableTextareaProps> = ({
         // stripe on both sides of the editor, in the padding gutter between
         // the wrapper and Monaco's own canvas.
         'editor.background': '#17121f',
+        'editor.selectionBackground': '#ff6b6b4d',
+        'editor.inactiveSelectionBackground': '#ff6b6b2e',
         }
     });
     }, []);

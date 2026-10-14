@@ -30,6 +30,19 @@
   --color-blue-800: #3d006a;
   --color-blue-900: #2d0052;
   --color-blue-950: #1e0a52;
+
+  /* "violet" is the brand coral (Ask Pi, Pi panels), so those 85 violet-* classes match the call-logs Pi button. */
+  --color-violet-50: #fff1f1;
+  --color-violet-100: #ffe0e0;
+  --color-violet-200: #ffc2c2;
+  --color-violet-300: #ff9a9a;
+  --color-violet-400: #ff7a7a;
+  --color-violet-500: #e5535b;
+  --color-violet-600: #cc3f48;
+  --color-violet-700: #a8323a;
+  --color-violet-800: #85282e;
+  --color-violet-900: #5e1d22;
+  --color-violet-950: #3a1014;
 }
 
 @theme inline {
@@ -182,6 +195,11 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+
+  ::selection {
+    background: rgb(255 107 107 / 0.3);
+    color: inherit;
   }
 
   h1,
