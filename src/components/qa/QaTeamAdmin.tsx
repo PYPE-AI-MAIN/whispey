@@ -51,7 +51,7 @@ export function QaTeamAdmin() {
         <Input placeholder="Slack ID (U0123ABCD)" value={form.slack_id} onChange={set('slack_id')} />
         <Button onClick={() => add.mutate()} disabled={add.isPending}>Add</Button>
       </div>
-      {add.isError && <p className="text-xs text-red-600">{(add.error as Error).message}</p>}
+      {add.isError && <p className="text-xs text-red-600">{add.error.message}</p>}
       <ul className="divide-y divide-gray-200 rounded-xl border border-gray-200 bg-white dark:divide-gray-800 dark:border-gray-800 dark:bg-gray-900">
         {isLoading && <li className="px-4 py-3 text-sm text-gray-500">Loading…</li>}
         {data?.members.length === 0 && <li className="px-4 py-3 text-sm text-gray-500">No one added yet.</li>}

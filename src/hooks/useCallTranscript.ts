@@ -310,6 +310,6 @@ export function useCallTranscript({
 
   return {
     sessionTrace, callData, traceData, traceDataLoading, error,
-    bugReportData, checkBugReportFlags, turns: enrichedTraces as TraceLog[],
+    bugReportData, checkBugReportFlags, turns: enrichedTraces,
   }
 }
