@@ -34,6 +34,8 @@ function WorkflowEdgeComponent({
   // Zoomed out, a big flow's labels pile up into noise: show them when close in or selected.
   const zoom = useStore((s) => s.transform[2])
   const setSelectedEdge = useWorkflowStore((s) => s.setSelectedEdge)
+  const ghost = !!data?.ghost
+  const full = typeof data?.full === 'string' ? data.full : undefined
   const [edgePath, labelX, labelY] = getBezierPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition })
 
   const dx = targetX - sourceX
@@ -47,29 +49,33 @@ function WorkflowEdgeComponent({
   return (
     <>
       <BaseEdge id={id} path={edgePath} style={style} markerEnd={markerEnd} className={animated ? 'react-flow__edge-path-animated' : undefined} />
-      {label != null && label !== '' && !data?.dim && (selected || data?.focus || zoom >= 0.6) && (
+      {label != null && label !== '' && !data?.dim && (selected || data?.focus || ghost || zoom >= 0.6) && (
         <EdgeLabelRenderer>
           <button
             type="button"
-            className={`nodrag nopan absolute text-[11px] font-medium px-1.5 py-0.5 rounded-md border cursor-pointer whitespace-nowrap ${
+            title={full}
+            tabIndex={ghost ? -1 : 0}
+            className={`nodrag nopan absolute text-[11px] font-medium px-1.5 py-0.5 rounded-md border ${ghost ? 'cursor-default' : 'cursor-pointer'} ${
+              selected ? 'max-w-[280px] whitespace-normal text-left' : 'whitespace-nowrap'
+            } ${
               selected
-                ? 'bg-blue-600 text-white border-blue-600 z-10'
-                : 'bg-white/95 dark:bg-gray-900/95 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                ? 'bg-primary text-primary-foreground border-primary z-10'
+                : 'bg-card/95 text-muted-foreground border-border'
             }`}
             style={{
               // was offset away from its own edge path to avoid stacking on other
               // labels, but pointer-events-none let the click fall through to
               // whatever sat underneath that offset spot — usually a different
               // edge. Now the label is its own click target for its own edge.
-              pointerEvents: 'auto',
+              pointerEvents: ghost ? 'none' : 'auto',
               transform: `translate(-50%, -50%) translate(${labelX + px * offset}px, ${labelY + py * offset}px)`,
             }}
             onClick={(e) => {
               e.stopPropagation()
-              setSelectedEdge(id)
+              if (!ghost) setSelectedEdge(id)
             }}
           >
-            {label}
+            {selected && full ? full : label}
           </button>
         </EdgeLabelRenderer>
       )}

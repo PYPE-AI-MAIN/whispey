@@ -8,7 +8,7 @@ import { AddNextStep } from './AddNextStep'
 import { NODE_REGISTRY } from './nodeRegistry'
 import { useWorkflowStore } from '@/stores/workflowStore'
 
-type FlowNodeData = WorkflowNode & { isStart?: boolean }
+type FlowNodeData = WorkflowNode & { isStart?: boolean; visits?: number[] }
 
 // Terminal (ending) nodes read as an exit, not a step — a distinct pill shape
 // says that at a glance, before anyone reads a single label.
@@ -43,6 +43,14 @@ function FlowNodeComponent({ data, id, selected, positionAbsoluteX, positionAbso
       className={`group relative flex items-stretch bg-card ${isTerminal ? 'rounded-full' : 'rounded-xl'} shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_20px_-8px_rgba(0,0,0,0.15)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.3),0_8px_24px_-8px_rgba(0,0,0,0.6)] min-w-[168px] max-w-[220px] cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-[0_1px_2px_rgba(0,0,0,0.06),0_12px_28px_-8px_rgba(0,0,0,0.22)] ${ringClass}`}
       style={selected ? ({ '--tw-ring-color': color } as React.CSSProperties) : undefined}
     >
+      {nodeData.visits && (
+        <span
+          className="absolute -top-2.5 -right-2.5 z-10 flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground shadow-sm"
+          title={`Step ${nodeData.visits.join(' and ')} of the call`}
+        >
+          {nodeData.visits.join('·')}
+        </span>
+      )}
       {nodeData.isStart && (
         <span className="absolute -top-5 left-0 rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
           Start

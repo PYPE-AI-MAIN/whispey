@@ -16,6 +16,8 @@ interface WorkflowState {
   future: Workflow[]
   lintIssues: LintIssue[]
   activeNodeId: string | null
+  /** The steps one finished call went through, in order, shown on the canvas (from a call's "Path taken"). */
+  tracePath: { ids: string[]; missing: number } | null
   /** Whether the AI Builder chat is currently generating/streaming a response —
    *  read by the canvas to show a working indicator, since chat and canvas are
    *  separate components and this is the only state they share. */
@@ -52,6 +54,7 @@ interface WorkflowState {
   redo: () => void
   markClean: () => void
   setActiveNode: (id: string | null) => void
+  setTracePath: (trace: { ids: string[]; missing: number } | null) => void
   setChatStreaming: (v: boolean) => void
 }
 
@@ -91,6 +94,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   future: [],
   lintIssues: [],
   activeNodeId: null,
+  tracePath: null,
   chatStreaming: false,
   replaceCount: 0,
 
@@ -250,5 +254,6 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
 
   markClean: () => set({ isDirty: false }),
   setActiveNode: (id) => set({ activeNodeId: id }),
+  setTracePath: (tracePath) => set({ tracePath }),
   setChatStreaming: (v) => set({ chatStreaming: v }),
 }))

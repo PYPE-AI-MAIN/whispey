@@ -6,6 +6,7 @@ import {
   Background,
   BackgroundVariant,
   Controls,
+  MiniMap,
   Panel,
   useReactFlow,
   type Node,
@@ -25,37 +26,19 @@ import { createDefaultNode, type NodeType } from '@/lib/workflow/schema'
 import { computeAutoLayout } from '@/lib/workflow/autoLayout'
 import { LoaderFive } from '@/components/ui/loader-five'
 import { FlowNode } from './FlowNode'
+import { StageNode } from './StageNode'
+import { buildCanvasGraph } from './canvasGraph'
+import { TraceBanner } from './TraceBanner'
 import { WorkflowEdge } from './WorkflowEdge'
 import { NODE_REGISTRY } from './nodeRegistry'
 import { FOCUS_NODE_EVENT, PALETTE_DND_TYPE } from './WorkflowPalette'
 
-const NODE_TYPES = Object.fromEntries(
-  Object.keys(NODE_REGISTRY).map((type) => [type, FlowNode])
-) as unknown as NodeTypes
+const NODE_TYPES = {
+  ...Object.fromEntries(Object.keys(NODE_REGISTRY).map((type) => [type, FlowNode])),
+  stage: StageNode,
+} as unknown as NodeTypes
 
 const EDGE_TYPES: EdgeTypes = { workflow: WorkflowEdge }
-
-function truncateLabel(text: string, max = 28): string {
-  const trimmed = text.trim()
-  return trimmed.length > max ? `${trimmed.slice(0, max - 1)}…` : trimmed
-}
-
-/** The actual condition/expression text is what tells two "condition" edges
- * apart on the canvas — falling back to the edge KIND ("condition") made
- * every branch off a node look identical and unreadable. */
-function edgeCanvasLabel(kind: string, explicitLabel: string | null | undefined, detail: string | null | undefined): string | undefined {
-  if (explicitLabel) return explicitLabel
-  if (detail) return truncateLabel(detail)
-  if (kind === 'always') return undefined
-  return kind
-}
-
-const EDGE_STYLE: Record<string, { stroke: string; dashed?: boolean }> = {
-  always: { stroke: '#9ca3af' },
-  condition: { stroke: '#f59e0b' },
-  logic: { stroke: '#8b5cf6' },
-  fallback: { stroke: '#ef4444', dashed: true },
-}
 
 // xyflow's Controls buttons default to hardcoded light-mode colors (white
 // background, dark text) regardless of app theme — these are its own CSS
@@ -84,6 +67,7 @@ export function WorkflowCanvas() {
   const selectedNodeId = useWorkflowStore((s) => s.selectedNodeId)
   const selectedEdgeId = useWorkflowStore((s) => s.selectedEdgeId)
   const activeNodeId = useWorkflowStore((s) => s.activeNodeId)
+  const tracePath = useWorkflowStore((s) => s.tracePath)
   const addNode = useWorkflowStore((s) => s.addNode)
   const addEdge = useWorkflowStore((s) => s.addEdge)
   const removeNode = useWorkflowStore((s) => s.removeNode)
@@ -92,40 +76,10 @@ export function WorkflowCanvas() {
   const setSelectedNode = useWorkflowStore((s) => s.setSelectedNode)
   const setSelectedEdge = useWorkflowStore((s) => s.setSelectedEdge)
 
-  const flowNodes: Node[] = useMemo(() => {
-    if (!workflow) return []
-    return workflow.nodes.map((n, i) => ({
-      id: n.id,
-      type: n.type,
-      position: n.position ?? { x: 80 + (i % 4) * 220, y: 80 + Math.floor(i / 4) * 160 },
-      data: { ...n, isStart: n.id === workflow.start },
-      selected: n.id === selectedNodeId,
-    }))
-  }, [workflow, selectedNodeId])
-
-  // Every connection is always drawn. In a big flow, selecting a step fades the others so its own
-  // connections stand out; nothing is ever hidden.
-  const flowEdges = useMemo(() => {
-    if (!workflow) return [] as FlowEdge[]
-    const busy = workflow.edges.length > 12
-    return workflow.edges.map((e): FlowEdge => {
-      const style = EDGE_STYLE[e.kind] ?? EDGE_STYLE.always
-      const detail = e.condition || e.expression
-      const mine = e.id === selectedEdgeId || (!!selectedNodeId && (e.source === selectedNodeId || e.target === selectedNodeId))
-      const dim = busy && !mine && !!selectedNodeId
-      return {
-        id: e.id,
-        type: 'workflow',
-        source: e.source,
-        target: e.target,
-        selected: e.id === selectedEdgeId,
-        label: edgeCanvasLabel(e.kind, e.label, detail),
-        animated: (e.kind === 'condition' || e.kind === 'logic') && !dim,
-        data: { focus: busy && mine, dim },
-        style: { stroke: style.stroke, strokeDasharray: style.dashed ? '5 5' : undefined, opacity: dim ? 0.2 : 1 },
-      }
-    })
-  }, [workflow, selectedEdgeId, selectedNodeId])
+  const { nodes: flowNodes, edges: flowEdges } = useMemo(
+    () => (workflow ? buildCanvasGraph({ workflow, selectedNodeId, selectedEdgeId, trace: tracePath }) : { nodes: [], edges: [] }),
+    [workflow, selectedNodeId, selectedEdgeId, tracePath]
+  )
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -277,6 +231,17 @@ export function WorkflowCanvas() {
               <LoaderFive text="Pi is working…" className="text-xs" />
             </div>
           </Panel>
+        )}
+        <TraceBanner />
+        {nodeCount > 12 && (
+          <MiniMap
+            pannable
+            zoomable
+            ariaLabel="Overview of the whole flow"
+            nodeColor={(n) => (n.type === 'stage' ? 'transparent' : (NODE_REGISTRY[n.type as keyof typeof NODE_REGISTRY]?.color ?? '#9ca3af'))}
+            maskColor={resolvedTheme === 'dark' ? 'rgba(14, 11, 22, 0.7)' : 'rgba(250, 248, 252, 0.7)'}
+            style={{ width: 160, height: 100, borderRadius: 12, border: '1px solid var(--border)', background: 'var(--card)' }}
+          />
         )}
         {activeNodeId && (
           <Panel position="top-center">
