@@ -43,31 +43,41 @@ function Row({ row, color, selected, editing, onSelect, onEdit, onCommit }: Read
   const [draft, setDraft] = useState(row.text)
   useEffect(() => { if (editing) setDraft(row.edgeId && row.kind === 'condition' && row.text !== 'Describe when…' ? row.text : '') }, [editing, row.edgeId, row.kind, row.text])
 
+  const look = 'flex min-w-0 flex-1 items-center gap-1.5'
   return (
     <div
-      className={`relative flex h-7 items-center gap-1.5 rounded-md pl-2 pr-2.5 text-[11px] ${
+      className={`relative flex h-7 items-center rounded-md pr-2.5 text-[11px] ${
         selected ? 'bg-primary/10 ring-1 ring-primary/60' : 'bg-muted/60 hover:bg-muted'
       } ${row.kind === 'else' ? 'border border-dashed border-border bg-transparent' : ''}`}
-      title={row.text}
-      onClick={(e) => { e.stopPropagation(); onSelect() }}
-      onDoubleClick={(e) => { if (row.editable) { e.stopPropagation(); onEdit() } }}
     >
-      <Icon className={`h-3 w-3 shrink-0 ${quiet ? 'text-muted-foreground/70' : 'text-muted-foreground'}`} />
       {editing ? (
-        <input
-          autoFocus
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={() => onCommit(draft)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') onCommit(draft)
-            if (e.key === 'Escape') onCommit(null)
-          }}
-          placeholder="e.g. they want to cancel"
-          className="nodrag nopan min-w-0 flex-1 bg-transparent text-[11px] text-foreground outline-none placeholder:text-muted-foreground"
-        />
+        <div className={`${look} h-7 pl-2`}>
+          <Icon className="h-3 w-3 shrink-0 text-muted-foreground" />
+          <input
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={() => onCommit(draft)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') onCommit(draft)
+              if (e.key === 'Escape') onCommit(null)
+            }}
+            placeholder="e.g. they want to cancel"
+            className="nodrag nopan min-w-0 flex-1 bg-transparent text-[11px] text-foreground outline-none placeholder:text-muted-foreground"
+          />
+        </div>
       ) : (
-        <span className={`min-w-0 flex-1 truncate ${quiet ? 'text-muted-foreground' : 'text-foreground'}`}>{row.text}</span>
+        <button
+          type="button"
+          title={row.editable ? `${row.text} (double-click or press F2 to edit)` : row.text}
+          className={`nodrag nopan ${look} h-7 cursor-pointer pl-2 text-left`}
+          onClick={(e) => { e.stopPropagation(); onSelect() }}
+          onDoubleClick={(e) => { if (row.editable) { e.stopPropagation(); onEdit() } }}
+          onKeyDown={(e) => { if (e.key === 'F2' && row.editable) { e.preventDefault(); onEdit() } }}
+        >
+          <Icon className={`h-3 w-3 shrink-0 ${quiet ? 'text-muted-foreground/70' : 'text-muted-foreground'}`} />
+          <span className={`min-w-0 flex-1 truncate ${quiet ? 'text-muted-foreground' : 'text-foreground'}`}>{row.text}</span>
+        </button>
       )}
       <Handle type="source" position={Position.Right} id={row.id} style={{ ...handleClass(color).style, right: -13 }} className={handleClass(color).className} />
     </div>

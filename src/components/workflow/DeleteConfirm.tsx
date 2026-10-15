@@ -12,17 +12,18 @@ interface Pending {
   resolve: (ok: boolean) => void
 }
 
+const UNDO_NOTE = 'You can undo this with Ctrl+Z until you deploy.'
+
+function connectionsTitle(connections: number): string {
+  if (connections === 1) return 'Delete this connection?'
+  return `Delete ${connections} connections?`
+}
+
 function describe(stepNames: string[], connections: number): { title: string; detail: string } {
-  if (stepNames.length === 1) {
-    return {
-      title: `Delete "${stepNames[0]}"?`,
-      detail: connections ? `Its ${connections} ${connections === 1 ? 'connection is' : 'connections are'} removed too. You can undo this with Ctrl+Z until you deploy.` : 'You can undo this with Ctrl+Z until you deploy.',
-    }
-  }
-  if (stepNames.length > 1) {
-    return { title: `Delete ${stepNames.length} steps?`, detail: `Their ${connections} connections are removed too. You can undo this with Ctrl+Z until you deploy.` }
-  }
-  return { title: connections === 1 ? 'Delete this connection?' : `Delete ${connections} connections?`, detail: 'You can undo this with Ctrl+Z until you deploy.' }
+  if (stepNames.length === 0) return { title: connectionsTitle(connections), detail: UNDO_NOTE }
+  if (stepNames.length > 1) return { title: `Delete ${stepNames.length} steps?`, detail: `Their ${connections} connections are removed too. ${UNDO_NOTE}` }
+  const removed = connections === 1 ? 'Its 1 connection is' : `Its ${connections} connections are`
+  return { title: `Delete "${stepNames[0]}"?`, detail: connections ? `${removed} removed too. ${UNDO_NOTE}` : UNDO_NOTE }
 }
 
 /**
