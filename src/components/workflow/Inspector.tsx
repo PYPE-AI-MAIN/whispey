@@ -17,6 +17,7 @@ import { lintWorkflow } from '@/lib/workflow/linter'
 import { NODE_REGISTRY } from './nodeRegistry'
 import { LogicConditionField } from './LogicConditionField'
 import { ExpandableInput } from './ExpandableInput'
+import { CodeEditor } from './CodeEditor'
 import { BranchEditor, StepGuide } from './StepGuide'
 import { explainIssue } from '@/lib/workflow/plainIssues'
 import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
@@ -442,7 +443,7 @@ function NodeFields({
             </Select>
           </Field>
           <Field label="Code" hint="Collected details are available as variables.name.">
-            <Textarea value={node.source} onChange={(e) => patch({ source: e.target.value } as any)} className="font-mono text-xs min-h-[160px]" />
+            <CodeEditor value={node.source} onChange={(source) => patch({ source } as any)} language={node.language} />
           </Field>
           <Field label="Remember the result as (optional)" hint="Give it a name, then use {{name}} in later steps."><Input value={node.saveAs ?? ''} onChange={(e) => patch({ saveAs: e.target.value } as any)} /></Field>
         </>
