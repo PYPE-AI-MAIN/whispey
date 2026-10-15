@@ -109,7 +109,7 @@ export default function AuthPage({ redirectUrl }: Readonly<AuthPageProps>) {
   const field = FIELD[mode];
 
   return (
-    <div className={`${sans.variable} pype sw-page flex min-h-screen flex-col`}>
+    <div className={`${sans.variable} sw-page flex min-h-screen flex-col`}>
       <style>{PAGE_CSS}</style>
 
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4 sm:px-10">

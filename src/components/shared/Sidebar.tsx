@@ -42,7 +42,6 @@ import {
   BookOpen,
   MoreHorizontal,
   Moon,
-  Palette,
   Sun,
   FlaskConical,
   GitBranch,
@@ -54,7 +53,6 @@ import SupportSheet from './SupportPanel'
 import { useTheme } from 'next-themes'
 import NotificationBell from './NotificationBell'
 import { ThemeToggle } from './ThemeToggle'
-import { BrandToggle, useBrandTheme } from './BrandToggle'
 import { SidebarConfig } from './SidebarWrapper'
 import OrganizationSwitcher from '../projects/OrganisationSwitcher'
 import ProjectCreationDialog from '../projects/ProjectCreationDialog'
@@ -446,7 +444,6 @@ const ICON_BUTTON = 'inline-flex h-9 w-9 items-center justify-center rounded-lg 
 
 /** Docs, help, notifications and theme, always at the top; one menu when the sidebar is collapsed. */
 function SidebarUtilities({ collapsed, mounted, resolvedTheme, setTheme, onOpenSupport }: UtilitiesProps): React.ReactNode {
-  const brand = useBrandTheme()
   if (collapsed) {
     const dark = mounted && resolvedTheme === 'dark'
     const ThemeIcon = dark ? Sun : Moon
@@ -467,9 +464,6 @@ function SidebarUtilities({ collapsed, mounted, resolvedTheme, setTheme, onOpenS
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}>
               <ThemeIcon className="mr-2 h-4 w-4" />{dark ? 'Light mode' : 'Dark mode'}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={brand.toggle}>
-              <Palette className="mr-2 h-4 w-4" />{brand.on ? 'Old theme' : 'New theme'}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -498,7 +492,6 @@ function SidebarUtilities({ collapsed, mounted, resolvedTheme, setTheme, onOpenS
         </Tooltip>
       </TooltipProvider>
       <NotificationBell side="bottom" align="start" />
-      <BrandToggle className={ICON_BUTTON} />
       <ThemeToggle plain />
     </div>
   )
