@@ -240,7 +240,7 @@ function ProgressView({ currentStep, selectedPlatform }: Readonly<{ currentStep:
   const hasWebhook = selectedPlatform === 'vapi' || selectedPlatform === 'retell'
   return (
     <div className="px-6 py-8 text-center">
-      <div className="w-16 h-16 mx-auto mb-4 bg-linear-to-br from-blue-50 to-teal-50 dark:from-blue-900/20 dark:to-teal-900/20 rounded-2xl flex items-center justify-center border border-border/60">
+      <div className="w-16 h-16 mx-auto mb-4 bg-linear-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 rounded-2xl flex items-center justify-center border border-border/60">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
       <h3 className="text-lg font-semibold text-foreground mb-2">
@@ -717,7 +717,7 @@ const ConnectAgentFlow: React.FC<ConnectAgentFlowProps> = ({
     <>
       <DialogHeader className="px-6 pt-6 pb-4 shrink-0">
         <div className="text-center">
-          <div className="w-12 h-12 mx-auto mb-3 bg-linear-to-br from-blue-50 to-teal-50 dark:from-blue-900/20 dark:to-teal-900/20 rounded-xl flex items-center justify-center border border-border/60">
+          <div className="w-12 h-12 mx-auto mb-3 bg-linear-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 rounded-xl flex items-center justify-center border border-border/60">
             <Eye className="w-6 h-6 text-foreground" />
           </div>
           <DialogTitle className="text-lg font-semibold text-foreground mb-1">

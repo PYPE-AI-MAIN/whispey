@@ -16,6 +16,8 @@ interface WorkflowState {
   future: Workflow[]
   lintIssues: LintIssue[]
   activeNodeId: string | null
+  /** The steps one finished call went through, in order, shown on the canvas (from a call's "Path taken"). */
+  tracePath: { ids: string[]; missing: number } | null
   /** Whether the AI Builder chat is currently generating/streaming a response —
    *  read by the canvas to show a working indicator, since chat and canvas are
    *  separate components and this is the only state they share. */
@@ -51,14 +53,27 @@ interface WorkflowState {
   undo: () => void
   redo: () => void
   markClean: () => void
+  /** Remember the flow as it is now, so one undo brings it back (before a drag or a tidy-up starts). */
+  snapshot: () => void
   setActiveNode: (id: string | null) => void
+  setTracePath: (trace: { ids: string[]; missing: number } | null) => void
   setChatStreaming: (v: boolean) => void
 }
 
-const MAX_UNDO = 50
+// Everything since the last deploy can be undone.
+const MAX_UNDO = 300
+// Typing in one field is one undo step, not one per letter.
+const COALESCE_MS = 1000
+let lastUndoKey: string | null = null
+let lastUndoAt = 0
 
-function pushUndo(state: WorkflowState): Pick<WorkflowState, 'past' | 'future'> {
+function pushUndo(state: WorkflowState, key?: string): Pick<WorkflowState, 'past' | 'future'> {
   if (!state.workflow) return { past: state.past, future: state.future }
+  const now = Date.now()
+  const sameEdit = !!key && key === lastUndoKey && now - lastUndoAt < COALESCE_MS && state.past.length > 0
+  lastUndoKey = key ?? null
+  lastUndoAt = now
+  if (sameEdit) return { past: state.past, future: [] }
   const past = [...state.past, structuredClone(state.workflow)].slice(-MAX_UNDO)
   return { past, future: [] }
 }
@@ -91,17 +106,19 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   future: [],
   lintIssues: [],
   activeNodeId: null,
+  tracePath: null,
   chatStreaming: false,
   replaceCount: 0,
 
   setWorkflow: (wf, opts) =>
     set((s) => {
       const workflow = withAutoVars(wf)
+      // Loading a saved flow starts a clean history; a template or an AI change applied on top of your work can be undone.
+      const keep = opts?.dirty !== false && s.workflow ? pushUndo(s) : { past: [], future: [] }
       return {
         workflow,
         isDirty: opts?.dirty ?? true,
-        past: [],
-        future: [],
+        ...keep,
         lintIssues: relint(workflow),
         selectedNodeId: null,
         selectedEdgeId: null,
@@ -120,7 +137,8 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   removeNode: (nodeId) =>
     set((s) => {
       if (!s.workflow) return s
-      const undo = pushUndo(s)
+      // Deleting a step also reports its connections as deleted: together they are one undo.
+      const undo = pushUndo(s, 'delete')
       const remaining = s.workflow.nodes.filter((n) => n.id !== nodeId)
       const workflow = {
         ...s.workflow,
@@ -135,7 +153,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   updateNode: (nodeId, patch) =>
     set((s) => {
       if (!s.workflow) return s
-      const undo = pushUndo(s)
+      const undo = pushUndo(s, `node:${nodeId}`)
       const workflow = withAutoVars({
         ...s.workflow,
         nodes: s.workflow.nodes.map((n) => (n.id === nodeId ? { ...n, ...patch } as WorkflowNode : n)),
@@ -154,7 +172,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   removeEdge: (edgeId) =>
     set((s) => {
       if (!s.workflow) return s
-      const undo = pushUndo(s)
+      const undo = pushUndo(s, 'delete')
       const workflow = { ...s.workflow, edges: s.workflow.edges.filter((e) => e.id !== edgeId) }
       return { ...undo, workflow, isDirty: true, lintIssues: relint(workflow), selectedEdgeId: s.selectedEdgeId === edgeId ? null : s.selectedEdgeId }
     }),
@@ -162,7 +180,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   updateEdge: (edgeId, patch) =>
     set((s) => {
       if (!s.workflow) return s
-      const undo = pushUndo(s)
+      const undo = pushUndo(s, `edge:${edgeId}`)
       const workflow = {
         ...s.workflow,
         edges: s.workflow.edges.map((e) => (e.id === edgeId ? { ...e, ...patch } : e)),
@@ -199,7 +217,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   updateAgentLlm: (build) =>
     set((s) => {
       if (!s.workflow) return s
-      const undo = pushUndo(s)
+      const undo = pushUndo(s, 'agent')
       const workflow = withAutoVars({ ...s.workflow, agent: { ...s.workflow.agent, llm: build(s.workflow.agent.llm) } })
       return { ...undo, workflow, isDirty: true, lintIssues: relint(workflow) }
     }),
@@ -207,7 +225,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   patchWorkflow: (patch) =>
     set((s) => {
       if (!s.workflow) return s
-      const undo = pushUndo(s)
+      const undo = pushUndo(s, `patch:${Object.keys(patch).join(',')}`)
       const workflow = withAutoVars({ ...s.workflow, ...patch })
       return { ...undo, workflow, isDirty: true, lintIssues: relint(workflow) }
     }),
@@ -230,7 +248,6 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         future: [structuredClone(s.workflow), ...s.future],
         isDirty: true,
         lintIssues: relint(prev),
-        replaceCount: s.replaceCount + 1,
       }
     }),
 
@@ -244,11 +261,13 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         future: s.future.slice(1),
         isDirty: true,
         lintIssues: relint(next),
-        replaceCount: s.replaceCount + 1,
       }
     }),
 
-  markClean: () => set({ isDirty: false }),
+  // A deploy is the point you cannot undo back past.
+  markClean: () => set({ isDirty: false, past: [], future: [] }),
+  snapshot: () => set((s) => (s.workflow ? { ...pushUndo(s) } : s)),
   setActiveNode: (id) => set({ activeNodeId: id }),
+  setTracePath: (tracePath) => set({ tracePath }),
   setChatStreaming: (v) => set({ chatStreaming: v }),
 }))

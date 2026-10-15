@@ -99,7 +99,7 @@ export function AddNextStep({ id, x, y }: Readonly<{ id: string; x: number; y: n
           aria-label="Add the next step"
           onClick={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
-          className={`nodrag nopan absolute -right-9 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-opacity hover:text-foreground ${open ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+          className={`nodrag nopan absolute -right-9 top-[29px] flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-opacity hover:text-foreground ${open ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
         >
           <Plus className="h-3.5 w-3.5" />
         </button>

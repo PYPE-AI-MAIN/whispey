@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useState } from 'react'
-import { ChevronDown } from 'lucide-react'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { NodeType } from '@/lib/workflow/schema'
@@ -10,10 +9,9 @@ import { NODE_REGISTRY, type NodeMeta } from './nodeRegistry'
 /** Drag payload read by WorkflowCanvas's onDrop. */
 export const PALETTE_DND_TYPE = 'application/whispey-node-type'
 
-// The few nodes most flows are built from; the rest sit under "More nodes".
-const CORE = new Set<NodeType>(['conversation', 'extract_variable', 'logic_split', 'function', 'call_transfer', 'ending'])
 const ALL = Object.entries(NODE_REGISTRY) as [NodeType, NodeMeta][]
 
+/** One step type, as in Retell's list: a coloured icon and its name. Drag it onto the canvas. */
 function PaletteItem({ type, meta }: Readonly<{ type: NodeType; meta: NodeMeta }>) {
   return (
     <Tooltip>
@@ -25,12 +23,12 @@ function PaletteItem({ type, meta }: Readonly<{ type: NodeType; meta: NodeMeta }
             e.dataTransfer.setData(PALETTE_DND_TYPE, type)
             e.dataTransfer.effectAllowed = 'move'
           }}
-          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md border border-border bg-muted/50 cursor-grab active:cursor-grabbing hover:border-border transition-colors text-left"
+          className="flex w-full cursor-grab items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-accent active:cursor-grabbing"
         >
-          <div className="w-6 h-6 rounded flex items-center justify-center flex-shrink-0 bg-primary/10 border border-primary/30">
-            <meta.icon className="w-3.5 h-3.5 text-primary" />
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md" style={{ backgroundColor: `${meta.color}1f`, color: meta.color }}>
+            <meta.icon className="h-4 w-4" strokeWidth={2.1} />
           </div>
-          <span className="text-xs font-medium text-foreground truncate">{meta.label}</span>
+          <span className="truncate text-[13px] font-medium text-foreground">{meta.label}</span>
         </button>
       </TooltipTrigger>
       {/* side=right so it clears the palette instead of covering the next item */}
@@ -98,38 +96,27 @@ function Outline() {
 
 export function WorkflowPalette() {
   const [tab, setTab] = useState<'add' | 'outline'>('add')
-  const [more, setMore] = useState(false)
   const tabBtn = (id: 'add' | 'outline', label: string) => (
     <button
       type="button"
       onClick={() => setTab(id)}
-      className={`flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${tab === id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+      className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${tab === id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
     >
       {label}
     </button>
   )
   return (
-    <div className="w-56 shrink-0 border-r border-border bg-card overflow-y-auto">
-      <div className="m-3 mb-0 flex rounded-lg border border-border bg-muted/60 p-0.5">
-        {tabBtn('add', 'Add')}
+    <div className="w-60 shrink-0 overflow-y-auto border-r border-border bg-card">
+      <div className="m-3 mb-1 flex rounded-lg bg-muted p-0.5">
+        {tabBtn('add', 'Nodes')}
         {tabBtn('outline', 'Outline')}
       </div>
       {tab === 'outline' ? (
         <Outline />
       ) : (
-        <div className="p-3 space-y-1">
-          <div className="text-xs font-medium text-muted-foreground mb-1.5 px-1">Drag onto the canvas</div>
-          {ALL.filter(([t]) => CORE.has(t)).map(([t, m]) => <PaletteItem key={t} type={t} meta={m} />)}
-          <button
-            type="button"
-            onClick={() => setMore((v) => !v)}
-            aria-expanded={more}
-            className="flex w-full items-center justify-between px-1 pt-3 pb-1.5 text-xs font-medium text-muted-foreground hover:text-foreground"
-          >
-            More nodes
-            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${more ? 'rotate-180' : ''}`} />
-          </button>
-          {more && ALL.filter(([t]) => !CORE.has(t)).map(([t, m]) => <PaletteItem key={t} type={t} meta={m} />)}
+        <div className="space-y-0.5 p-2">
+          {ALL.map(([t, m]) => <PaletteItem key={t} type={t} meta={m} />)}
+          <p className="px-2.5 pt-3 text-[11px] text-muted-foreground">Drag a node onto the canvas, or use the + next to a step.</p>
         </div>
       )}
     </div>

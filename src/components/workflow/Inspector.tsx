@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import { Trash2, Star } from 'lucide-react'
+import { ReachableFromAnyStep } from './ReachableFromAnyStep'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -482,6 +483,9 @@ export function Inspector() {
   return (
     <Sheet
       open={open}
+      // Beside the canvas, not over it: no dimming, and clicking another step switches to it, so you can read the
+      // connections while you edit.
+      modal={false}
       onOpenChange={(v) => {
         if (!v) {
           setSelectedNode(null)
@@ -492,6 +496,9 @@ export function Inspector() {
       <SheetContent
         side="right"
         className="w-full sm:max-w-md overflow-y-auto bg-card border-l border-border p-0"
+        onInteractOutside={(e) => e.preventDefault()}
+        // keep the keyboard on the canvas (Delete removes the selected step); click a field to edit it
+        onOpenAutoFocus={(e) => e.preventDefault()}
       >
         {node && (
           <>
@@ -528,6 +535,7 @@ export function Inspector() {
                 <Field label="Stage (optional, groups steps in the Outline)">
                   <Input value={node.stage ?? ''} onChange={(e) => updateNode(node.id, { stage: e.target.value })} placeholder="e.g. Greeting, Pitch, Close" />
                 </Field>
+                {node.type !== 'note' && node.id !== workflow?.start && <ReachableFromAnyStep nodeId={node.id} />}
                 {/* key=node.id: JsonField's internal text state must reset when
                     switching selected nodes, or it shows the previous node's JSON. */}
                 <NodeFields key={node.id} node={node} patch={(p) => updateNode(node.id, p)} workflow={workflow} />

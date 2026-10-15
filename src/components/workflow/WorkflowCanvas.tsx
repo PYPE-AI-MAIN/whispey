@@ -5,7 +5,7 @@ import {
   ReactFlow,
   Background,
   BackgroundVariant,
-  Controls,
+  MiniMap,
   Panel,
   useReactFlow,
   type Node,
@@ -15,67 +15,39 @@ import {
   type NodeTypes,
   type EdgeTypes,
   type Connection,
+  ConnectionLineType,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useTheme } from 'next-themes'
-import { LayoutGrid, Locate, Play, Sparkles } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Sparkles } from 'lucide-react'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import { createDefaultNode, type NodeType } from '@/lib/workflow/schema'
 import { computeAutoLayout } from '@/lib/workflow/autoLayout'
+import { planConnection } from '@/lib/workflow/connect'
+import { hasOverlappingSteps } from '@/lib/workflow/canvasModel'
+import toast from 'react-hot-toast'
 import { LoaderFive } from '@/components/ui/loader-five'
 import { FlowNode } from './FlowNode'
+import { StageNode } from './StageNode'
+import { buildCanvasGraph } from './canvasGraph'
+import { TraceBanner } from './TraceBanner'
+import { CanvasToolbar } from './CanvasToolbar'
+import { useDeleteConfirm } from './DeleteConfirm'
+import { useUndoShortcuts } from './useUndoShortcuts'
 import { WorkflowEdge } from './WorkflowEdge'
 import { NODE_REGISTRY } from './nodeRegistry'
 import { FOCUS_NODE_EVENT, PALETTE_DND_TYPE } from './WorkflowPalette'
 
-const NODE_TYPES = Object.fromEntries(
-  Object.keys(NODE_REGISTRY).map((type) => [type, FlowNode])
-) as unknown as NodeTypes
+const NODE_TYPES = {
+  ...Object.fromEntries(Object.keys(NODE_REGISTRY).map((type) => [type, FlowNode])),
+  stage: StageNode,
+} as unknown as NodeTypes
 
 const EDGE_TYPES: EdgeTypes = { workflow: WorkflowEdge }
-
-function truncateLabel(text: string, max = 28): string {
-  const trimmed = text.trim()
-  return trimmed.length > max ? `${trimmed.slice(0, max - 1)}…` : trimmed
-}
-
-/** The actual condition/expression text is what tells two "condition" edges
- * apart on the canvas — falling back to the edge KIND ("condition") made
- * every branch off a node look identical and unreadable. */
-function edgeCanvasLabel(kind: string, explicitLabel: string | null | undefined, detail: string | null | undefined): string | undefined {
-  if (explicitLabel) return explicitLabel
-  if (detail) return truncateLabel(detail)
-  if (kind === 'always') return undefined
-  return kind
-}
-
-const EDGE_STYLE: Record<string, { stroke: string; dashed?: boolean }> = {
-  always: { stroke: '#9ca3af' },
-  condition: { stroke: '#f59e0b' },
-  logic: { stroke: '#8b5cf6' },
-  fallback: { stroke: '#ef4444', dashed: true },
-}
-
-// xyflow's Controls buttons default to hardcoded light-mode colors (white
-// background, dark text) regardless of app theme — these are its own CSS
-// variables (see @xyflow/react/dist/style.css), overridden here only for the
-// zoom/fit-view/lock buttons so nothing else on the canvas shifts color.
-const CONTROLS_DARK_VARS = {
-  '--xy-controls-button-background-color': '#27272a',
-  '--xy-controls-button-background-color-hover': '#3f3f46',
-  '--xy-controls-button-color': '#e5e7eb',
-  '--xy-controls-button-color-hover': '#ffffff',
-  '--xy-controls-button-border-color': '#52525b',
-} as React.CSSProperties
 
 export function WorkflowCanvas() {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const { screenToFlowPosition, fitView } = useReactFlow()
-  // xyflow ships its own dark theme for Controls/MiniMap, gated behind a
-  // literal `dark` class on the .react-flow root (not just an ancestor
-  // .dark) — without it those two render with their light-mode defaults
-  // (white buttons, near-invisible against a dark canvas).
   const { resolvedTheme } = useTheme()
 
   const workflow = useWorkflowStore((s) => s.workflow)
@@ -84,6 +56,7 @@ export function WorkflowCanvas() {
   const selectedNodeId = useWorkflowStore((s) => s.selectedNodeId)
   const selectedEdgeId = useWorkflowStore((s) => s.selectedEdgeId)
   const activeNodeId = useWorkflowStore((s) => s.activeNodeId)
+  const tracePath = useWorkflowStore((s) => s.tracePath)
   const addNode = useWorkflowStore((s) => s.addNode)
   const addEdge = useWorkflowStore((s) => s.addEdge)
   const removeNode = useWorkflowStore((s) => s.removeNode)
@@ -92,40 +65,10 @@ export function WorkflowCanvas() {
   const setSelectedNode = useWorkflowStore((s) => s.setSelectedNode)
   const setSelectedEdge = useWorkflowStore((s) => s.setSelectedEdge)
 
-  const flowNodes: Node[] = useMemo(() => {
-    if (!workflow) return []
-    return workflow.nodes.map((n, i) => ({
-      id: n.id,
-      type: n.type,
-      position: n.position ?? { x: 80 + (i % 4) * 220, y: 80 + Math.floor(i / 4) * 160 },
-      data: { ...n, isStart: n.id === workflow.start },
-      selected: n.id === selectedNodeId,
-    }))
-  }, [workflow, selectedNodeId])
-
-  // Every connection is always drawn. In a big flow, selecting a step fades the others so its own
-  // connections stand out; nothing is ever hidden.
-  const flowEdges = useMemo(() => {
-    if (!workflow) return [] as FlowEdge[]
-    const busy = workflow.edges.length > 12
-    return workflow.edges.map((e): FlowEdge => {
-      const style = EDGE_STYLE[e.kind] ?? EDGE_STYLE.always
-      const detail = e.condition || e.expression
-      const mine = e.id === selectedEdgeId || (!!selectedNodeId && (e.source === selectedNodeId || e.target === selectedNodeId))
-      const dim = busy && !mine && !!selectedNodeId
-      return {
-        id: e.id,
-        type: 'workflow',
-        source: e.source,
-        target: e.target,
-        selected: e.id === selectedEdgeId,
-        label: edgeCanvasLabel(e.kind, e.label, detail),
-        animated: (e.kind === 'condition' || e.kind === 'logic') && !dim,
-        data: { focus: busy && mine, dim },
-        style: { stroke: style.stroke, strokeDasharray: style.dashed ? '5 5' : undefined, opacity: dim ? 0.2 : 1 },
-      }
-    })
-  }, [workflow, selectedEdgeId, selectedNodeId])
+  const { nodes: flowNodes, edges: flowEdges } = useMemo(
+    () => (workflow ? buildCanvasGraph({ workflow, selectedNodeId, selectedEdgeId, trace: tracePath }) : { nodes: [], edges: [] }),
+    [workflow, selectedNodeId, selectedEdgeId, tracePath]
+  )
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -149,18 +92,23 @@ export function WorkflowCanvas() {
     [removeEdge]
   )
 
+  const updateEdge = useWorkflowStore((st) => st.updateEdge)
+  const snapshot = useWorkflowStore((st) => st.snapshot)
+  const [showMap, setShowMap] = useState(() => (workflow?.nodes.length ?? 0) > 12)
+  const { onBeforeDelete, dialog: deleteDialog } = useDeleteConfirm()
+  useUndoShortcuts()
   const onConnect = useCallback(
     (conn: Connection) => {
       if (!conn.source || !conn.target || !workflow) return
-      // A second way out of a step that listens needs a "when": make it one and open it so it gets filled in.
-      const source = workflow.nodes.find((n) => n.id === conn.source)
-      const hasOther = workflow.edges.some((e) => e.source === conn.source)
-      const asking = hasOther && !!source && ['conversation', 'extract_variable', 'subagent'].includes(source.type)
-      const id = `edge-${crypto.randomUUID()}`
-      addEdge({ id, source: conn.source, target: conn.target, kind: asking ? 'condition' : 'always' })
-      if (asking) setSelectedEdge(id)
+      const plan = planConnection(workflow, { source: conn.source, target: conn.target, sourceHandle: conn.sourceHandle }, `edge-${crypto.randomUUID()}`)
+      if (plan.action === 'retarget') {
+        updateEdge(plan.edgeId, { target: plan.target })
+        return
+      }
+      addEdge(plan.edge)
+      if (plan.openForEditing) setSelectedEdge(plan.edge.id)
     },
-    [addEdge, workflow, setSelectedEdge]
+    [addEdge, updateEdge, workflow, setSelectedEdge]
   )
 
   const onDrop = useCallback(
@@ -217,12 +165,26 @@ export function WorkflowCanvas() {
     return () => globalThis.removeEventListener(FOCUS_NODE_EVENT, onFocus)
   }, [fitView])
 
-  const handleAutoArrange = useCallback(() => {
-    if (!workflow) return
+  // Cards are as tall as their lines now, so a layout drawn for the old, shorter cards can overlap: tidy it once on load.
+  const tidiedFor = useRef(-1)
+  React.useEffect(() => {
+    if (!workflow || tidiedFor.current === replaceCount) return
+    tidiedFor.current = replaceCount
+    if (!hasOverlappingSteps(workflow.nodes, workflow.edges)) return
     const positions = computeAutoLayout(workflow)
     updatePositions(Object.entries(positions).map(([id, position]) => ({ id, position })))
+    toast('Steps overlapped, so the layout was tidied.')
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per loaded or replaced workflow
+  }, [workflow !== null, replaceCount])
+
+  const handleAutoArrange = useCallback(() => {
+    if (!workflow) return
+    snapshot()
+    const positions = computeAutoLayout(workflow)
+    updatePositions(Object.entries(positions).map(([id, position]) => ({ id, position })))
+    toast.success('Layout applied')
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50)
-  }, [workflow, updatePositions, fitView])
+  }, [workflow, updatePositions, fitView, snapshot])
 
   if (!workflow) return null
 
@@ -255,6 +217,10 @@ export function WorkflowCanvas() {
           setSelectedEdge(null)
         }}
         deleteKeyCode={['Delete', 'Backspace']}
+        onBeforeDelete={onBeforeDelete}
+        onNodeDragStart={snapshot}
+        onSelectionDragStart={snapshot}
+        connectionLineType={ConnectionLineType.SmoothStep}
         fitView
         minZoom={0.2}
         // Moving around a big flow: two-finger scroll or wheel pans (shift for sideways), pinch or ctrl-scroll zooms,
@@ -266,10 +232,6 @@ export function WorkflowCanvas() {
         zoomOnDoubleClick={false}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-        {/* Only the button colors, via xyflow's own CSS variables — the
-            canvas's background/edge/node colors are already themed by our
-            own components and shouldn't move when this toggles. */}
-        <Controls style={resolvedTheme === 'dark' ? CONTROLS_DARK_VARS : undefined} />
         {chatStreaming && (
           <Panel position="top-center">
             <div className="flex items-center gap-2 h-8 px-3 rounded-full bg-violet-600 text-white shadow-lg shadow-violet-600/30">
@@ -277,6 +239,17 @@ export function WorkflowCanvas() {
               <LoaderFive text="Pi is working…" className="text-xs" />
             </div>
           </Panel>
+        )}
+        <TraceBanner />
+        {showMap && (
+          <MiniMap
+            pannable
+            zoomable
+            ariaLabel="Overview of the whole flow"
+            nodeColor={(n) => (n.type === 'stage' ? 'transparent' : (NODE_REGISTRY[n.type as keyof typeof NODE_REGISTRY]?.color ?? '#9ca3af'))}
+            maskColor={resolvedTheme === 'dark' ? 'rgba(14, 11, 22, 0.7)' : 'rgba(250, 248, 252, 0.7)'}
+            style={{ width: 160, height: 100, borderRadius: 12, border: '1px solid var(--border)', background: 'var(--card)' }}
+          />
         )}
         {activeNodeId && (
           <Panel position="top-center">
@@ -289,31 +262,9 @@ export function WorkflowCanvas() {
             )}
           </Panel>
         )}
-        <Panel position="top-right" className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 bg-white/90 dark:bg-gray-900/90 backdrop-blur shadow-sm"
-            onClick={() => fitView({ padding: 0.2, duration: 300 })}
-          >
-            <Locate className="h-3.5 w-3.5 mr-1.5" /> Fit view
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 bg-white/90 dark:bg-gray-900/90 backdrop-blur shadow-sm"
-            onClick={() => {
-              setSelectedNode(workflow.start)
-              fitView({ nodes: [{ id: workflow.start }], padding: 1.5, maxZoom: 1, duration: 300 })
-            }}
-          >
-            <Play className="h-3.5 w-3.5 mr-1.5" /> Go to start
-          </Button>
-          <Button variant="outline" size="sm" className="h-8 bg-white/90 dark:bg-gray-900/90 backdrop-blur shadow-sm" onClick={handleAutoArrange}>
-            <LayoutGrid className="h-3.5 w-3.5 mr-1.5" /> Auto-arrange
-          </Button>
-        </Panel>
+        <CanvasToolbar onAutoArrange={handleAutoArrange} showMap={showMap} onToggleMap={() => setShowMap((v) => !v)} />
       </ReactFlow>
+      {deleteDialog}
     </div>
   )
 }

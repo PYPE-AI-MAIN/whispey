@@ -28,12 +28,28 @@ The problems button is red and says "to fix" when Deploy is blocked until you fi
 
 - **Step boxes** show the step name and type. A green START label marks the first step.
 - **A plus button** appears to the right of a step when you hover it. Use it to add the next step. See [Connections](./connections).
-- **Fit view** zooms out to show the whole flow.
-- **Go to start** centres the canvas on the first step.
-- **Auto-arrange** lays the steps out from left to right in call order.
-- Drag the canvas to move around, and scroll to zoom.
+- **The bar at the bottom of the canvas** holds the tools:
+  - **Undo** and **Redo**.
+  - **Auto-arrange** lays the steps out from left to right in call order, keeping the steps of one stage together.
+  - **Fit view** zooms out to show the whole flow.
+  - **Go to start** centres the canvas on the first step.
+  - **Zoom out**, the zoom level, and **Zoom in**.
+  - **Overview map**, a small map of the whole flow at the bottom right. Drag in it to jump. It opens by itself in a long flow.
+- Drag the canvas to move around. Scroll to move, and pinch or hold Ctrl and scroll to zoom.
 
-Every connection is always drawn. In a long flow, click a step and the others fade, so you can follow that step's own connections.
+### Undo and delete
+
+Press **Ctrl+Z** (**Cmd+Z** on a Mac) to undo, and **Ctrl+Shift+Z** to redo. This covers every change since you last deployed: edits, moves, tidy-ups and deletes. Deploying starts a new history. Typing in one field counts as one step.
+
+Pressing **Delete** on a selected step or connection asks you to confirm first. Press **Enter** to delete or **Esc** to cancel. Deleting a step also removes its connections, and one undo brings them all back.
+
+Every connection is always drawn. Click a step and the others fade, so you can follow that step's own connections. The side panel opens beside the canvas without dimming it, so you can click from step to step.
+
+When your steps have a stage, each stage gets a soft area behind it. A step that a [global rule](./global-rules) can reach from any step shows **any step**. Select a step, and dotted lines show where those rules can send the call from it. Select the step a rule leads to, and the dotted lines show every step that can reach it.
+
+### See the path of a real call
+
+Open a workflow call in Call Logs, expand **Path taken** and choose **Show on the workflow**. The steps that call went through are numbered in order, the connections it used are highlighted, and everything else fades. Choose **Clear** to go back.
 
 ## The side panel
 

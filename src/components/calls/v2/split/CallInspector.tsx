@@ -1,7 +1,9 @@
 "use client"
 
 import React, { useEffect, useMemo, useRef, useState } from "react"
-import { ChevronDown, ChevronsRight } from "lucide-react"
+import Link from "next/link"
+import { useParams } from "next/navigation"
+import { ChevronDown, ChevronsRight, Route } from "lucide-react"
 import { useSupabaseQuery } from "@/hooks/useSupabase"
 import { useCallLogsStore } from "@/stores/callLogsStore"
 import { isColumnVisibleForRole } from "@/utils/callLogsUtils"
@@ -131,6 +133,7 @@ function CallDataGroups({ call, agentId, role, showEmpty, turns, isVapiAgent }: 
   const variables = Object.entries(varsRows?.[0]?.dynamic_variables ?? {})
   const metadata = visibleMetadata(call)
   const steps = workflowPath(call)
+  const projectId = useParams<{ projectid: string }>().projectid
   const metrics = Object.entries((call.metrics ?? {}) as Record<string, { score?: number; reason?: string }>)
   const totalCost = callTotalCost(call)
   const mask = numberMaskFor(call)
@@ -177,6 +180,12 @@ function CallDataGroups({ call, agentId, role, showEmpty, turns, isVapiAgent }: 
       )}
       {steps.length > 0 && (
         <Group id="path" title="Path taken" count={steps.length} open={openGroups.includes("path")} onToggle={toggle}>
+          <Link
+            href={`/${projectId}/agents/${agentId}/workflow?path=${encodeURIComponent(steps.join(" > "))}`}
+            className="mb-1 inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[var(--cl-accent-text)] hover:underline"
+          >
+            <Route className="h-3.5 w-3.5" /> Show on the workflow
+          </Link>
           <ol className="py-1">
             {steps.map((name, i) => (
               <li key={`${i}-${name}`} className="flex items-start gap-2.5 text-[13px]">

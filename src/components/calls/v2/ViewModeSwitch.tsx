@@ -13,7 +13,7 @@ export function TryNewViewButton() {
     <button
       type="button"
       onClick={() => setViewMode("new")}
-      className="relative inline-flex h-8 items-center gap-1.5 overflow-hidden rounded-md bg-gradient-to-r from-violet-600 to-blue-600 px-3 text-xs font-semibold text-white shadow-sm shadow-violet-500/25 transition-shadow hover:shadow-md hover:shadow-violet-500/40"
+      className="relative inline-flex h-8 items-center gap-1.5 overflow-hidden rounded-md bg-gradient-to-r from-primary to-primary/80 px-3 text-xs font-semibold text-white shadow-sm shadow-violet-500/25 transition-shadow hover:shadow-md hover:shadow-violet-500/40"
     >
       <span
         aria-hidden
