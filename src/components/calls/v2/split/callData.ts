@@ -83,6 +83,14 @@ export function numberMaskFor(call: CallLog): (value: string) => string {
 /** A tool call's arguments as text: kept as-is when already a string, pretty JSON otherwise. */
 const UNSAFE_TOOL_CHARS = /[^a-zA-Z0-9_-]+/g
 
+function trimUnderscores(text: string): string {
+  let start = 0
+  let end = text.length
+  while (start < end && text[start] === "_") start++
+  while (end > start && text[end - 1] === "_") end--
+  return text.slice(start, end)
+}
+
 /** A workflow step's hand-off tool is named go_<step id> on the voice agent; this maps those names back to the step's name. */
 export function workflowStepNames(agent: any): Map<string, string> {
   const nodes = agent?.configuration?.workflow?.nodes
@@ -90,7 +98,8 @@ export function workflowStepNames(agent: any): Map<string, string> {
   if (!Array.isArray(nodes)) return names
   for (const n of nodes) {
     if (!n?.id) continue
-    const safe = String(n.id).replaceAll(UNSAFE_TOOL_CHARS, "_").replaceAll(/^_+|_+$/g, "") || "node"
+    const clean = String(n.id).replaceAll(UNSAFE_TOOL_CHARS, "_")
+    const safe = trimUnderscores(clean) || "node"
     names.set(`go_${safe}`, n.name || String(n.id))
   }
   return names
