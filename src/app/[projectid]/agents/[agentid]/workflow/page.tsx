@@ -164,7 +164,8 @@ function WorkflowPageInner() {
   // Results from a server check describe the flow as it was then; drop them once it changes.
   useEffect(() => setServerIssues([]), [workflow])
   // Steps are added with the + on a step, so the side list stays out of the way until asked for.
-  const [paletteOpen, setPaletteOpen] = useState(false)
+  // Open by default, like Retell: the node types are always in view.
+  const [paletteOpen, setPaletteOpen] = useState(true)
   const [voiceChecked, setVoiceChecked] = useState(false)
   const [tested, setTested] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
