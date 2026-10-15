@@ -251,7 +251,7 @@ function NodeFields({
                 />
                 <ExpandableInput
                   placeholder="what to listen for"
-                  title={`What to listen for${ex.variable ? `: ${ex.variable}` : ''}`}
+                  title={ex.variable ? `What to listen for: ${ex.variable}` : 'What to listen for'}
                   value={ex.description ?? ''}
                   onChange={(description) => {
                     const next = [...extractions]
