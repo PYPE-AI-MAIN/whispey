@@ -40,7 +40,7 @@ export function TemplatePicker({
   }
 
   return (
-    <div className="flex-1 flex bg-muted/50 p-6 overflow-y-auto">
+    <div className="flex-1 min-h-0 flex bg-muted/50 p-6 overflow-y-auto">
       {/* m-auto, not items-center: centred when it fits, and when it is taller than the screen it scrolls from the top instead of cutting the heading off */}
       <div className="max-w-2xl w-full m-auto">
         <div className="text-center mb-6">
