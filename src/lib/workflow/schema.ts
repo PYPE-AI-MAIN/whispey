@@ -174,6 +174,8 @@ export const callTransferNode = z.object({
   mode: z.enum(['cold', 'warm']).default('cold'),
   message: z.string().nullish(),
   sipHeaders: z.record(z.any()).nullish(),
+  preTransferWebhookUrl: z.string().nullish(),
+  preTransferWebhookFields: z.array(z.string()).nullish(),
 })
 
 export const pressDigitNode = z.object({
