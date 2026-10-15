@@ -8,6 +8,7 @@ import { Geist, Geist_Mono, Plus_Jakarta_Sans } from 'next/font/google'
 import localFont from 'next/font/local'
 import { ThemeProvider } from 'next-themes'
 import Script from 'next/script'
+import { BRAND_INIT } from '@/lib/brandTheme'
 import { Toaster } from 'react-hot-toast' // ADD THIS LINE
 import { FeatureAccessProvider } from './providers/FeatureAccessProvider'
 import { QueryProvider } from './providers/QueryProvider'
@@ -64,6 +65,9 @@ export default function RootLayout({
       }}
     >
       <html lang="en" suppressHydrationWarning>
+        <head>
+          <script dangerouslySetInnerHTML={{ __html: BRAND_INIT }} />
+        </head>
         <body
           className={`${geistSans.variable} ${geistMono.variable} ${jakarta.variable} ${satoshi.variable} antialiased`}
         >
