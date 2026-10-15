@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useMemo, useRef, useState } from "react"
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
 import { ChevronDown, ChevronsRight, Route } from "lucide-react"
@@ -11,8 +11,8 @@ import type { TraceLog } from "@/hooks/useCallTranscript"
 import type { CallLog } from "@/types/logs"
 import { cn } from "@/lib/utils"
 import { computeConversationMetrics, formatLatency, latencyTone } from "@/lib/latencyStats"
-import { formatValue, numberMaskFor, splitTranscriptionMetrics, toolArgumentsText, visibleMetadata, workflowPath } from "./callData"
-import { CopyButton, toolFailed, toolKey, toolName } from "./CallDetail"
+import { formatValue, numberMaskFor, plainToolName, splitTranscriptionMetrics, toolArgumentsText, visibleMetadata, workflowPath } from "./callData"
+import { CopyButton, toolFailed, toolKey, toolName, StepNamesContext } from "./CallDetail"
 
 interface CallInspectorProps {
   call: CallLog
@@ -344,6 +344,7 @@ function ToolsList({
   tools, focusedToolKey, call,
 }: Readonly<CallInspectorProps & { tools: Array<{ key: string; tool: any }> }>) {
   const [open, setOpen] = useState<Set<string>>(new Set())
+  const steps = useContext(StepNamesContext)
   const mask = numberMaskFor(call)
   const focusedRef = useRef<HTMLDivElement>(null)
 
@@ -364,6 +365,7 @@ function ToolsList({
         const argsText = toolArgumentsText(tool.arguments)
         const args = argsText === null ? null : mask(argsText)
         const result = tool.result == null ? null : mask(String(tool.result))
+        const plain = plainToolName(toolName(tool), tool.arguments, steps)
         return (
           <div key={key} ref={key === focusedToolKey ? focusedRef : undefined} className={cn("border-b border-[var(--cl-border)]", failed && "shadow-[inset_3px_0_0_var(--cl-red)]")}>
             <button
@@ -373,7 +375,7 @@ function ToolsList({
             >
               <ChevronDown className={cn("h-3.5 w-3.5 text-[var(--cl-text3)] transition-transform", !isOpen && "-rotate-90")} />
               <span className={cn("h-[7px] w-[7px] shrink-0 rounded-full", failed ? "bg-[var(--cl-red)]" : "bg-[var(--cl-text3)]")} />
-              <span className="min-w-0 flex-1 truncate font-mono text-[13px]">{toolName(tool)}</span>
+              <span className={cn("min-w-0 flex-1 truncate text-[13px]", !plain && "font-mono")} title={plain ? toolName(tool) : undefined}>{plain ?? toolName(tool)}</span>
               {typeof tool.duration_ms === "number" && <span className="font-mono text-[12px] text-[var(--cl-text3)]">{Math.round(tool.duration_ms)}ms</span>}
             </button>
             {isOpen && (

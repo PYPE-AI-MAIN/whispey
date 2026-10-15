@@ -81,6 +81,39 @@ export function numberMaskFor(call: CallLog): (value: string) => string {
 }
 
 /** A tool call's arguments as text: kept as-is when already a string, pretty JSON otherwise. */
+const UNSAFE_TOOL_CHARS = /[^a-zA-Z0-9_-]+/g
+
+/** A workflow step's hand-off tool is named go_<step id> on the voice agent; this maps those names back to the step's name. */
+export function workflowStepNames(agent: any): Map<string, string> {
+  const nodes = agent?.configuration?.workflow?.nodes
+  const names = new Map<string, string>()
+  if (!Array.isArray(nodes)) return names
+  for (const n of nodes) {
+    if (!n?.id) continue
+    const safe = String(n.id).replaceAll(UNSAFE_TOOL_CHARS, "_").replace(/^_+|_+$/g, "") || "node"
+    names.set(`go_${safe}`, n.name || String(n.id))
+  }
+  return names
+}
+
+function argumentKeys(args: unknown): string[] {
+  try {
+    const parsed = typeof args === "string" ? JSON.parse(args) : args
+    return parsed && typeof parsed === "object" ? Object.keys(parsed) : []
+  } catch {
+    return []
+  }
+}
+
+/** What a workflow tool call means in plain words, or null for any other tool. */
+export function plainToolName(name: string, args: unknown, steps: Map<string, string>): string | null {
+  const step = steps.get(name)
+  if (step) return `Moved to “${step}”`
+  if (name !== "save_extracted") return null
+  const keys = argumentKeys(args)
+  return keys.length ? `Saved ${keys.join(", ")}` : "Saved the answers"
+}
+
 export function toolArgumentsText(args: unknown): string | null {
   if (args == null) return null
   return typeof args === "string" ? args : JSON.stringify(args, null, 2)
