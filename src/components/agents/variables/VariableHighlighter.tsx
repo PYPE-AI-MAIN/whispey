@@ -13,7 +13,7 @@ interface VariableHighlighterProps {
 
 /**
  * Highlights variables in text with different colors based on validation status
- * - Valid variables: blue
+ * - Valid variables: brand colour
  * - Invalid variables: red with squiggly underline
  * - Unclosed braces: yellow warning
  */
@@ -37,7 +37,7 @@ export const VariableHighlighter: React.FC<VariableHighlighterProps> = ({
       .replace(/>/g, '&gt;')
       .replace(/\n/g, '<br/>');
 
-    // Highlight valid variables (blue)
+    // Highlight valid variables (brand colour)
     highlighted = highlighted.replace(
       /\{\{([^{}]+)\}\}/g,
       (match, content, offset) => {
@@ -48,7 +48,7 @@ export const VariableHighlighter: React.FC<VariableHighlighterProps> = ({
           // Invalid variable - red with squiggly underline
           return `<span class="variable-invalid">${match}</span>`;
         } else {
-          // Valid variable - blue
+          // Valid variable - brand colour
           return `<span class="variable-valid">${match}</span>`;
         }
       }
@@ -87,15 +87,15 @@ export const variableStyles = `
 }
 
 .variable-valid {
-  background-color: rgb(219, 234, 254); /* bg-primary/15 */
-  color: rgb(29, 78, 216); /* text-primary */
+  background-color: rgba(75, 0, 130, 0.08); /* bg-primary/10 */
+  color: rgb(75, 0, 130); /* text-primary */
   padding: 1px 2px;
   border-radius: 2px;
 }
 
 .dark .variable-valid {
-  background-color: rgba(30, 58, 138, 0.3); /* bg-blue-900/30 */
-  color: rgb(147, 197, 253); /* text-blue-300 */
+  background-color: rgba(255, 107, 107, 0.16); /* bg-primary/15 */
+  color: rgb(255, 180, 162);
 }
 
 .variable-invalid {

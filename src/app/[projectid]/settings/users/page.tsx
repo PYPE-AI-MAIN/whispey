@@ -72,14 +72,8 @@ const ROLES: { value: GlobalRole; label: string; icon: React.ReactNode; pillClas
   },
 ]
 
-const AVATAR_COLORS = [
-  'from-blue-500 to-indigo-600',
-  'from-violet-500 to-purple-600',
-  'from-emerald-500 to-teal-600',
-  'from-amber-500 to-orange-600',
-  'from-pink-500 to-rose-600',
-  'from-cyan-500 to-sky-600',
-]
+// One brand colour for everyone: the initials tell people apart.
+const AVATAR_COLORS = ['from-primary to-primary/80']
 
 function avatarColor(str: string) {
   let h = 0
@@ -335,7 +329,7 @@ export default function UsersSettingsPage() {
           {/* User */}
           <td className="px-4 py-3 overflow-hidden">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className={`w-7 h-7 rounded-full bg-gradient-to-br ${avatarColor(u.email)} flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0`}>
+              <div className={`w-7 h-7 rounded-full bg-gradient-to-br ${avatarColor(u.email)} flex items-center justify-center text-primary-foreground text-[10px] font-semibold flex-shrink-0`}>
                 {initials}
               </div>
               <div className="min-w-0">

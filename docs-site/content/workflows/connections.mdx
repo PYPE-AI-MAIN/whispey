@@ -3,7 +3,9 @@ title: Connections
 description: How the call moves from one step to the next, and how to say when.
 ---
 
-A connection is a line between two steps. It answers one question: when does the call go from here to there?
+A connection answers one question: when does the call go from this step to that one?
+
+Each step lists its ways on as lines on its own card, and every line has a dot on the right edge. A thin line runs from that dot to the next step. You read the "when" on the card, not on the line.
 
 ## Adding a step with the plus button
 
@@ -18,18 +20,22 @@ The first connection from a step is usually "right after". Any second connection
 
 ## The kinds of connection
 
-Click a connection (or its label) to change its kind.
+Click a line on the step's card to change its kind. Double-click a "when the caller says" line to retype it in place. To send a line somewhere else, drag from its dot to another step.
 
 | Kind | Meaning |
 |---|---|
 | **Next step** | Go here once the caller has replied to this step. |
 | **When the caller says something** | Go here when what the caller says matches your description. |
 | **When a saved value matches** | Go here when a detail matches a rule, such as age over 18. No AI is involved. |
-| **Otherwise (automatic)** | Used when none of the others apply. The system handles this for you, so you rarely touch it. |
+| **Otherwise** | Used when none of the others apply. A Branch always shows an **Else** line. A step that calls another system shows **If it works** and **If it fails**. |
 
 :::note
 A **Next step** connection moves the call on after the caller replies once. If a step needs several replies before moving on, give it a "When the caller says something" connection and describe the moment it is done.
 :::
+
+## Reachable from any step
+
+Some things can happen at any point: "they ask for a human", an emergency. Open the step they lead to and turn on **Reachable from any step**, then write when. The call can jump there from any step that listens, and you do not draw a line from every step. Select a step to see dotted lines to where these can send the call. The [Global rules](./global-rules) panel lists them all.
 
 ## Writing a good "when"
 

@@ -53,7 +53,7 @@ const TEMPLATED_TEXT_FIELDS: Record<string, string[]> = {
   subagent: ['prompt'],
   function: ['url', 'waitMessage'],
   knowledge: ['query'],
-  call_transfer: ['transferTo', 'message'],
+  call_transfer: ['transferTo', 'message', 'preTransferWebhookUrl'],
   press_digit: ['digits'],
   sms: ['to', 'message'],
   mcp: ['server'],
@@ -506,9 +506,11 @@ function reachableSet(wf: Workflow): Set<string> {
 
 function lintGlobalRules(wf: Workflow): LintIssue[] {
   const ids = new Set(wf.nodes.map((n) => n.id))
-  return (wf.globalRules ?? []).flatMap((r): LintIssue[] =>
-    ids.has(r.target) ? [] : [{ severity: 'error', message: `global rule '${r.id}' points at '${r.target}', which does not exist` }]
-  )
+  return (wf.globalRules ?? []).flatMap((r): LintIssue[] => {
+    if (!ids.has(r.target)) return [{ severity: 'error', message: `global rule '${r.id}' points at '${r.target}', which does not exist` }]
+    if (!r.condition.trim()) return [{ severity: 'error', message: `global rule '${r.id}' has no condition`, nodeId: r.target }]
+    return []
+  })
 }
 
 export function hasErrors(issues: LintIssue[]): boolean {

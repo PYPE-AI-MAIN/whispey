@@ -1057,7 +1057,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
   if (error) {
     return (
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        <header className="px-6 py-4 border-b border-border/60 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
+        <header className="px-6 py-4 border-b border-border/60 bg-gradient-to-r from-purple-50 to-purple-50 dark:from-purple-900/20 dark:to-purple-900/10">
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center justify-between">
               <div className="h-8 bg-destructive/15 text-destructive px-4 rounded-lg flex items-center">
@@ -1090,7 +1090,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-muted/50">
       {/* Header - shows immediately with working controls */}
-      <header className="px-6 py-4 border-border bg-background border-b">
+      <header className="px-6 py-4 border-border bg-card border-b">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">

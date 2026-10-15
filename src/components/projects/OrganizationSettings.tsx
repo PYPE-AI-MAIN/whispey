@@ -170,7 +170,7 @@ function MemberRow({
     <tr className={`border-b border-border/60 last:border-0 ${isInactive ? 'opacity-60' : 'hover:bg-gray-50 dark:hover:bg-gray-800/40'}`}>
       <td className="px-4 py-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+          <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center text-primary-foreground text-xs font-semibold flex-shrink-0">
             {member.email.charAt(0).toUpperCase()}
           </div>
           <span className="truncate font-medium text-foreground">
@@ -648,7 +648,7 @@ export default function OrganizationSettings({
     <>
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+        <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-lg flex items-center justify-center">
           <Settings className="w-5 h-5 text-white" />
         </div>
         <div>
