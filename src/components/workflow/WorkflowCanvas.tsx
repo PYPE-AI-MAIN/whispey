@@ -16,6 +16,7 @@ import {
   type NodeTypes,
   type EdgeTypes,
   type Connection,
+  ConnectionLineType,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useTheme } from 'next-themes'
@@ -24,6 +25,9 @@ import { Button } from '@/components/ui/button'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import { createDefaultNode, type NodeType } from '@/lib/workflow/schema'
 import { computeAutoLayout } from '@/lib/workflow/autoLayout'
+import { planConnection } from '@/lib/workflow/connect'
+import { hasOverlappingSteps } from '@/lib/workflow/canvasModel'
+import toast from 'react-hot-toast'
 import { LoaderFive } from '@/components/ui/loader-five'
 import { FlowNode } from './FlowNode'
 import { StageNode } from './StageNode'
@@ -103,18 +107,19 @@ export function WorkflowCanvas() {
     [removeEdge]
   )
 
+  const updateEdge = useWorkflowStore((st) => st.updateEdge)
   const onConnect = useCallback(
     (conn: Connection) => {
       if (!conn.source || !conn.target || !workflow) return
-      // A second way out of a step that listens needs a "when": make it one and open it so it gets filled in.
-      const source = workflow.nodes.find((n) => n.id === conn.source)
-      const hasOther = workflow.edges.some((e) => e.source === conn.source)
-      const asking = hasOther && !!source && ['conversation', 'extract_variable', 'subagent'].includes(source.type)
-      const id = `edge-${crypto.randomUUID()}`
-      addEdge({ id, source: conn.source, target: conn.target, kind: asking ? 'condition' : 'always' })
-      if (asking) setSelectedEdge(id)
+      const plan = planConnection(workflow, { source: conn.source, target: conn.target, sourceHandle: conn.sourceHandle }, `edge-${crypto.randomUUID()}`)
+      if (plan.action === 'retarget') {
+        updateEdge(plan.edgeId, { target: plan.target })
+        return
+      }
+      addEdge(plan.edge)
+      if (plan.openForEditing) setSelectedEdge(plan.edge.id)
     },
-    [addEdge, workflow, setSelectedEdge]
+    [addEdge, updateEdge, workflow, setSelectedEdge]
   )
 
   const onDrop = useCallback(
@@ -171,10 +176,23 @@ export function WorkflowCanvas() {
     return () => globalThis.removeEventListener(FOCUS_NODE_EVENT, onFocus)
   }, [fitView])
 
+  // Cards are as tall as their lines now, so a layout drawn for the old, shorter cards can overlap: tidy it once on load.
+  const tidiedFor = useRef(-1)
+  React.useEffect(() => {
+    if (!workflow || tidiedFor.current === replaceCount) return
+    tidiedFor.current = replaceCount
+    if (!hasOverlappingSteps(workflow.nodes, workflow.edges)) return
+    const positions = computeAutoLayout(workflow)
+    updatePositions(Object.entries(positions).map(([id, position]) => ({ id, position })))
+    toast('Steps overlapped, so the layout was tidied.')
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per loaded or replaced workflow
+  }, [workflow !== null, replaceCount])
+
   const handleAutoArrange = useCallback(() => {
     if (!workflow) return
     const positions = computeAutoLayout(workflow)
     updatePositions(Object.entries(positions).map(([id, position]) => ({ id, position })))
+    toast.success('Layout applied')
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50)
   }, [workflow, updatePositions, fitView])
 
@@ -209,6 +227,7 @@ export function WorkflowCanvas() {
           setSelectedEdge(null)
         }}
         deleteKeyCode={['Delete', 'Backspace']}
+        connectionLineType={ConnectionLineType.SmoothStep}
         fitView
         minZoom={0.2}
         // Moving around a big flow: two-finger scroll or wheel pans (shift for sideways), pinch or ctrl-scroll zooms,

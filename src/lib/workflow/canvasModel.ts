@@ -1,8 +1,9 @@
 import type { Edge, GlobalRule, Workflow } from './schema'
+import { CARD_WIDTH, cardHeights } from './transitionRows'
 
 type Flow = Pick<Workflow, 'nodes' | 'edges' | 'globalRules'>
 
-const NODE_W = 220
+const NODE_W = CARD_WIDTH
 const NODE_H = 76
 const PAD = 28
 const LABEL_ROOM = 30
@@ -22,12 +23,13 @@ export interface StageBox {
  * A soft box behind each stage's steps, so a long flow reads as sections.
  * Only drawn when the flow really has stages: two or more of them, each with at least two steps.
  */
-export function stageBoxes(nodes: Flow['nodes']): StageBox[] {
-  const byStage = new Map<string, { x: number; y: number }[]>()
+export function stageBoxes(nodes: Flow['nodes'], edges: Edge[] = []): StageBox[] {
+  const heights = cardHeights(nodes, edges)
+  const byStage = new Map<string, { x: number; y: number; h: number }[]>()
   for (const n of nodes) {
     const stage = n.stage?.trim()
     if (!stage || !n.position) continue
-    byStage.set(stage, [...(byStage.get(stage) ?? []), n.position])
+    byStage.set(stage, [...(byStage.get(stage) ?? []), { ...n.position, h: heights.get(n.id) ?? NODE_H }])
   }
   const groups = [...byStage.entries()].filter(([, points]) => points.length >= 2)
   if (groups.length < 2) return []
@@ -35,7 +37,7 @@ export function stageBoxes(nodes: Flow['nodes']): StageBox[] {
     const minX = Math.min(...points.map((p) => p.x))
     const minY = Math.min(...points.map((p) => p.y))
     const maxX = Math.max(...points.map((p) => p.x)) + NODE_W
-    const maxY = Math.max(...points.map((p) => p.y)) + NODE_H
+    const maxY = Math.max(...points.map((p) => p.y + p.h))
     return { stage, x: minX - PAD, y: minY - PAD - LABEL_ROOM, width: maxX - minX + PAD * 2, height: maxY - minY + PAD * 2 + LABEL_ROOM }
   })
   return withoutOverlaps(boxes)
@@ -139,4 +141,18 @@ export function sharedEndingIds(wf: Pick<Workflow, 'nodes' | 'edges'>, minIncomi
   const incoming = new Map<string, number>()
   for (const e of wf.edges) incoming.set(e.target, (incoming.get(e.target) ?? 0) + 1)
   return new Set(wf.nodes.filter((n) => n.type === 'ending' && (incoming.get(n.id) ?? 0) >= minIncoming).map((n) => n.id))
+}
+
+/** True when two steps sit on top of each other (a card is as tall as its lines, so older layouts can overlap now). */
+export function hasOverlappingSteps(nodes: Flow['nodes'], edges: Edge[]): boolean {
+  const heights = cardHeights(nodes, edges)
+  const placed = nodes.filter((n) => n.position).map((n) => ({ x: n.position!.x, y: n.position!.y, w: NODE_W, h: heights.get(n.id) ?? NODE_H }))
+  for (let i = 0; i < placed.length; i++) {
+    for (let j = i + 1; j < placed.length; j++) {
+      const a = placed[i]
+      const b = placed[j]
+      if (a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h) return true
+    }
+  }
+  return false
 }

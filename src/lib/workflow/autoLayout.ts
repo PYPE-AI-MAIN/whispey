@@ -1,10 +1,10 @@
 import dagre from '@dagrejs/dagre'
 import type { Workflow } from './schema'
+import { CARD_WIDTH, cardHeights } from './transitionRows'
 
 // Matches FlowNode's card footprint closely enough for dagre's spacing math —
 // doesn't need to be exact, just consistent so ranks don't overlap.
-const NODE_WIDTH = 220
-const NODE_HEIGHT = 76
+const NODE_WIDTH = CARD_WIDTH
 
 /** Left-to-right layered layout (Sugiyama-style, via dagre) — replaces manual/
  * drag-wherever node positions with one that actually reads as a flow: start
@@ -19,7 +19,9 @@ export function computeAutoLayout(workflow: Pick<Workflow, 'nodes' | 'edges'>): 
 
   // Steps of one stage are laid out as a group, so the stage areas drawn on the canvas do not run into each other.
   for (const stage of stages) g.setNode(`stage:${stage}`, {})
-  for (const n of workflow.nodes) g.setNode(n.id, { width: NODE_WIDTH, height: NODE_HEIGHT })
+  // A step's card is as tall as its lines (one per way the call can go on).
+  const heights = cardHeights(workflow.nodes, workflow.edges)
+  for (const n of workflow.nodes) g.setNode(n.id, { width: NODE_WIDTH, height: heights.get(n.id) })
   for (const n of workflow.nodes) {
     const stage = n.stage?.trim()
     if (stage && stages.has(stage)) g.setParent(n.id, `stage:${stage}`)
@@ -35,7 +37,7 @@ export function computeAutoLayout(workflow: Pick<Workflow, 'nodes' | 'edges'>): 
     const pos = g.node(n.id)
     if (!pos) continue
     // dagre centers on (x, y); react-flow positions from the top-left corner.
-    positions[n.id] = { x: pos.x - NODE_WIDTH / 2, y: pos.y - NODE_HEIGHT / 2 }
+    positions[n.id] = { x: pos.x - NODE_WIDTH / 2, y: pos.y - (heights.get(n.id) ?? 0) / 2 }
   }
   return positions
 }

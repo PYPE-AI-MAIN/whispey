@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ghostEdges, sharedEndingIds, stageBoxes, tracePathIds, traceSteps, visitNumbers } from '@/lib/workflow/canvasModel'
+import { ghostEdges, hasOverlappingSteps, sharedEndingIds, stageBoxes, tracePathIds, traceSteps, visitNumbers } from '@/lib/workflow/canvasModel'
 import type { Edge, GlobalRule, Workflow } from '@/lib/workflow/schema'
 
 const node = (id: string, type: string, stage: string | null, x: number, y: number, name?: string) =>
@@ -88,5 +88,20 @@ describe('sharedEndingIds', () => {
   it('flags endings with three or more incoming connections', () => {
     const edges = [edge('a', 'greet', 'end'), edge('b', 'ask', 'end'), edge('c', 'book', 'end'), edge('d', 'greet', 'human')]
     expect([...sharedEndingIds({ nodes, edges })]).toEqual(['end'])
+  })
+})
+
+describe('hasOverlappingSteps', () => {
+  it('finds steps that sit on top of each other', () => {
+    expect(hasOverlappingSteps(nodes, [])).toBe(false)
+    const stacked = [...nodes, node('top', 'conversation', null, 10, 10, 'On top')]
+    expect(hasOverlappingSteps(stacked, [])).toBe(true)
+  })
+
+  it('counts the room a step needs for its lines', () => {
+    const two = [node('a', 'conversation', null, 0, 0), node('b', 'conversation', null, 0, 90)]
+    expect(hasOverlappingSteps(two, [])).toBe(false)
+    const withLines = [edge('e1', 'a', 'b'), { ...edge('e2', 'a', 'b'), kind: 'condition' } as Edge, { ...edge('e3', 'a', 'b'), kind: 'fallback' } as Edge]
+    expect(hasOverlappingSteps(two, withLines)).toBe(true)
   })
 })

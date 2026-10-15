@@ -1,27 +1,14 @@
 import type { Edge as FlowEdge, Node } from '@xyflow/react'
 import type { Workflow } from '@/lib/workflow/schema'
+import { CARD_WIDTH, DEFAULT_HANDLE, cardHeight, transitionRows } from '@/lib/workflow/transitionRows'
 import { ghostEdges, sharedEndingIds, stageBoxes, traceSteps, visitNumbers } from '@/lib/workflow/canvasModel'
 
-const EDGE_STYLE: Record<string, { stroke: string; dashed?: boolean }> = {
-  always: { stroke: '#9ca3af' },
-  condition: { stroke: '#f59e0b' },
-  logic: { stroke: '#8b5cf6' },
-  fallback: { stroke: '#ef4444', dashed: true },
-}
-
+const LINE = '#9ca3af'
 const TRACE_STROKE = '#ff6b6b'
 
 function truncateLabel(text: string, max = 28): string {
   const trimmed = text.trim()
   return trimmed.length > max ? `${trimmed.slice(0, max - 1)}…` : trimmed
-}
-
-/** The actual condition/expression text is what tells two "condition" edges apart on the canvas. */
-function edgeLabels(kind: string, explicit: string | null | undefined, detail: string | null | undefined): { short?: string; full?: string } {
-  if (explicit) return { short: explicit, full: explicit }
-  if (detail) return { short: truncateLabel(detail), full: detail }
-  if (kind === 'always') return {}
-  return { short: kind, full: kind }
 }
 
 export interface GraphInput {
@@ -40,11 +27,11 @@ function buildNodes({ workflow, selectedNodeId, trace }: GraphInput): Node[] {
     data: { ...n, isStart: n.id === workflow.start, visits: visits?.get(n.id) },
     selected: n.id === selectedNodeId,
     // so the overview map can draw a step before the canvas has measured it
-    initialWidth: 220,
-    initialHeight: 76,
+    initialWidth: CARD_WIDTH,
+    initialHeight: cardHeight(transitionRows(n, workflow.edges).length),
     style: visits && !visits.has(n.id) ? { opacity: 0.35 } : undefined,
   }))
-  const stages: Node[] = stageBoxes(workflow.nodes).map((b) => ({
+  const stages: Node[] = stageBoxes(workflow.nodes, workflow.edges).map((b) => ({
     id: `stage:${b.stage}`,
     type: 'stage',
     position: { x: b.x, y: b.y },
@@ -72,26 +59,28 @@ function buildEdges(input: GraphInput): FlowEdge[] {
   const traced = trace ? traceSteps(workflow.edges, trace.ids) : null
   const onPath = new Set(traced?.map((t) => t.id))
 
+  const hasRows = new Map(workflow.nodes.map((n) => [n.id, transitionRows(n, workflow.edges).length > 0]))
   const edges = workflow.edges.map((e): FlowEdge => {
-    const style = EDGE_STYLE[e.kind] ?? EDGE_STYLE.always
-    const { short, full } = edgeLabels(e.kind, e.label, e.condition || e.expression)
     const mine = e.id === selectedEdgeId || (!!selectedNodeId && (e.source === selectedNodeId || e.target === selectedNodeId))
     const tracedHere = onPath.has(e.id)
     const dim = traced ? !tracedHere : busy && !mine && !!selectedNodeId
     const quiet = !dim && !mine && !tracedHere && quietTargets.has(e.target)
+    const picked = e.id === selectedEdgeId
+    let stroke = LINE
+    if (tracedHere) stroke = TRACE_STROKE
+    else if (picked) stroke = 'var(--primary)'
     return {
       id: e.id,
       type: 'workflow',
       source: e.source,
+      // each connection starts from its own line on the step's card
+      sourceHandle: hasRows.get(e.source) ? e.id : DEFAULT_HANDLE,
       target: e.target,
-      selected: e.id === selectedEdgeId,
-      label: short,
-      animated: (e.kind === 'condition' || e.kind === 'logic') && !dim && !traced,
-      data: { focus: (busy && mine) || tracedHere, dim, full },
+      selected: picked,
+      data: { focus: (busy && mine) || tracedHere, dim },
       style: {
-        stroke: tracedHere ? TRACE_STROKE : style.stroke,
-        strokeWidth: tracedHere ? 2.5 : undefined,
-        strokeDasharray: style.dashed ? '5 5' : undefined,
+        stroke,
+        strokeWidth: tracedHere || picked ? 2.25 : 1.5,
         opacity: opacityFor(dim, quiet),
       },
     }
@@ -102,6 +91,7 @@ function buildEdges(input: GraphInput): FlowEdge[] {
     id: g.id,
     type: 'workflow',
     source: g.source,
+    sourceHandle: DEFAULT_HANDLE,
     target: g.target,
     label: g.label ? truncateLabel(g.label) : undefined,
     selectable: false,
@@ -114,6 +104,7 @@ function buildEdges(input: GraphInput): FlowEdge[] {
     id: t.id,
     type: 'workflow',
     source: t.source,
+    sourceHandle: DEFAULT_HANDLE,
     target: t.target,
     selectable: false,
     focusable: false,

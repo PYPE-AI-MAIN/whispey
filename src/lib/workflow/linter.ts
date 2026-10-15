@@ -506,9 +506,11 @@ function reachableSet(wf: Workflow): Set<string> {
 
 function lintGlobalRules(wf: Workflow): LintIssue[] {
   const ids = new Set(wf.nodes.map((n) => n.id))
-  return (wf.globalRules ?? []).flatMap((r): LintIssue[] =>
-    ids.has(r.target) ? [] : [{ severity: 'error', message: `global rule '${r.id}' points at '${r.target}', which does not exist` }]
-  )
+  return (wf.globalRules ?? []).flatMap((r): LintIssue[] => {
+    if (!ids.has(r.target)) return [{ severity: 'error', message: `global rule '${r.id}' points at '${r.target}', which does not exist` }]
+    if (!r.condition.trim()) return [{ severity: 'error', message: `global rule '${r.id}' has no condition`, nodeId: r.target }]
+    return []
+  })
 }
 
 export function hasErrors(issues: LintIssue[]): boolean {

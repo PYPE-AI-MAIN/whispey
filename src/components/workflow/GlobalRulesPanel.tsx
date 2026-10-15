@@ -11,7 +11,7 @@ import { useWorkflowStore } from '@/stores/workflowStore'
 import { extractGlobalRules } from '@/lib/workflow/globalRules'
 import { computeAutoLayout } from '@/lib/workflow/autoLayout'
 
-const QUICK_RULES = [
+export const QUICK_RULES = [
   'they ask for a human or a real person',
   'they describe an emergency',
   'they ask you to stop calling',
