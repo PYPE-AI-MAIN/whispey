@@ -95,7 +95,7 @@ const PAGE_CSS = `
 
 export default function LandingPage() {
   return (
-    <div className={`${sans.variable} wl-page min-h-screen`}>
+    <div className={`${sans.variable} pype wl-page min-h-screen`}>
       <style>{PAGE_CSS}</style>
       <Header />
 
