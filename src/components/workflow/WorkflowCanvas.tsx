@@ -5,7 +5,6 @@ import {
   ReactFlow,
   Background,
   BackgroundVariant,
-  Controls,
   MiniMap,
   Panel,
   useReactFlow,
@@ -20,8 +19,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useTheme } from 'next-themes'
-import { LayoutGrid, Locate, Play, Sparkles } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Sparkles } from 'lucide-react'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import { createDefaultNode, type NodeType } from '@/lib/workflow/schema'
 import { computeAutoLayout } from '@/lib/workflow/autoLayout'
@@ -33,6 +31,9 @@ import { FlowNode } from './FlowNode'
 import { StageNode } from './StageNode'
 import { buildCanvasGraph } from './canvasGraph'
 import { TraceBanner } from './TraceBanner'
+import { CanvasToolbar } from './CanvasToolbar'
+import { useDeleteConfirm } from './DeleteConfirm'
+import { useUndoShortcuts } from './useUndoShortcuts'
 import { WorkflowEdge } from './WorkflowEdge'
 import { NODE_REGISTRY } from './nodeRegistry'
 import { FOCUS_NODE_EVENT, PALETTE_DND_TYPE } from './WorkflowPalette'
@@ -44,25 +45,9 @@ const NODE_TYPES = {
 
 const EDGE_TYPES: EdgeTypes = { workflow: WorkflowEdge }
 
-// xyflow's Controls buttons default to hardcoded light-mode colors (white
-// background, dark text) regardless of app theme — these are its own CSS
-// variables (see @xyflow/react/dist/style.css), overridden here only for the
-// zoom/fit-view/lock buttons so nothing else on the canvas shifts color.
-const CONTROLS_DARK_VARS = {
-  '--xy-controls-button-background-color': '#27272a',
-  '--xy-controls-button-background-color-hover': '#3f3f46',
-  '--xy-controls-button-color': '#e5e7eb',
-  '--xy-controls-button-color-hover': '#ffffff',
-  '--xy-controls-button-border-color': '#52525b',
-} as React.CSSProperties
-
 export function WorkflowCanvas() {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const { screenToFlowPosition, fitView } = useReactFlow()
-  // xyflow ships its own dark theme for Controls/MiniMap, gated behind a
-  // literal `dark` class on the .react-flow root (not just an ancestor
-  // .dark) — without it those two render with their light-mode defaults
-  // (white buttons, near-invisible against a dark canvas).
   const { resolvedTheme } = useTheme()
 
   const workflow = useWorkflowStore((s) => s.workflow)
@@ -108,6 +93,10 @@ export function WorkflowCanvas() {
   )
 
   const updateEdge = useWorkflowStore((st) => st.updateEdge)
+  const snapshot = useWorkflowStore((st) => st.snapshot)
+  const [showMap, setShowMap] = useState(() => (workflow?.nodes.length ?? 0) > 12)
+  const { onBeforeDelete, dialog: deleteDialog } = useDeleteConfirm()
+  useUndoShortcuts()
   const onConnect = useCallback(
     (conn: Connection) => {
       if (!conn.source || !conn.target || !workflow) return
@@ -190,11 +179,12 @@ export function WorkflowCanvas() {
 
   const handleAutoArrange = useCallback(() => {
     if (!workflow) return
+    snapshot()
     const positions = computeAutoLayout(workflow)
     updatePositions(Object.entries(positions).map(([id, position]) => ({ id, position })))
     toast.success('Layout applied')
     setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 50)
-  }, [workflow, updatePositions, fitView])
+  }, [workflow, updatePositions, fitView, snapshot])
 
   if (!workflow) return null
 
@@ -227,6 +217,9 @@ export function WorkflowCanvas() {
           setSelectedEdge(null)
         }}
         deleteKeyCode={['Delete', 'Backspace']}
+        onBeforeDelete={onBeforeDelete}
+        onNodeDragStart={snapshot}
+        onSelectionDragStart={snapshot}
         connectionLineType={ConnectionLineType.SmoothStep}
         fitView
         minZoom={0.2}
@@ -239,10 +232,6 @@ export function WorkflowCanvas() {
         zoomOnDoubleClick={false}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
-        {/* Only the button colors, via xyflow's own CSS variables — the
-            canvas's background/edge/node colors are already themed by our
-            own components and shouldn't move when this toggles. */}
-        <Controls style={resolvedTheme === 'dark' ? CONTROLS_DARK_VARS : undefined} />
         {chatStreaming && (
           <Panel position="top-center">
             <div className="flex items-center gap-2 h-8 px-3 rounded-full bg-violet-600 text-white shadow-lg shadow-violet-600/30">
@@ -252,7 +241,7 @@ export function WorkflowCanvas() {
           </Panel>
         )}
         <TraceBanner />
-        {nodeCount > 12 && (
+        {showMap && (
           <MiniMap
             pannable
             zoomable
@@ -273,31 +262,9 @@ export function WorkflowCanvas() {
             )}
           </Panel>
         )}
-        <Panel position="top-right" className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 bg-white/90 dark:bg-gray-900/90 backdrop-blur shadow-sm"
-            onClick={() => fitView({ padding: 0.2, duration: 300 })}
-          >
-            <Locate className="h-3.5 w-3.5 mr-1.5" /> Fit view
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 bg-white/90 dark:bg-gray-900/90 backdrop-blur shadow-sm"
-            onClick={() => {
-              setSelectedNode(workflow.start)
-              fitView({ nodes: [{ id: workflow.start }], padding: 1.5, maxZoom: 1, duration: 300 })
-            }}
-          >
-            <Play className="h-3.5 w-3.5 mr-1.5" /> Go to start
-          </Button>
-          <Button variant="outline" size="sm" className="h-8 bg-white/90 dark:bg-gray-900/90 backdrop-blur shadow-sm" onClick={handleAutoArrange}>
-            <LayoutGrid className="h-3.5 w-3.5 mr-1.5" /> Auto-arrange
-          </Button>
-        </Panel>
+        <CanvasToolbar onAutoArrange={handleAutoArrange} showMap={showMap} onToggleMap={() => setShowMap((v) => !v)} />
       </ReactFlow>
+      {deleteDialog}
     </div>
   )
 }
