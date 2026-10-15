@@ -103,23 +103,15 @@ export function WorkflowCanvas() {
     }))
   }, [workflow, selectedNodeId])
 
-  // Big flows read as spaghetti: every step has an "asks for a human" edge to the same
-  // End node. When busy, hide edges into shared exits (3+ incoming) and, once a step is
-  // selected, fade everything but that step's own edges. "Show all" turns this off.
-  const [showAll, setShowAll] = useState(false)
-  const { busy, hiddenCount, flowEdges } = useMemo(() => {
-    if (!workflow) return { busy: false, hiddenCount: 0, flowEdges: [] as FlowEdge[] }
-    const busy = workflow.edges.length > 12 && !showAll
-    const inDegree = new Map<string, number>()
-    workflow.edges.forEach((e) => inDegree.set(e.target, (inDegree.get(e.target) ?? 0) + 1))
-    let hiddenCount = 0
-    const flowEdges = workflow.edges.map((e): FlowEdge => {
+  // Every connection is always drawn. In a big flow, selecting a step fades the others so its own
+  // connections stand out; nothing is ever hidden.
+  const flowEdges = useMemo(() => {
+    if (!workflow) return [] as FlowEdge[]
+    const busy = workflow.edges.length > 12
+    return workflow.edges.map((e): FlowEdge => {
       const style = EDGE_STYLE[e.kind] ?? EDGE_STYLE.always
       const detail = e.condition || e.expression
       const mine = e.id === selectedEdgeId || (!!selectedNodeId && (e.source === selectedNodeId || e.target === selectedNodeId))
-      const shared = (inDegree.get(e.target) ?? 0) >= 3
-      const hidden = busy && !mine && shared && !selectedNodeId
-      if (hidden) hiddenCount++
       const dim = busy && !mine && !!selectedNodeId
       return {
         id: e.id,
@@ -127,15 +119,13 @@ export function WorkflowCanvas() {
         source: e.source,
         target: e.target,
         selected: e.id === selectedEdgeId,
-        hidden,
         label: edgeCanvasLabel(e.kind, e.label, detail),
         animated: (e.kind === 'condition' || e.kind === 'logic') && !dim,
         data: { focus: busy && mine, dim },
-        style: { stroke: style.stroke, strokeDasharray: style.dashed ? '5 5' : undefined, opacity: dim ? 0.08 : 1 },
+        style: { stroke: style.stroke, strokeDasharray: style.dashed ? '5 5' : undefined, opacity: dim ? 0.2 : 1 },
       }
     })
-    return { busy, hiddenCount, flowEdges }
-  }, [workflow, selectedEdgeId, selectedNodeId, showAll])
+  }, [workflow, selectedEdgeId, selectedNodeId])
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -236,8 +226,6 @@ export function WorkflowCanvas() {
 
   if (!workflow) return null
 
-  const hiddenNote = hiddenCount ? `${hiddenCount} connections to shared endings are hidden. ` : ''
-
   return (
     <div
       ref={wrapperRef}
@@ -299,17 +287,6 @@ export function WorkflowCanvas() {
                 Follow the call
               </button>
             )}
-          </Panel>
-        )}
-        {(busy || showAll) && workflow.edges.length > 12 && (
-          <Panel position="bottom-center">
-            <button
-              type="button"
-              onClick={() => setShowAll((v) => !v)}
-              className="rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground shadow-sm hover:text-foreground"
-            >
-              {showAll ? 'Hide shared connections' : `${hiddenNote}Click a step to see its connections. Show all`}
-            </button>
           </Panel>
         )}
         <Panel position="top-right" className="flex gap-2">
