@@ -90,7 +90,7 @@ export function workflowStepNames(agent: any): Map<string, string> {
   if (!Array.isArray(nodes)) return names
   for (const n of nodes) {
     if (!n?.id) continue
-    const safe = String(n.id).replaceAll(UNSAFE_TOOL_CHARS, "_").replace(/^_+|_+$/g, "") || "node"
+    const safe = String(n.id).replaceAll(UNSAFE_TOOL_CHARS, "_").replaceAll(/^_+|_+$/g, "") || "node"
     names.set(`go_${safe}`, n.name || String(n.id))
   }
   return names
