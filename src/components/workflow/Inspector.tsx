@@ -16,6 +16,7 @@ import type { WorkflowNode, Edge, EdgeKind, Workflow } from '@/lib/workflow/sche
 import { lintWorkflow } from '@/lib/workflow/linter'
 import { NODE_REGISTRY } from './nodeRegistry'
 import { LogicConditionField } from './LogicConditionField'
+import { ExpandableInput } from './ExpandableInput'
 import { BranchEditor, StepGuide } from './StepGuide'
 import { explainIssue } from '@/lib/workflow/plainIssues'
 import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
@@ -125,6 +126,47 @@ function ToolsField({
   )
 }
 
+const WEBHOOK_FIELDS = [
+  { key: 'customer_number', label: 'Caller phone number' },
+  { key: 'metadata', label: 'Call details, including the path so far' },
+  { key: 'duration_seconds', label: 'Call length so far' },
+  { key: 'caller_info', label: 'Caller info' },
+  { key: 'transcript', label: 'Transcript' },
+  { key: 'conversation_summary', label: 'Short summary of the call' },
+  { key: 'context_memory', label: 'Remembered context' },
+  { key: 'variables', label: 'Saved details (variables)' },
+  { key: 'handoffs', label: 'Hand-off count' },
+  { key: 'errors', label: 'Errors' },
+]
+
+/** Optional web address the voice agent calls with the call details just before it dials the transfer (as in the single-prompt agent's transfer tool). */
+function PreTransferWebhook({ node, patch }: Readonly<{ node: Extract<WorkflowNode, { type: 'call_transfer' }>; patch: (p: Partial<WorkflowNode>) => void }>) {
+  const chosen = node.preTransferWebhookFields ?? WEBHOOK_FIELDS.map((f) => f.key)
+  return (
+    <>
+      <Field label="Call a web address before handing over (optional)" hint="The call details are sent here just before the number is dialled. If it fails, the transfer still goes ahead.">
+        <Input value={node.preTransferWebhookUrl ?? ''} onChange={(e) => patch({ preTransferWebhookUrl: e.target.value } as any)} placeholder="https://your-api.com/webhook" />
+      </Field>
+      {node.preTransferWebhookUrl && (
+        <Field label="What to send">
+          <div className="grid grid-cols-1 gap-y-1.5">
+            {WEBHOOK_FIELDS.map(({ key, label }) => (
+              <div key={key} className="flex items-center gap-2">
+                <Checkbox
+                  id={`ptw-${key}`}
+                  checked={chosen.includes(key)}
+                  onCheckedChange={(v) => patch({ preTransferWebhookFields: v ? [...chosen, key] : chosen.filter((f) => f !== key) } as any)}
+                />
+                <label htmlFor={`ptw-${key}`} className="cursor-pointer select-none text-xs text-muted-foreground">{label}</label>
+              </div>
+            ))}
+          </div>
+        </Field>
+      )}
+    </>
+  )
+}
+
 function NodeFields({
   node,
   patch,
@@ -207,15 +249,15 @@ function NodeFields({
                   }}
                   className="h-7 text-xs"
                 />
-                <Input
+                <ExpandableInput
                   placeholder="what to listen for"
+                  title={ex.variable ? `What to listen for: ${ex.variable}` : 'What to listen for'}
                   value={ex.description ?? ''}
-                  onChange={(e) => {
+                  onChange={(description) => {
                     const next = [...extractions]
-                    next[i] = { ...ex, description: e.target.value }
+                    next[i] = { ...ex, description }
                     patch({ extractions: next } as any)
                   }}
-                  className="h-7 text-xs"
                 />
                 <label className="flex h-7 shrink-0 items-center gap-1 text-[11px] text-muted-foreground" title="If off, the agent will not hold the call back waiting for this detail">
                   <Checkbox
@@ -299,6 +341,7 @@ function NodeFields({
             </Select>
           </Field>
           <Field label="Say this before handing over"><Textarea value={node.message ?? ''} onChange={(e) => patch({ message: e.target.value } as any)} /></Field>
+          <PreTransferWebhook node={node} patch={patch} />
           <OutboundTrunkHint workflow={workflow} />
         </>
       )

@@ -53,7 +53,7 @@ const TEMPLATED_TEXT_FIELDS: Record<string, string[]> = {
   subagent: ['prompt'],
   function: ['url', 'waitMessage'],
   knowledge: ['query'],
-  call_transfer: ['transferTo', 'message'],
+  call_transfer: ['transferTo', 'message', 'preTransferWebhookUrl'],
   press_digit: ['digits'],
   sms: ['to', 'message'],
   mcp: ['server'],
