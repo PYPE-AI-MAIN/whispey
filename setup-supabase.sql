@@ -125,7 +125,8 @@ CREATE TABLE public.pype_voice_agents (
     vapi_api_key_encrypted text,
     vapi_project_key_encrypted text,
     metrics jsonb,
-    field_extractor_variables jsonb DEFAULT '{}'::jsonb
+    field_extractor_variables jsonb DEFAULT '{}'::jsonb,
+    dnc_checker_enabled boolean NOT NULL DEFAULT false   -- add callers who say "don't call me" (field dnc_requested) to this agent's DNC list
 );
 
 CREATE TABLE public.pype_voice_projects (
@@ -1466,25 +1467,30 @@ ALTER TABLE public.pype_agent_config_versions DISABLE ROW LEVEL SECURITY;
 -- Do Not Call (DNC) List
 -- ========================================
 -- Numbers that must never be dialed. scope='global' applies to every project;
--- scope='project' applies to one project. A number is blocked for a call when an
--- ACTIVE row matches its normalized E.164 form AND (scope='global' OR project_id
--- = the call's project). Deletes are soft (is_active=false) for audit.
+-- scope='project' applies to one project; scope='agent' applies to one agent
+-- (e.g. added by the analytics lambda's DNC checker, source='auto'). A number is
+-- blocked for a call when an ACTIVE row matches its normalized E.164 form AND
+-- (scope='global' OR project_id = the call's project OR agent_id = the call's
+-- agent). Deletes are soft (is_active=false) for audit. See migrations/add_dnc_checker.sql.
 
 CREATE TABLE IF NOT EXISTS public.pype_voice_dnc_list (
     id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     phone_e164   text NOT NULL,                       -- normalized match key, e.g. +919876543210
     phone_raw    text,                                -- what was entered
-    scope        text NOT NULL CHECK (scope IN ('global', 'project')),
+    scope        text NOT NULL CONSTRAINT pype_voice_dnc_list_scope_check CHECK (scope IN ('global', 'project', 'agent')),
     project_id   uuid REFERENCES public.pype_voice_projects(id) ON DELETE CASCADE,
+    agent_id     uuid REFERENCES public.pype_voice_agents(id) ON DELETE CASCADE,  -- scope='agent' only
+    call_log_id  uuid,                                 -- source='auto': the call where they asked
     reason       text,
-    source       text NOT NULL DEFAULT 'manual' CHECK (source IN ('manual', 'csv', 'api')),
+    source       text NOT NULL DEFAULT 'manual' CONSTRAINT pype_voice_dnc_list_source_check CHECK (source IN ('manual', 'csv', 'api', 'auto')),
     added_by     text NOT NULL,                       -- clerk user email / id
     is_active    boolean NOT NULL DEFAULT true,       -- soft delete
     created_at   timestamp with time zone NOT NULL DEFAULT now(),
     deleted_at   timestamp with time zone,
     CONSTRAINT dnc_scope_project_id CHECK (
-        (scope = 'project' AND project_id IS NOT NULL) OR
-        (scope = 'global'  AND project_id IS NULL)
+        (scope = 'global'  AND project_id IS NULL     AND agent_id IS NULL) OR
+        (scope = 'project' AND project_id IS NOT NULL AND agent_id IS NULL) OR
+        (scope = 'agent'   AND project_id IS NOT NULL AND agent_id IS NOT NULL)
     )
 );
 
@@ -1496,6 +1502,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS uniq_dnc_global
     ON public.pype_voice_dnc_list(phone_e164) WHERE is_active AND scope = 'global';
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_dnc_project
     ON public.pype_voice_dnc_list(phone_e164, project_id) WHERE is_active AND scope = 'project';
+CREATE INDEX IF NOT EXISTS idx_dnc_agent ON public.pype_voice_dnc_list(agent_id) WHERE is_active;
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_dnc_agent
+    ON public.pype_voice_dnc_list(phone_e164, agent_id) WHERE is_active AND scope = 'agent';
 
 -- Access controlled at the API layer (service role key used server-side)
 ALTER TABLE public.pype_voice_dnc_list DISABLE ROW LEVEL SECURITY;

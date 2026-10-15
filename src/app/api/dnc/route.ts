@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
-import { DNC_TABLE, getSuperAdminEmail, toNumbersArray, buildDncRows } from '@/lib/dnc'
+import { DNC_TABLE, getSuperAdminEmail, toNumbersArray, buildDncRows, type DncScope } from '@/lib/dnc'
 
 export const runtime = 'nodejs'
 
@@ -8,8 +8,9 @@ export const runtime = 'nodejs'
  * POST /api/dnc
  * Body: {
  *   numbers: string | string[],   // one or many (CSV upload sends many)
- *   scope: 'global' | 'project',
+ *   scope: 'global' | 'project' | 'agent',
  *   project_id?: string,          // required when scope='project'
+ *   agent_id?: string,            // required when scope='agent' (its project is looked up)
  *   reason?: string,
  *   source?: 'manual' | 'csv' | 'api'
  * }
@@ -22,8 +23,9 @@ export async function POST(request: NextRequest) {
 
   let body: {
     numbers?: string | string[]
-    scope?: 'global' | 'project'
+    scope?: DncScope
     project_id?: string
+    agent_id?: string
     reason?: string
     source?: 'manual' | 'csv' | 'api'
   }
@@ -34,11 +36,30 @@ export async function POST(request: NextRequest) {
   }
 
   const scope = body.scope
-  if (scope !== 'global' && scope !== 'project') {
-    return NextResponse.json({ error: "scope must be 'global' or 'project'" }, { status: 400 })
+  if (scope !== 'global' && scope !== 'project' && scope !== 'agent') {
+    return NextResponse.json({ error: "scope must be 'global', 'project' or 'agent'" }, { status: 400 })
   }
   if (scope === 'project' && !body.project_id) {
     return NextResponse.json({ error: 'project_id is required for project scope' }, { status: 400 })
+  }
+  if (scope === 'agent' && !body.agent_id) {
+    return NextResponse.json({ error: 'agent_id is required for agent scope' }, { status: 400 })
+  }
+
+  const supabase = createServiceRoleClient()
+
+  // An agent entry belongs to the agent's own project, whatever the client sent.
+  let projectId = body.project_id ?? null
+  if (scope === 'agent') {
+    const { data: agent, error: agentError } = await supabase
+      .from('pype_voice_agents')
+      .select('project_id')
+      .eq('id', body.agent_id!)
+      .maybeSingle()
+    if (agentError || !agent?.project_id) {
+      return NextResponse.json({ error: 'Agent not found' }, { status: 400 })
+    }
+    projectId = agent.project_id
   }
 
   const inputs = toNumbersArray(body.numbers)
@@ -48,7 +69,8 @@ export async function POST(request: NextRequest) {
 
   const { rows, invalid } = buildDncRows(inputs, {
     scope,
-    projectId: body.project_id ?? null,
+    projectId,
+    agentId: body.agent_id ?? null,
     reason: body.reason ?? null,
     source: body.source ?? 'manual',
     addedBy: admin,
@@ -58,8 +80,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No valid numbers', invalid }, { status: 400 })
   }
 
-  const supabase = createServiceRoleClient()
-
   // Skip numbers already active in this scope so we don't trip the unique index.
   let existingQuery = supabase
     .from(DNC_TABLE)
@@ -67,9 +87,8 @@ export async function POST(request: NextRequest) {
     .eq('is_active', true)
     .eq('scope', scope)
     .in('phone_e164', rows.map((r) => r.phone_e164 as string))
-  if (scope === 'project') {
-    existingQuery = existingQuery.eq('project_id', body.project_id!)
-  }
+  if (scope === 'project') existingQuery = existingQuery.eq('project_id', projectId!)
+  if (scope === 'agent') existingQuery = existingQuery.eq('agent_id', body.agent_id!)
   const existing = await existingQuery
   if (existing.error) {
     console.error('DNC add (dupe check) error:', existing.error)

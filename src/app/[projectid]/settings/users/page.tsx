@@ -1,6 +1,6 @@
 'use client'
 
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, useEffect } from 'react'
 import {
@@ -16,10 +16,12 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { QaTeamAdmin } from '@/components/qa/QaTeamAdmin'
+import { DncManager } from '@/components/dnc/DncManager'
 import { CreateMetricTemplateForm } from '@/components/CreateMetricTemplateForm'
 
 type GlobalRole = 'superadmin' | 'prompter' | 'user'
-type Tab = 'users' | 'metrics' | 'qa'
+type Tab = 'users' | 'metrics' | 'qa' | 'dnc'
+const TABS: Tab[] = ['users', 'metrics', 'qa', 'dnc']
 
 interface MetricTemplate {
   metric_id: string
@@ -222,7 +224,9 @@ export default function UsersSettingsPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const { isSuperAdmin, isLoading: roleLoading } = useGlobalRole()
-  const [activeTab, setActiveTab] = useState<Tab>('users')
+  // ?tab=dnc opens a tab directly (the old /settings/dnc address lands here)
+  const tabParam = useSearchParams().get('tab')
+  const [activeTab, setActiveTab] = useState<Tab>(TABS.includes(tabParam as Tab) ? (tabParam as Tab) : 'users')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
 
@@ -436,7 +440,7 @@ export default function UsersSettingsPage() {
       {/* ── Tabs ── */}
       <div className="flex-shrink-0 border-b border-border">
         <div className="max-w-6xl mx-auto px-4 sm:px-8 flex gap-1 pt-1">
-          {(['users', 'metrics', 'qa'] as Tab[]).map(tab => (
+          {TABS.map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -446,7 +450,7 @@ export default function UsersSettingsPage() {
                   : 'text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/50'
               }`}
             >
-              {{ users: 'Users', metrics: 'Metrics', qa: 'QA team' }[tab]}
+              {{ users: 'Users', metrics: 'Metrics', qa: 'QA team', dnc: 'Do Not Call' }[tab]}
             </button>
           ))}
         </div>
@@ -454,6 +458,11 @@ export default function UsersSettingsPage() {
 
       {activeTab === 'metrics' && <MetricsTab />}
       {activeTab === 'qa' && <div className="max-w-6xl w-full mx-auto px-4 sm:px-8 pt-6"><QaTeamAdmin /></div>}
+      {activeTab === 'dnc' && (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <DncManager currentProjectId={typeof projectId === 'string' ? projectId : null} />
+        </div>
+      )}
 
       {/* ── Users tab content ── */}
       {activeTab === 'users' && <>
