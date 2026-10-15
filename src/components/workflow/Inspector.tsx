@@ -16,6 +16,7 @@ import type { WorkflowNode, Edge, EdgeKind, Workflow } from '@/lib/workflow/sche
 import { lintWorkflow } from '@/lib/workflow/linter'
 import { NODE_REGISTRY } from './nodeRegistry'
 import { LogicConditionField } from './LogicConditionField'
+import { ExpandableInput } from './ExpandableInput'
 import { BranchEditor, StepGuide } from './StepGuide'
 import { explainIssue } from '@/lib/workflow/plainIssues'
 import ModelSelector from '@/components/agents/AgentConfig/ModelSelector'
@@ -248,15 +249,15 @@ function NodeFields({
                   }}
                   className="h-7 text-xs"
                 />
-                <Input
+                <ExpandableInput
                   placeholder="what to listen for"
+                  title={`What to listen for${ex.variable ? `: ${ex.variable}` : ''}`}
                   value={ex.description ?? ''}
-                  onChange={(e) => {
+                  onChange={(description) => {
                     const next = [...extractions]
-                    next[i] = { ...ex, description: e.target.value }
+                    next[i] = { ...ex, description }
                     patch({ extractions: next } as any)
                   }}
-                  className="h-7 text-xs"
                 />
                 <label className="flex h-7 shrink-0 items-center gap-1 text-[11px] text-muted-foreground" title="If off, the agent will not hold the call back waiting for this detail">
                   <Checkbox
