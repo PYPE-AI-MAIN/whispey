@@ -1,0 +1,230 @@
+---
+title: Call logs
+description: Find calls, read transcripts, play recordings, tag and flag calls, and pick the columns you see.
+---
+
+**Call Logs** is the list of every call your agent has taken or made. Use it to find a call, read what was said, listen to it, and mark it for follow-up.
+
+Open it from the left menu: choose your agent, then **Call Logs** under **Monitor**.
+
+:::tip
+New here? [Call logs, step by step](./call-logs-guide) walks through everyday jobs, like finding bad calls and reviewing one quickly. This page is the full reference.
+:::
+
+## Choose the dates
+
+The **Period** control at the top is the same one used on the [Overview](./overview): **1D**, **7D**, **30D** or **Custom**. The default is 7D.
+
+Your filters and the Period work together. One exception: if you add a filter on the **Date** field itself, the Period buttons turn grey and say **Clear the date filter to use Period**. Remove the date filter to use them again.
+
+## Two views
+
+Call Logs has two views. Your choice is saved to your account.
+
+| View | What it is |
+|---|---|
+| **Classic** | A wide table. Clicking a row opens the full trace page for that call. This is the default. |
+| **New** | A table with a split view. Clicking a row opens the transcript, call data and recording beside the list. |
+
+- To switch to the new view, click **Try the new Call Logs** in the toolbar.
+- To go back, open the three-dot menu (**More actions**) and choose **Switch to classic view**.
+
+Most of this page describes the new view. The classic view has the same filters, columns, tags, flags and downloads. The difference is what happens when you click a call.
+
+## The table
+
+Each row is one call. The table shows 50 calls per page. Use the page numbers, the arrows or **Load more pages** at the bottom. The refresh icon (**Refresh call logs**) loads the latest calls.
+
+### Columns
+
+| Column | What it shows |
+|---|---|
+| **Customer Number** | Who was on the call. Web calls show a long session id instead of a phone number. |
+| **Call ID** | The call's id. Click the copy icon to copy it. |
+| **Call Status** | Why the call ended. A red dot means it ended for any reason other than `completed`. |
+| **Duration** | How long the call lasted. |
+| **Tags** | Labels you added. See [Tags](#tags). |
+| **Flag** | Whether someone reported an issue. See [Flags](#flags). |
+| **Billing Duration** | The time recorded for billing. |
+| **Total Cost (₹)** | The cost of the call. |
+| **Start Time** | When the call started. Shown in India time. |
+| **Call Event** | **Started** or **Ended**. A call that is still going shows **Started**. |
+
+More columns are available. Which ones depends on your role and on what the agent records:
+
+- **Avg Latency**, **LLM Cost (₹)**, **TTS Cost (₹)**, **STT Cost (₹)**
+- **Metadata** columns: details attached to the call, such as campaign or lead information.
+- **Dispositions** columns: details your agent pulled out of the call. See [Dispositions](./dispositions) to set them up.
+- **Metrics** columns: scores. A score shows as a badge. In the classic table, hover it to read the reason.
+
+Viewers do not see the **Tags** column. Cost columns are hidden from anyone whose access hides them.
+
+### Choose and arrange columns
+
+Click **Columns** (it shows how many are visible, such as 8/20).
+
+1. Use **Find a column…** to search.
+2. Tick a column to show it, or untick it to hide it.
+3. Drag the handle on a shown column to change the order.
+4. Use **Select all** next to a group to show the whole group. **Sections** shows or hides **Call**, **Metadata**, **Dispositions** and **Metrics** in one go.
+5. **Reset to default** and **Show all** are at the bottom.
+
+Your column choices are saved per agent, because every agent has different details.
+
+Use the row-density buttons (**Comfortable rows**, **Compact rows**) to fit more or fewer rows on screen.
+
+## Filter the list
+
+Click **Filter**. Each filter is one row:
+
+1. Pick a field.
+2. Pick how to compare it.
+3. Type or pick a value.
+
+| Field | Comparisons |
+|---|---|
+| **Customer Number**, **Call ID**, **Status**, **Call Event** | **Equals**, **Not equals**, **Contains**, **Starts with** |
+| **Duration (s)**, **Avg Latency (ms)** | **Equals**, **Not equals**, **Greater than**, **Less than** |
+| **Date** | **On date**, **After**, **Before** |
+| **Tags** | **Contains tag**, **Exact match** |
+| **Flag** | **Contains text**, **Flagged by (email)**, **Has any flag** |
+| **Metadata**, **Transcription** | Pick a field name inside it, then **Equals**, **Not equals**, **Contains**, **Field exists**, **Greater than**, **Less than** |
+
+Click **Add filter** for more rows, then **Apply**. When you have no filters, the panel says so: every call in the selected period is shown.
+
+Applied filters show in a row called **Filtered by**. Click a chip to edit, the **x** to remove it, or **Clear all**.
+
+### Quick add
+
+Click the star next to a filter row to pin its field. Pinned fields appear as buttons at the top of the panel under **Quick add**, so you can add the same kind of filter in one click. A few are pinned for you at first: **Status**, **Flag**, **Tags** and **Duration**.
+
+### Unique by
+
+Click **+ Unique by…** to keep one call per value, for example the latest call per customer.
+
+:::tip
+If the list takes too long to load, Call Logs says the filters took too long. Try a shorter Period or remove a filter.
+:::
+
+## Open a call
+
+In the new view, click a row, or move with the arrow keys and press Enter. The page splits into three parts. The address bar updates, so you can copy the link and share the call.
+
+### Left: the call list
+
+The calls from the current page, with the open one highlighted. Click another to switch. **Table** (or Esc) goes back to the full table.
+
+### Middle: the transcript
+
+The top bar shows the customer number (or the call id), when it started, how long it ran, and why it ended. It also holds:
+
+- **Flag** and **Tags** for this call.
+- A small sparkle icon with a **Summary**, if your agent produces one. Hover it to read.
+- **Original** and **English**. Switch to read the transcript translated into English.
+- **Copy transcript.**
+- **Call again**, for project owners and admins on a Whispey-built agent, when the call has a number and the project has an outbound number. You pick the outbound number to call from.
+- **Open the full trace in a new tab.** This opens the [call trace page](./traces-and-timeline).
+
+Below it, the conversation shows turn by turn, agent and customer. A tool the agent used shows as a small tag in the conversation. Click it to see the details on the right.
+
+### Bottom: the recording
+
+If the call has a recording, a player sits at the bottom.
+
+- Click any message in the transcript (**Play from here**) to jump the recording to that moment.
+- While the recording plays, the transcript scrolls along. If you scroll yourself, it waits a few seconds before following again.
+- Press Space to play or pause, and the left and right arrows to move 5 seconds.
+- If the call was placed through Acefone, a **Telephony recording** button opens the carrier's own recording in a new tab.
+
+If there is no recording, it says **No recording for this call.**
+
+### Right: the call data
+
+Two tabs: **Call data** and **Tools**. Click the arrow to collapse the panel, or press Cmd and the right square bracket.
+
+**Call data** has folding groups:
+
+| Group | What is in it |
+|---|---|
+| **Latency** | Response time for this call, split into **End to end**, **STT**, **LLM (time to first token)**, **TTS (time to first byte)** and **End of utterance**, each as a 75th percentile. Colours show good, fair or poor. |
+| **Dispositions** | What the agent pulled out of the call. |
+| **QA checks** | Yes or no checks, with a count of passes and fails. Shown only if the agent has them. |
+| **Call variables** | The variables the call started with. |
+| **Metrics** | Each score as a bar and number, with the reason. 0.70 or more is green, 0.50 or more is amber, and below that is red. |
+| **Metadata** | Details attached to the call. |
+| **Cost** | **Total Cost (₹)**, **LLM Cost (₹)**, **TTS Cost (₹)** and **STT Cost (₹)**. Shown only if your access allows it. |
+
+Empty values are hidden. Switch **Empty** on to show them. Hover a value and click the copy icon to copy it.
+
+**Tools** lists every tool call in the conversation, with how long it took. A failed call has a red mark. Open one to see its **Arguments** and **Response**.
+
+### Keyboard shortcuts
+
+| Action | Keys |
+|---|---|
+| Move between rows | Up and down arrows |
+| Open the call | Enter |
+| Next or previous page | Cmd and greater-than, Cmd and less-than |
+| Next or previous call (when one is open) | J and K |
+| Back to the table | Esc |
+| Show or hide call data | Cmd and right square bracket |
+| Play or pause the recording | Space |
+| Back or forward 5 seconds | Left and right arrows |
+
+Click the keyboard icon at the bottom right of the table to see them in the app.
+
+## Tags
+
+Tags are labels you attach to a call, such as `follow-up`.
+
+1. In the **Tags** cell, click **Add tag**.
+2. Type a name and press Enter, or pick one of the tags already used on this page.
+3. People who can edit are asked for a short note on the tag. Click any tag later to change its note.
+
+Use the **Filter** to find calls by tag. Viewers do not see tags.
+
+## Flags
+
+A flag reports a problem with a call. Flags are not just for you: each one goes to the QA team. Read [QA Audit](./qa-audit) for the whole flow.
+
+To flag a call, click **Flag** (or the flag icon) on the row or in the call's top bar, write what went wrong, for example "Response at 2:30 was incorrect", and click **Add flag** or press Cmd and Enter. A message confirms: **Flagged. Our QA team will review it.** with a link to check the status.
+
+- Everyone can flag, including viewers.
+- You can edit or remove your own flag.
+- A flag shows as a red pill, and a flagged row gets a red marker.
+- Anyone who can edit can remove another person's flag.
+
+Calls can also be flagged automatically. See [Flag Rules](#other-actions).
+
+## Select calls
+
+Tick the box at the start of a row, or tick the header box to select the whole page. A bar appears with **N selected** and these options:
+
+| Button | What it does |
+|---|---|
+| **Copy JSON** | Copies the selected calls to your clipboard. |
+| **Export CSV** | Downloads just the selected calls. |
+| **Clear selection** (x) | Clears the selection. |
+
+## Download the list
+
+Click **Export** to download many calls. See [Exporting data](./exporting-data). If you do not see the button, downloads are turned off for you.
+
+## Campaign calls
+
+If your project runs campaigns, pick one in the **Campaign** menu next to **Filter**. The table switches to that campaign's calls. While a campaign is selected the column picker is greyed out. See [Campaign logs](../campaign-logs).
+
+## Other actions
+
+The three-dot menu (**More actions**) can hold:
+
+| Item | What it does | Who sees it |
+|---|---|---|
+| **Re-analyze** | Runs the analysis on past calls again, so new dispositions or metrics fill in. | People allowed to re-analyze. |
+| **Flag Rules** | Opens **Call Flagging**. Flag calls for review when they match your rules. Flagged calls are highlighted and filterable. | People who can manage dispositions. |
+| **Download settings** | Turns downloads on or off for non-superadmins and hides sensitive columns from them. | Superadmins. |
+| **Switch to classic view** | Goes back to the classic table. | Everyone. |
+
+## Ask Pi
+
+In the new view, people who can edit also see a floating **Ask Pi** button at the bottom right. It answers questions about the calls on screen, such as "this call" or "these calls". It can read transcripts and suggest filters. A suggested filter is only used when you apply it. Viewers do not get Ask Pi.

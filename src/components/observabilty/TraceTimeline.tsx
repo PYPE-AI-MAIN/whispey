@@ -136,33 +136,33 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
     if (operation.includes('tts')) return 'bg-green-500'
     if (operation.includes('eou')) return 'bg-amber-500'
     if (operation.includes('call')) return 'bg-indigo-500'
-    return 'bg-gray-500'
+    return 'bg-muted-foreground'
   }
 
   const getOperationLightColor = (operation: string, status?: string, type?: string) => {
-    if (status === 'error') return 'bg-red-100 border-red-200'
-    if (status === 'warning') return 'bg-amber-100 border-amber-200'
+    if (status === 'error') return 'bg-destructive/15 border-destructive/30'
+    if (status === 'warning') return 'bg-warning/15 border-warning/30'
     
-    if (type === 'tool') return 'bg-orange-100 border-orange-200'
-    if (operation.includes('stt')) return 'bg-blue-100 border-blue-200'
+    if (type === 'tool') return 'bg-warning/15 border-warning/30'
+    if (operation.includes('stt')) return 'bg-primary/15 border-primary/30'
     if (operation.includes('llm')) return 'bg-purple-100 border-purple-200'
-    if (operation.includes('tts')) return 'bg-green-100 border-green-200'
-    if (operation.includes('eou')) return 'bg-amber-100 border-amber-200'
+    if (operation.includes('tts')) return 'bg-success/15 border-success/30'
+    if (operation.includes('eou')) return 'bg-warning/15 border-warning/30'
     if (operation.includes('call')) return 'bg-indigo-100 border-indigo-200'
-    return 'bg-gray-100 border-gray-200'
+    return 'bg-muted border-border'
   }
 
   const getOperationTextColor = (operation: string, status?: string, type?: string) => {
-    if (status === 'error') return 'text-red-700'
-    if (status === 'warning') return 'text-amber-700'
+    if (status === 'error') return 'text-destructive'
+    if (status === 'warning') return 'text-warning'
     
-    if (type === 'tool') return 'text-orange-700'
-    if (operation.includes('stt')) return 'text-blue-700'
+    if (type === 'tool') return 'text-warning'
+    if (operation.includes('stt')) return 'text-primary'
     if (operation.includes('llm')) return 'text-purple-700'
-    if (operation.includes('tts')) return 'text-green-700'
-    if (operation.includes('eou')) return 'text-amber-700'
+    if (operation.includes('tts')) return 'text-success'
+    if (operation.includes('eou')) return 'text-warning'
     if (operation.includes('call')) return 'text-indigo-700'
-    return 'text-gray-700'
+    return 'text-foreground'
   }
 
   const getOperationDisplayName = (item: any) => {
@@ -197,8 +197,8 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
   if (!timelineData.processedItems.length && !trace) {
     return (
       <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-8 text-center border">
-        <Activity className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-        <h4 className="text-lg font-semibold text-gray-600 mb-2 dark:text-gray-400">No Timeline Data</h4>
+        <Activity className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+        <h4 className="text-lg font-semibold text-muted-foreground mb-2">No Timeline Data</h4>
         <p className="text-sm text-muted-foreground">
           Trace timeline will appear here when execution data is available
         </p>
@@ -211,15 +211,15 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
 
   return (
     <TooltipProvider>
-      <div className="bg-white border rounded-xl p-6 shadow-sm dark:bg-gray-900">
+      <div className="bg-card border rounded-xl p-6 shadow-sm">
         {/* Timeline Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
               <Zap className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Execution Timeline</h4>
+              <h4 className="text-lg font-semibold text-foreground">Execution Timeline</h4>
               <p className="text-sm text-muted-foreground">
                 {processedItems.length ? (
                   <>
@@ -252,12 +252,12 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
         {/* Conversation Preview */}
         {(conversationSummary.hasInput || conversationSummary.hasOutput) && (
             <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border">
-              <h5 className="text-sm font-semibold text-gray-900 mb-2 dark:text-gray-100">Conversation</h5>
+              <h5 className="text-sm font-semibold text-foreground mb-2">Conversation</h5>
               <div className="space-y-2">
                 {conversationSummary.hasInput && (
                   <div className="text-sm">
-                    <span className="font-medium text-blue-600">User:</span>
-                    <span className="ml-2 text-gray-700 dark:text-gray-300">
+                    <span className="font-medium text-primary">User:</span>
+                    <span className="ml-2 text-foreground">
                       {trace.user_transcript}
                     </span>
                   </div>
@@ -265,7 +265,7 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
                 {conversationSummary.hasOutput && (
                   <div className="text-sm">
                     <span className="font-medium text-purple-600">Assistant:</span>
-                    <span className="ml-2 text-gray-700 dark:text-gray-300">
+                    <span className="ml-2 text-foreground">
                       {trace.agent_response}
                     </span>
                   </div>
@@ -321,7 +321,7 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
                     </div>
 
                     {/* Timeline Bar Container */}
-                    <div className="flex-1 relative h-8 bg-gray-50 rounded-full border ml-4 dark:bg-gray-800">
+                    <div className="flex-1 relative h-8 bg-muted/50 rounded-full border ml-4">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <div
@@ -394,7 +394,7 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
 
                     {/* Duration Label */}
                     <div className="w-20 text-right pl-4">
-                      <div className="text-sm font-mono text-gray-900 dark:text-gray-100">
+                      <div className="text-sm font-mono text-foreground">
                         {formatDuration(item.duration)}
                       </div>
                       <div className="text-xs text-muted-foreground">
@@ -409,10 +409,10 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
         ) : (
           // Fallback view when no detailed timeline items
           <div className="space-y-4">
-            <div className="text-center py-8 bg-gray-50 rounded-lg dark:bg-gray-800">
-              <Clock className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-              <div className="text-sm text-gray-600 dark:text-gray-400">No detailed timeline available</div>
-              <div className="text-xs text-gray-500 mt-1">
+            <div className="text-center py-8 bg-muted/50 rounded-lg">
+              <Clock className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+              <div className="text-sm text-muted-foreground">No detailed timeline available</div>
+              <div className="text-xs text-muted-foreground mt-1">
                 Showing basic trace information
               </div>
             </div>
@@ -420,20 +420,20 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
             {/* Basic trace info */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
               {trace?.trace_duration_ms && (
-                <div className="text-center p-3 bg-blue-50 rounded-lg border">
-                  <div className="text-lg font-semibold text-blue-600">
+                <div className="text-center p-3 bg-primary/10 rounded-lg border">
+                  <div className="text-lg font-semibold text-primary">
                     {formatDuration(trace.trace_duration_ms)}
                   </div>
-                  <div className="text-xs text-blue-600">Total Duration</div>
+                  <div className="text-xs text-primary">Total Duration</div>
                 </div>
               )}
               
               {trace?.tool_calls?.length > 0 && (
-                <div className="text-center p-3 bg-orange-50 rounded-lg border">
-                  <div className="text-lg font-semibold text-orange-600">
+                <div className="text-center p-3 bg-warning/10 rounded-lg border">
+                  <div className="text-lg font-semibold text-warning">
                     {trace.tool_calls.length}
                   </div>
-                  <div className="text-xs text-orange-600">Tool Calls</div>
+                  <div className="text-xs text-warning">Tool Calls</div>
                 </div>
               )}
               
@@ -447,16 +447,16 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
               )}
               
               {trace?.call_success !== undefined && (
-                <div className="text-center p-3 bg-green-50 rounded-lg border">
+                <div className="text-center p-3 bg-success/10 rounded-lg border">
                   <div className={cn(
                     "text-lg font-semibold",
-                    trace.call_success ? "text-green-600" : "text-red-600"
+                    trace.call_success ? "text-success" : "text-destructive"
                   )}>
                     {trace.call_success ? "✓" : "✗"}
                   </div>
                   <div className={cn(
                     "text-xs",
-                    trace.call_success ? "text-green-600" : "text-red-600"
+                    trace.call_success ? "text-success" : "text-destructive"
                   )}>
                     Call Status
                   </div>
@@ -471,7 +471,7 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
           <div className="flex justify-between items-center text-sm">
             <div className="flex items-center gap-6">
               <div>
-                <span className="font-medium text-gray-900 dark:text-gray-100">
+                <span className="font-medium text-foreground">
                   {processedItems.length || 'Basic'}
                 </span>
                 <span className="text-muted-foreground ml-1">
@@ -479,12 +479,12 @@ const TraceTimeline: React.FC<TraceTimelineProps> = ({ trace, spans, totalDurati
                 </span>
               </div>
               <div>
-                <span className="font-medium text-gray-900 dark:text-gray-100">{formatDuration(maxDuration)}</span>
+                <span className="font-medium text-foreground">{formatDuration(maxDuration)}</span>
                 <span className="text-muted-foreground ml-1">total duration</span>
               </div>
               {trace?.session_id && (
                 <div>
-                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                  <span className="font-medium text-foreground">
                     {trace.session_id.slice(-8)}
                   </span>
                   <span className="text-muted-foreground ml-1">session</span>

@@ -74,8 +74,8 @@ export default function PipecatKnowledgeBase({ pipecatAgentId }: PipecatKnowledg
           <BookOpen className="h-4 w-4 text-primary" />
         </div>
         <div>
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Knowledge Base</h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <h2 className="text-sm font-semibold text-foreground">Knowledge Base</h2>
+          <p className="text-xs text-muted-foreground">
             Upload documents the agent can reference during calls
           </p>
         </div>
@@ -89,36 +89,38 @@ export default function PipecatKnowledgeBase({ pipecatAgentId }: PipecatKnowledg
 
       {/* Document list */}
       <div className="flex-1 min-h-0">
-        <h3 className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+        <h3 className="text-xs font-medium text-foreground mb-2">
           Documents {documents.length > 0 && `(${documents.length})`}
         </h3>
 
-        {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
+        {error && <p className="text-xs text-destructive mb-2">{error}</p>}
 
-        {loading ? (
+        {loading && (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
-        ) : documents.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-800/30 py-12 text-center">
-            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-            <p className="text-sm font-medium text-gray-600 dark:text-gray-400">No documents yet</p>
-            <p className="text-xs text-gray-500 mt-1">Upload files or add a URL above.</p>
+        )}
+        {!loading && documents.length === 0 && (
+          <div className="rounded-xl border border-dashed border-border bg-muted/50 py-12 text-center">
+            <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+            <p className="text-sm font-medium text-muted-foreground">No documents yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Upload files or add a URL above.</p>
           </div>
-        ) : (
+        )}
+        {!loading && documents.length !== 0 && (
           <ul className="space-y-1">
             {documents.map(doc => (
               <li
                 key={doc.id}
-                className="flex items-center gap-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 px-4 py-3 group"
+                className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 group"
               >
-                <FileText className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                  <p className="text-sm font-medium text-foreground truncate">
                     {doc.name || doc.filename || doc.id}
                   </p>
                   {doc.created_at && (
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       {new Date(doc.created_at as string).toLocaleDateString()}
                     </p>
                   )}
@@ -126,7 +128,7 @@ export default function PipecatKnowledgeBase({ pipecatAgentId }: PipecatKnowledg
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-gray-500 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                   onClick={() => handleDeleteDocument(doc.id)}
                 >
                   <Trash2 className="h-4 w-4" />

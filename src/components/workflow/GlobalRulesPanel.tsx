@@ -11,7 +11,7 @@ import { useWorkflowStore } from '@/stores/workflowStore'
 import { extractGlobalRules } from '@/lib/workflow/globalRules'
 import { computeAutoLayout } from '@/lib/workflow/autoLayout'
 
-const QUICK_RULES = [
+export const QUICK_RULES = [
   'they ask for a human or a real person',
   'they describe an emergency',
   'they ask you to stop calling',
@@ -89,7 +89,7 @@ export function GlobalRulesPanel({ open, onOpenChange }: Readonly<{ open: boolea
             ))}
             {!rules.length && <li className="text-sm text-muted-foreground">No global rules yet.</li>}
             {rules.length > 6 && (
-              <li className="text-xs text-amber-600 dark:text-amber-400">
+              <li className="text-xs text-warning">
                 {rules.length} rules is a lot. The agent weighs every one on every step, so merge similar ones.
               </li>
             )}

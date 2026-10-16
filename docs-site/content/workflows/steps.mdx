@@ -1,0 +1,101 @@
+---
+title: Steps
+description: Every kind of step, what it is for and how to fill it in.
+---
+
+A step is one box on the canvas. Click it to open its settings. Most flows only need the first six kinds below. The rest are under **More steps** in the plus menu.
+
+## At a glance
+
+| Step | What it does |
+|---|---|
+| <span className="wp-dot" style={{'--c': '#3b82f6'}} />Conversation | The agent talks with the caller. |
+| <span className="wp-dot" style={{'--c': '#8b5cf6'}} />Collect Details | Asks for details and remembers them. |
+| <span className="wp-dot" style={{'--c': '#f59e0b'}} />Branch | Picks a path from what you already know. |
+| <span className="wp-dot" style={{'--c': '#10b981'}} />Call an API | Talks to another system. |
+| <span className="wp-dot" style={{'--c': '#ef4444'}} />Call Transfer | Hands the call to a person. |
+| <span className="wp-dot" style={{'--c': '#dc2626'}} />End Call | Says goodbye and hangs up. |
+
+## Conversation
+
+The agent talks with the caller for one step, then moves on. Use it for most of the call.
+
+| Field | What to put |
+|---|---|
+| **What the agent should do here** | Instructions, written like you would brief a new colleague: what to say, what to find out, when to move on. |
+| **Exact words to say (optional)** | If filled in, the agent says exactly this and does not improvise. Good for greetings and legal lines. |
+| **Move on without waiting for a reply** | The agent speaks and goes straight to the next step. Use it for closing lines. |
+| **Do not let the caller interrupt** | The caller cannot talk over this step. Use sparingly. |
+
+:::tip
+Keep each step to one job. "Ask for the day" is a good step. "Ask for the day, the time, the name and confirm" is better split in two.
+:::
+
+Under **Advanced** you can set how many replies the agent waits for before it moves on by itself, and give the step a different voice or model.
+
+A conversation step cannot save details for later. To save what the caller says, use **Collect Details**.
+
+## Collect Details
+
+Asks the caller for details, such as a name or a date, and remembers them. The call moves on once it has them all.
+
+1. In **What to ask**, say what to ask for.
+2. Under **Details to collect**, add one row per detail. Give it a name, like `preferred_day`, and say what to listen for.
+3. Untick **Needed** on any detail that may not apply, such as "pregnancy week" for someone who is only planning. The step then moves on without it.
+
+:::warning
+If a detail stays ticked as needed and the caller never gives it, the agent keeps asking. Untick **Needed** for anything optional.
+:::
+
+You can use a collected detail in any later step by writing its name in double curly brackets, for example `{{preferred_day}}`.
+
+## Branch
+
+Chooses the next step from something you already know, such as age under 18. It says nothing to the caller.
+
+Click **+** on the Branch step to add each path. Then open the Branch step and set each path:
+
+- **When a rule matches**, then pick a detail, a comparison and a value.
+- **Otherwise** for the path to take when no rule matches. Make the last path "Otherwise" so the call always has somewhere to go.
+
+## Call an API
+
+Calls another system, such as a booking tool or a CRM, and remembers the answer.
+
+| Field | What to put |
+|---|---|
+| **Request type** | Usually GET to read or POST to send. |
+| **Web address (URL)** | The address of the system. |
+| **Data to send** | What to send, as JSON. You can include details like `{{name}}`. |
+| **Say this while waiting (optional)** | Something the agent says while the call runs. |
+| **Remember the result as (optional)** | A name for the answer, to use later as `{{name}}`. |
+
+A Call an API step can also be a tool a Conversation step may use. Tick it under **Actions the agent can take here** in that step.
+
+:::warning
+If the web address still says TODO, the editor warns you. Replace it with the real address before you rely on the step.
+:::
+
+## Call Transfer
+
+Hands the call to a person. Works on phone calls only. Enter the phone number, choose whether the agent leaves the call or stays on until they answer, and optionally write what to say first.
+
+## End Call
+
+Says a last line and hangs up. Every path should end at one of these. Use few: one for a normal finish, one for "no thanks", one for a hand-off to a person.
+
+## More steps
+
+| Step | What it is for |
+|---|---|
+| **Sub-Agent** | A step with its own personality, voice and instructions, for handing the caller to a different character. |
+| **Knowledge** | Looks something up in your documents at one fixed point. Most flows do not need it. Turn on the [knowledge base](./variables-and-knowledge) instead. |
+| **Code** | Runs a few lines of code on collected details. |
+| **MCP Tool** | Uses a tool from a connected tool server. |
+| **Press Digit** | Presses keys on a phone menu, or collects keys the caller types. Phone calls only. |
+| **SMS** | Texts the caller during the call. Phone calls only. |
+| **Note** | A sticky note for whoever edits the flow. The agent never sees it. |
+
+## Stage
+
+Every step has an optional **Stage** field, such as Greeting, Request or Close. It does not change how the call works. It groups steps in the Outline list so a long flow is easier to read.

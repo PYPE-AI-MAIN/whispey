@@ -46,11 +46,11 @@ function NumericField({
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <Label className="text-xs text-gray-600 dark:text-gray-400">{label}</Label>
+        <Label className="text-xs text-muted-foreground">{label}</Label>
         {tooltip && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Info className="w-3 h-3 text-gray-400 cursor-help" />
+              <Info className="w-3 h-3 text-muted-foreground cursor-help" />
             </TooltipTrigger>
             <TooltipContent side="right" className="max-w-xs">
               <p className="text-xs">{tooltip}</p>
@@ -68,7 +68,7 @@ function NumericField({
         onBlur={e => commit(e.target.value)}
         className="h-8 text-xs"
       />
-      {hint && <p className="text-xs text-gray-500 dark:text-gray-400">{hint}</p>}
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   )
 }
@@ -103,7 +103,7 @@ export default function TurnManagementSettings({
   return (
     <TooltipProvider>
       <div className="space-y-4">
-        <div className="text-xs text-gray-600 dark:text-gray-400">
+        <div className="text-xs text-muted-foreground">
           Controls LLM user aggregator timing and idle behaviour.
         </div>
 
@@ -119,12 +119,12 @@ export default function TurnManagementSettings({
         {/* Idle Timeout — nullable, leave empty to disable */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-gray-600 dark:text-gray-400">
+            <Label className="text-xs text-muted-foreground">
               Idle Timeout (seconds)
             </Label>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-gray-400 cursor-help" />
+                <Info className="w-3 h-3 text-muted-foreground cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">
@@ -162,7 +162,7 @@ export default function TurnManagementSettings({
             }}
             className="h-8 text-xs"
           />
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-muted-foreground">
             Seconds of silence before agent proactively speaks. Leave empty to disable.
           </p>
         </div>
@@ -170,12 +170,12 @@ export default function TurnManagementSettings({
         {/* Idle Nudge Messages — spoken one-per-idle, call ends after the list runs out */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-gray-600 dark:text-gray-400">
+            <Label className="text-xs text-muted-foreground">
               Idle Nudge Messages
             </Label>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-gray-400 cursor-help" />
+                <Info className="w-3 h-3 text-muted-foreground cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">
@@ -189,7 +189,7 @@ export default function TurnManagementSettings({
           <div className="space-y-2">
             {idleNudges.map((msg, i) => (
               <div key={i} className="flex items-center gap-2">
-                <span className="text-[11px] text-gray-400 w-4 text-right">{i + 1}.</span>
+                <span className="text-[11px] text-muted-foreground w-4 text-right">{i + 1}.</span>
                 <Input
                   type="text"
                   value={msg}
@@ -206,7 +206,7 @@ export default function TurnManagementSettings({
                   disabled={idleDisabled}
                   className="h-8 w-8 p-0"
                 >
-                  <TrashIcon className="w-3.5 h-3.5 text-gray-500" />
+                  <TrashIcon className="w-3.5 h-3.5 text-muted-foreground" />
                 </Button>
               </div>
             ))}
@@ -221,7 +221,7 @@ export default function TurnManagementSettings({
               <PlusIcon className="w-3 h-3 mr-1" /> Add nudge
             </Button>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-muted-foreground">
             {idleDisabled
               ? 'Set an Idle Timeout above to enable nudge messages.'
               : 'After the last nudge, the End Message below is spoken and the call ends.'}
@@ -231,12 +231,12 @@ export default function TurnManagementSettings({
         {/* Idle End Message — spoken once after the last nudge, then call ends */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <Label className="text-xs text-gray-600 dark:text-gray-400">
+            <Label className="text-xs text-muted-foreground">
               Idle End Message
             </Label>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="w-3 h-3 text-gray-400 cursor-help" />
+                <Info className="w-3 h-3 text-muted-foreground cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">
@@ -255,7 +255,7 @@ export default function TurnManagementSettings({
             disabled={idleDisabled}
             className="h-8 text-xs"
           />
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-muted-foreground">
             {idleDisabled
               ? 'Set an Idle Timeout above to enable the end message.'
               : 'Spoken once after the last nudge, then the call ends.'}

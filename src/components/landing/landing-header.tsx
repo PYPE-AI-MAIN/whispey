@@ -92,7 +92,7 @@ function Header() {
         <nav aria-label="Main" className="hidden items-center gap-8 text-sm md:flex">
           <Link href="#features" className="wl-link">Features</Link>
           <Link href="#how-it-works" className="wl-link">How it works</Link>
-          <a href="https://docs.whispey.pypeai.com" target="_blank" rel="noopener noreferrer" className="wl-link">Docs</a>
+          <a href="/docs" target="_blank" rel="noopener noreferrer" className="wl-link">Docs</a>
         </nav>
         <div className="flex items-center gap-3">
         <ThemeToggle />

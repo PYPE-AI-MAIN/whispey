@@ -111,9 +111,9 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({
       e2e: { good: 4, fair: 8 },
     }
     const threshold = thresholds[type]
-    if (value <= threshold.good) return "text-emerald-600 dark:text-emerald-400"
-    if (value <= threshold.fair) return "text-amber-600 dark:text-amber-400"
-    return "text-red-600 dark:text-red-400"
+    if (value <= threshold.good) return "text-success"
+    if (value <= threshold.fair) return "text-warning"
+    return "text-destructive"
   }
 
   const formatDuration = (seconds: number) => {
@@ -129,7 +129,7 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({
 
   if (transcriptLoading) {
     return (
-      <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+      <div className="px-6 py-3 border-b border-border bg-card">
         <div className="flex items-center justify-between mb-3">
           <Skeleton className="h-4 w-32" />
           <Skeleton className="h-3 w-20" />
@@ -162,18 +162,18 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({
 
   return (
     <TooltipProvider>
-      <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
+      <div className="px-6 py-3 border-b border-border bg-muted/50">
         <div className="space-y-3">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <h3 className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Session Overview</h3>
+              <h3 className="text-xs font-medium text-muted-foreground">Session Overview</h3>
               {/* Plain inline metadata, not colored chips — this row is identifying
                   info (which call, when), not a status to draw the eye to. Color is
                   reserved for the things below that actually need attention (bad
                   latency, bugs, errors). */}
               {callData?.[0]?.customer_number && (
-                  <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
                     <Phone className="w-3 h-3" />
                     <span className="text-xs font-medium">
                       {callData[0].customer_number.length > 15
@@ -183,7 +183,7 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({
                   </div>
                 )}
               {callData?.[0]?.call_started_at && (
-                <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
+                <div className="flex items-center gap-1.5 text-muted-foreground">
                   <Clock className="w-3 h-3" />
                   <span className="text-xs font-medium">
                     {callStartTime}
@@ -202,7 +202,7 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({
               )}
             </div>
             <div className="flex items-center gap-2">
-              <div className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="text-xs text-muted-foreground">
                 {sessionId ? `Session ${sessionId.slice(0, 8)}...` : `Agent ${agentId.slice(0, 8)}...`}
               </div>
               <div className="flex items-center gap-2">
@@ -211,7 +211,7 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({
                   isVapiAgent ? "bg-blue-500" : "bg-orange-500"
                 )}></div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  <span className="text-xs text-muted-foreground font-medium">
                     {isVapiAgent ? "Vapi" : "LiveKit"}
                   </span>
                 </div>
@@ -225,19 +225,19 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({
             <div className="flex items-center gap-8">
               {/* Turns */}
               <div className="flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                <MessageSquare className="w-4 h-4 text-muted-foreground" />
                 <div className="flex items-baseline gap-1">
-                  <span className="text-lg font-bold text-gray-900 dark:text-gray-100">{turnCount}</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">turns</span>
+                  <span className="text-lg font-bold text-foreground">{turnCount}</span>
+                  <span className="text-xs text-muted-foreground">turns</span>
                 </div>
               </div>
 
               {/* Duration */}
               <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                <Clock className="w-4 h-4 text-muted-foreground" />
                 <div className="flex items-baseline gap-1">
-                  <span className="text-lg font-bold text-gray-900 dark:text-gray-100">{formatCallDuration(callDuration)}</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">duration</span>
+                  <span className="text-lg font-bold text-foreground">{formatCallDuration(callDuration)}</span>
+                  <span className="text-xs text-muted-foreground">duration</span>
                 </div>
               </div>
 
@@ -245,24 +245,24 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="flex items-center gap-2 cursor-help">
-                    <Activity className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                    <Activity className="w-4 h-4 text-muted-foreground" />
                     <div className="flex items-baseline gap-1">
                       <span className={cn(
                         "text-lg font-bold",
-                        conversationMetrics ? getLatencyColor(conversationMetrics.endToEndStats.p75, "e2e") : "text-gray-900 dark:text-gray-100"
+                        conversationMetrics ? getLatencyColor(conversationMetrics.endToEndStats.p75, "e2e") : "text-foreground"
                       )}>
                         {conversationMetrics?.endToEndStats.p75 > 0 ? formatDuration(conversationMetrics.endToEndStats.p75) : "N/A"}
                       </span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">p75</span>
+                      <span className="text-xs text-muted-foreground">p75</span>
                     </div>
                   </div>
                 </TooltipTrigger>
-                <TooltipContent side="bottom" className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
+                <TooltipContent side="bottom" className="bg-card border-border text-foreground">
                   <div className="text-xs">
                     <div className="font-medium">75th Percentile End-to-End Latency</div>
-                    <div className="text-gray-400 dark:text-gray-500">75% of responses were faster</div>
+                    <div className="text-muted-foreground">75% of responses were faster</div>
                     {conversationMetrics?.endToEndStats.p50 > 0 && (
-                      <div className="text-gray-400 dark:text-gray-500">P50: {formatDuration(conversationMetrics.endToEndStats.p50)}</div>
+                      <div className="text-muted-foreground">P50: {formatDuration(conversationMetrics.endToEndStats.p50)}</div>
                     )}
                   </div>
                 </TooltipContent>
@@ -271,22 +271,22 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({
               {/* Bug Reports */}
               <div className={cn(
                 "flex items-center gap-2",
-                bugCount > 0 && "px-2 py-1 bg-amber-100 dark:bg-amber-900/20 rounded-md"
+                bugCount > 0 && "px-2 py-1 bg-warning/15 rounded-md"
               )}>
                 <AlertTriangle className={cn(
                   "w-4 h-4",
-                  bugCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-gray-500 dark:text-gray-400"
+                  bugCount > 0 ? "text-warning" : "text-muted-foreground"
                 )} />
                 <div className="flex items-baseline gap-1">
                   <span className={cn(
                     "text-lg font-bold",
-                    bugCount > 0 ? "text-amber-700 dark:text-amber-300" : "text-gray-900 dark:text-gray-100"
+                    bugCount > 0 ? "text-warning" : "text-foreground"
                   )}>
                     {bugCount}
                   </span>
                   <span className={cn(
                     "text-xs",
-                    bugCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-gray-500 dark:text-gray-400"
+                    bugCount > 0 ? "text-warning" : "text-muted-foreground"
                   )}>
                     bugs
                   </span>
@@ -304,22 +304,22 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="flex items-center gap-2 cursor-help">
-                        <Mic className="w-3 h-3 text-gray-400 dark:text-gray-500" />
+                        <Mic className="w-3 h-3 text-muted-foreground" />
                         <div className="text-right">
                           <div className={cn("font-bold text-sm", getLatencyColor(conversationMetrics.sttStats.p75, "stt"))}>
                             {formatDuration(conversationMetrics.sttStats.p75)}
                           </div>
-                          <div className="text-gray-400 dark:text-gray-500 text-xs">STT P75</div>
+                          <div className="text-muted-foreground text-xs">STT P75</div>
                         </div>
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
+                    <TooltipContent className="bg-card border-border text-foreground">
                       <div className="text-xs">
                         <div className="font-medium">Speech-to-Text Performance</div>
-                        <div className="text-gray-400 dark:text-gray-500">P50: {formatDuration(conversationMetrics.sttStats.p50)}</div>
-                        <div className="text-gray-400 dark:text-gray-500">P75: {formatDuration(conversationMetrics.sttStats.p75)}</div>
-                        <div className="text-gray-400 dark:text-gray-500">Avg: {formatDuration(conversationMetrics.sttStats.avg)}</div>
-                        <div className="text-gray-500 dark:text-gray-400 text-xs font-medium mt-1 pt-1 border-t border-gray-200 dark:border-gray-600">
+                        <div className="text-muted-foreground">P50: {formatDuration(conversationMetrics.sttStats.p50)}</div>
+                        <div className="text-muted-foreground">P75: {formatDuration(conversationMetrics.sttStats.p75)}</div>
+                        <div className="text-muted-foreground">Avg: {formatDuration(conversationMetrics.sttStats.avg)}</div>
+                        <div className="text-muted-foreground text-xs font-medium mt-1 pt-1 border-t border-border">
                           Included in total latency
                         </div>
                       </div>
@@ -331,21 +331,21 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="flex items-center gap-2 cursor-help">
-                      <Brain className="w-3 h-3 text-gray-400 dark:text-gray-500" />
+                      <Brain className="w-3 h-3 text-muted-foreground" />
                       <div className="text-right">
                         <div className={cn("font-bold text-sm", getLatencyColor(conversationMetrics.llmStats.p75, "llm"))}>
                           {formatDuration(conversationMetrics.llmStats.p75)}
                         </div>
-                        <div className="text-gray-400 dark:text-gray-500 text-xs">TTFT P75</div>
+                        <div className="text-muted-foreground text-xs">TTFT P75</div>
                       </div>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
+                  <TooltipContent className="bg-card border-border text-foreground">
                     <div className="text-xs">
                       <div className="font-medium">Language Model Performance</div>
-                      <div className="text-gray-400 dark:text-gray-500">P50: {formatDuration(conversationMetrics.llmStats.p50)}</div>
-                      <div className="text-gray-400 dark:text-gray-500">P75: {formatDuration(conversationMetrics.llmStats.p75)}</div>
-                      <div className="text-gray-400 dark:text-gray-500">Avg: {formatDuration(conversationMetrics.llmStats.avg)}</div>
+                      <div className="text-muted-foreground">P50: {formatDuration(conversationMetrics.llmStats.p50)}</div>
+                      <div className="text-muted-foreground">P75: {formatDuration(conversationMetrics.llmStats.p75)}</div>
+                      <div className="text-muted-foreground">Avg: {formatDuration(conversationMetrics.llmStats.avg)}</div>
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -354,21 +354,21 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="flex items-center gap-2 cursor-help">
-                      <Volume2 className="w-3 h-3 text-gray-400 dark:text-gray-500" />
+                      <Volume2 className="w-3 h-3 text-muted-foreground" />
                       <div className="text-right">
                         <div className={cn("font-bold text-sm", getLatencyColor(conversationMetrics.ttsStats.p75, "tts"))}>
                           {formatDuration(conversationMetrics.ttsStats.p75)}
                         </div>
-                        <div className="text-gray-400 dark:text-gray-500 text-xs">TTFB P75</div>
+                        <div className="text-muted-foreground text-xs">TTFB P75</div>
                       </div>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
+                  <TooltipContent className="bg-card border-border text-foreground">
                     <div className="text-xs">
                       <div className="font-medium">Text-to-Speech Performance</div>
-                      <div className="text-gray-400 dark:text-gray-500">P50: {formatDuration(conversationMetrics.ttsStats.p50)}</div>
-                      <div className="text-gray-400 dark:text-gray-500">P75: {formatDuration(conversationMetrics.ttsStats.p75)}</div>
-                      <div className="text-gray-400 dark:text-gray-500">Avg: {formatDuration(conversationMetrics.ttsStats.avg)}</div>
+                      <div className="text-muted-foreground">P50: {formatDuration(conversationMetrics.ttsStats.p50)}</div>
+                      <div className="text-muted-foreground">P75: {formatDuration(conversationMetrics.ttsStats.p75)}</div>
+                      <div className="text-muted-foreground">Avg: {formatDuration(conversationMetrics.ttsStats.avg)}</div>
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -377,21 +377,21 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div className="flex items-center gap-2 cursor-help">
-                      <Radio className="w-3 h-3 text-gray-400 dark:text-gray-500" />
+                      <Radio className="w-3 h-3 text-muted-foreground" />
                       <div className="text-right">
                         <div className={cn("font-bold text-sm", getLatencyColor(conversationMetrics.eouStats.p75, "eou"))}>
                           {formatDuration(conversationMetrics.eouStats.p75)}
                         </div>
-                        <div className="text-gray-400 dark:text-gray-500 text-xs">EOU P75</div>
+                        <div className="text-muted-foreground text-xs">EOU P75</div>
                       </div>
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
+                  <TooltipContent className="bg-card border-border text-foreground">
                     <div className="text-xs">
                       <div className="font-medium">End of Utterance Performance</div>
-                      <div className="text-gray-400 dark:text-gray-500">P50: {formatDuration(conversationMetrics.eouStats.p50)}</div>
-                      <div className="text-gray-400 dark:text-gray-500">P75: {formatDuration(conversationMetrics.eouStats.p75)}</div>
-                      <div className="text-gray-400 dark:text-gray-500">Avg: {formatDuration(conversationMetrics.eouStats.avg)}</div>
+                      <div className="text-muted-foreground">P50: {formatDuration(conversationMetrics.eouStats.p50)}</div>
+                      <div className="text-muted-foreground">P75: {formatDuration(conversationMetrics.eouStats.p75)}</div>
+                      <div className="text-muted-foreground">Avg: {formatDuration(conversationMetrics.eouStats.avg)}</div>
                     </div>
                   </TooltipContent>
                 </Tooltip>
@@ -399,30 +399,30 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({
 
               {/* Reference Metrics Group - Only for non-Vapi */}
               {!isVapiAgent && (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-gray-50 dark:bg-gray-700 border border-dashed border-gray-300 dark:border-gray-600">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted/50 border border-dashed border-border">
                   <div className="flex flex-col">
-                    <span className="text-[11px] text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">Reference</span>
-                    <span className="text-[6px] text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">(not included in total)</span>
+                    <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide">Reference</span>
+                    <span className="text-[6px] text-muted-foreground font-medium uppercase tracking-wide">(not included in total)</span>
                   </div>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="flex items-center gap-2 cursor-help">
-                        <Mic className="w-3 h-3 text-gray-400 dark:text-gray-500" />
+                        <Mic className="w-3 h-3 text-muted-foreground" />
                         <div className="text-right">
                           <div className={cn("font-bold text-sm", getLatencyColor(conversationMetrics.sttStats.p75, "stt"))}>
                             {formatDuration(conversationMetrics.sttStats.p75)}
                           </div>
-                          <div className="text-gray-400 dark:text-gray-500 text-xs">STT P75</div>
+                          <div className="text-muted-foreground text-xs">STT P75</div>
                         </div>
                       </div>
                     </TooltipTrigger>
-                    <TooltipContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
+                    <TooltipContent className="bg-card border-border text-foreground">
                       <div className="text-xs">
                         <div className="font-medium">Speech-to-Text Performance</div>
-                        <div className="text-gray-400 dark:text-gray-500">P50: {formatDuration(conversationMetrics.sttStats.p50)}</div>
-                        <div className="text-gray-400 dark:text-gray-500">P75: {formatDuration(conversationMetrics.sttStats.p75)}</div>
-                        <div className="text-gray-400 dark:text-gray-500">Avg: {formatDuration(conversationMetrics.sttStats.avg)}</div>
-                        <div className="text-gray-500 dark:text-gray-400 text-xs font-medium mt-1 pt-1 border-t border-gray-200 dark:border-gray-600">
+                        <div className="text-muted-foreground">P50: {formatDuration(conversationMetrics.sttStats.p50)}</div>
+                        <div className="text-muted-foreground">P75: {formatDuration(conversationMetrics.sttStats.p75)}</div>
+                        <div className="text-muted-foreground">Avg: {formatDuration(conversationMetrics.sttStats.avg)}</div>
+                        <div className="text-muted-foreground text-xs font-medium mt-1 pt-1 border-t border-border">
                           Not included in total latency
                         </div>
                       </div>

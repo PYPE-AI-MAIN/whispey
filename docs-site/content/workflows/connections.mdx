@@ -1,0 +1,52 @@
+---
+title: Connections
+description: How the call moves from one step to the next, and how to say when.
+---
+
+A connection answers one question: when does the call go from this step to that one?
+
+Each step lists its ways on as lines on its own card, and every line has a dot on the right edge. A thin line runs from that dot to the next step. You read the "when" on the card, not on the line.
+
+## Adding a step with the plus button
+
+1. Hover a step on the canvas. A plus button appears on its right.
+2. Click it. A short list asks **What happens next?** Pick a step type. Click **More steps** for the rest.
+3. If the step is one that talks with the caller, a second question asks **When does the call go to this step?**
+   - **Right after this step is done**, or
+   - **Only when the caller says something**, with a box to describe it, for example "they want to cancel".
+4. The new step appears to the right, already connected.
+
+The first connection from a step is usually "right after". Any second connection needs a "when", so the agent knows which way to go.
+
+## The kinds of connection
+
+Click a line on the step's card to change its kind. Double-click a "when the caller says" line to retype it in place. To send a line somewhere else, drag from its dot to another step.
+
+| Kind | Meaning |
+|---|---|
+| **Next step** | Go here once the caller has replied to this step. |
+| **When the caller says something** | Go here when what the caller says matches your description. |
+| **When a saved value matches** | Go here when a detail matches a rule, such as age over 18. No AI is involved. |
+| **Otherwise** | Used when none of the others apply. A Branch always shows an **Else** line. A step that calls another system shows **If it works** and **If it fails**. |
+
+:::note
+A **Next step** connection moves the call on after the caller replies once. If a step needs several replies before moving on, give it a "When the caller says something" connection and describe the moment it is done.
+:::
+
+## Reachable from any step
+
+Some things can happen at any point: "they ask for a human", an emergency. Open the step they lead to and turn on **Reachable from any step**, then write when. The call can jump there from any step that listens, and you do not draw a line from every step. Select a step to see dotted lines to where these can send the call. The [Global rules](./global-rules) panel lists them all.
+
+## Writing a good "when"
+
+- Say what the caller does, not what the agent does. Good: "they agree to book". Not good: "the booking is finished".
+- Keep it short and specific. One idea per connection.
+- Cover real situations only. You do not need a connection for every possible answer.
+
+## Connecting by hand
+
+You can also drag from the dot on one step to another step. If the step already had a way out, the new connection asks for a "when".
+
+## Deleting and fixing
+
+Select a connection and press **Delete connection**, or select a step and use its panel. A step with nothing leading to it, or nothing after it, shows a yellow box in its panel with a way to fix it: connect it from another step, send it to another step, or end the call after it.

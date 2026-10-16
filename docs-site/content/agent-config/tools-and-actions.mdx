@@ -1,0 +1,127 @@
+---
+title: Tools and actions
+description: Give the agent abilities such as ending a call, transferring to a person or calling your own API.
+---
+
+A tool is something the agent can do during a call, besides talking. Tools sit in **Advanced Settings**, under **Tools & Actions**. The text there reads "Configure actions your assistant can perform during conversations".
+
+## Add a tool
+
+1. Open **Tools & Actions**.
+2. Click **Add Tool** and pick a type.
+3. Fill in the window and click **Add Tool**. To change a tool later, click the pencil and then **Update Tool**. The bin deletes it.
+4. Publish with **Update Config**. See [Publish and history](./publish-and-history).
+
+If nothing is added, the list shows "No tools configured".
+
+Every tool has two common fields.
+
+| Field | What to put |
+|---|---|
+| **Tool Name** | A unique name. Up to 30 characters, letters, numbers and underscores, starting with a letter. Spaces become underscores. |
+| **Description** | What the tool does. The agent's language model reads this to decide when to use it. |
+
+## Tool types
+
+| Type | Use it to |
+|---|---|
+| **End Call** | Let the agent hang up. |
+| **Handoff Agent** | Pass the conversation to another agent. |
+| **Transfer Call** | Hand the call to a person at a phone number. |
+| **IVR Navigator (DTMF)** | Press keys on a phone menu. |
+| **Custom Tool** | Call your own web API. |
+| **Language Switcher** | Switch language mid-call. See [Languages](./languages). |
+| **Nearby Hospital Finder** | Find nearby hospitals from a list you provide. |
+| **Update VAD Options** | Change voice-detection settings during the call. |
+| **Voicemail Detection** | Spot a voicemail and leave a message. |
+
+## End Call
+
+Name and description only. The default description is "Allow assistant to end the conversation".
+
+To hang up automatically after a goodbye, see **EOD Auto-Hangup** in [Advanced settings](./advanced-settings).
+
+## Handoff Agent
+
+| Field | What to put |
+|---|---|
+| **Target Agent** | The name of the agent to transfer to. |
+| **Handoff Message** | The message to display during the transfer. |
+
+## Transfer Call
+
+Transfers the call to another number. The help text says the call is transferred "in a conference".
+
+| Field | What it does |
+|---|---|
+| **Add as Tool** | The model can decide to use `transfer_call` as a tool. On by default. |
+| **Add as Tag** | The model writes `<transfer/>` in its reply to trigger the transfer. The tag is removed before speech, so the caller never hears it. Off by default. |
+| **Transfer Number** | The number to transfer to, for example `+1234567890`. |
+| Phone number (SIP trunk) | Pick one of your active outbound numbers. Its SIP trunk is used for the transfer. **None (bridge / Acefone calls)** is also offered. |
+| Acefone token | A per-agent Acefone API token. The screen says it is required for transfers on Acefone bridge calls. For SIP calls, leave it empty. |
+| **Pre-Transfer Webhook URL** (optional) | Called before the transfer is dialled. It gets the session ID, transcript and transfer number. |
+| Fields to include in webhook payload | Tick which details to send: full transcript, conversation summary, context memory, agent variables, customer phone number, caller info, call metadata, call duration, handoff count and errors. All are ticked by default. |
+| **Speak a message if the transfer fails (no answer / SIP error)** | On by default. A text box holds what the agent says before hanging up. If you leave it empty, a default message is used. |
+
+You can turn on both **Add as Tool** and **Add as Tag**. A guard stops the number being dialled twice.
+
+If you use **Add as Tag**, add this to your system prompt: "When transferring, append `<transfer/>` to your final response."
+
+:::warning
+If both **Add as Tool** and **Add as Tag** are off, the screen warns that the transfer is saved but the model has no way to start it.
+:::
+
+## IVR Navigator (DTMF)
+
+For calling a phone menu. Fields: **Function Name** (default `send_dtmf_code`) and **Cooldown (seconds)** from 0 to 60 (default 3), plus a few advanced fields for the topic name, instruction text and default task. The default task is "Reach a live support representative".
+
+## Custom Tool
+
+Calls a web address you provide and gives the answer back to the agent.
+
+| Field | What it does |
+|---|---|
+| **API URL** | The address to call. |
+| **HTTP Method** | GET, POST, PUT or DELETE. |
+| **Timeout (seconds)** | 1 to 120. New tools start at 10. |
+| **Async Execution** | Off by default. |
+| **Custom Payload (JSON Template)** | The body to send. Use the parameter names as variables, and `{{timestamp}}` for the current time. |
+| **Headers (JSON)** | Extra headers such as `Authorization`, as JSON. |
+| **Parameters** | Add one row per value the agent should provide. Each has a **Name**, a **Type** (string, number, boolean, array or object), a **Description** and a **Required** switch. |
+| **Response Mapping (JSON)** | Pick fields from the answer using dot notation, for example `data.user.name`. |
+
+### Tool Call Filler Words
+
+A custom tool can speak short phrases while it runs, so the caller is not left in silence. Turn on **Tool Call Filler Words** ("Speak phrases while this tool is running") and set:
+
+| Setting | What it does |
+|---|---|
+| **Delay before first filler (sec)** | How long to wait before the first phrase. |
+| **Repeat interval (sec)** | How long between phrases. |
+| **Selection mode** | **Random** picks any phrase each time. **Sequential** goes through them in order. |
+| **Filler messages** | Your phrases, for example "okay I am checking…". |
+
+Filler words for ordinary replies are a different feature. See [Advanced settings](./advanced-settings).
+
+## Nearby Hospital Finder
+
+| Field | What to put |
+|---|---|
+| **Max Results** | 1 to 20. New tools start at 3. |
+| **Hospitals (JSON array)** | Your list. Each hospital needs latitude and longitude. |
+| **Areas (JSON object)** | Area names in lower case, each with latitude and longitude. |
+
+## Update VAD Options
+
+Name and description only. It lets the agent change voice-detection settings during the call. See [Interruptions and speech](./interruptions-and-speech).
+
+## Voicemail Detection
+
+| Field | What it does |
+|---|---|
+| **Voicemail Message** | Spoken as written, not made up by the model. Leave it empty to end the call silently. |
+| **Reply Wait Timeout (seconds)** | How long to wait for a reply after speaking before hanging up. 0 hangs up straight away. New tools start at 7. |
+
+## Knowledge Search
+
+When you turn on **Enable Knowledge Base search**, a **Knowledge Search** row appears in the list with the note "Managed by RAG Settings". You do not add it yourself. See [Knowledge base](./knowledge-base).

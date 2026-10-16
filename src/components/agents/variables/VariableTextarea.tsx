@@ -10,8 +10,8 @@ import { AskPiPopover } from './AskPiPopover';
 const Editor = dynamic(() => import('@monaco-editor/react'), { 
   ssr: false,
   loading: () => (
-    <div className="w-full h-full flex items-center justify-center bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg">
-      <p className="text-sm text-gray-500 dark:text-gray-400">Loading editor...</p>
+    <div className="w-full h-full flex items-center justify-center bg-card border border-border rounded-lg">
+      <p className="text-sm text-muted-foreground">Loading editor...</p>
     </div>
   )
 });
@@ -82,11 +82,13 @@ export const VariableTextarea: React.FC<VariableTextareaProps> = ({
         base: 'vs',
         inherit: true,
         rules: [
-        { token: 'variable.valid', foreground: '0969da', fontStyle: 'italic' },
+        { token: 'variable.valid', foreground: '4b0082', fontStyle: 'italic' },
         { token: 'variable.invalid', foreground: 'd1242f', fontStyle: 'underline' }
         ],
         colors: {
         'editor.background': '#ffffff',
+        'editor.selectionBackground': '#4b008233',
+        'editor.inactiveSelectionBackground': '#4b008222',
         }
     });
 
@@ -94,17 +96,18 @@ export const VariableTextarea: React.FC<VariableTextareaProps> = ({
         base: 'vs-dark',
         inherit: true,
         rules: [
-        { token: 'variable.valid', foreground: '58a6ff', fontStyle: 'italic' },
-        { token: 'variable.invalid', foreground: 'ff7b72', fontStyle: 'underline' }
+        { token: 'variable.valid', foreground: 'ffb4a2', fontStyle: 'italic' },
+        { token: 'variable.invalid', foreground: 'ff4d4f', fontStyle: 'underline' }
         ],
         colors: {
         // matches the wrapper div's own `dark:bg-gray-900` — this app is on
-        // Tailwind v4, whose gray-900 is oklch(21% 0.034 264.665) = #101828,
-        // not the old v3 hex. This used to be a different hardcoded
+        // Tailwind v4, whose gray-900 is the brand tint #17121f. This used to be a different hardcoded
         // slate-blue (#283442), which is exactly what showed as a mismatched
         // stripe on both sides of the editor, in the padding gutter between
         // the wrapper and Monaco's own canvas.
-        'editor.background': '#101828',
+        'editor.background': '#17121f',
+        'editor.selectionBackground': '#ff6b6b4d',
+        'editor.inactiveSelectionBackground': '#ff6b6b2e',
         }
     });
     }, []);
@@ -143,7 +146,7 @@ export const VariableTextarea: React.FC<VariableTextareaProps> = ({
 
   return (
     <div 
-      className={`var-editor-monaco relative border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 ${className}`}
+      className={`var-editor-monaco relative border border-border rounded-lg bg-card ${className}`}
       style={{ ...style, minHeight: style?.minHeight || '200px' }}
     >
       {/* Padding wrapper for left/right spacing */}

@@ -306,22 +306,22 @@ export function AiChartBuilderPanel({
   const shown = messages.filter((m) => !m.hidden)
 
   return (
-    <aside className="flex h-full w-full flex-col border-l border-gray-200 bg-gray-50/60 dark:border-gray-800 dark:bg-gray-900/40">
-      <div className="flex shrink-0 items-center gap-2 border-b border-gray-200 py-2.5 pl-3 pr-10 dark:border-gray-800">
+    <aside className="flex h-full w-full flex-col border-l border-border bg-muted/50">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border py-2.5 pl-3 pr-10">
         <button
           type="button"
           onClick={onBack}
           aria-label="Back to chart types"
-          className="rounded p-1 text-gray-500 transition hover:bg-gray-200/60 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+          className="rounded p-1 text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-blue-100 dark:bg-blue-900/40">
-          <Sparkles className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/15">
+          <Sparkles className="h-3.5 w-3.5 text-primary" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">Generate with Pi</p>
-          <p className="truncate text-[11px] leading-tight text-gray-500 dark:text-gray-400">Describe charts, then add the ones you want</p>
+          <p className="truncate text-sm font-semibold text-foreground">Generate with Pi</p>
+          <p className="truncate text-[11px] leading-tight text-muted-foreground">Describe charts, then add the ones you want</p>
         </div>
         {messages.length > 0 && (
           <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={reset} title="Start over">
@@ -333,7 +333,7 @@ export function AiChartBuilderPanel({
       <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3">
         {shown.length === 0 && (
           <div className="flex flex-col gap-2">
-            <p className="px-0.5 text-[11px] text-gray-500 dark:text-gray-400">
+            <p className="px-0.5 text-[11px] text-muted-foreground">
               {fields.length === 0 ? 'This agent has no fields to chart yet. Try one of these anyway, or describe your own:' : 'Try one of these, or describe your own:'}
             </p>
             {chipList.map((s) => (
@@ -341,7 +341,7 @@ export function AiChartBuilderPanel({
                 key={s}
                 type="button"
                 onClick={() => handleSend(s)}
-                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-left text-xs text-gray-700 transition hover:border-blue-300 hover:bg-blue-50/50 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-blue-700"
+                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-left text-xs text-foreground transition hover:border-primary/40 hover:bg-blue-50/50"
               >
                 {s}
               </button>
@@ -371,7 +371,7 @@ export function AiChartBuilderPanel({
                 <ChartProposal key={c.id} state={c} fields={fields} onAdd={() => addChart(i, j)} />
               ))}
               {!(isStreaming && isLast) && msg.errors?.map((err) => (
-                <div key={err} className="flex items-start gap-1.5 rounded-md bg-red-50 px-2 py-1.5 text-[11px] font-medium text-red-700 dark:bg-red-900/20 dark:text-red-400">
+                <div key={err} className="flex items-start gap-1.5 rounded-md bg-destructive/10 px-2 py-1.5 text-[11px] font-medium text-destructive">
                   <span>Couldn&apos;t build one of the charts: {err}</span>
                 </div>
               ))}
@@ -380,13 +380,13 @@ export function AiChartBuilderPanel({
         })}
       </div>
 
-      <div className="shrink-0 border-t border-gray-200 p-3 dark:border-gray-800">
+      <div className="shrink-0 border-t border-border p-3">
         {anyAdded && (
-          <p className="mb-2 text-[11px] leading-snug text-gray-500 dark:text-gray-400">
+          <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
             Added charts are drafts on the dashboard. Press Save at the top to keep them.
           </p>
         )}
-        <div className="relative rounded-2xl border border-gray-300 bg-white focus-within:border-blue-400 dark:border-gray-700 dark:bg-gray-950">
+        <div className="relative rounded-2xl border border-border bg-card focus-within:border-blue-400">
           <textarea
             ref={inputRef}
             value={input}
@@ -396,7 +396,7 @@ export function AiChartBuilderPanel({
             aria-label="Describe the chart you want"
             rows={1}
             maxLength={2000}
-            className="max-h-[120px] w-full resize-none bg-transparent py-3 pl-3.5 pr-11 text-sm leading-relaxed text-gray-900 outline-none placeholder:text-gray-400 dark:text-gray-100"
+            className="max-h-[120px] w-full resize-none bg-transparent py-3 pl-3.5 pr-11 text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground"
             style={{ minHeight: '46px' }}
             disabled={isStreaming}
           />
@@ -438,13 +438,13 @@ function ChartProposal({
   const { chart, added } = state
   const range = rangeLabel(chart.spec)
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-2.5 dark:border-gray-800 dark:bg-gray-900">
+    <div className="rounded-lg border border-border bg-card p-2.5">
       <div className="flex items-start gap-2">
-        <span className="mt-0.5 text-blue-500">{KIND_ICON[chart.kind]}</span>
+        <span className="mt-0.5 text-primary">{KIND_ICON[chart.kind]}</span>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold text-gray-900 dark:text-gray-100">{chart.title}</p>
-          <p className="mt-0.5 text-[11px] leading-snug text-gray-500 dark:text-gray-400">{safeExplain(chart, fields)}</p>
-          {range && <p className="mt-1 text-[10px] font-medium uppercase tracking-wide text-gray-400">{range}</p>}
+          <p className="text-xs font-semibold text-foreground">{chart.title}</p>
+          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{safeExplain(chart, fields)}</p>
+          {range && <p className="mt-1 text-[10px] font-medium text-muted-foreground">{range}</p>}
         </div>
       </div>
       <Button
@@ -474,7 +474,7 @@ const MARKDOWN_COMPONENTS = {
 function AssistantText({ content, streaming }: Readonly<{ content: string; streaming?: boolean }>) {
   if (!content && streaming) {
     return (
-      <span className="inline-flex gap-1 py-1 text-gray-500">
+      <span className="inline-flex gap-1 py-1 text-muted-foreground">
         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current opacity-60" style={{ animationDelay: '0ms' }} />
         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current opacity-60" style={{ animationDelay: '150ms' }} />
         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current opacity-60" style={{ animationDelay: '300ms' }} />
@@ -488,10 +488,10 @@ function AssistantText({ content, streaming }: Readonly<{ content: string; strea
   const textOnly = visibleContent.replaceAll(/```json[\s\S]*?```/g, '').trim()
 
   return (
-    <div className="space-y-1.5 text-sm leading-relaxed text-gray-800 dark:text-gray-200">
+    <div className="space-y-1.5 text-sm leading-relaxed text-foreground">
       {textOnly && <ReactMarkdown components={MARKDOWN_COMPONENTS}>{textOnly}</ReactMarkdown>}
       {streaming && hasOpenJsonBlock && (
-        <div className="flex items-center gap-1.5 rounded-md bg-blue-50 px-2 py-1 text-[11px] font-medium text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
+        <div className="flex items-center gap-1.5 rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">
           <Loader2 className="h-3 w-3 animate-spin" /> Building the chart…
         </div>
       )}
