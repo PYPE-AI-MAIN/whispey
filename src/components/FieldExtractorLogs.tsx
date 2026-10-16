@@ -247,7 +247,7 @@ const FieldExtractorDialog: React.FC<FieldExtractorDialogProps> = ({
             <span className="rounded-full bg-muted px-1.5 text-xs tabular-nums text-muted-foreground">{fields.filter(isCompleteField).length}</span>
           </TabButton>
           <TabButton active={tab === 'dnc'} onClick={() => setTab('dnc')}>
-            Do Not Call
+            Do Not Call{' '}
             <span
               className={cn(
                 "rounded-full px-1.5 text-[11px] font-medium",

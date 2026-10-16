@@ -132,7 +132,7 @@ export function DncManager({ currentProjectId }: Readonly<{ currentProjectId: st
     },
     onSettled: () => {
       setRemovingId(null)
-      void queryClient.invalidateQueries({ queryKey: ['dnc-list'] })
+      return queryClient.invalidateQueries({ queryKey: ['dnc-list'] })
     },
   })
 
@@ -318,7 +318,7 @@ export function DncManager({ currentProjectId }: Readonly<{ currentProjectId: st
 
             {agentFilterName && (
               <div className="mt-3 flex items-center gap-2 text-[12.5px] text-[var(--cl-text3)]">
-                Showing
+                Showing{' '}
                 <span className="inline-flex items-center gap-1 rounded-md border border-[var(--cl-border)] bg-[var(--cl-panel)] py-0.5 pl-2 pr-1 text-[var(--cl-text)]">
                   {agentFilterName}
                   <button type="button" onClick={() => setAgentId(null)} aria-label="Show every agent" className="rounded p-0.5 hover:bg-[var(--cl-hover)]">
@@ -350,7 +350,7 @@ export function DncManager({ currentProjectId }: Readonly<{ currentProjectId: st
         onOpenChange={setAddOpen}
         projects={orgs}
         defaultProjectId={org?.id ?? currentProjectId ?? null}
-        onAdded={() => void queryClient.invalidateQueries({ queryKey: ['dnc-list'] })}
+        onAdded={() => queryClient.invalidateQueries({ queryKey: ['dnc-list'] })}
       />
     </div>
   )
