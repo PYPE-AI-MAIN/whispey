@@ -210,14 +210,15 @@ export default function SessionBehaviourSettings({
               onFieldChange('advancedSettings.session.turn_detection', value)
             }
           >
-            <SelectTrigger className="h-8 text-xs">
+            {/* w-full + overflow-hidden: a long option name stays inside the panel instead of stretching it */}
+            <SelectTrigger className="h-8 w-full overflow-hidden text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="multilingual" className="text-xs">Multilingual</SelectItem>
               <SelectItem value="english" className="text-xs">English</SelectItem>
               <SelectItem value="v1-mini" className="text-xs">V1 Mini (Real Interruption Classifier)</SelectItem>
-              <SelectItem value="cue" className="text-xs">Cue v1 (reads the words and the question asked)</SelectItem>
+              <SelectItem value="cue" className="text-xs">Cue v1</SelectItem>
               <SelectItem value="disabled" className="text-xs">Disabled</SelectItem>
             </SelectContent>
           </Select>
