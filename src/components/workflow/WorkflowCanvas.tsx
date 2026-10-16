@@ -8,8 +8,6 @@ import {
   MiniMap,
   Panel,
   useReactFlow,
-  type Node,
-  type Edge as FlowEdge,
   type NodeChange,
   type EdgeChange,
   type NodeTypes,
