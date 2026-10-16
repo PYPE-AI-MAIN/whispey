@@ -66,7 +66,7 @@ export function DncAgentsPanel({
   if (error) {
     return (
       <p role="alert" className="rounded-2xl border border-[var(--cl-red-line)] bg-[var(--cl-red-soft)] px-4 py-3 text-[13px] text-[var(--cl-red-text)]">
-        Couldn&apos;t load the agents: {(error as Error).message}
+        Couldn&apos;t load the agents: {error.message}
       </p>
     )
   }
@@ -118,7 +118,7 @@ export function DncAgentsPanel({
       </ul>
       {toggle.isError && (
         <p role="alert" className="border-t border-[var(--cl-border)] px-4 py-2 text-[12.5px] text-[var(--cl-red-text)]">
-          {(toggle.error as Error).message}
+          {toggle.error.message}
         </p>
       )}
     </section>

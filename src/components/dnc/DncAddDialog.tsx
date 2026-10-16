@@ -368,7 +368,7 @@ export function DncAddDialog({
             </output>
           )}
           {add.isError && (
-            <p role="alert" className="text-[13px] text-[var(--cl-red-text)]">{(add.error as Error).message}</p>
+            <p role="alert" className="text-[13px] text-[var(--cl-red-text)]">{add.error.message}</p>
           )}
         </div>
 

@@ -184,7 +184,7 @@ export function DncManager({ currentProjectId }: Readonly<{ currentProjectId: st
     if (error) {
       return (
         <div role="alert" className="m-4 rounded-xl border border-[var(--cl-red-line)] bg-[var(--cl-red-soft)] px-4 py-3 text-[13px] text-[var(--cl-red-text)]">
-          Couldn&apos;t load the list: {(error as Error).message}
+          Couldn&apos;t load the list: {error.message}
           <span className="mt-1 block text-[12px] opacity-80">
             If this is a fresh setup, run <code className="font-mono">migrations/add_dnc_checker.sql</code> on the database.
           </span>
@@ -332,7 +332,7 @@ export function DncManager({ currentProjectId }: Readonly<{ currentProjectId: st
               {renderNumbers()}
               {remove.isError && (
                 <p role="alert" className="border-t border-[var(--cl-border)] px-4 py-2 text-[12.5px] text-[var(--cl-red-text)]">
-                  {(remove.error as Error).message}
+                  {remove.error.message}
                 </p>
               )}
             </section>
