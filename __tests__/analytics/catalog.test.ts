@@ -159,16 +159,16 @@ describe('a catalog scanned before the agent had calls', () => {
 
   it('rescans when every column came back empty — the prod agent whose first call arrived after the scan', () => {
     const allZero = BUILTIN_COLUMNS.map((col) => ({ col, coverage_pct: 0, last_seen_at: '2026-09-21T06:16:21Z' }))
-    // one hour later: inside the six-hour window, so only the all-zero rule can save it
-    expect(catalogIsStale(allZero, at('2026-09-21T07:16:21Z'))).toBe(true)
+    // five minutes later: inside the 15-minute window, so only the all-zero rule can save it
+    expect(catalogIsStale(allZero, at('2026-09-21T06:21:21Z'))).toBe(true)
   })
 
   it('leaves a catalog with real coverage alone inside the window', () => {
-    expect(catalogIsStale(full, at('2026-09-21T07:16:21Z'))).toBe(false)
+    expect(catalogIsStale(full, at('2026-09-21T06:21:21Z'))).toBe(false)
   })
 
   it('rescans once the window is past', () => {
-    expect(catalogIsStale(full, at('2026-09-21T13:16:21Z'))).toBe(true)
+    expect(catalogIsStale(full, at('2026-09-21T06:36:21Z'))).toBe(true)
   })
 
   it('rescans when the code learned about a built-in column the stored catalog has never heard of', () => {

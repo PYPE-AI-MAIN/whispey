@@ -344,8 +344,8 @@ export async function scanBuiltins(agentId: string): Promise<BuiltinField[]> {
   })
 }
 
-/** Six hours: a dashboard is opened far more often than an agent gains a new field. */
-export const STALE_AFTER_MS = 6 * 60 * 60 * 1000
+/** Fifteen minutes: a new field (say a new extracted value) should reach the picker soon, without a rescan on every open. */
+export const STALE_AFTER_MS = 15 * 60 * 1000
 
 /**
  * Whether the stored catalog has to be rescanned before it is shown.
@@ -353,7 +353,7 @@ export const STALE_AFTER_MS = 6 * 60 * 60 * 1000
  * The three reasons are all "this was written about a different world": there
  * is nothing stored, a built-in column was added to the code since, or the
  * scan ran before the agent's first call and so wrote every column at 0% with
- * no extracted fields — caching that for six hours means a brand-new agent
+ * no extracted fields — caching that for a while means a brand-new agent
  * shows an empty field picker all morning.
  */
 export function catalogIsStale(

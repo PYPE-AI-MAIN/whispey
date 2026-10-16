@@ -13,6 +13,7 @@ import { JSON_COLS } from '@/server/analytics/spec'
 import { catalogIsStale, rescan } from '@/server/analytics/catalog'
 import { resolveAnalyticsContext, resolveProjectAnalyticsContext, isDenied } from '@/server/analytics/context'
 import { applyDeclarations } from '@/server/analytics/extractor'
+import { llmDeclaredValues } from '@/server/analytics/llmValues'
 import { guarded } from '@/server/analytics/guard'
 
 export const runtime = 'nodejs'
@@ -63,7 +64,7 @@ export const GET = guarded('analytics/fields', async (req: NextRequest) => {
    *
    * Applied here rather than in the rescan so it also reaches a cached catalog
    * — editing the extractor prompt should change the picker on the next load,
-   * not six hours later.
+   * not hours later.
    *
    * The prompt itself is only shown to people the agent route already shows it
    * to; the *types* it implies are not sensitive, being derivable from the data
@@ -71,6 +72,7 @@ export const GET = guarded('analytics/fields', async (req: NextRequest) => {
    */
   const described = applyDeclarations(visible, agent.extractorPrompt, {
     includeDescription: resolved.role !== 'viewer',
+    llmValues: await llmDeclaredValues(agent.extractorPrompt),
   })
 
   return NextResponse.json({
@@ -128,11 +130,12 @@ async function getProjectFields(projectId: string) {
 
   // each agent's rows get that agent's own extractor declarations before
   // merging, since two agents can extract the same column differently
+  const llmByAgent = new Map(await Promise.all(ctx.agentIds.map(async (id) => [id, await llmDeclaredValues(extractorPromptByAgent.get(id) ?? null)] as const)))
   const described = ctx.agentIds.flatMap((id) =>
     applyDeclarations(
       visible.filter((r) => r.agent_id === id),
       extractorPromptByAgent.get(id) ?? null,
-      { includeDescription: resolved.role !== 'viewer' }
+      { includeDescription: resolved.role !== 'viewer', llmValues: llmByAgent.get(id) }
     )
   )
 
