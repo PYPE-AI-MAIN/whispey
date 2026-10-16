@@ -261,7 +261,7 @@ type CatalogRow = {
 export function applyDeclarations<T extends CatalogRow>(
   rows: T[],
   prompt: unknown,
-  opts: { includeDescription: boolean }
+  opts: { includeDescription: boolean; /** values a model read out of each prompt (llmValues.ts); they beat the pattern-based reading */ llmValues?: Map<string, string[]> }
 ): (T & { group: FieldGroup; declared: boolean; description: string | null })[] {
   const declared = declaredByKey(prompt)
 
@@ -277,17 +277,21 @@ export function applyDeclarations<T extends CatalogRow>(
       description: d && opts.includeDescription && d.summary ? d.summary : null,
     }
 
-    // a person's confirmed type is the one source that beats the declaration
-    if (!d?.declared || row.type_confirmed === true) return base
+    // a model-read list replaces the pattern-based one, but never a 1/0 or yes/no reading
+    const viaModel = d ? opts.llmValues?.get(d.key) : undefined
+    const effective = d?.declared?.kind === 'boolean' || !viaModel ? d?.declared : { kind: 'enum' as const, values: viaModel }
 
-    if (d.declared.kind === 'boolean') {
-      return { ...base, value_type: 'boolean', boolean_encoding: d.declared.encoding }
+    // a person's confirmed type is the one source that beats the declaration
+    if (!effective || row.type_confirmed === true) return base
+
+    if (effective.kind === 'boolean') {
+      return { ...base, value_type: 'boolean', boolean_encoding: effective.encoding }
     }
 
     // declared order first — it is the order the author wrote them in, which is
     // more meaningful than alphabetical — then anything the agent is producing
     // that the declaration never mentioned
-    const stated = d.declared.values
+    const stated = effective.values
     const seen = Array.isArray(row.enum_values) ? (row.enum_values as string[]) : []
     return { ...base, value_type: 'enum', enum_values: [...stated, ...seen.filter((v) => !stated.includes(v))] }
   })
