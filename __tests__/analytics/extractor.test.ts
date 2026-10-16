@@ -48,6 +48,22 @@ describe('reading the extractor prompt', () => {
     })
   })
 
+  it('reads a pipe-separated list, and never turns the sentence before it into labels', () => {
+    const prompt = JSON.stringify([{
+      key: 'final_disposition',
+      description: '## OUTPUT RULE\nReturn exactly one of these sixteen values, spelled exactly as written. Nothing else is valid:\nwrong_number | voicemail | needs_human | not_interested | unassured\n\n## HOW TRANSCRIPTS LOOK\nThey are messy.',
+    }])
+    expect(parseExtractorKeys(prompt)[0].declared).toEqual({
+      kind: 'enum',
+      values: ['wrong_number', 'voicemail', 'needs_human', 'not_interested', 'unassured'],
+    })
+  })
+
+  it('does not take a sentence of prose for labels', () => {
+    const prompt = JSON.stringify([{ key: 'k', description: 'Return one of these sixteen values, spelled exactly as written.' }])
+    expect(parseExtractorKeys(prompt)[0].declared).toBeUndefined()
+  })
+
   it('claims nothing about a free-text field', () => {
     expect(parseExtractorKeys(SURYA).find((x) => x.key === 'patient_full_name')?.declared).toBeUndefined()
   })
