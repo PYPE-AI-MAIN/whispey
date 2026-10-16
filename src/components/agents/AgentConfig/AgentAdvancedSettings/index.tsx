@@ -50,8 +50,9 @@ interface AgentAdvancedSettingsProps {
       }
       session: {
         preemptiveGeneration: 'enabled' | 'disabled'
-        turn_detection: 'multilingual' | 'english' | 'disabled' | 'v1-mini'
+        turn_detection: 'multilingual' | 'english' | 'disabled' | 'v1-mini' | 'cue'
         unlikely_threshold?: number
+        cue_threshold?: number
         min_endpointing_delay?: number
         max_endpointing_delay?: number
         endpointing_mode?: string | null
@@ -300,6 +301,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, promptVariable
               preemptiveGeneration={advancedSettings.session.preemptiveGeneration}
               turn_detection={advancedSettings.session.turn_detection}
               unlikely_threshold={advancedSettings.session.unlikely_threshold}
+              cue_threshold={advancedSettings.session.cue_threshold}
               min_endpointing_delay={advancedSettings.session.min_endpointing_delay}
               max_endpointing_delay={advancedSettings.session.max_endpointing_delay}
               endpointing_mode={advancedSettings.session.endpointing_mode}
