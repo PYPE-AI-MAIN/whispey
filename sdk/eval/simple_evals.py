@@ -121,7 +121,7 @@ def main():
             model="o1-preview",
         ),
         "o1-mini": OChatCompletionSampler(
-            model="o1-mini",
+            model="gpt-5.6-terra",
         ),
         # Default == Medium
         "o3-mini": OChatCompletionSampler(

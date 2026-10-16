@@ -20,7 +20,7 @@ class OChatCompletionSampler(SamplerBase):
         self,
         *,
         reasoning_effort: str | None = None,
-        model: str = "o1-mini",
+        model: str = "gpt-5.6-terra",
     ):
         self.api_key_name = "OPENAI_API_KEY"
         self.client = OpenAI()
