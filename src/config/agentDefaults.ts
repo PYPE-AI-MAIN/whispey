@@ -242,8 +242,9 @@ export const AGENT_DEFAULT_CONFIG = {
       },
       session: {
         preemptiveGeneration: AGENT_DEFAULT_CONFIG.session_behavior.preemptive_generation as "disabled" | "enabled",
-        turn_detection: AGENT_DEFAULT_CONFIG.session_behavior.turn_detection as "multilingual" | "english" | "disabled",
+        turn_detection: AGENT_DEFAULT_CONFIG.session_behavior.turn_detection as "multilingual" | "english" | "disabled" | "v1-mini" | "cue",
         unlikely_threshold: AGENT_DEFAULT_CONFIG.session_behavior.unlikely_threshold,
+        cue_threshold: undefined as number | undefined,
         min_endpointing_delay: AGENT_DEFAULT_CONFIG.session_behavior.min_endpointing_delay,
         max_endpointing_delay: AGENT_DEFAULT_CONFIG.session_behavior.max_endpointing_delay,
         endpointing_mode: AGENT_DEFAULT_CONFIG.session_behavior.endpointing_mode,
