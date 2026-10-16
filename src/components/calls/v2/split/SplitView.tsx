@@ -10,13 +10,13 @@ import type { CallLog } from "@/types/logs"
 import type { PhoneNumber } from "@/lib/callDispatch"
 import { cn } from "@/lib/utils"
 import { CallList } from "./CallList"
-import { CallDetail } from "./CallDetail"
+import { CallDetail, StepNamesContext } from "./CallDetail"
 import { CallInspector } from "./CallInspector"
 import { keyboardIsBusy } from "../keyboard"
 import { acefoneCallIdOf, openAcefoneRecording } from "@/lib/acefoneRecording"
 import { isVapiAgentConfig } from "@/lib/latencyStats"
 import { ExternalLink } from "lucide-react"
-import { SUMMARY_FIELD, activeCueKey, extractorKeys, recordingTimeZero, transcriptCues } from "./callData"
+import { SUMMARY_FIELD, activeCueKey, extractorKeys, recordingTimeZero, transcriptCues, workflowStepNames } from "./callData"
 
 interface SplitViewProps {
   call: CallLog
@@ -84,6 +84,7 @@ export function SplitView(props: Readonly<SplitViewProps>) {
 
   // Recording keys, as in the mockup: Space plays/pauses, ← / → jump 5 seconds.
   const rootRef = useRef<HTMLDivElement>(null)
+  const stepNames = useMemo(() => workflowStepNames(agent), [agent])
   const hasRecording = !!call.recording_url
   useEffect(() => {
     if (!hasRecording) return
@@ -114,6 +115,7 @@ export function SplitView(props: Readonly<SplitViewProps>) {
   }
 
   return (
+    <StepNamesContext.Provider value={stepNames}>
     <div
       ref={rootRef}
       className={cn(
@@ -197,5 +199,6 @@ export function SplitView(props: Readonly<SplitViewProps>) {
         )}
       </div>
     </div>
+    </StepNamesContext.Provider>
   )
 }

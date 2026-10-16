@@ -393,6 +393,7 @@ function StudioWorkspace({ isPreview, onExitPreview }: Readonly<{ isPreview: boo
               fieldExtractorVariables={agent?.field_extractor_variables}
               fieldExtractorEnabled={!!agent?.field_extractor}
               fieldExtractorModel={agent?.field_extractor_model}
+              dncCheckerEnabled={!!agent?.dnc_checker_enabled}
               latestValues={dispositionValues}
               loading={dispositionsLoading}
               inProgress={call.isConnected || call.isConnecting || starting}

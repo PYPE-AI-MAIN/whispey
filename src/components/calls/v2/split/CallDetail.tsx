@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useMemo, useRef, useState } from "react"
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { AlertTriangle, Check, Copy, ExternalLink, Loader2, Wrench } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { formatDuration, formatToIndianDateTime, isColumnVisibleForRole, isViewerRole } from "@/utils/callLogsUtils"
@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 import CallAgainDialog from "../../CallAgainDialog"
 import { TagEditor } from "../../TagEditor"
 import { FlagEditor } from "../../FlagEditor"
-import { callDurationSeconds, callLabel, callSummary, formatClock, numberMaskFor, toolArgumentsText, type TranscriptCue } from "./callData"
+import { callDurationSeconds, callLabel, callSummary, formatClock, numberMaskFor, plainToolName, toolArgumentsText, type TranscriptCue } from "./callData"
 
 export interface ToolRef {
   key: string
@@ -21,6 +21,12 @@ export interface ToolRef {
 
 export const toolKey = (turnId: string, index: number) => `${turnId}:${index}`
 export const toolName = (tool: any): string => tool?.tool_name || tool?.name || "unknown"
+/** Step names of the workflow being viewed, so a hand-off tool reads as "Moved to ..." instead of go_<id>. */
+export const StepNamesContext = createContext<Map<string, string>>(new Map())
+export function useToolLabel(tool: any): string | null {
+  const steps = useContext(StepNamesContext)
+  return plainToolName(toolName(tool), tool?.arguments, steps)
+}
 export const toolFailed = (tool: any): boolean => tool?.success === false || tool?.status === "error"
 
 interface CallDetailProps {
@@ -395,11 +401,11 @@ function Bubble({
           {...seekProps(start, onSeek)}
           title={onSeek && start !== undefined ? "Play from here" : undefined}
           className={cn(
-            onSeek && start !== undefined && "cursor-pointer hover:border-[#93c5fd] dark:hover:border-[#2f4a7a]",
-            "rounded-[14px] rounded-tr-[4px] border bg-[#eff6ff] px-[15px] py-[11px] text-[15.5px] leading-[1.6] transition-[border-color,box-shadow] duration-300 dark:bg-[#1c2b4a]",
+            onSeek && start !== undefined && "cursor-pointer hover:border-[var(--cl-accent-line)]",
+            "rounded-[14px] rounded-tr-[4px] border bg-[var(--cl-accent-soft)] px-[15px] py-[11px] text-[15.5px] leading-[1.6] transition-[border-color,box-shadow] duration-300",
             active
-              ? "border-[#60a5fa] shadow-[0_0_0_3px_rgba(59,130,246,.18)] dark:border-[#3b82f6]"
-              : "border-[#bfdbfe] dark:border-[#24365c]"
+              ? "border-[var(--cl-accent)] shadow-[0_0_0_3px_var(--cl-accent-soft)]"
+              : "border-[var(--cl-accent-soft)]"
           )}
         >
           {text}
@@ -452,6 +458,7 @@ function seekProps(start: number | undefined, onSeek?: (seconds: number) => void
 
 function ToolPill({ tool, mask, onOpen }: Readonly<{ tool: any; mask: (value: string) => string; onOpen: () => void }>) {
   const failed = toolFailed(tool)
+  const plain = useToolLabel(tool)
   const argsText = toolArgumentsText(tool.arguments)
   const args = argsText === null ? null : mask(argsText)
   const result = tool.result == null ? null : mask(String(tool.result))
@@ -469,7 +476,7 @@ function ToolPill({ tool, mask, onOpen }: Readonly<{ tool: any; mask: (value: st
           )}
         >
           <Wrench className="h-3 w-3" />
-          <span className={cn("font-mono", !failed && "text-[var(--cl-text)]")}>{toolName(tool)}</span>
+          <span className={cn(!plain && "font-mono", !failed && "text-[var(--cl-text)]")}>{plain ?? toolName(tool)}</span>
           {failed ? "✕" : "✓"}
           {typeof tool.duration_ms === "number" && <span className="font-mono text-[var(--cl-text3)]">{Math.round(tool.duration_ms)}ms</span>}
         </button>
@@ -477,7 +484,8 @@ function ToolPill({ tool, mask, onOpen }: Readonly<{ tool: any; mask: (value: st
       {/* Radix keeps tooltip content open while the pointer is inside it, so the JSON can be scrolled and copied. */}
       <TooltipContent side="bottom" align="start" className="w-[360px] p-3 text-[12.5px]">
         <p className={cn("mb-2 flex items-center gap-1.5 font-mono font-semibold", failed && "text-rose-400")}>
-          <Wrench className="h-3 w-3" /> {toolName(tool)}
+          <Wrench className="h-3 w-3" /> {plain ?? toolName(tool)}
+          {plain && <span className="ml-1 font-normal opacity-60">({toolName(tool)})</span>}
         </p>
         {args && (
           <>
@@ -491,7 +499,7 @@ function ToolPill({ tool, mask, onOpen }: Readonly<{ tool: any; mask: (value: st
             <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md bg-black/20 p-2 font-mono text-[11.5px]">{result}</pre>
           </>
         )}
-        <button type="button" onClick={onOpen} className="mt-2 text-[12px] text-blue-400 hover:underline">
+        <button type="button" onClick={onOpen} className="mt-2 text-[12px] text-[var(--cl-accent-text)] hover:underline">
           Open in Tools tab →
         </button>
       </TooltipContent>

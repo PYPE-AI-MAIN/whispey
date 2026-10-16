@@ -8,6 +8,7 @@ const h = vi.hoisted(() => ({
     userRow: null as any,    // returned by .single() (getSuperAdminEmail)
     userId: 'user-1' as string | null,
     email: 'admin@example.com' as string | undefined,
+    orFilters: [] as string[], // what checkDncNumbers asked for via .or()
   },
 }))
 
@@ -18,7 +19,10 @@ vi.mock('@/lib/supabase-server', () => ({
       chain.select = () => chain
       chain.eq = () => chain
       chain.in = () => chain
-      chain.or = () => chain
+      chain.or = (f: string) => {
+        h.state.orFilters.push(f)
+        return chain
+      }
       chain.single = () => Promise.resolve({ data: h.state.userRow, error: h.state.error })
       chain.then = (resolve: any, reject?: any) =>
         Promise.resolve({ data: h.state.rows, error: h.state.error }).then(resolve, reject)
@@ -33,9 +37,10 @@ vi.mock('@clerk/nextjs/server', () => ({
     Promise.resolve(h.state.email ? { emailAddresses: [{ emailAddress: h.state.email }] } : null),
 }))
 
-import { normalizePhone, toNumbersArray, buildDncRows, checkDncNumbers, getSuperAdminEmail } from '@/lib/dnc'
+import { normalizePhone, toNumbersArray, buildDncRows, checkDncNumbers, dncScopeFilter, getSuperAdminEmail } from '@/lib/dnc'
 
 beforeEach(() => {
+  h.state.orFilters = []
   h.state.rows = []
   h.state.error = null
   h.state.userRow = null
@@ -147,5 +152,45 @@ describe('getSuperAdminEmail', () => {
   it('returns null when unauthenticated', async () => {
     h.state.userId = null
     expect(await getSuperAdminEmail()).toBeNull()
+  })
+})
+
+describe('agent scope', () => {
+  it('builds agent rows with the agent and its project', () => {
+    const { rows } = buildDncRows(['9876543210'], {
+      scope: 'agent', projectId: 'p1', agentId: 'a1', reason: null, source: 'manual', addedBy: 'admin',
+    })
+    expect(rows[0]).toMatchObject({ scope: 'agent', project_id: 'p1', agent_id: 'a1' })
+  })
+
+  it('keeps agent_id off global and project rows', () => {
+    const meta = { projectId: 'p1', agentId: 'a1', reason: null, source: 'manual', addedBy: 'admin' }
+    expect(buildDncRows(['9876543210'], { ...meta, scope: 'project' }).rows[0]).toMatchObject({ project_id: 'p1', agent_id: null })
+    expect(buildDncRows(['9876543210'], { ...meta, scope: 'global' }).rows[0]).toMatchObject({ project_id: null, agent_id: null })
+  })
+
+  it('filters global, then project, then agent rows', () => {
+    expect(dncScopeFilter()).toBe('scope.eq.global')
+    expect(dncScopeFilter('p1')).toBe('scope.eq.global,and(scope.eq.project,project_id.eq.p1)')
+    expect(dncScopeFilter('p1', 'a1')).toBe(
+      'scope.eq.global,and(scope.eq.project,project_id.eq.p1),and(scope.eq.agent,agent_id.eq.a1)',
+    )
+  })
+
+  it('checks the agent\'s own list when given an agent', async () => {
+    h.state.rows = [{ phone_e164: '+919876543210', scope: 'agent', project_id: 'p1', agent_id: 'a1' }]
+    const [r] = await checkDncNumbers(['9876543210'], 'p1', 'a1')
+    expect(r).toMatchObject({ blocked: true, scope: 'agent' })
+    expect(h.state.orFilters[0]).toContain('and(scope.eq.agent,agent_id.eq.a1)')
+  })
+
+  it('reports the widest scope when a number is blocked more than once', async () => {
+    h.state.rows = [
+      { phone_e164: '+919876543210', scope: 'agent', project_id: 'p1', agent_id: 'a1' },
+      { phone_e164: '+919876543210', scope: 'global', project_id: null, agent_id: null },
+      { phone_e164: '+919876543210', scope: 'project', project_id: 'p1', agent_id: null },
+    ]
+    const [r] = await checkDncNumbers(['9876543210'], 'p1', 'a1')
+    expect(r.scope).toBe('global')
   })
 })

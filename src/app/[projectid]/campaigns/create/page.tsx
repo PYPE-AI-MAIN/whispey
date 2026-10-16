@@ -188,12 +188,13 @@ const createValidationSchema = (maxConcurrency: number) => Yup.object({
 
 // Batch-check phone numbers against the DNC list; returns the set of raw inputs
 // that are blocked (empty set on any failure — the preview just won't flag them).
-async function fetchDncBlockedSet(phones: string[], projectId: string): Promise<Set<string>> {
+// With an agent, numbers on that agent's own DNC list count too.
+async function fetchDncBlockedSet(phones: string[], projectId: string, agentId?: string): Promise<Set<string>> {
   try {
     const res = await fetch('/api/dnc/check', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ numbers: phones, project_id: projectId }),
+      body: JSON.stringify({ numbers: phones, project_id: projectId, ...(agentId ? { agent_id: agentId } : {}) }),
     })
     const json = await res.json()
     return new Set<string>(
@@ -423,8 +424,12 @@ function CreateCampaign() {
       // Generate unique campaign ID
       const campaignId = uuidv4()
 
-      // Step 1: Upload CSV to S3 — exclude any numbers on the DNC list.
-      const callableData = csvData.filter(row => !dncBlocked.has(row.phone))
+      // Step 1: Upload CSV to S3 — exclude any numbers on the DNC list, including
+      // the chosen agent's own list (the preview only knew the project's).
+      const agentBlocked = values.agentId
+        ? await fetchDncBlockedSet(csvData.map((r) => r.phone).filter(Boolean), projectId, values.agentId)
+        : new Set<string>()
+      const callableData = csvData.filter(row => !dncBlocked.has(row.phone) && !agentBlocked.has(row.phone))
       if (callableData.length === 0) {
         alert('Every uploaded number is on the DNC list. Nothing to send.')
         setSubmitting(false)
@@ -533,7 +538,7 @@ function CreateCampaign() {
   return (
     <div className="flex flex-col h-screen bg-card">
       {/* Header */}
-      <div className="px-6 py-4 border-border bg-background border-b shadow-sm">
+      <div className="px-6 py-4 border-border bg-card border-b shadow-sm">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"

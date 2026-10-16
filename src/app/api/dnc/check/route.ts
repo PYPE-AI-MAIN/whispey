@@ -6,7 +6,8 @@ export const runtime = 'nodejs'
 
 /**
  * POST /api/dnc/check
- * Body: { numbers: string | string[], project_id?: string }
+ * Body: { numbers: string | string[], project_id?: string, agent_id?: string }
+ * With agent_id, numbers on that agent's own DNC list are blocked too.
  *
  * Accepts a single number or an array (used by campaign upload for bulk checks
  * and by phone-call-config for a single number).
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let body: { numbers?: string | string[]; project_id?: string }
+  let body: { numbers?: string | string[]; project_id?: string; agent_id?: string }
   try {
     body = await request.json()
   } catch {
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const results = await checkDncNumbers(numbers, body.project_id ?? null)
+    const results = await checkDncNumbers(numbers, body.project_id ?? null, body.agent_id ?? null)
     const blocked = results.filter((r) => r.blocked)
     return NextResponse.json(
       {

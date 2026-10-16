@@ -343,7 +343,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-xs flex-shrink-0">
+            <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/80 rounded flex items-center justify-center text-primary-foreground font-medium text-xs flex-shrink-0">
               {getOrganisationInitials(project.name)}
             </div>
             <div className="min-w-0 flex-1">
@@ -457,7 +457,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
       <CardContent className="p-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-xs flex-shrink-0">
+            <div className="w-7 h-7 bg-gradient-to-br from-primary to-primary/80 rounded flex items-center justify-center text-primary-foreground font-medium text-xs flex-shrink-0">
               {getOrganisationInitials(project.name)}
             </div>
             <div className="min-w-0 flex-1">
@@ -716,7 +716,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                     <div className="grid grid-cols-12 gap-4 items-center">
                       {/* Organization */}
                       <div className="col-span-6 flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-xs flex-shrink-0">
+                        <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/80 rounded flex items-center justify-center text-primary-foreground font-medium text-xs flex-shrink-0">
                           {getOrganisationInitials(project.name)}
                         </div>
                         <div className="min-w-0 flex-1">

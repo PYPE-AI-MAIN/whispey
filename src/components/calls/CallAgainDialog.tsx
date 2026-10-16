@@ -86,7 +86,7 @@ export default function CallAgainDialog({ call, projectId, agent, phoneNumbers }
       const dncRes = await fetch('/api/dnc/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ numbers: call.customer_number, project_id: projectId }),
+        body: JSON.stringify({ numbers: call.customer_number, project_id: projectId, agent_id: agent.id }),
       })
       if (dncRes.status === 406) {
         setResult({ type: 'error', text: `${call.customer_number} is on the Do Not Call (DNC) list — call blocked.` })

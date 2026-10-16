@@ -57,10 +57,8 @@ const ROLE_META: Record<GlobalRole, { label: string; icon: React.ReactNode; pill
   },
 }
 
-const AVATAR_COLORS = [
-  'from-blue-500 to-indigo-600', 'from-violet-500 to-purple-600', 'from-emerald-500 to-teal-600',
-  'from-amber-500 to-orange-600', 'from-pink-500 to-rose-600', 'from-cyan-500 to-sky-600',
-]
+// One brand colour for everyone: the initials tell people apart.
+const AVATAR_COLORS = ['from-primary to-primary/80']
 
 function avatarColor(str: string) {
   let h = 0
@@ -645,7 +643,7 @@ export default function UserDetailPage() {
 
           {user && (
             <>
-              <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${avatarColor(user.email)} flex items-center justify-center text-white text-sm font-semibold flex-shrink-0`}>
+              <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${avatarColor(user.email)} flex items-center justify-center text-primary-foreground text-sm font-semibold flex-shrink-0`}>
                 {initials}
               </div>
               <div className="min-w-0 flex-1">

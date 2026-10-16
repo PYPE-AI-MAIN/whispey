@@ -171,7 +171,7 @@ export default function OrganizationSwitcher({
         <>
           {displayOrg ? (
             <>
-              <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-[10px] flex-shrink-0">
+              <div className="w-6 h-6 bg-gradient-to-br from-primary to-primary/80 rounded flex items-center justify-center text-primary-foreground font-medium text-[10px] flex-shrink-0">
                 {getOrganizationInitials(displayOrg.name)}
               </div>
               {(!isCollapsed || isMobile) && (
@@ -265,7 +265,7 @@ export default function OrganizationSwitcher({
                           className="cursor-pointer px-2 py-2 rounded-md transition-colors bg-primary/10 border border-primary/30"
                         >
                           <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-[10px] flex-shrink-0">
+                            <div className="w-6 h-6 bg-gradient-to-br from-primary to-primary/80 rounded flex items-center justify-center text-primary-foreground font-medium text-[10px] flex-shrink-0">
                               {getOrganizationInitials(selectedOrg.name)}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -313,7 +313,7 @@ export default function OrganizationSwitcher({
                             className="cursor-pointer px-2 py-2 rounded-md transition-colors aria-selected:bg-muted/50 border border-transparent"
                           >
                             <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-[10px] flex-shrink-0">
+                              <div className="w-6 h-6 bg-gradient-to-br from-primary to-primary/80 rounded flex items-center justify-center text-primary-foreground font-medium text-[10px] flex-shrink-0">
                                 {getOrganizationInitials(org.name)}
                               </div>
                               <div className="flex-1 min-w-0">

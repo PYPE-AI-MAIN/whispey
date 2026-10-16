@@ -529,7 +529,7 @@ export default function PhoneNumbersPage() {
           <div className="flex items-center gap-2">
             {isSuperAdmin && (
               <button
-                onClick={() => router.push(`/${projectId}/settings/dnc`)}
+                onClick={() => router.push(`/${projectId}/settings/users?tab=dnc`)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:border-border transition-colors"
               >
                 <ShieldBan className="h-3.5 w-3.5" /> DNC List
