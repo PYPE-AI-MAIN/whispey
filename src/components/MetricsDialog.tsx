@@ -81,14 +81,14 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
     }
   }, [initialMetrics])
 
-  // Fetch metrics templates when dialog opens
+  // Fetch metrics templates every time the dialog opens, so one created elsewhere (e.g. in Settings) shows without a page reload
   useEffect(() => {
-    if (isOpen && metricsTemplates.length === 0) {
+    if (isOpen) {
       setLoadingTemplates(true)
       fetch('/api/metrics-templates')
         .then(res => res.json())
         .then(data => {
-          setMetricsTemplates(data)
+          setMetricsTemplates(prev => (Array.isArray(data) ? data : prev))
           setLoadingTemplates(false)
         })
         .catch(err => {
@@ -96,7 +96,7 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
           setLoadingTemplates(false)
         })
     }
-  }, [isOpen, metricsTemplates.length])
+  }, [isOpen])
 
   const addMetric = (template: MetricTemplate) => {
     setMetrics(prev => ({

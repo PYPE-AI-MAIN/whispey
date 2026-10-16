@@ -323,6 +323,30 @@ body {
 /* ---------- page layout ---------- */
 main[class*='docMainContainer'] .container {
   max-width: 1200px;
+  padding: 1rem 1.25rem 3rem;
+}
+/* desktop: room on both sides of the article, and a clear gap before "On this page" */
+@media (min-width: 997px) {
+  main[class*='docMainContainer'] .container {
+    padding: 1.5rem 3rem 4rem;
+  }
+  main[class*='docMainContainer'] .row > .col:first-child {
+    padding-right: 3.5rem;
+  }
+  main[class*='docMainContainer'] .row > .col--3 {
+    padding-left: 0;
+  }
+  /* a comfortable reading width, like Mintlify's */
+  main[class*='docMainContainer'] .theme-doc-markdown,
+  main[class*='docMainContainer'] .pagination-nav {
+    max-width: 48rem;
+  }
+}
+@media (min-width: 1440px) {
+  main[class*='docMainContainer'] .container {
+    padding-left: 4rem;
+    padding-right: 3rem;
+  }
 }
 .theme-doc-markdown {
   margin-top: 0.5rem;
@@ -1226,4 +1250,31 @@ div[class*='codeBlockTitle'] {
   margin-top: 0.75rem;
   font-size: 0.85rem;
   color: var(--wp-muted);
+}
+
+/* nav labels stay on one line at laptop widths */
+.navbar__item.navbar__link {
+  white-space: nowrap;
+}
+/* laptops: a shorter search pill so it doesn't run into the nav links */
+@media (min-width: 997px) and (max-width: 1279px) {
+  .navbar__search-input {
+    width: 10.5rem !important;
+  }
+}
+/* smaller laptops: the logo stops reserving the sidebar's width, so the tabs fit */
+@media (min-width: 997px) and (max-width: 1199px) {
+  .navbar__brand {
+    flex: 0 0 auto;
+    margin-right: 1.25rem;
+  }
+}
+/* more specific than the 1279px rule, since the minifier may reorder media blocks */
+@media (min-width: 997px) and (max-width: 1099px) {
+  .navbar .navbar__search-input {
+    width: 7.5rem !important;
+  }
+  [class*='searchBarContainer']::after {
+    display: none;
+  }
 }

@@ -1,42 +1,62 @@
 ---
 title: Do not call list
-description: How the do not call list blocks numbers from being dialed, and who can manage it.
+description: How the do not call list blocks numbers from being dialed, how the DNC checker adds callers who ask not to be called, and who can manage it.
 ---
 
-The do not call (DNC) list holds phone numbers that must never be dialed. The page says listed numbers are blocked at upload, single-call and dispatch.
+The do not call (DNC) list holds phone numbers that must never be dialed. A listed number is skipped by campaigns, single calls, **Call Again**, callbacks and retries.
 
 :::note
-Only Whispey superadmins can manage the list. Other people see **DNC management is restricted to superadmins.** The page has no sidebar item. Superadmins reach it with the **DNC List** button on the Phone Numbers page.
+Only Whispey superadmins can open the list. They reach it from **Settings**, with the **Do Not Call list** button at the top of the page, or with the **DNC List** button on the Phone Numbers page.
 :::
 
-## What it does for you
+## Who a number is blocked for
+
+Every entry says who it applies to.
+
+| Blocked for | Effect |
+|---|---|
+| One agent | Only that agent never calls the number. Other agents in the organization still can. |
+| Organization | No agent in that organization calls the number. |
+| Everyone | No agent in any organization calls the number. |
+
+## The DNC checker
+
+The DNC checker listens for callers who ask not to be called again. After each call, it reads the transcript. When the caller clearly asks, for example "don't call me again", "remove my number" or "I have told you many times not to call", their number is added to the list **for that agent only**.
+
+- It counts only the caller's words, and only a clear request. "Call me later", "I'm busy" and "not interested" don't count.
+- It adds Indian mobile numbers (+91). Other numbers are not added.
+- That call's automatic retries and callbacks are also cancelled.
+- The answer shows on the call in [Call Logs](../analytics/call-logs-guide) as `dnc_requested`, `yes` or `no`.
+
+New agents have the checker on. To change it for an agent, open **Field Extractor** on the agent (or **Dispositions** in Agent Studio), and use the **DNC checker** switch. **Edit prompt** lets you change what counts as a request. **Use default** puts the original prompt back.
+
+## What the list does for campaigns
 
 When you create a [campaign](./campaigns) and upload contacts, Whispey checks every number against the list.
 
 - Blocked numbers are highlighted in the recipients preview.
-- Blocked numbers are left out when you send the campaign.
+- Blocked numbers, including ones blocked for the campaign's agent, are left out when you send the campaign.
 - If every number is blocked, you see **Every uploaded number is on the DNC list. Nothing to send.**
 
-## Scope
+## Using the list
 
-An entry is either global or for one organization.
+The page opens on your current organization.
 
-| Scope | Effect |
-|---|---|
-| Global, all organizations | The number is blocked everywhere |
-| Per organization | The number is blocked only in the organization you pick |
+- The cards at the top count the blocked numbers, and how many the DNC checker added.
+- With an organization picked, **DNC checker** lists its agents. Each one shows how many numbers it has blocked and a switch to turn its checker on or off. Click an agent to see only its numbers.
+- Filter by who a number is **blocked for** and by source: **DNC checker** or **Added by hand**. Search by number, agent or reason.
+- For a number the checker added, the reason shows what the caller said. The open-call button opens that call.
+- To take a number off the list, use the remove button and confirm. Whoever it was blocked for can call it again.
 
 ## How a superadmin adds numbers
 
-On **Do Not Call (DNC) List**, use the **Add numbers** card.
+1. Select **Add numbers**.
+2. Under **Block for**, pick **One agent**, **Organization** or **Everyone**. Then pick the organization and agent if asked.
+3. Type the numbers, one per line or separated by commas, or switch to **CSV** and choose a file with a column named `phone`.
+4. Numbers typed without a country code get +91. You can switch that to +1.
+5. Optionally add a **Reason**, and select **Add to list**.
 
-1. Pick the **Scope**. For **Per organization**, also pick the **Organization**.
-2. Add **Phone numbers**. Type them one at a time, or choose a CSV file. The CSV needs a column named `phone`, with one number per row.
-3. Set **Bare numbers get** to the country code to add to numbers typed without one. The choices are India (+91) and United States (+1).
-4. Optionally add a **Reason (optional)**, for example `customer opt-out`.
-5. Add the numbers.
-
-Numbers are saved in international format. Below the card, the list shows **Number**, **Reason**, **Source**, **Added by** and **Added**. Use **Search number...** to find one. Use the remove button (**Remove from DNC**) to take a number off the list.
+Numbers are saved in international format, and numbers already on the list are skipped.
 
 ## Related pages
 

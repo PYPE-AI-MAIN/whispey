@@ -220,6 +220,8 @@ export async function POST(request: NextRequest) {
     project_id: projectId,
     environment: 'dev',
     is_active: true,
+    // New agents check every call for "don't call me again"; owners can turn it off.
+    dnc_checker_enabled: true,
     // field_extractor (the on-switch) and field_extractor_prompt must be set together
     ...dispositionColumns,
   })

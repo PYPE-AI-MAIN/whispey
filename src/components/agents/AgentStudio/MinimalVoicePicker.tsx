@@ -163,7 +163,7 @@ function avatarTone(voice?: StudioVoice): string {
   if (!voice) return 'bg-muted-foreground/30'
   return voice.provider === 'sarvam'
     ? 'bg-gradient-to-br from-orange-400 to-rose-500'
-    : 'bg-gradient-to-br from-violet-500 to-indigo-500'
+    : 'bg-gradient-to-br from-primary to-primary/80'
 }
 
 export function VoiceAvatar({ voice, size = 'md' }: Readonly<{ voice?: StudioVoice; size?: 'sm' | 'md' }>) {
@@ -210,7 +210,7 @@ function PlayOrb({
         'relative flex shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white',
         voice.provider === 'sarvam'
           ? 'bg-gradient-to-br from-orange-400 to-rose-500'
-          : 'bg-gradient-to-br from-violet-500 to-indigo-500'
+          : 'bg-gradient-to-br from-primary to-primary/80'
       )}
     >
       {playing && <span className="absolute inset-0 animate-ping rounded-full bg-white/20" />}

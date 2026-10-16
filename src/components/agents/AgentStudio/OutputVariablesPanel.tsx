@@ -3,6 +3,7 @@
 import { Loader2, Settings2 } from 'lucide-react'
 import FieldExtractorDialog from '@/components/FieldExtractorLogs'
 import { modelChange } from '@/config/fieldExtractorModels'
+import { dncCheckerChange } from '@/config/dncChecker'
 
 interface FieldExtractorItem {
   key: string
@@ -66,6 +67,7 @@ export default function OutputVariablesPanel({
   fieldExtractorVariables,
   fieldExtractorEnabled,
   fieldExtractorModel = null,
+  dncCheckerEnabled = false,
   latestValues,
   loading,
   inProgress,
@@ -79,6 +81,8 @@ export default function OutputVariablesPanel({
   fieldExtractorEnabled: boolean
   /** The agent's field_extractor_model (empty = default). */
   fieldExtractorModel?: string | null
+  /** The agent's dnc_checker_enabled. */
+  dncCheckerEnabled?: boolean
   /** transcription_metrics from the most recent completed call, if any. */
   latestValues: Record<string, string> | null | undefined
   /** Still resolving the last call (initial mount, or a call just ended and hasn't landed yet). */
@@ -102,7 +106,7 @@ export default function OutputVariablesPanel({
   // Nothing to show and nothing they're allowed to change — leave it out.
   if (!canEdit && !configured) return null
 
-  const handleSave = async (data: FieldExtractorItem[], enabled: boolean, variables: Record<string, string>, model: string) => {
+  const handleSave = async (data: FieldExtractorItem[], enabled: boolean, variables: Record<string, string>, model: string, dncEnabled: boolean) => {
     const res = await fetch(`/api/agents/${agentId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -111,6 +115,7 @@ export default function OutputVariablesPanel({
         field_extractor: enabled,
         field_extractor_variables: variables,
         ...modelChange(fieldExtractorModel, model),
+        ...dncCheckerChange(dncCheckerEnabled, dncEnabled),
       }),
     })
     if (res.ok) {
@@ -138,6 +143,7 @@ export default function OutputVariablesPanel({
           initialVariables={fieldExtractorVariables || {}}
           isEnabled={fieldExtractorEnabled}
           initialModel={fieldExtractorModel}
+          initialDncEnabled={dncCheckerEnabled}
           terminology="dispositions"
           onSave={handleSave}
         />

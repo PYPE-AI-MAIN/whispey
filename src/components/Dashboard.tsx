@@ -36,6 +36,7 @@ import CampaignLogs from './campaigns/CampaignLogs'
 import { useSupabaseQuery } from '../hooks/useSupabase'
 import FieldExtractorDialog from './FieldExtractorLogs'
 import { modelChange } from '@/config/fieldExtractorModels'
+import { dncCheckerChange } from '@/config/dncChecker'
 import MetricsDialog from './MetricsDialog'
 import { AlertTriangle, Link as LinkIcon } from 'lucide-react'
 import QuickStartGuide from './QuickStartGuide'
@@ -315,7 +316,8 @@ function useDateFilter(agentId: string, activeTab: string, onQuickPick: () => vo
     }
     const days = ({ '1d': 1, '7d': 7, '30d': 30 } as Record<string, number>)[quickFilter] ?? 7
     const to = new Date()
-    return { from: subDays(to, days), to }
+    // calendar days including today, as the Overview charts count them: 1D is today, 7D is today and the 6 days before
+    return { from: subDays(to, days - 1), to }
   }, [quickFilter, isCustomRange, stored.dateFrom, stored.dateTo])
 
   const customRangeLabel = isCustomRange && dateRange.from && dateRange.to
@@ -499,7 +501,8 @@ function FieldExtractorControl({ agent, refetchAgent }: Readonly<{ agent: Agent;
       initialVariables={(agent as any)?.field_extractor_variables || {}}
       isEnabled={!!agent?.field_extractor}
       initialModel={agent?.field_extractor_model}
-      onSave={(data, enabled, variables, model) =>
+      initialDncEnabled={!!agent?.dnc_checker_enabled}
+      onSave={(data, enabled, variables, model, dncEnabled) =>
         patchAgent(
           agent.id,
           {
@@ -507,6 +510,7 @@ function FieldExtractorControl({ agent, refetchAgent }: Readonly<{ agent: Agent;
             field_extractor: enabled,
             field_extractor_variables: variables,
             ...modelChange(agent?.field_extractor_model, model),
+            ...dncCheckerChange(agent?.dnc_checker_enabled, dncEnabled),
           },
           'Saved field extractor config.',
           'Error saving config: ',
