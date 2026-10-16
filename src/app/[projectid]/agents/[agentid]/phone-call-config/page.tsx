@@ -456,7 +456,7 @@ export default function PhoneCallConfig() {
       const dncRes = await fetch('/api/dnc/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ numbers: formattedNumber, project_id: projectId }),
+        body: JSON.stringify({ numbers: formattedNumber, project_id: projectId, agent_id: agentId }),
       })
       if (dncRes.status === 406) {
         const msg = `${formattedNumber} is on the Do Not Call (DNC) list — call blocked.`

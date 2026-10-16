@@ -892,7 +892,7 @@ function SidebarUserMenu({
               <button className={`w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50  transition-colors ${
                 isCollapsed && !isMobile ? 'justify-center' : ''
               }`}>
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center text-primary-foreground text-xs font-semibold flex-shrink-0">
                   {getUserDisplayName(user).charAt(0).toUpperCase()}
                 </div>
                 <UserMenuNameEmail user={user} isCollapsed={isCollapsed} isMobile={isMobile} />

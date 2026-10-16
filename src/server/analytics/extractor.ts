@@ -79,7 +79,26 @@ export function summarise(description: string): string {
  * bars for categories that do not exist — so anything that does not look like a
  * plain comma list of short identifiers is left to the sampler.
  */
+/**
+ * "Return exactly one of these sixteen values, spelled exactly as written: a | b | c": the values sit after the
+ * sentence, separated by pipes. Plain split, no regex over the whole prompt. Every piece must be an identifier,
+ * so one stray "|" in the prose makes the whole list implausible and it is left to the sampler.
+ */
+function declaredPipeList(flat: string): string[] | undefined {
+  const intro = flat.search(/one of|following options/i)
+  if (intro < 0) return undefined
+  // the list ends where the next section of the prompt starts
+  const parts = flat.slice(intro, intro + 800).split(' ## ')[0].split('|')
+  if (parts.length < 3) return undefined
+  const first = parts[0].trim().split(' ').at(-1) ?? ''
+  const last = parts.at(-1)?.trim().split(' ')[0] ?? ''
+  const values = [first, ...parts.slice(1, -1).map((v) => v.trim()), last]
+  return values.every((v) => /^[a-z0-9_-]{1,41}$/i.test(v)) ? [...new Set(values)] : undefined
+}
+
 function declaredEnum(flat: string): string[] | undefined {
+  const piped = declaredPipeList(flat)
+  if (piped) return piped
   const m = /(?:exactly one label from the following options|one of the following|one of|following options)\s{0,20}:?\s{0,20}([^.]{3,300}?)\s{0,20}(?:\.|$)/i.exec(flat)
   if (!m) return undefined
   const values = m[1]
@@ -88,7 +107,8 @@ function declaredEnum(flat: string): string[] | undefined {
     .split(/,|\bor\b/)
     .map((v) => v.trim().replaceAll(/^["'`]|["'`]$/g, ''))
     .filter(Boolean)
-  const plausible = values.length >= 2 && values.length <= 30 && values.every((v) => /^[a-z0-9][a-z0-9_ -]{0,40}$/i.test(v))
+  // a label is an identifier or at most two words: "these sixteen values" and "spelled exactly as written" are not labels
+  const plausible = values.length >= 2 && values.length <= 30 && values.every((v) => /^[a-z0-9][a-z0-9_ -]{0,40}$/i.test(v) && v.split(' ').length <= 2)
   return plausible ? [...new Set(values)] : undefined
 }
 
@@ -241,7 +261,7 @@ type CatalogRow = {
 export function applyDeclarations<T extends CatalogRow>(
   rows: T[],
   prompt: unknown,
-  opts: { includeDescription: boolean }
+  opts: { includeDescription: boolean; /** values a model read out of each prompt (llmValues.ts); they beat the pattern-based reading */ llmValues?: Map<string, string[]> }
 ): (T & { group: FieldGroup; declared: boolean; description: string | null })[] {
   const declared = declaredByKey(prompt)
 
@@ -257,17 +277,21 @@ export function applyDeclarations<T extends CatalogRow>(
       description: d && opts.includeDescription && d.summary ? d.summary : null,
     }
 
-    // a person's confirmed type is the one source that beats the declaration
-    if (!d?.declared || row.type_confirmed === true) return base
+    // a model-read list replaces the pattern-based one, but never a 1/0 or yes/no reading
+    const viaModel = d ? opts.llmValues?.get(d.key) : undefined
+    const effective = d?.declared?.kind === 'boolean' || !viaModel ? d?.declared : { kind: 'enum' as const, values: viaModel }
 
-    if (d.declared.kind === 'boolean') {
-      return { ...base, value_type: 'boolean', boolean_encoding: d.declared.encoding }
+    // a person's confirmed type is the one source that beats the declaration
+    if (!effective || row.type_confirmed === true) return base
+
+    if (effective.kind === 'boolean') {
+      return { ...base, value_type: 'boolean', boolean_encoding: effective.encoding }
     }
 
     // declared order first — it is the order the author wrote them in, which is
     // more meaningful than alphabetical — then anything the agent is producing
     // that the declaration never mentioned
-    const stated = d.declared.values
+    const stated = effective.values
     const seen = Array.isArray(row.enum_values) ? (row.enum_values as string[]) : []
     return { ...base, value_type: 'enum', enum_values: [...stated, ...seen.filter((v) => !stated.includes(v))] }
   })

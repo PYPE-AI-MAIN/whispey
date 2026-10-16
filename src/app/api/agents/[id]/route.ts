@@ -1,6 +1,7 @@
 // src/app/api/agents/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { isFieldExtractorModel } from '@/config/fieldExtractorModels'
+import { dncCheckerEnabledError } from '@/config/dncChecker'
 import { auth } from '@clerk/nextjs/server'
 import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
 import { serviceAuthHeaders } from '@/lib/serviceToken'
@@ -71,6 +72,7 @@ export async function GET(
       agentResponse.field_extractor_variables = agent.field_extractor_variables || {}
       agentResponse.field_extractor_model = agent.field_extractor_model ?? null
       agentResponse.flag_rules = agent.flag_rules || null
+      agentResponse.dnc_checker_enabled = agent.dnc_checker_enabled ?? false
     }
     if (allowMetrics) {
       agentResponse.metrics = agent.metrics ?? null
@@ -95,6 +97,7 @@ const GATED_FIELDS = {
   field_extractor_variables: 'fieldExtractor',
   field_extractor_model: 'fieldExtractor',
   flag_rules: 'fieldExtractor', // same sensitivity as field extractor internals
+  dnc_checker_enabled: 'fieldExtractor', // set alongside the field extractor
   metrics: 'metrics',
 } as const
 
@@ -139,6 +142,7 @@ function gatedFieldContentError(key: string, body: Record<string, unknown>, exis
   if (key === 'field_extractor_model' && body.field_extractor_model !== null && !isFieldExtractorModel(body.field_extractor_model)) {
     return 'Invalid field_extractor_model'
   }
+  if (key === 'dnc_checker_enabled') return dncCheckerEnabledError(body.dnc_checker_enabled)
   return null
 }
 

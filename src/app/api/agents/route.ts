@@ -280,7 +280,9 @@ export async function POST(request: NextRequest) {
       configuration: configuration || {},
       project_id,
       environment: environment || 'dev',
-      is_active: true
+      is_active: true,
+      // New agents check every call for "don't call me again"; owners can turn it off.
+      dnc_checker_enabled: true,
     }
 
     applyPlatformCredentials(agentData, platform, configuration, project_id)
