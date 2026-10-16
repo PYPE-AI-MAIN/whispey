@@ -3,6 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { DEFAULT_AWAY_INSTRUCTIONS } from '@/config/agentDefaults'
 import { Info, AlertTriangle } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -19,6 +20,7 @@ interface SessionBehaviourSettingsProps {
   user_away_timeout_end_message?: string
   user_away_timeout_mode?: 'static' | 'dynamic'
   user_away_instructions?: string
+  eod_silence_seconds?: number
   onFieldChange: (field: string, value: any) => void
 }
 
@@ -35,8 +37,9 @@ export default function SessionBehaviourSettings({
   user_away_timeout_end_message,
   user_away_timeout_mode = 'static',
   user_away_instructions,
+  eod_silence_seconds,
   onFieldChange
-}: SessionBehaviourSettingsProps) {
+}: Readonly<SessionBehaviourSettingsProps>) {
   // Local state for input values to handle intermediate states
   const [thresholdInput, setThresholdInput] = useState(String(unlikely_threshold))
   const [minDelayInput, setMinDelayInput] = useState(String(min_endpointing_delay))
@@ -45,7 +48,8 @@ export default function SessionBehaviourSettings({
   const [userAwayTimeoutMessageInput, setUserAwayTimeoutMessageInput] = useState(user_away_timeout_message || '')
   const [userAwayMaxCountInput, setUserAwayMaxCountInput] = useState(user_away_timeout_max_count !== undefined && user_away_timeout_max_count !== null ? String(user_away_timeout_max_count) : '')
   const [userAwayEndMessageInput, setUserAwayEndMessageInput] = useState(user_away_timeout_end_message || '')
-  const [userAwayInstructionsInput, setUserAwayInstructionsInput] = useState(user_away_instructions || '')
+  const [userAwayInstructionsInput, setUserAwayInstructionsInput] = useState(user_away_instructions ?? DEFAULT_AWAY_INSTRUCTIONS)
+  const [eodSilenceInput, setEodSilenceInput] = useState(eod_silence_seconds !== undefined && eod_silence_seconds !== null ? String(eod_silence_seconds) : '')
 
   // Sync with props when they change externally
   React.useEffect(() => {
@@ -77,8 +81,12 @@ export default function SessionBehaviourSettings({
   }, [user_away_timeout_end_message])
 
   React.useEffect(() => {
-    setUserAwayInstructionsInput(user_away_instructions || '')
+    setUserAwayInstructionsInput(user_away_instructions ?? DEFAULT_AWAY_INSTRUCTIONS)
   }, [user_away_instructions])
+
+  React.useEffect(() => {
+    setEodSilenceInput(eod_silence_seconds !== undefined && eod_silence_seconds !== null ? String(eod_silence_seconds) : '')
+  }, [eod_silence_seconds])
 
   const handleNumberInput = (
     value: string,
@@ -481,12 +489,15 @@ export default function SessionBehaviourSettings({
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">
-                  <strong>Static</strong>: always speaks the message above.<br />
-                  <strong>Dynamic</strong>: writes a context-aware check-in from the last 3 user and 3 agent messages. The same line is repeated until the user responds, then a new one is written. If the user has said nothing since the greeting, or generation fails, the static message is used.
+                  <strong>Static</strong>: speaks your message exactly as written.<br />
+                  <strong>Dynamic</strong>: writes a short check-in from the recent conversation and repeats it until the caller responds.
                 </p>
               </TooltipContent>
             </Tooltip>
           </div>
+          <p className="text-[10px] text-gray-500 dark:text-gray-400">
+            Dynamic uses the message above if the caller has not spoken yet or generation fails.
+          </p>
           <Select
             value={user_away_timeout_mode}
             onValueChange={(value) =>
@@ -516,7 +527,7 @@ export default function SessionBehaviourSettings({
                 </TooltipTrigger>
                 <TooltipContent side="right" className="max-w-xs">
                   <p className="text-xs">
-                    Optional guidance for how the model should word the check-in (tone, language, formality, what to mention). Basic rules (one short spoken sentence, at least 4 words) always apply.
+                    Optional guidance on tone and wording for the check-in. The default works well for most agents.
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -528,12 +539,31 @@ export default function SessionBehaviourSettings({
               onChange={(e) => {
                 const value = e.target.value
                 setUserAwayInstructionsInput(value)
-                onFieldChange('advancedSettings.session.user_away_instructions', value || undefined)
+                onFieldChange('advancedSettings.session.user_away_instructions', value)
               }}
               className="text-xs resize-y"
-              placeholder="e.g. Speak politely in Hinglish. Mention the appointment we were discussing. Keep it warm and under 15 words."
+              placeholder="Leave empty to use the default instructions."
             />
-            <p className="text-[10px] text-gray-400">{userAwayInstructionsInput.length}/1000</p>
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] text-gray-400">
+                {userAwayInstructionsInput.trim() === '' || userAwayInstructionsInput.trim() === DEFAULT_AWAY_INSTRUCTIONS
+                  ? 'Using the default instructions'
+                  : 'Custom instructions'}
+                {' · '}{userAwayInstructionsInput.length}/1000
+              </p>
+              {userAwayInstructionsInput.trim() !== DEFAULT_AWAY_INSTRUCTIONS && (
+                <button
+                  type="button"
+                  className="text-[10px] text-blue-600 hover:underline dark:text-blue-400"
+                  onClick={() => {
+                    setUserAwayInstructionsInput(DEFAULT_AWAY_INSTRUCTIONS)
+                    onFieldChange('advancedSettings.session.user_away_instructions', undefined)
+                  }}
+                >
+                  Reset to default
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -614,6 +644,57 @@ export default function SessionBehaviourSettings({
             }}
             className="h-8 text-xs"
             placeholder="It seems you're not there. I'm ending the call. Goodbye!"
+          />
+        </div>
+
+        {/* Wait after the agent says its goodbye (<eod/>) before the call is ended */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
+              End-of-call wait (seconds)
+            </Label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs">
+                <p className="text-xs">
+                  When the agent ends the conversation (its reply contains &lt;eod/&gt;), it waits this long after finishing its goodbye for the caller to say something before hanging up. If the caller speaks, the call carries on. 0 hangs up right after the goodbye. Leave empty for the default (3 seconds). Maximum 30.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <Input
+            type="number"
+            step="0.5"
+            min="0"
+            max="30"
+            value={eodSilenceInput}
+            onChange={(e) => {
+              const value = e.target.value
+              setEodSilenceInput(value)
+              if (value === '') {
+                onFieldChange('advancedSettings.session.eod_silence_seconds', undefined)
+              } else {
+                const numValue = Number.parseFloat(value)
+                if (!Number.isNaN(numValue) && numValue >= 0 && numValue <= 30) {
+                  onFieldChange('advancedSettings.session.eod_silence_seconds', numValue)
+                }
+              }
+            }}
+            onBlur={(e) => {
+              const value = e.target.value
+              if (value === '' || Number.isNaN(Number.parseFloat(value))) {
+                setEodSilenceInput('')
+                onFieldChange('advancedSettings.session.eod_silence_seconds', undefined)
+              } else {
+                const numValue = Math.min(30, Math.max(0, Number.parseFloat(value)))
+                setEodSilenceInput(String(numValue))
+                onFieldChange('advancedSettings.session.eod_silence_seconds', numValue)
+              }
+            }}
+            className="h-8 text-xs"
+            placeholder="3 (default)"
           />
         </div>
 

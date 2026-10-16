@@ -2,6 +2,11 @@ import { create } from 'zustand'
 import type { Workflow, WorkflowNode, Edge, AgentConfig, VarType } from '@/lib/workflow/schema'
 import { lintWorkflow, type LintIssue, collectAllVarRefs, knownVariableNames } from '@/lib/workflow/linter'
 
+/** A deleted step can no longer be the target of a global rule or one of its listed sources. */
+function withoutNode(rules: Workflow['globalRules'], nodeId: string): Workflow['globalRules'] {
+  return rules.filter((r) => r.target !== nodeId).map((r) => ({ ...r, sources: r.sources.filter((id) => id !== nodeId) }))
+}
+
 interface WorkflowState {
   workflow: Workflow | null
   isDirty: boolean
@@ -38,6 +43,9 @@ interface WorkflowState {
   setSelectedNode: (id: string | null) => void
   setSelectedEdge: (id: string | null) => void
   updateAgentConfig: (patch: Partial<AgentConfig>) => void
+  /** Change the LLM from its CURRENT value. Pickers fire several handlers (provider, model, temperature) in one event;
+   *  building each change from a render-time snapshot made the last one overwrite the rest. */
+  updateAgentLlm: (build: (current: AgentConfig['llm']) => AgentConfig['llm']) => void
   patchWorkflow: (patch: Partial<Workflow>) => void
   setStart: (nodeId: string) => void
   undo: () => void
@@ -118,6 +126,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         ...s.workflow,
         nodes: remaining,
         edges: s.workflow.edges.filter((e) => e.source !== nodeId && e.target !== nodeId),
+        globalRules: withoutNode(s.workflow.globalRules ?? [], nodeId),
         start: s.workflow.start === nodeId ? (remaining[0]?.id ?? '') : s.workflow.start,
       }
       return { ...undo, workflow, isDirty: true, lintIssues: relint(workflow), selectedNodeId: s.selectedNodeId === nodeId ? null : s.selectedNodeId }
@@ -184,6 +193,14 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       if (!s.workflow) return s
       const undo = pushUndo(s)
       const workflow = withAutoVars({ ...s.workflow, agent: { ...s.workflow.agent, ...patch } })
+      return { ...undo, workflow, isDirty: true, lintIssues: relint(workflow) }
+    }),
+
+  updateAgentLlm: (build) =>
+    set((s) => {
+      if (!s.workflow) return s
+      const undo = pushUndo(s)
+      const workflow = withAutoVars({ ...s.workflow, agent: { ...s.workflow.agent, llm: build(s.workflow.agent.llm) } })
       return { ...undo, workflow, isDirty: true, lintIssues: relint(workflow) }
     }),
 

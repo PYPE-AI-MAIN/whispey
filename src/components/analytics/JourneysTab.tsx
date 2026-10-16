@@ -134,6 +134,10 @@ function Segmented<T extends string>({
 
 const FILTER_LABELS: Record<keyof JourneyFilters, string> = { channel: 'Channel', status: 'Status', outcome: 'Outcome', agentId: 'Agent' }
 
+const SYSTEM_LABEL = 'System (auto)'
+const SYSTEM_HINT = 'System = updates logged automatically by the campaign itself (joined, status changes, converted), not a message or call.'
+const channelLabel = (c: string) => (c === 'system' ? SYSTEM_LABEL : c)
+
 function useFilterChoices(projectId: string, campaignId: string) {
   const { data: options } = useJourneyFilterOptions(projectId, campaignId, true)
   const { data: agents } = useSupabaseQuery<{ id: string; name: string }>('pype_voice_agents', {
@@ -142,7 +146,7 @@ function useFilterChoices(projectId: string, campaignId: string) {
   })
   const list = (xs?: string[]) => xs?.map((x) => ({ value: x, label: x }))
   return {
-    channel: list(options?.channels), status: list(options?.statuses), outcome: list(options?.outcomes),
+    channel: options?.channels?.map((x) => ({ value: x, label: channelLabel(x) })), status: list(options?.statuses), outcome: list(options?.outcomes),
     agentId: agents?.map((a) => ({ value: a.id, label: a.name })),
   } as Record<keyof JourneyFilters, { value: string; label: string }[] | undefined>
 }
@@ -234,7 +238,7 @@ function CodeBlock({ code }: Readonly<{ code: string }>) {
 const code = 'rounded bg-gray-100 px-1 dark:bg-gray-800'
 
 function IntegrationDocs({ campaignKey }: Readonly<{ campaignKey: string }>) {
-  const snippet = String.raw`curl -X POST https://<your-domain>/api/journeys/events \
+  const snippet = String.raw`curl -X POST https://whispey.xyz/api/journeys/events \
   -H "Content-Type: application/json" \
   -H "x-pype-token: <YOUR_PYPE_TOKEN>" \
   -d '{
@@ -253,14 +257,14 @@ function IntegrationDocs({ campaignKey }: Readonly<{ campaignKey: string }>) {
           <FileCode2 className="h-3.5 w-3.5" /> Integration
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[420px]">
+      <PopoverContent align="end" className="w-[30rem] max-w-[90vw]" style={{ width: 'min(30rem, 90vw)' }}>
         <p className={cn('mb-1 text-sm font-medium', INK)}>Send events to this campaign</p>
         <p className={cn('mb-3 text-xs', MUTED)}>
-          Any workflow can post a step for a journey — a new <code className={code}>identity_key</code> starts one automatically. Required:{' '}
+          Any automation can post a step for a workflow — a new <code className={code}>identity_key</code> starts one automatically. Required:{' '}
           <code className={code}>campaign_key</code>, <code className={code}>identity_key</code>, <code className={code}>channel</code>,{' '}
           <code className={code}>step</code>, <code className={code}>action</code>. <code className={code}>step</code> and{' '}
           <code className={code}>channel</code> are free text — reuse the names your system already has. Anything else you track goes in{' '}
-          <code className={code}>payload</code>, stored as-is and shown on each journey's timeline. Limits: 8KB per request, 600 requests/min per token.
+          <code className={code}>payload</code>, stored as-is and shown on each workflow's timeline. Limits: 8KB per request, 600 requests/min per token.
         </p>
         <CodeBlock code={snippet} />
       </PopoverContent>
@@ -271,7 +275,7 @@ function IntegrationDocs({ campaignKey }: Readonly<{ campaignKey: string }>) {
 /* ───────────────────────────── Empty state ───────────────────────────── */
 
 function EmptyState({ projectId }: Readonly<{ projectId: string }>) {
-  const snippet = String.raw`curl -X POST https://<your-domain>/api/journeys/events \
+  const snippet = String.raw`curl -X POST https://whispey.xyz/api/journeys/events \
   -H "Content-Type: application/json" \
   -H "x-pype-token: <paste the key from step 1>" \
   -d '{
@@ -287,10 +291,10 @@ function EmptyState({ projectId }: Readonly<{ projectId: string }>) {
     { id: 'token', node: <>Get a token for this project — open{' '}
       <Link href={`/${projectId}/agents/api-keys`} className="font-medium text-blue-600 hover:underline dark:text-blue-400">Project API Key</Link>{' '}
       and copy it (create one if none exists).</> },
-    { id: 'first-call', node: <>Call the endpoint below with that token. This one call creates the campaign and the journey automatically — nothing to set up beforehand.</> },
+    { id: 'first-call', node: <>Call the endpoint below with that token. This one call creates the campaign and the workflow automatically — nothing to set up beforehand.</> },
     { id: 'later-steps', node: <>Call it again for every later step that same person reaches, reusing the same <code className={code}>campaign_key</code> and{' '}
       <code className={code}>identity_key</code>, changing <code className={code}>step</code>/<code className={code}>action</code> each time.</> },
-    { id: 'come-back', node: <>Come back to this tab — the campaign shows up by its key, with this identity under "Recent journeys."</> },
+    { id: 'come-back', node: <>Come back to this tab — the campaign shows up by its key, with this identity under "Recent workflows."</> },
   ]
 
   return (
@@ -299,7 +303,7 @@ function EmptyState({ projectId }: Readonly<{ projectId: string }>) {
         <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
           <Flag className="h-6 w-6" />
         </span>
-        <h2 className={cn('text-lg font-semibold', INK)}>No journeys yet</h2>
+        <h2 className={cn('text-lg font-semibold', INK)}>No workflows yet</h2>
         <p className={cn('mt-1 text-sm', MUTED)}>Send your first event and a campaign appears here, with its funnel and timelines.</p>
       </div>
       <ol className={cn(CARD, 'w-full divide-y divide-gray-100 dark:divide-gray-800')}>
@@ -367,7 +371,7 @@ function KpiRow({
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       <StatTile
-        label="Journeys" icon={<Users className="h-3.5 w-3.5" />} loading={funnel.isLoading}
+        label="Workflows" icon={<Users className="h-3.5 w-3.5" />} loading={funnel.isLoading}
         value={fmt(funnel.data?.journeyCount ?? 0)} sub="started in this range"
       />
       <StatTile
@@ -458,7 +462,7 @@ function ActiveJourneysChart({
 
   return (
     <div className={cn(CARD, 'flex h-full min-h-[260px] flex-col p-4')}>
-      <p className={cn('mb-3', CARD_TITLE)}>Active journeys per day</p>
+      <p className={cn('mb-3', CARD_TITLE)}>Active workflows per day</p>
       <div className="min-h-0 flex-1">
         {isLoading && <Skel className="h-full" />}
         {!isLoading && (!points || points.length === 0) && <div className={cn('flex h-full items-center justify-center text-sm', MUTED)}>No activity in this range.</div>}
@@ -476,9 +480,9 @@ function ActiveJourneysChart({
               <YAxis tick={AXIS} tickLine={false} axisLine={false} width={36} allowDecimals={false} />
               <Tooltip
                 cursor={{ stroke: 'currentColor', strokeOpacity: 0.25, strokeDasharray: '3 3' }}
-                content={<ChartTooltip valueName="Active journeys" labelFormatter={(d) => formatBucket(d, 'day')} />}
+                content={<ChartTooltip valueName="Active workflows" labelFormatter={(d) => formatBucket(d, 'day')} />}
               />
-              <Area type="monotone" dataKey="active_count" name="Active journeys" stroke="var(--analytics-series-1)" strokeWidth={2} fill="url(#journey-active-fill)" activeDot={{ r: 4, strokeWidth: 2, className: 'stroke-white dark:stroke-gray-900' }} />
+              <Area type="monotone" dataKey="active_count" name="Active workflows" stroke="var(--analytics-series-1)" strokeWidth={2} fill="url(#journey-active-fill)" activeDot={{ r: 4, strokeWidth: 2, className: 'stroke-white dark:stroke-gray-900' }} />
             </AreaChart>
           </ResponsiveContainer>
         )}
@@ -539,11 +543,12 @@ function ChartCard({
   chart: BuiltChart; dimensionLabel: string; projectId: string; campaignId: string
   range: OverviewRange; filters: JourneyFilters; readOnly: boolean; onChangeKind: (k: ChartKind) => void; onRemove: () => void
 }>) {
-  const { data: points, isLoading } = useCustomChart(projectId, campaignId, chart.dimension, chart.metric, range, filters, true)
+  const { data: rawPoints, isLoading } = useCustomChart(projectId, campaignId, chart.dimension, chart.metric, range, filters, true)
+  const points = useMemo(() => (chart.dimension === 'channel' ? rawPoints?.map((p) => ({ ...p, bucket: channelLabel(p.bucket) })) : rawPoints), [rawPoints, chart.dimension])
   const [asTable, setAsTable] = useState(false)
   const isTime = chart.dimension === '__time__'
   const kind: ChartKind = isTime ? 'line' : chart.kind
-  const metricLabel = chart.metric === 'journeys' ? 'Distinct journeys' : 'Events'
+  const metricLabel = chart.metric === 'journeys' ? 'Distinct workflows' : 'Events'
 
   const { shown, hidden } = useMemo(() => {
     if (!points) return { shown: [] as CustomChartPoint[], hidden: 0 }
@@ -634,7 +639,7 @@ function ChartCard({
         {!isLoading && shown.length > 0 && !asTable && kind === 'line' && (
           <ResponsiveContainer width="100%" height="100%">
             {isTime ? (
-              <AreaChart data={shown} margin={{ top: 6, right: 8, left: -14, bottom: 0 }}>
+              <AreaChart data={shown} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id={`fill-${chart.id}`} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="var(--analytics-series-1)" stopOpacity={0.28} />
@@ -648,7 +653,7 @@ function ChartCard({
                 <Area type="monotone" dataKey="value" name={metricLabel} stroke="var(--analytics-series-1)" strokeWidth={2} fill={`url(#fill-${chart.id})`} activeDot={{ r: 4, strokeWidth: 2, className: 'stroke-white dark:stroke-gray-900' }} />
               </AreaChart>
             ) : (
-              <LineChart data={shown} margin={{ top: 6, right: 8, left: -14, bottom: 36 }}>
+              <LineChart data={shown} margin={{ top: 6, right: 8, left: 0, bottom: 36 }}>
                 <CartesianGrid strokeDasharray="3 3" className={GRID_STROKE} vertical={false} />
                 <XAxis dataKey="bucket" tickFormatter={(x: string) => shortLabel(x, 12)} tick={AXIS} tickLine={false} axisLine={false} interval={0} angle={-35} textAnchor="end" height={56} />
                 <YAxis tick={AXIS} tickLine={false} axisLine={false} width={36} allowDecimals={false} />
@@ -660,14 +665,15 @@ function ChartCard({
         )}
       </div>
       {!isLoading && hidden > 0 && !asTable && <p className={cn('mt-1 text-[11px]', MUTED)}>Showing the top {shown.length} of {shown.length + hidden} groups</p>}
+      {!isLoading && shown.some((p) => p.bucket === SYSTEM_LABEL) && <p className={cn('mt-1 text-[11px]', MUTED)}>{SYSTEM_HINT}</p>}
     </div>
   )
 }
 
 const PRESETS: { label: string; dimension: string; metric: ChartMetric; kind: ChartKind }[] = [
-  { label: 'Journeys by step', dimension: 'step', metric: 'journeys', kind: 'bar' },
+  { label: 'Workflows by step', dimension: 'step', metric: 'journeys', kind: 'bar' },
   { label: 'Events by channel', dimension: 'channel', metric: 'events', kind: 'pie' },
-  { label: 'Journeys by outcome', dimension: 'outcome', metric: 'journeys', kind: 'bar' },
+  { label: 'Workflows by outcome', dimension: 'outcome', metric: 'journeys', kind: 'bar' },
   { label: 'Events over time', dimension: '__time__', metric: 'events', kind: 'line' },
 ]
 
@@ -727,7 +733,7 @@ function CustomChartBuilder({
               </div>
               <div>
                 <p className={cn('mb-1 text-[11px] font-medium', MUTED)}>Measure</p>
-                <Segmented<ChartMetric> label="Measure" value={draftMetric} onChange={setDraftMetric} options={[{ value: 'events', label: 'Events' }, { value: 'journeys', label: 'Distinct journeys' }]} />
+                <Segmented<ChartMetric> label="Measure" value={draftMetric} onChange={setDraftMetric} options={[{ value: 'events', label: 'Events' }, { value: 'journeys', label: 'Distinct workflows' }]} />
               </div>
               {!isTime && (
                 <div>
@@ -791,7 +797,7 @@ function StatusBadge({ status }: Readonly<{ status: string }>) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-2 py-0.5 text-xs text-gray-700 dark:border-gray-700 dark:text-gray-300">
       <span className={cn('h-1.5 w-1.5 rounded-full', tone)} />
-      {status.replaceAll('_', ' ')}
+      {status === 'exhausted' ? 'no more attempts' : status.replaceAll('_', ' ')}
     </span>
   )
 }
@@ -842,6 +848,13 @@ function EventIcon({ e }: Readonly<{ e: JourneyEvent }>) {
   return <Flag className={cls} />
 }
 
+const DETAIL_LABEL: Record<string, string> = {
+  call_ended_reason: 'Reason', duration_seconds: 'Duration', final_disposition: 'Outcome', template: 'Template', relation: 'Relation', age: 'Age', disposition: 'Outcome', to_status: 'New status',
+}
+const detailText = (k: string, v: unknown) => {
+  const value = k === 'duration_seconds' ? `${v}s` : String(v).replaceAll('_', ' ')
+  return `${DETAIL_LABEL[k] ?? k.replaceAll('_', ' ')}: ${value}`
+}
 const DETAIL_KEYS = ['call_ended_reason', 'duration_seconds', 'final_disposition', 'template', 'relation', 'age', 'disposition', 'to_status']
 
 type EventFilter = 'all' | 'messages' | 'calls' | 'other'
@@ -873,30 +886,33 @@ function Timeline({ projectId, events, steps }: Readonly<{ projectId: string; ev
 
   if (events.length === 0) return <p className={cn('py-8 text-center text-sm', MUTED)}>No events of this kind.</p>
   return (
-    <div className="space-y-5">
+    <div className="space-y-8">
       {groups.map((g) => (
         <div key={g.day}>
-          <p className={cn('mb-2 text-[11px] font-semibold uppercase tracking-wider', MUTED)}>{g.day}</p>
-          <ol className="space-y-3 border-l border-gray-200 pl-4 dark:border-gray-800">
+          <p className={cn('mb-4 text-[11px] font-semibold uppercase tracking-wider', MUTED)}>{g.day}</p>
+          <ol className="space-y-5">
             {g.items.map(({ key, e }) => {
               const href = callHref(projectId, e)
               const details = e.payload ? DETAIL_KEYS.filter((k) => e.payload![k] !== undefined && e.payload![k] !== null && e.payload![k] !== '') : []
               const bad = e.action === 'call_not_connected' || e.action === 'message_failed'
               return (
-                <li key={key} className="relative">
-                  <span className={cn('absolute -left-[26px] top-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white dark:border-gray-900', bad ? 'bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300')}>
+                <li key={key} className="flex gap-3">
+                  <span className={cn('mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full', bad ? 'bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300')}>
                     <EventIcon e={e} />
                   </span>
+                  <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-baseline gap-x-2">
                     <span className={cn('text-sm font-medium', INK)}>{actionLabel(e.action)}</span>
                     <span className={cn('text-xs tabular-nums', MUTED)}>{new Date(e.occurred_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span>
                     {href && <Link href={href} target="_blank" className="inline-flex items-center gap-0.5 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400">Open call <ExternalLink className="h-3 w-3" /></Link>}
                   </div>
-                  {(e.step || details.length > 0) && (
-                    <p className={cn('mt-0.5 text-xs', MUTED)}>
-                      {[e.step ? stepLabel(e.step) : null, ...details.map((k) => `${k.replaceAll('_', ' ')}: ${String(e.payload![k]).replaceAll('_', ' ')}`)].filter(Boolean).join(' · ')}
+                  {e.step && e.action !== 'entered_campaign' && <p className={cn('mt-1 text-xs', MUTED)}>{stepLabel(e.step)}</p>}
+                  {details.length > 0 && (
+                    <p className={cn('mt-0.5 text-xs leading-relaxed text-gray-400 dark:text-gray-500')}>
+                      {details.map((k) => detailText(k, e.payload![k])).join(' · ')}
                     </p>
                   )}
+                </div>
                 </li>
               )
             })}
@@ -921,7 +937,7 @@ function JourneyDrawer({
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
         {journey && (
           <>
-            <SheetHeader>
+            <SheetHeader className="gap-2 px-6 pb-4 pt-6">
               <SheetTitle className="break-all pr-6 text-base">{journey.identity_key}</SheetTitle>
               <SheetDescription asChild>
                 <div className="flex flex-wrap items-center gap-2">
@@ -931,24 +947,29 @@ function JourneyDrawer({
                 </div>
               </SheetDescription>
             </SheetHeader>
-            <div className="space-y-5 px-4 pb-6">
-              <StepProgress steps={steps} events={events} />
-              <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="space-y-6 px-6 pb-8">
+              <div>
+                <p className={cn('mb-2 text-[11px] font-semibold uppercase tracking-wider', MUTED)}>Furthest step reached</p>
+                <StepProgress steps={steps} events={events} />
+              </div>
+              <div className="grid grid-cols-3 gap-3 text-center">
                 {[
                   { label: 'Messages', value: count((e) => e.action === 'message_sent') },
                   { label: 'Call attempts', value: count((e) => e.action.startsWith('call_')) },
                   { label: 'Calls answered', value: count((e) => e.action === 'call_completed') },
                 ].map((k) => (
-                  <div key={k.label} className="rounded-lg border border-gray-200 py-2 dark:border-gray-800">
+                  <div key={k.label} className="rounded-lg border border-gray-200 px-2 py-3 dark:border-gray-800">
                     <p className={cn('text-lg font-semibold tabular-nums', INK)}>{k.value}</p>
                     <p className={cn('text-[11px]', MUTED)}>{k.label}</p>
                   </div>
                 ))}
               </div>
-              <Segmented<EventFilter>
-                label="Show" value={filter} onChange={setFilter}
-                options={[{ value: 'all', label: `All ${events.length}` }, { value: 'messages', label: 'Messages' }, { value: 'calls', label: 'Calls' }, { value: 'other', label: 'Other' }]}
-              />
+              <div>
+                <Segmented<EventFilter>
+                  label="Show" value={filter} onChange={setFilter}
+                  options={[{ value: 'all', label: `All ${events.length}` }, { value: 'messages', label: 'Messages' }, { value: 'calls', label: 'Calls' }, { value: 'other', label: 'Other' }]}
+                />
+              </div>
               <Timeline projectId={projectId} events={shown} steps={steps} />
             </div>
           </>
@@ -975,7 +996,7 @@ function RecentJourneys({
   return (
     <section>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className={cn('text-xs', MUTED)}>Most recently active first. Select a journey to see everything that happened to that member.</p>
+        <p className={cn('text-xs', MUTED)}>Most recently active first. Select a workflow to see everything that happened to that member.</p>
         <div className="relative">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
           <input
@@ -986,10 +1007,10 @@ function RecentJourneys({
       </div>
       <div className={cn(CARD, 'overflow-hidden')}>
         <div className={cn('hidden grid-cols-[minmax(0,12rem)_minmax(0,1fr)_9rem_5rem] gap-4 border-b border-gray-100 px-4 py-2 text-[11px] font-semibold uppercase tracking-wider dark:border-gray-800 md:grid', MUTED)}>
-          <span>Member</span><span>Progress</span><span>Status</span><span className="text-right">Active</span>
+          <span>Member</span><span>Progress</span><span>Status</span><span className="text-right">Last activity</span>
         </div>
         {isLoading && <div className="space-y-px p-3">{Array.from({ length: 8 }, (_, i) => <Skel key={i} className="h-12" />)}</div>}
-        {!isLoading && journeys.length === 0 && <div className={cn('flex h-40 items-center justify-center text-sm', MUTED)}>No journeys for this campaign yet.</div>}
+        {!isLoading && journeys.length === 0 && <div className={cn('flex h-40 items-center justify-center text-sm', MUTED)}>No workflows for this campaign yet.</div>}
         {!isLoading && journeys.length > 0 && visible.length === 0 && <div className={cn('flex h-40 items-center justify-center text-sm', MUTED)}>No member on this page matches “{query}”.</div>}
         {!isLoading && visible.length > 0 && (
           <ul>
@@ -1027,7 +1048,7 @@ type View = 'overview' | 'charts' | 'journeys'
 const VIEWS: { id: View; label: string; hint: string }[] = [
   { id: 'overview', label: 'Overview', hint: 'Numbers, funnel and activity' },
   { id: 'charts', label: 'Charts', hint: 'Your own breakdowns' },
-  { id: 'journeys', label: 'Journeys', hint: 'Every member, one by one' },
+  { id: 'journeys', label: 'Workflows', hint: 'Every member, one by one' },
 ]
 const VIEW_KEY = 'whispey:journeys-view'
 
@@ -1085,7 +1106,7 @@ export function JourneysTab({ projectId, isActive }: Readonly<{ projectId: strin
     return (
       <div className="flex h-full items-center justify-center bg-gray-50 px-6 dark:bg-gray-900">
         <div className={cn(CARD, 'max-w-md p-6 text-center')}>
-          <p className={cn('text-sm font-semibold', INK)}>Couldn't load journeys</p>
+          <p className={cn('text-sm font-semibold', INK)}>Couldn't load workflows</p>
           <p className={cn('mt-1 text-xs', MUTED)}>{campaignsError instanceof Error ? campaignsError.message : 'Something went wrong.'} This is a loading problem, not missing data. Nothing was deleted.</p>
           <Button size="sm" variant="outline" className="mt-4" onClick={() => refetchCampaigns()}>Try again</Button>
         </div>
@@ -1123,7 +1144,7 @@ export function JourneysTab({ projectId, isActive }: Readonly<{ projectId: strin
               {campaign && <IntegrationDocs campaignKey={campaign.key} />}
             </div>
           </div>
-          <nav className="-mb-px flex gap-1" aria-label="Journeys sections">
+          <nav className="-mb-px flex gap-1" aria-label="Workflows sections">
             {VIEWS.map((v) => (
               <button
                 key={v.id} type="button" onClick={() => changeView(v.id)} title={v.hint} aria-current={view === v.id ? 'page' : undefined}

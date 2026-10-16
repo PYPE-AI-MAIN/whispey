@@ -1,0 +1,175 @@
+---
+title: SDK Setup
+description: Install and configure the Whispey SDK
+---
+
+## Installation
+
+Install the Whispey SDK using pip:
+
+```bash
+pip install whispey
+```
+
+Or install from [PyPI](https://pypi.org/project/Whispey/):
+
+```bash
+pip install Whispey
+```
+
+## Environment Configuration
+
+Create a `.env` file in your project root:
+
+```bash
+# Whispey Configuration
+WHISPEY_API_KEY=your_whispey_api_key_here
+WHISPEY_AGENT_ID=your_agent_id_from_dashboard
+```
+
+Get your credentials from the [Whispey Dashboard](https://whispey.xyz/).
+
+## Basic Setup
+
+### Simple Integration
+
+```python
+from dotenv import load_dotenv
+from whispey import LivekitObserve
+import os
+
+# Load environment variables
+load_dotenv()
+
+# Initialize Whispey
+whispey = LivekitObserve(
+    agent_id=os.getenv("WHISPEY_AGENT_ID"),
+    apikey=os.getenv("WHISPEY_API_KEY")
+)
+
+# Start tracking a session
+session_id = whispey.start_session(
+    session=your_livekit_session,
+    phone_number="+1234567890",  # Optional
+    customer_name="John Doe"     # Optional
+)
+
+# Export on shutdown via callback
+async def whispey_shutdown():
+    await whispey.export(session_id)
+
+ctx.add_shutdown_callback(whispey_shutdown)
+
+# Start your LiveKit session
+await session.start(...)
+```
+
+## Advanced Configuration
+
+### Custom Configuration
+
+```python
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    apikey="your-api-key",
+    host_url="https://api.whispey.xyz",  # Custom API endpoint
+    bug_reports_enable=False,              # Disable bug reporting
+    enable_otel=False                     # Disable OpenTelemetry
+)
+```
+
+### Session Metadata
+
+```python
+session_id = whispey.start_session(
+    session=your_livekit_session,
+    phone_number="+1234567890",
+    customer_name="John Doe",
+    conversation_type="customer_support",
+    metadata={
+        "department": "technical_support",
+        "priority": "high",
+        "language": "en",
+        "tags": ["escalation", "urgent"]
+    }
+)
+```
+
+### Bug Reporting Configuration
+
+```python
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    apikey="your-api-key",
+    bug_reports_enable=True,
+    bug_reports_config={
+        "bug_start_command": ["report issue", "there's a problem"],
+        "bug_end_command": ["issue resolved", "problem fixed"],
+        "response": "Please describe the issue.",
+        "collection_prompt": "Got it, anything else?"
+    }
+)
+```
+
+### OpenTelemetry Configuration
+
+```python
+whispey = LivekitObserve(
+    agent_id="your-agent-id",
+    apikey="your-api-key",
+    enable_otel=True  # Enable detailed telemetry collection
+)
+```
+
+## SDK Methods Reference
+
+### LivekitObserve Constructor
+
+```python
+LivekitObserve(
+    agent_id: str,                    # Required: Your agent ID from dashboard
+    apikey: str = None,              # Optional: API key (can use env var)
+    host_url: str = None,            # Optional: Custom API endpoint
+    bug_reports_enable: bool = False,  # Optional: Bug reporting configuration
+    bug_reports_config: dict = None,  # Optional: Bug reporting configuration
+    enable_otel: bool = False        # Optional: Enable OpenTelemetry
+)
+```
+
+### start_session
+
+Start a new session:
+
+```python
+session_id = whispey.start_session(
+    session,                    # Required: LiveKit session object
+    phone_number: str = None,   # Optional: Customer phone number
+    customer_name: str = None,  # Optional: Customer name
+    conversation_type: str = None,  # Optional: Type of conversation
+    metadata: dict = None       # Optional: Additional metadata
+)
+```
+
+### export
+
+Export session data:
+
+```python
+result = await whispey.export(
+    session_id,                 # Required: Session ID from start_session
+    recording_url: str = None,  # Optional: Recording URL
+)
+```
+
+## Next Steps
+
+- Learn about [Bug Reporting](/sdk/bug-reporting) feature
+- Explore [Advanced Features](/sdk/features)
+- Check out [Examples](/examples) for real-world usage
+- Visit our [GitHub Examples Repository](https://github.com/PYPE-AI-MAIN/whispey-examples)
+
+## Resources
+
+- **Website**: [https://whispey.xyz/](https://whispey.xyz/)
+- **PyPI**: [https://pypi.org/project/Whispey/](https://pypi.org/project/Whispey/)
+- **Examples**: [https://github.com/PYPE-AI-MAIN/whispey-examples](https://github.com/PYPE-AI-MAIN/whispey-examples)

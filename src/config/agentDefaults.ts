@@ -6,6 +6,31 @@
  * Used in: agent creation, agent config UI, and payload building
  */
 
+/**
+ * Built-in instructions for dynamic user-away messages. Shown in the UI when the
+ * owner has not written their own, and used by the voice backend whenever none is
+ * saved (utils/away_message.py DEFAULT_AWAY_INSTRUCTIONS in pype-voice-agent: keep
+ * the two texts in sync).
+ */
+export const DEFAULT_AWAY_INSTRUCTIONS =
+  "Write a warm, polite check-in in the same language and tone the conversation has used. " +
+  "Refer briefly to what was just being discussed, or the question still waiting for an answer, " +
+  "so it feels connected rather than generic. Then ask if they are still there and gently invite " +
+  "them to continue. Keep it to one short sentence of about 8 to 20 words. Sound natural and " +
+  "human; do not apologise, do not sound robotic, and do not repeat the agent's last sentence " +
+  "word for word."
+
+/**
+ * The instructions worth saving: only what the owner actually changed. Empty or
+ * unchanged text returns undefined, so the agent keeps following the built-in
+ * default (including future improvements to it) instead of a frozen copy.
+ */
+export function customAwayInstructions(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const trimmed = value.trim()
+  return trimmed && trimmed !== DEFAULT_AWAY_INSTRUCTIONS ? trimmed : undefined
+}
+
 export const AGENT_DEFAULT_CONFIG = {
     // Speech-to-Text (STT) Configuration
     stt: {
@@ -86,7 +111,8 @@ export const AGENT_DEFAULT_CONFIG = {
       user_away_timeout_max_count: undefined, // Max times to send message before ending call (undefined = unlimited)
       user_away_timeout_end_message: undefined, // Message to speak before ending call after max count
       user_away_timeout_mode: "static" as "static" | "dynamic", // "dynamic" = LLM-generated, context-aware check-in (needs context_memory)
-      user_away_instructions: undefined as string | undefined // Owner instructions steering how dynamic away messages are written
+      user_away_instructions: undefined as string | undefined, // Owner instructions steering how dynamic away messages are written
+      eod_silence_seconds: undefined // Seconds to wait after the agent's <eod/> goodbye before ending the call (undefined = 3)
     },
   
     // Background Audio Configuration
@@ -254,7 +280,8 @@ export const AGENT_DEFAULT_CONFIG = {
         user_away_timeout_max_count: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_max_count,
         user_away_timeout_end_message: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_end_message,
         user_away_timeout_mode: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_mode,
-        user_away_instructions: AGENT_DEFAULT_CONFIG.session_behavior.user_away_instructions
+        user_away_instructions: AGENT_DEFAULT_CONFIG.session_behavior.user_away_instructions,
+        eod_silence_seconds: AGENT_DEFAULT_CONFIG.session_behavior.eod_silence_seconds
       },
       tools: {
         tools: AGENT_DEFAULT_CONFIG.tools.map((tool, index) => ({

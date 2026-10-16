@@ -146,6 +146,9 @@ function describeNode(node: FilterNode, fields: CatalogField[]): string {
 
 /** The one-line definition under a card's title. Empty when there is nothing to explain. */
 export function explainSpec(spec: SpecInput, fields: CatalogField[]): string {
+  const note = spec.display?.note?.trim()
+  if (note) return note
+
   const parts: string[] = []
 
   const fn = spec.agg?.fn ?? 'count'

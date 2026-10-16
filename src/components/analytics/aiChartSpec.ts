@@ -9,7 +9,7 @@
  */
 import { Spec, type Condition, type SpecInput } from '@/server/analytics/spec'
 import type { CatalogField, ChartKind } from '@/types/analytics'
-import { extractJsonFence, stripJsonFencesForHistory } from '@/lib/jsonFence'
+import { extractAllJsonFences, extractJsonFence, stripJsonFencesForHistory } from '@/lib/jsonFence'
 
 export const AI_CHART_KINDS = ['kpi', 'bar', 'line', 'pie', 'table'] as const
 
@@ -18,6 +18,11 @@ export type AiChart = { title: string; kind: ChartKind; spec: SpecInput }
 /** The model's most recent fenced ```json block, or null if it hasn't written one (yet, if still streaming). */
 export function extractChartJson(text: string): unknown {
   return extractJsonFence(text)
+}
+
+/** Every complete chart block in a reply — one reply can build several charts. */
+export function extractChartJsons(text: string): unknown[] {
+  return extractAllJsonFences(text)
 }
 
 /**

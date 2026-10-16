@@ -1,7 +1,7 @@
 // hooks/useMultiAssistantState.ts
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { FormikProps } from 'formik'
-import { getFallback } from '@/config/agentDefaults'
+import { customAwayInstructions, getFallback } from '@/config/agentDefaults'
 import { getModelBaseUrl } from '@/components/agents/AgentConfig/ModelSelector'
 import { RAYA_PROVIDER, rayaConfigFromTts, rayaTtsPayload } from '@/lib/tts/raya'
 
@@ -264,8 +264,11 @@ export function buildAssistantSessionBehaviorPayload(formValues: any): any {
     ...(formValues.advancedSettings?.session?.user_away_timeout_mode !== undefined && formValues.advancedSettings.session.user_away_timeout_mode !== null && {
       user_away_timeout_mode: formValues.advancedSettings.session.user_away_timeout_mode
     }),
-    ...(formValues.advancedSettings?.session?.user_away_instructions !== undefined && formValues.advancedSettings.session.user_away_instructions !== null && formValues.advancedSettings.session.user_away_instructions !== '' && {
-      user_away_instructions: formValues.advancedSettings.session.user_away_instructions
+    ...(customAwayInstructions(formValues.advancedSettings?.session?.user_away_instructions) !== undefined && {
+      user_away_instructions: customAwayInstructions(formValues.advancedSettings.session.user_away_instructions)
+    }),
+    ...(formValues.advancedSettings?.session?.eod_silence_seconds !== undefined && formValues.advancedSettings.session.eod_silence_seconds !== null && {
+      eod_silence_seconds: formValues.advancedSettings.session.eod_silence_seconds
     })
   }
 }

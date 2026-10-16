@@ -20,7 +20,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { CatalogField, Widget, WidgetResult } from '@/types/analytics'
 import type { SpecInput } from '@/server/analytics/spec'
 import { ChartRenderer } from './ChartRenderer'
-import { coverage } from './chartData'
 import { CALCULATIONS } from './explain'
 
 /** react-grid-layout only starts a drag from this class, so a click on the card selects it. */
@@ -59,15 +58,11 @@ export function ChartCard({
   onChangeGrain: (grain: 'interaction' | 'entity') => void
 }>) {
   const rows = result?.data ?? []
-  const cover = coverage(rows)
   const isKpi = widget.kind === 'kpi'
   // a KPI two rows tall has ~40px for its number once the title, the definition
   // and the coverage line have taken theirs. 36px of text-3xl did not fit, and
   // nothing clipped it — it simply drew over both.
   const short = (((widget.layout ?? {}) as { h?: number }).h ?? 3) <= 2
-  // the line exists to disclose a shortfall. On a filtered count every row
-  // counts, so "99 of 99 calls" says nothing and implies a universe of 99.
-  const showCoverage = Boolean(cover && (cover.used < cover.total || widget.spec.dimension))
   const grain = widget.spec.grain ?? 'interaction'
   // Metabase's "how is this calculated" info — the same help text already
   // shown while editing a chart (SidePanel), surfaced here too since a viewer
@@ -123,8 +118,11 @@ export function ChartCard({
                 <GripVertical className="h-3.5 w-3.5" />
               </button>
             )}
-            <h3 className="truncate text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              {widget.title}
+            {/* a real button, pointer-events-auto, so the browser can show the full title on hover when it is cut off; clicking still selects the card */}
+            <h3 className="min-w-0 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              <button type="button" title={widget.title} onClick={onSelect} className="pointer-events-auto block max-w-full cursor-pointer truncate text-left uppercase">
+                {widget.title}
+              </button>
             </h3>
             {calc?.help && (
               <TooltipProvider>
@@ -159,13 +157,15 @@ export function ChartCard({
             {/* "Completed calls · 110" is not a number anyone can check */}
             {/* wrapped, not truncated: a definition you cannot read is the
                 same as no definition */}
-            <span
-              className={cn('text-gray-400/80 dark:text-gray-500', isKpi ? 'line-clamp-1' : 'line-clamp-2')}
+            <button
+              type="button"
+              className={cn('pointer-events-auto cursor-pointer text-left text-gray-400/80 dark:text-gray-500', isKpi ? 'line-clamp-1' : 'line-clamp-2')}
               title={definition}
+              onClick={onSelect}
             >
               {canEdit ? '· ' : ''}
               {definition}
-            </span>
+            </button>
           </div>
         </div>
 
@@ -212,19 +212,8 @@ export function ChartCard({
         <CardBody widget={widget} result={result} isLoading={isLoading} rows={rows} categories={categories} fieldMissing={fieldMissing} short={short} onSelect={onOpenLogs} />
       </div>
 
-      {/* an average over only the usable rows misleads unless the card says so */}
-      <div className="relative z-10 pointer-events-none flex shrink-0 items-center justify-between gap-2 px-4 pb-3 text-[11px] text-gray-400 dark:text-gray-500">
-        {cover && showCoverage ? (
-          <button
-            className="pointer-events-auto truncate underline-offset-2 hover:text-gray-600 hover:underline dark:hover:text-gray-300"
-            onClick={() => onOpenLogs()}
-          >
-            {cover.used.toLocaleString()} of {cover.total.toLocaleString()} calls
-            {cover.pct < 95 && cover.pct > 0 && ` · ${Math.round(cover.pct)}% filled in`}
-          </button>
-        ) : (
-          <span />
-        )}
+            <div className="relative z-10 pointer-events-none flex shrink-0 items-center justify-between gap-2 px-4 pb-3 text-[11px] text-gray-400 dark:text-gray-500">
+        <span />
         {result?.meta?.lookbackDays ? <span>Best of 90 days</span> : null}
       </div>
     </div>

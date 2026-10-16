@@ -5,6 +5,7 @@ import { createServiceRoleClient } from '@/lib/supabase-server'
 import { deployAgentConfig } from '@/lib/deployAgentConfig'
 import { resolveDeploymentTargetForUser } from '@/lib/resolveDeploymentTarget'
 import { RAYA_PROVIDER, rayaConfigFromTts, rayaTtsPayload } from '@/lib/tts/raya'
+import { customAwayInstructions } from '@/config/agentDefaults'
 
 // Deploying to a running agent hot-reloads its worker on the backend (20-30s);
 // don't let Vercel kill this route at the default 10-15s.
@@ -445,9 +446,10 @@ function buildRouteSessionBehaviorPayload(formikValues: any): any {
     ...(session.user_away_timeout_mode !== undefined && session.user_away_timeout_mode !== null && {
       user_away_timeout_mode: session.user_away_timeout_mode
     }),
-    ...(session.user_away_instructions !== undefined && session.user_away_instructions !== null && session.user_away_instructions !== '' && {
-      user_away_instructions: session.user_away_instructions
-    })
+    ...(customAwayInstructions(session.user_away_instructions) !== undefined && {
+      user_away_instructions: customAwayInstructions(session.user_away_instructions)
+    }),
+    ...(session.eod_silence_seconds !== undefined && session.eod_silence_seconds !== null && { eod_silence_seconds: session.eod_silence_seconds })
   }
 }
 

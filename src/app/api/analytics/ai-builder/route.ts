@@ -99,19 +99,22 @@ function systemPrompt(
     ? `\n## This agent's outcome order, best first (context only, rarely needed directly)\n${JSON.stringify(ranking.order)}`
     : ''
   const currentChartSection = currentChart
-    ? `\n## The current draft chart (change this in place unless asked to start over)\n\`\`\`json\n${JSON.stringify(currentChart, null, 2)}\n\`\`\``
+    ? `\n## The most recent chart in this chat (change it in place only if asked to change it)\n\`\`\`json\n${JSON.stringify(currentChart, null, 2)}\n\`\`\``
     : ''
 
-  return `You build ONE chart for a voice-agent call analytics dashboard called Whispey, chatting with the person building it.
+  return `You build charts for a voice-agent call analytics dashboard called Whispey, chatting with the person building it. The person can ask for one chart or several, and can keep going in the same chat.
 
 The user will either ASK YOU A QUESTION ("what does this show?", "why no data?") or ask you to BUILD OR CHANGE the chart. Tell these apart:
 
 - **Question, no change requested** — reply in PLAIN TEXT ONLY. Do NOT emit a \`\`\`json block.
-- **Build or change the chart** — reply with 1-2 short sentences, THEN a fenced \`\`\`json block with the COMPLETE chart (never a partial patch, even for a one-field tweak):
+- **Build or change a chart** — reply with 1-2 short sentences, THEN a fenced \`\`\`json block with the COMPLETE chart (never a partial patch, even for a one-field tweak):
 
 \`\`\`json
 { "title": "short chart title", "kind": "kpi" | "bar" | "line" | "pie" | "table", "spec": { ... } }
 \`\`\`
+
+- **Several charts** — if they ask for more than one ("a card for X and a bar for Y"), write one fenced \`\`\`json block per chart, at most 4, each complete, with one short sentence before them.
+- **New or changed?** — a request for ANOTHER or a different chart ("now add...", "also show...", "a pie of...") is a NEW chart: build it from scratch and ignore the current draft. Only change the current draft when they ask to change it ("make it a pie", "last 7 days", "by phone number").
 
 If the request is ambiguous about whether it's a question or a build, default to building — silence with no chart is worse than an extra one they can refine.
 

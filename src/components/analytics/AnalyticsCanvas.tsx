@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button'
 import { useMobile } from '@/hooks/use-mobile'
 import { useAnalyticsDashboard, useChartData, useCsvExport, type AnalyticsScope, type DashboardContext } from '@/hooks/useAnalyticsDashboard'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
-import type { CatalogField, ChartKind, FormulaContent, Widget } from '@/types/analytics'
+import type { CatalogField, ChartKind, FormulaContent, TextContent, Widget } from '@/types/analytics'
 import type { FilterNodeInput, SpecInput } from '@/server/analytics/spec'
 import { ChartCard, DRAG_HANDLE_CLASS, type ChartWidget } from './ChartCard'
 import { TextBlockCard } from './TextBlockCard'
@@ -38,7 +38,7 @@ import { DashboardSkeleton } from './DashboardSkeleton'
 import { SuggestedStrip } from './SuggestedStrip'
 import { explainFormula, explainSpec, fieldName } from './explain'
 import {
-  applyGridLayout, toGridLayout, nextRow, usableWidth, DEFAULT_SIZE, GRID_COLUMNS, GRID_MARGIN, ROW_HEIGHT,
+  applyGridLayout, toGridLayout, nextRow, usableWidth, textRows, DEFAULT_SIZE, GRID_COLUMNS, GRID_MARGIN, ROW_HEIGHT,
 } from './gridLayout'
 import 'react-grid-layout/css/styles.css'
 import './grid.css'
@@ -336,6 +336,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
 
   const [draft, setDraft] = useState<Widget[] | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [aiOpen, setAiOpen] = useState(false)
   const [logs, setLogs] = useState<{ widget: ChartWidget; value: string | null | undefined } | null>(null)
   const [orderEditor, setOrderEditor] = useState(false)
   const [droppingKind, setDroppingKind] = useState<ChartKind | null>(null)
@@ -501,6 +502,15 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
       selectChart(card.id)
     },
     [makeChart, selectChart, widgets]
+  )
+
+  /** An AI-built chart is added as a draft but not selected, so the AI chat stays open for the next one. */
+  const addGenerated = useCallback(
+    (title: string, kind: ChartKind, spec: SpecInput) => {
+      const card = { ...makeChart(kind), title, spec }
+      setDraft((prev) => [...(prev ?? widgets), card])
+    },
+    [makeChart, widgets]
   )
 
   const layout = useMemo(() => toGridLayout(widgets), [widgets])
@@ -680,7 +690,7 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
       )}
 
       {!isMobile && panelOpen && (
-        <div className="relative w-72 shrink-0">
+        <div className={cn('relative shrink-0', aiOpen && !selected ? 'w-96' : 'w-72')}>
           <button
             onClick={togglePanel}
             aria-label="Hide chart settings"
@@ -697,13 +707,32 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
             onBack={() => setSelectedId(null)}
             onAddChart={(kind) => addChart(kind)}
             onDragChartType={setDroppingKind}
-            onChange={(spec) => selected && edit(selected.id, { spec })}
+            // a note is resized to fit its words as you type, so it is not a tall empty box
+            onChange={(spec) =>
+              selected &&
+              edit(
+                selected.id,
+                selected.kind === 'text'
+                  ? {
+                      spec,
+                      layout: {
+                        ...selected.layout,
+                        w: toGridLayout([selected])[0].w,
+                        h: textRows((spec as TextContent).text ?? '', toGridLayout([selected])[0].w),
+                      } as unknown as Widget['layout'],
+                    }
+                  : { spec }
+              )
+            }
             // a new type needs the shape that draws it, or you get an empty box
             onChangeKind={(kind) =>
               selected && edit(selected.id, { kind, spec: adaptSpecToKind(selected.spec as SpecInput, kind, catalog) })
             }
             onChangeTitle={(title) => selected && edit(selected.id, { title })}
-            onGenerateChart={addSuggested}
+            aiOpen={aiOpen}
+            onOpenAi={() => setAiOpen(true)}
+            onCloseAi={() => setAiOpen(false)}
+            onGenerateChart={addGenerated}
           />
         </div>
       )}

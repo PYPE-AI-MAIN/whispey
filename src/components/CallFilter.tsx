@@ -61,7 +61,7 @@ interface CallFilterProps {
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-const FILTER_VALUE_TO_BASIC_KEY: Record<string, string> = {
+export const FILTER_VALUE_TO_BASIC_KEY: Record<string, string> = {
   customer_number: 'customer_number',
   call_id: 'call_id',
   duration_seconds: 'duration_seconds',
@@ -73,7 +73,7 @@ const FILTER_VALUE_TO_BASIC_KEY: Record<string, string> = {
   flag: 'flag',
 }
 
-const COLUMNS = [
+export const COLUMNS = [
   { value: 'customer_number',       label: 'Customer Number',  type: 'text'   },
   { value: 'call_id',               label: 'Call ID',          type: 'text'   },
   { value: 'duration_seconds',      label: 'Duration (s)',      type: 'number', numericType: 'integer' as const },
@@ -92,7 +92,7 @@ const CALL_EVENT_OPTIONS = [
   { value: 'call_ended',   label: 'Ended'   },
 ]
 
-const OPERATIONS = {
+export const OPERATIONS = {
   text:   [
     { value: 'equals',      label: 'Equals'      },
     { value: 'not_equals',  label: 'Not equals'  },
@@ -133,7 +133,7 @@ const TEXT_NOT_EQUALS_COLUMNS = new Set(['customer_number', 'call_ended_reason',
 
 // ── Internal row state ───────────────────────────────────────────────────────
 
-interface RowState {
+export interface RowState {
   id: string
   type: 'filter' | 'distinct'
   column: string
@@ -143,14 +143,14 @@ interface RowState {
   sortOrder: 'asc' | 'desc'
 }
 
-function operationToRow(op: FilterOperation): RowState {
+export function operationToRow(op: FilterOperation): RowState {
   if (op.type === 'distinct') {
     return { id: op.id, type: 'distinct', column: op.column, operation: '', value: '', jsonField: op.jsonField || '', sortOrder: op.sortOrder || 'asc' }
   }
   return { id: op.id, type: 'filter', column: op.column, operation: op.operation, value: op.value, jsonField: op.jsonField || '', sortOrder: 'asc' }
 }
 
-function rowToOperation(row: RowState, order: number): FilterOperation | null {
+export function rowToOperation(row: RowState, order: number): FilterOperation | null {
   const isJsonb = row.column === 'metadata' || row.column === 'transcription_metrics'
   if (!row.column) return null
   if (row.type === 'distinct') {
@@ -164,7 +164,7 @@ function rowToOperation(row: RowState, order: number): FilterOperation | null {
   return { id: row.id, type: 'filter', column: row.column, operation: row.operation, value: noValue ? 'true' : row.value.trim(), ...(row.jsonField && { jsonField: row.jsonField }), order }
 }
 
-function buildRows(filters: FilterOperation[], distinctConfig?: DistinctConfig): RowState[] {
+export function buildRows(filters: FilterOperation[], distinctConfig?: DistinctConfig): RowState[] {
   const rows: RowState[] = filters.map(operationToRow)
   if (distinctConfig && !filters.some(f => f.type === 'distinct')) {
     rows.push({ id: `distinct-${Date.now()}`, type: 'distinct', column: distinctConfig.column, operation: '', value: '', jsonField: distinctConfig.jsonField || '', sortOrder: distinctConfig.order })
@@ -183,7 +183,7 @@ interface FilterRowProps {
   columnsForRole: typeof COLUMNS
 }
 
-const FilterRow: React.FC<FilterRowProps> = ({
+export const FilterRow: React.FC<FilterRowProps> = ({
   row, onChange, onRemove, availableMetadataFields, availableTranscriptionFields, columnsForRole,
 }) => {
   const isJsonb = row.column === 'metadata' || row.column === 'transcription_metrics'

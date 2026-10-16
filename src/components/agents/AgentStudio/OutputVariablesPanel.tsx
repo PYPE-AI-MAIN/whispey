@@ -2,6 +2,7 @@
 
 import { Loader2, Settings2 } from 'lucide-react'
 import FieldExtractorDialog from '@/components/FieldExtractorLogs'
+import { modelChange } from '@/config/fieldExtractorModels'
 
 interface FieldExtractorItem {
   key: string
@@ -64,6 +65,7 @@ export default function OutputVariablesPanel({
   fieldExtractorPrompt,
   fieldExtractorVariables,
   fieldExtractorEnabled,
+  fieldExtractorModel = null,
   latestValues,
   loading,
   inProgress,
@@ -75,6 +77,8 @@ export default function OutputVariablesPanel({
   fieldExtractorPrompt: string | null | undefined
   fieldExtractorVariables: Record<string, string> | null | undefined
   fieldExtractorEnabled: boolean
+  /** The agent's field_extractor_model (empty = default). */
+  fieldExtractorModel?: string | null
   /** transcription_metrics from the most recent completed call, if any. */
   latestValues: Record<string, string> | null | undefined
   /** Still resolving the last call (initial mount, or a call just ended and hasn't landed yet). */
@@ -98,7 +102,7 @@ export default function OutputVariablesPanel({
   // Nothing to show and nothing they're allowed to change — leave it out.
   if (!canEdit && !configured) return null
 
-  const handleSave = async (data: FieldExtractorItem[], enabled: boolean, variables: Record<string, string>) => {
+  const handleSave = async (data: FieldExtractorItem[], enabled: boolean, variables: Record<string, string>, model: string) => {
     const res = await fetch(`/api/agents/${agentId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -106,6 +110,7 @@ export default function OutputVariablesPanel({
         field_extractor_prompt: JSON.stringify(data),
         field_extractor: enabled,
         field_extractor_variables: variables,
+        ...modelChange(fieldExtractorModel, model),
       }),
     })
     if (res.ok) {
@@ -132,6 +137,7 @@ export default function OutputVariablesPanel({
           initialData={fields}
           initialVariables={fieldExtractorVariables || {}}
           isEnabled={fieldExtractorEnabled}
+          initialModel={fieldExtractorModel}
           terminology="dispositions"
           onSave={handleSave}
         />

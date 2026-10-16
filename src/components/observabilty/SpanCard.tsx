@@ -76,7 +76,7 @@ import {
               <div className={typeInfo.color}>{typeInfo.icon}</div>
             </div>
             <div>
-              <div className="font-medium text-gray-900">{span.name || 'Unknown Operation'}</div>
+              <div className="font-medium text-gray-900 dark:text-gray-100">{span.name || 'Unknown Operation'}</div>
               <div className="text-sm text-gray-500">
                 {span.attributes?.['service.name'] || 'Unknown Service'}
               </div>

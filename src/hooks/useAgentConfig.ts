@@ -185,6 +185,7 @@ export interface AgentConfigResponse {
         user_away_timeout_end_message?: string
         user_away_timeout_mode?: "static" | "dynamic"
         user_away_instructions?: string
+        eod_silence_seconds?: number
       }
       dynamic_tts?: Array<{
         tool_name: string
@@ -1007,6 +1008,7 @@ export const buildFormValuesFromAgent = (assistant: any, agent?: any) => {
         user_away_timeout_end_message: sessionBehavior.user_away_timeout_end_message !== undefined && sessionBehavior.user_away_timeout_end_message !== null && sessionBehavior.user_away_timeout_end_message !== '' ? sessionBehavior.user_away_timeout_end_message : undefined,
         user_away_timeout_mode: (sessionBehavior.user_away_timeout_mode === 'dynamic' ? 'dynamic' : 'static') as 'static' | 'dynamic',
         user_away_instructions: typeof sessionBehavior.user_away_instructions === 'string' && sessionBehavior.user_away_instructions !== '' ? sessionBehavior.user_away_instructions : undefined,
+        eod_silence_seconds: sessionBehavior.eod_silence_seconds ?? undefined
       },
       tools: {
         languageSwitchTools: (assistant.tools || [])

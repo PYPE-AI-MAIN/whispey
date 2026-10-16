@@ -395,13 +395,13 @@ function AgentColumnChecklist({
                   onClick={handleApplyToAll}
                   disabled={applyingAll || saving || dirty}
                   title={dirty ? 'Save this agent’s settings first' : undefined}
-                  className="h-7 text-xs gap-1.5"
+                  className="h-9 text-sm gap-2 px-4"
                 >
                   <Copy className="h-3 w-3" />
                   {applyingAll ? 'Copying…' : 'Copy to all agents'}
                 </Button>
               )}
-              <Button size="sm" onClick={handleSave} disabled={!dirty || saving} className="h-7 text-xs gap-1.5">
+              <Button size="sm" onClick={handleSave} disabled={!dirty || saving} className="h-9 text-sm gap-2 px-4">
                 <Save className="h-3 w-3" />
                 {saving ? 'Saving…' : 'Save'}
               </Button>
@@ -531,7 +531,7 @@ function ProjectAgentsCard({
       </div>
       <div className="divide-y divide-gray-100 dark:divide-gray-800">
         {project.agents.length === 0 && (
-          <p className="text-[11px] text-gray-500 dark:text-gray-400 px-4 py-3">No agents in this project.</p>
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 px-4 py-3">No agents in this organization.</p>
         )}
         {project.agents.map(agent => (
           <AgentRow
@@ -673,7 +673,7 @@ export default function UserDetailPage() {
               <div className="relative flex-shrink-0" style={{ width: '200px' }}>
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-500 dark:text-gray-400 pointer-events-none" />
                 <input
-                  placeholder="Search projects or agents…"
+                  placeholder="Search organizations or agents…"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   className="w-full pl-8 pr-3 h-8 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 focus:bg-white dark:focus:bg-gray-800 transition-colors"

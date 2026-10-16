@@ -93,6 +93,7 @@ export interface SerializedAgentConfig {
         user_away_timeout_end_message?: string
         user_away_timeout_mode?: 'static' | 'dynamic'
         user_away_instructions?: string
+        eod_silence_seconds?: number
       }
       tools: {
         tools: any[]

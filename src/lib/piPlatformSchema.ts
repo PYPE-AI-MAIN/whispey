@@ -27,6 +27,17 @@ Variables: (1) prompt {{vars}} in assistant.variables (2) extractor {{vars}} in 
 
 Dispositions: { key: /^[a-z][a-z0-9_]{0,39}$/, description 1-500 chars }, max 20. Starters: ${suggestions}.
 
+WRITING A DISPOSITION (an LLM fills it from the call transcript, so the description must leave no room for guessing):
+- Hard limit 500 characters including every value. Aim for 450 or less and count before calling edit_agent. If it will not fit, shorten the value names and conditions or split it into separate dispositions. Never cut a description off, and never save one you have not checked.
+- Pattern: "<what is being decided>. Return exactly one: value_a = <what was said or done>; value_b = <what was said or done>; ...; unknown = none of these."
+- Every value gets a short, observable condition and the values must not overlap. If two could apply, say which wins. Include one fallback value (unknown or not_discussed). 3 to 8 values is normal.
+- Values are lowercase snake_case with no spaces.
+- A yes/no or completed flag returns 1 or 0 only. Say exactly when it is 1, and that it is 0 when unclear or the call ends early.
+- A number or free-text field says its format and what to return when nothing was said (for example "none").
+- One question per disposition. Do not mix an outcome and its reason in one field, and add only the fields the user asked for. For outcome tracking the usual set is final_disposition (the single main result), is_task_completed (1 or 0), and at most one or two supporting fields.
+- When you propose dispositions, show a short table (key, values) first. Give each description in its own code block containing only the text to paste into the Description field.
+- Example of a good final_disposition for a scheduling call: "Final outcome of the scheduling call. Return exactly one: appointment_booked = visit confirmed inside a preferred window; no_acceptable_slot = only times outside the windows offered, or none; insurance_not_accepted = office does not take the Medicaid plan; not_accepting_patients = no new patients; callback_required = office will call back or needs info first; voicemail = reached voicemail; wrong_number = wrong office; disconnected = call dropped; unknown = none of these."
+
 AGENT CREATION: create_agent writes the agent (row, voice-backend config, worker). Prompt, greeting, voice, and dispositions are edited in this chat with edit_agent. Dispositions optional at create; voice must be from the allowed list.
 
 ANALYTICS (internal): For time trends use bucket day|week|month — never dimension on call_start_time (does not exist). list_analytics_fields only for custom extractor JSON paths.

@@ -11,12 +11,13 @@ function fieldRef(row: { col: string; path?: string[] | null }) {
   return row.path?.length ? { col: row.col, path: row.path } : { col: row.col }
 }
 
-function summarizeTrend(rows: { bucket: unknown; value: unknown }[]) {
+function summarizeTrend(rows: { bucket: unknown; value: unknown }[], periodDays: number) {
   const points = rows
     .filter((r) => r.bucket != null && r.value != null)
     .map((r) => ({ day: String(r.bucket).slice(0, 10), count: Number(r.value) || 0 }))
   const total = points.reduce((s, p) => s + p.count, 0)
-  const avg = points.length ? Math.round(total / points.length) : 0
+  // over the whole period, not just days that have rows — a day with no calls still counts
+  const avg = Math.round(total / periodDays)
   const half = Math.floor(points.length / 2)
   const firstHalf = points.slice(0, half).reduce((s, p) => s + p.count, 0)
   const secondHalf = points.slice(half).reduce((s, p) => s + p.count, 0)
@@ -31,7 +32,7 @@ export async function runCallVolumeTrend(
   query: PiQueryRunner,
   args: { days?: number; agent_id?: string }
 ) {
-  const days = Math.min(Math.max(args.days ?? 30, 1), 90)
+  const days = Math.min(Math.max(Number.isFinite(Number(args.days)) ? Number(args.days) : 30, 1), 90)
   const out = await query(projectId, {
     agent_id: args.agent_id,
     spec: callVolumeTrendSpec(days),
@@ -42,8 +43,7 @@ export async function runCallVolumeTrend(
     success: true,
     result: {
       period_days: days,
-      ...summarizeTrend(rows),
-      raw: rows,
+      ...summarizeTrend(rows, days),
     },
   }
 }
@@ -54,7 +54,7 @@ export async function runCompletionInsights(
   listFields: (projectId: string, args: { agent_id?: string }) => Promise<{ success: boolean; result: any }>,
   args: { days?: number; agent_id?: string }
 ) {
-  const days = Math.min(Math.max(args.days ?? 7, 1), 60)
+  const days = Math.min(Math.max(Number.isFinite(Number(args.days)) ? Number(args.days) : 7, 1), 60)
   const listed = await listFields(projectId, { agent_id: args.agent_id })
   if (!listed.success) return listed
 

@@ -238,6 +238,56 @@ interface SessionViewProps {
   checkingStatus: boolean
 }
 
+function AgentStatusBanner({ isRunning }: Readonly<{ isRunning: boolean }>) {
+  return (
+    <div className={cn(
+      "rounded-lg border-2 p-4 flex items-center gap-3",
+      isRunning ? "border-green-500/50 bg-green-500/10" : "border-red-500/50 bg-red-500/10"
+    )}>
+      <AlertCircle className={cn("h-5 w-5 flex-shrink-0", isRunning ? "text-green-500" : "text-red-500")} />
+      <div className="flex-1">
+        <div className={cn(
+          "text-sm font-medium",
+          isRunning ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"
+        )}>
+          {isRunning ? 'Agent is Live' : 'Agent not found'}
+        </div>
+        {!isRunning && (
+          <div className="text-xs text-muted-foreground mt-1">
+            Deploy the agent first, then test it in the playground
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function VoiceOption({ voice, selected, onSelect }: Readonly<{ voice: (typeof PREDEFINED_VOICES)[number]; selected: boolean; onSelect: () => void }>) {
+  return (
+    <button
+      onClick={onSelect}
+      className={cn(
+        'p-4 rounded-lg border-2 transition-all text-left',
+        selected ? 'border-primary bg-primary/20' : 'border-input bg-background hover:border-input/80'
+      )}
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="font-medium text-foreground text-sm">{voice.name}</div>
+          <div className="text-xs text-muted-foreground mt-1">{voice.category}</div>
+        </div>
+        {selected && (
+          <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+            <svg className="w-3 h-3 text-primary-foreground" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+          </div>
+        )}
+      </div>
+    </button>
+  )
+}
+
 function SessionView({
   agentState,
   agentActions,
@@ -337,59 +387,16 @@ function SessionView({
           </div>
 
           {/* Agent Running Status */}
-          {!checkingStatus && agentStatus && (
-            <div className={cn(
-              "rounded-lg border-2 p-4 flex items-center gap-3",
-              isAgentRunning 
-                ? "border-green-500/50 bg-green-500/10" 
-                : "border-red-500/50 bg-red-500/10"
-            )}>
-              <AlertCircle className={cn(
-                "h-5 w-5 flex-shrink-0",
-                isAgentRunning ? "text-green-500" : "text-red-500"
-              )} />
-              <div className="flex-1">
-                <div className={cn(
-                  "text-sm font-medium",
-                  isAgentRunning ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"
-                )}>
-                  {isAgentRunning ? 'Agent is Running' : 'Agent is Not Running'}
-                </div>
-                {!isAgentRunning && (
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Please start the agent before testing in the playground
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          {!checkingStatus && agentStatus && <AgentStatusBanner isRunning={!!isAgentRunning} />}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {PREDEFINED_VOICES.map((voice) => (
-              <button
+              <VoiceOption
                 key={voice.id}
-                onClick={() => onVoiceSelect(selectedVoice === voice.id ? null : voice.id)}
-                className={cn(
-                  'p-4 rounded-lg border-2 transition-all text-left',
-                  selectedVoice === voice.id
-                    ? 'border-primary bg-primary/20'
-                    : 'border-input bg-background hover:border-input/80'
-                )}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium text-foreground text-sm">{voice.name}</div>
-                    <div className="text-xs text-muted-foreground mt-1">{voice.category}</div>
-                  </div>
-                  {selectedVoice === voice.id && (
-                    <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                      <svg className="w-3 h-3 text-primary-foreground" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-              </button>
+                voice={voice}
+                selected={selectedVoice === voice.id}
+                onSelect={() => onVoiceSelect(selectedVoice === voice.id ? null : voice.id)}
+              />
             ))}
           </div>
 
@@ -431,7 +438,7 @@ function SessionView({
           )}
           {!isAgentRunning && (
             <p className="text-xs text-center text-muted-foreground">
-              Agent must be running to start a conversation
+              Deploy the agent first to start a conversation
             </p>
           )}
         </div>

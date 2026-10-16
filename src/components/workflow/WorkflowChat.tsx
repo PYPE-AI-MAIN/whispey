@@ -6,6 +6,7 @@ import ReactMarkdown from 'react-markdown'
 import { Button } from '@/components/ui/button'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import { safeParseWorkflow } from '@/lib/workflow/schema'
+import { extractGlobalRules } from '@/lib/workflow/globalRules'
 import { lintWorkflow, hasErrors } from '@/lib/workflow/linter'
 import { isRetryableApplyError } from '@/lib/workflow/chatRetry'
 import { extractJsonFence, stripJsonFencesForHistory } from '@/lib/jsonFence'
@@ -227,7 +228,9 @@ export function WorkflowChat({
         return fail(`AI returned a broken workflow graph: ${applyError}`)
       }
 
-      setWorkflow(parsed.data)
+      // Whatever Pi drew, fold repeated condition edges into global rules so the canvas stays readable.
+      const merged = extractGlobalRules(parsed.data)
+      setWorkflow({ ...parsed.data, edges: merged.edges, globalRules: merged.globalRules })
       toast.success('Workflow updated from chat')
       const warnings = issues.filter((i) => i.severity === 'warning')
       return {
@@ -392,7 +395,7 @@ export function WorkflowChat({
               <Sparkles className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">AI Workflow Builder</h3>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Ask Pi</h3>
               <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-tight truncate">
                 {formatContextSummary(contextSummary)}
               </p>
@@ -635,7 +638,6 @@ function AssistantMessageJsonPart({
   if (applyStatus === 'error') {
     return (
       <div className="flex items-start gap-1.5 py-1 px-2 rounded-md bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-[11px] font-medium">
-        <span>⚠</span>
         <span>Failed to apply: {applyError || 'invalid workflow JSON'}</span>
       </div>
     )
@@ -659,13 +661,13 @@ function AssistantMessageJsonPart({
       </div>
       {/* Same lint the canvas warning badge runs — shown here too since the
           whole point of chat-only building is never opening the canvas. */}
-      {applyWarnings && applyWarnings.length > 0 && (
+     {applyWarnings && applyWarnings.length > 0 && (
         <div className="py-1 px-2 rounded-md bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-[11px]">
           <p className="font-medium mb-0.5">
-            ⚠ {applyWarnings.length} warning{applyWarnings.length === 1 ? '' : 's'}:
+            {applyWarnings.length} warning{applyWarnings.length === 1 ? '' : 's'}:
           </p>
           <ul className="list-disc pl-3.5 space-y-0.5">
-            {applyWarnings.map((w) => (
+           {applyWarnings.map((w) => (
               <li key={w}>{w}</li>
             ))}
           </ul>

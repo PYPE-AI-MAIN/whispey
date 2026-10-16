@@ -97,7 +97,7 @@ function getAgentStatusInfo(
     return {
       containerClass: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800',
       dotClass: 'bg-green-500 rounded-full animate-pulse',
-      label: isPypeAgent ? 'Running' : 'Active',
+      label: isPypeAgent ? 'Live' : 'Active',
       labelClass: 'text-xs font-semibold text-green-700 dark:text-green-400',
     }
   }
@@ -105,7 +105,7 @@ function getAgentStatusInfo(
     return {
       containerClass: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',
       dotClass: 'bg-red-500 rounded-full',
-      label: 'Stopped',
+      label: 'Not found',
       labelClass: 'text-xs font-semibold text-red-700 dark:text-red-400',
     }
   }
@@ -560,7 +560,7 @@ export default function PhoneCallConfig() {
                 <Phone className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Dispatch Call</h1>
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground">Dispatch Call</h1>
                 <p className="text-sm text-gray-600 dark:text-gray-400">with <span className="font-semibold text-gray-900 dark:text-gray-100">{agentDisplayName(agent)}</span></p>
               </div>
             </div>

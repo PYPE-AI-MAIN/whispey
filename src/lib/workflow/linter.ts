@@ -4,11 +4,14 @@
  * "valid" means. Structural validation is Zod's job (schema.ts); this catches
  * semantic problems (dangling edges, bad start, unreachable nodes, ...).
  */
+import { expandGlobalRules } from './globalRules'
 import type { Workflow } from './schema'
 import { LLM_NODE_TYPES, NONRUNTIME_NODE_TYPES, TELEPHONY_NODE_TYPES } from './schema'
 
 export type Severity = 'error' | 'warning'
 export interface LintIssue {
+  /** One-click repair the editor can offer next to the message. */
+  fixStartTo?: string
   severity: Severity
   message: string
   nodeId?: string
@@ -83,14 +86,166 @@ function lintIds(nodes: readonly Node[]): LintIssue[] {
   return issues
 }
 
+/** The step a call most likely should open on: a speaking step nothing else leads to, leftmost first. */
+function greetingCandidate(wf: Workflow): string | undefined {
+  const targeted = new Set(wf.edges.map((e) => e.target))
+  return wf.nodes
+    .filter((n) => (n.type === 'conversation' || n.type === 'subagent') && !targeted.has(n.id))
+    .sort((a, b) => (a.position?.x ?? 0) - (b.position?.x ?? 0) || (a.position?.y ?? 0) - (b.position?.y ?? 0))[0]?.id
+}
+
 function lintStart(wf: Workflow, idSet: Set<string>, nodeMap: Map<string, Node>): LintIssue[] {
   if (!idSet.has(wf.start)) return [{ severity: 'error', message: `start '${wf.start}' is not a node id` }]
   if (NONRUNTIME_NODE_TYPES.has(nodeMap.get(wf.start)!.type))
     return [{ severity: 'error', message: `start '${wf.start}' cannot be a note node`, nodeId: wf.start }]
+  const type = nodeMap.get(wf.start)!.type
+  if (type === 'knowledge')
+    return [{ severity: 'error', message: `start '${wf.start}' is a knowledge step — the call would open mid-answer. Set the greeting conversation step as the start.`, nodeId: wf.start, fixStartTo: greetingCandidate(wf) }]
+  if (!['conversation', 'extract_variable', 'subagent', 'logic_split'].includes(type))
+    return [{ severity: 'warning', message: `the call starts at a ${type} step ('${wf.start}'), not a conversation — usually the greeting step should be the start`, nodeId: wf.start, fixStartTo: greetingCandidate(wf) }]
   return []
 }
 
-function lintNode(wf: Workflow, n: Node, telOn: boolean, outEdges: (id: string) => Edge[]): LintIssue[] {
+// A placeholder word left in by whoever (or whatever) drafted the flow, in place of a real address, number or key.
+const PLACEHOLDER_RE = /\bTODO\b/
+
+function hasPlaceholder(value: unknown): boolean {
+  if (typeof value === 'string') return PLACEHOLDER_RE.test(value)
+  if (Array.isArray(value)) return value.some(hasPlaceholder)
+  if (value && typeof value === 'object') return Object.values(value).some(hasPlaceholder)
+  return false
+}
+
+function lintPlaceholders(nodes: readonly Node[]): LintIssue[] {
+  return nodes
+    .filter((n) => n.type !== 'note' && hasPlaceholder({ ...n, position: undefined }))
+    .map((n): LintIssue => ({ severity: 'warning', message: `'${n.id}' still has a TODO placeholder that needs a real value`, nodeId: n.id }))
+}
+
+function lintKnowledgeBase(nodes: readonly Node[]): LintIssue[] {
+  return nodes.flatMap((n): LintIssue[] =>
+    n.type === 'knowledge' && n.knowledgeBase && /\s/.test(n.knowledgeBase.trim())
+      ? [{ severity: 'warning', message: `'${n.id}': knowledge base should be an agent ID or blank (this agent), not a sentence`, nodeId: n.id }]
+      : []
+  )
+}
+
+const FAILABLE_NODE_TYPES = new Set(['function', 'mcp', 'code', 'sms'])
+
+// Variables the runtime always provides (interpreter._seed_predefined_variables), so they are never "undeclared".
+const BUILTIN_VARIABLES = new Set([
+  'wcalling_number', 'wcurrent_date', 'wcurrent_time', 'wcurrent_day', 'wtoday', 'wtoday_plus_7', 'MOBILE_NO',
+])
+
+const EXPR_STRING_RE = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g
+const EXPR_WORD_RE = /(?<![\w.])([A-Za-z_]\w*)/g
+const EXPR_KEYWORDS = new Set(['and', 'or', 'not', 'in', 'true', 'false', 'null', 'True', 'False', 'None'])
+
+/** Variable names a logic expression reads (not keywords, quoted text, or the `.field` of `a.field`). */
+function expressionNames(expr: string): Set<string> {
+  const bare = (expr ?? '').replaceAll(EXPR_STRING_RE, ' ')
+  const names = new Set<string>()
+  for (const m of bare.matchAll(EXPR_WORD_RE)) if (!EXPR_KEYWORDS.has(m[1])) names.add(m[1])
+  return names
+}
+
+/** Characters LiveKit allows in a tool name are [a-zA-Z0-9_-]; anything else becomes `_`, and edge underscores go.
+ * (A loop rather than /_+$/ so a long run of underscores can never make the regex slow.) */
+function safeToolSegment(raw: string): string {
+  const s = raw.replaceAll(/[^a-zA-Z0-9_-]+/g, '_')
+  let start = 0
+  let end = s.length
+  while (start < end && s[start] === '_') start++
+  while (end > start && s[end - 1] === '_') end--
+  return s.slice(start, end)
+}
+
+// Same tool-name rules as the runtime (workflow/tools.py: function_tool_name / language_tool_name).
+const functionToolName = (name: string | null | undefined, id: string) => safeToolSegment(name || id) || 'call_api'
+const languageToolName = (toolName: string) => {
+  const safe = safeToolSegment(toolName) || 'switch_language'
+  return /^\d/.test(safe) ? `_${safe}` : safe
+}
+
+// Same tool-name rule as the runtime's sanitize_tool_name (workflow/tools.py).
+const toolName = (id: string) => `go_${safeToolSegment(id) || 'node'}`
+
+// Edge-kind mistakes the interpreter silently tolerates (ignores the edge or
+// takes the first match) — mirror of workflow/linter.py:_lint_routing.
+function lintRouting(n: Node, outs: Edge[]): LintIssue[] {
+  const issues: LintIssue[] = []
+  const add = (severity: Severity, message: string) => issues.push({ severity, message, nodeId: n.id })
+  if (FAILABLE_NODE_TYPES.has(n.type) && outs.length > 0 && !outs.some((e) => e.kind === 'fallback'))
+    add('warning', `'${n.id}' has no Fallback edge — if the ${n.type} call fails the workflow continues down the success path with an error saved in the variable.`)
+  if (n.type !== 'logic_split' && outs.some((e) => e.kind === 'logic'))
+    add('warning', `'${n.id}' has a logic edge but is a ${n.type} node — logic edges are only evaluated on logic_split.`)
+  if (n.type === 'conversation' && (n as { skipUserResponse?: boolean }).skipUserResponse && outs.some((e) => e.kind === 'condition'))
+    add('warning', `'${n.id}' skips the user response, so its condition edges are never evaluated — use an Always/Fallback edge.`)
+  for (const kind of ['always', 'fallback'] as const) {
+    if (outs.filter((e) => e.kind === kind).length > 1) add('warning', `'${n.id}' has more than one ${kind} edge — only the first is ever taken.`)
+  }
+  issues.push(...lintHandoffNameCollisions(n, outs))
+  return issues
+}
+
+// Two target ids that sanitize to the same go_* handoff tool name (LiveKit rejects the duplicate).
+function lintHandoffNameCollisions(n: Node, outs: Edge[]): LintIssue[] {
+  if (!LLM_NODE_TYPES.has(n.type)) return []
+  const byName = new Map<string, Set<string>>()
+  for (const e of outs) byName.set(toolName(e.target), (byName.get(toolName(e.target)) ?? new Set()).add(e.target))
+  return [...byName]
+    .filter(([, targets]) => targets.size > 1)
+    .map(([name, targets]) => ({
+      severity: 'error' as const,
+      message: `'${n.id}' targets ${[...targets].sort((a, b) => a.localeCompare(b)).join(', ')} map to the same tool name '${name}' — rename one node id.`,
+      nodeId: n.id,
+    }))
+}
+
+/** Targets a speaking node exposes as handoff tools (interpreter._handoff_tools). */
+function handoffTargets(n: Node, outs: Edge[]): string[] {
+  let edges: Edge[]
+  if (n.type === 'extract_variable') edges = outs.filter((e) => e.kind === 'condition' && e.condition)
+  else if ((n as { skipUserResponse?: boolean }).skipUserResponse) return []
+  else edges = outs.filter((e) => e.kind === 'condition' || e.kind === 'always' || e.kind === 'fallback')
+  return [...new Set(edges.map((e) => e.target))].sort((a, b) => a.localeCompare(b))
+}
+
+// Who owns each tool name on one speaking node: handoffs (go_*), attached functions, language switches and the
+// capture tool all share one namespace.
+function collectToolOwners(wf: Workflow, n: Node, nodeMap: Map<string, Node>, outs: Edge[]): Map<string, string[]> {
+  const owners = new Map<string, string[]>()
+  const add = (name: string, label: string) => owners.set(name, [...(owners.get(name) ?? []), label])
+  for (const target of handoffTargets(n, outs)) add(toolName(target), `edge to '${target}'`)
+  for (const fid of (n as { functions?: string[] }).functions ?? []) {
+    const f = nodeMap.get(fid)
+    if (f?.type === 'function') add(functionToolName((f as { name?: string | null }).name, f.id), `function '${fid}'`)
+  }
+  for (const lang of wf.agent?.languages ?? []) add(languageToolName(lang.tool_name), `language '${lang.language_code}'`)
+  if (n.type === 'extract_variable') add('save_extracted', 'the capture tool')
+  return owners
+}
+
+// LiveKit rejects a duplicate tool name, so the call fails before the first word.
+function lintToolNames(wf: Workflow, n: Node, nodeMap: Map<string, Node>, outs: Edge[]): LintIssue[] {
+  if (!LLM_NODE_TYPES.has(n.type)) return []
+  const issues: LintIssue[] = []
+  for (const [name, labels] of collectToolOwners(wf, n, nodeMap, outs)) {
+    if (labels.length > 1 && !labels.every((l) => l.startsWith('edge to')))
+      issues.push({
+        severity: 'error',
+        message: `'${n.id}' has several tools named '${name}' (${labels.join('; ')}) — LiveKit rejects duplicate tool names, so the call fails to start. Rename one.`,
+        nodeId: n.id,
+      })
+  }
+  for (const fid of (n as { functions?: string[] }).functions ?? []) {
+    if (nodeMap.get(fid)?.type !== 'function')
+      issues.push({ severity: 'warning', message: `'${n.id}' attaches '${fid}', which is not a function node — it is ignored at runtime.`, nodeId: n.id })
+  }
+  return issues
+}
+
+function lintNode(wf: Workflow, n: Node, telOn: boolean, nodeMap: Map<string, Node>, outEdges: (id: string) => Edge[]): LintIssue[] {
   const issues: LintIssue[] = []
   const req = REQUIRED.find((r) => r.type === n.type)
   if (req && !req.ok(n)) issues.push({ severity: 'warning', message: req.msg, nodeId: n.id })
@@ -118,6 +273,7 @@ function lintNode(wf: Workflow, n: Node, telOn: boolean, outEdges: (id: string) 
         nodeId: n.id,
       })
   }
+  issues.push(...lintRouting(n, outEdges(n.id)), ...lintToolNames(wf, n, nodeMap, outEdges(n.id)))
   if (TELEPHONY_NODE_TYPES.has(n.type) && !telOn)
     issues.push({ severity: 'error', message: `${n.type} node requires the telephony transport`, nodeId: n.id })
   if (n.type === 'code') {
@@ -158,6 +314,12 @@ function lintEdge(e: Edge, idSet: Set<string>, nodeMap: Map<string, Node>): Lint
     issues.push({ severity: 'error', message: 'condition edge needs condition text', edgeId: e.id })
   if (e.kind === 'logic' && !e.expression?.trim())
     issues.push({ severity: 'error', message: 'logic edge needs an expression', edgeId: e.id })
+  if (idSet.has(e.target) && NONRUNTIME_NODE_TYPES.has(nodeMap.get(e.target)!.type))
+    issues.push({
+      severity: 'warning',
+      message: `edge target '${e.target}' is a ${nodeMap.get(e.target)!.type} node — it only exists on the canvas, so this edge goes nowhere at runtime and the call ends there.`,
+      edgeId: e.id,
+    })
   // A condition edge only becomes an LLM handoff tool for LLM_NODE_TYPES sources
   // (see interpreter._handoff_tools). On any other node type it's never
   // evaluated — the default-target fallback picks it regardless of the text.
@@ -218,7 +380,7 @@ export function collectAllVarRefs(wf: Workflow): string[] {
 // field instead of one. A warning, not an error: this can't see every way a
 // name might become valid, so it flags rather than blocks.
 function lintUnknownVariables(wf: Workflow): LintIssue[] {
-  const known = knownVariableNames(wf)
+  const known = new Set([...knownVariableNames(wf), ...BUILTIN_VARIABLES])
   const issues: LintIssue[] = []
   for (const n of wf.nodes) {
     const refs: string[] = []
@@ -246,6 +408,23 @@ function lintUnknownVariables(wf: Workflow): LintIssue[] {
         message: `agent.globalPrompt references undeclared variable(s) ${refList}`,
       })
     }
+  }
+  return issues
+}
+
+// An undeclared name in a logic expression reads as null (so the branch just doesn't match) — usually a typo.
+function lintLogicVariables(wf: Workflow): LintIssue[] {
+  const known = new Set([...knownVariableNames(wf), ...BUILTIN_VARIABLES])
+  const issues: LintIssue[] = []
+  for (const e of wf.edges) {
+    if (e.kind !== 'logic' || !e.expression?.trim()) continue
+    const unknown = [...expressionNames(e.expression)].filter((name) => !known.has(name)).sort((a, b) => a.localeCompare(b))
+    if (unknown.length)
+      issues.push({
+        severity: 'warning',
+        message: `logic expression '${e.expression}' reads undeclared variable(s) ${unknown.join(', ')} — they are null at runtime, so this branch never matches. Check spelling against Variables / saveAs fields.`,
+        edgeId: e.id,
+      })
   }
   return issues
 }
@@ -279,7 +458,9 @@ function collectToolNodeIds(wf: Workflow, nodeMap: Map<string, Node>): Set<strin
   return toolNodeIds
 }
 
-export function lintWorkflow(wf: Workflow): LintIssue[] {
+export function lintWorkflow(source: Workflow): LintIssue[] {
+  const ruleIssues = lintGlobalRules(source)
+  const wf = expandGlobalRules(source)
   const idSet = new Set(wf.nodes.map((n) => n.id))
   const nodeMap = new Map(wf.nodes.map((n) => [n.id, n]))
   const outEdges = (id: string) => wf.edges.filter((e) => e.source === id)
@@ -291,14 +472,18 @@ export function lintWorkflow(wf: Workflow): LintIssue[] {
     ? [{ severity: 'error', message: 'No transport enabled (enable web and/or telephony)' }]
     : []
   return [
+    ...ruleIssues,
     ...lintIds(wf.nodes),
     ...transportIssue,
     ...lintStart(wf, idSet, nodeMap),
-    ...wf.nodes.flatMap((n) => lintNode(wf, n, telOn, outEdges)),
+    ...wf.nodes.flatMap((n) => lintNode(wf, n, telOn, nodeMap, outEdges)),
     ...lintSaveAs(wf.nodes),
+    ...lintKnowledgeBase(wf.nodes),
+    ...lintPlaceholders(wf.nodes),
     ...wf.edges.flatMap((e) => lintEdge(e, idSet, nodeMap)),
     ...lintReachability(wf, toolNodeIds, outEdges),
     ...lintUnknownVariables(wf),
+    ...lintLogicVariables(wf),
   ]
 }
 
@@ -317,6 +502,13 @@ function reachableSet(wf: Workflow): Set<string> {
     ;(adj.get(cur) || []).forEach((t) => stack.push(t))
   }
   return seen
+}
+
+function lintGlobalRules(wf: Workflow): LintIssue[] {
+  const ids = new Set(wf.nodes.map((n) => n.id))
+  return (wf.globalRules ?? []).flatMap((r): LintIssue[] =>
+    ids.has(r.target) ? [] : [{ severity: 'error', message: `global rule '${r.id}' points at '${r.target}', which does not exist` }]
+  )
 }
 
 export function hasErrors(issues: LintIssue[]): boolean {
