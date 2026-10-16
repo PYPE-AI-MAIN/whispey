@@ -63,7 +63,7 @@ export const GET = guarded('analytics/fields', async (req: NextRequest) => {
    *
    * Applied here rather than in the rescan so it also reaches a cached catalog
    * — editing the extractor prompt should change the picker on the next load,
-   * not six hours later.
+   * not hours later.
    *
    * The prompt itself is only shown to people the agent route already shows it
    * to; the *types* it implies are not sensitive, being derivable from the data

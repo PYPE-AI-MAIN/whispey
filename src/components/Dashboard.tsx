@@ -318,7 +318,8 @@ function useDateFilter(agentId: string, activeTab: string, onQuickPick: () => vo
     }
     const days = ({ '1d': 1, '7d': 7, '30d': 30 } as Record<string, number>)[quickFilter] ?? 7
     const to = new Date()
-    return { from: subDays(to, days), to }
+    // calendar days including today, as the Overview charts count them: 1D is today, 7D is today and the 6 days before
+    return { from: subDays(to, days - 1), to }
   }, [quickFilter, isCustomRange, stored.dateFrom, stored.dateTo])
 
   const customRangeLabel = isCustomRange && dateRange.from && dateRange.to
