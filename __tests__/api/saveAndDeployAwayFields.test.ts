@@ -9,7 +9,6 @@ vi.mock('@/lib/whispey-crypto', () => ({ decryptWithWhispeyKey: () => '' }))
 
 import { POST } from '@/app/api/agents/save-and-deploy/route'
 import { getDefaultFormValues } from '@/hooks/useAgentConfig'
-import { DEFAULT_AWAY_INSTRUCTIONS } from '@/config/agentDefaults'
 import { buildAssistantSessionBehaviorPayload } from '@/hooks/useMultiAssistantState'
 
 const formWith = (session: any) => {
@@ -38,47 +37,43 @@ describe('save payload carries the dynamic user-away fields', () => {
   beforeEach(() => deploy.mockClear())
 
   it('save-and-deploy route (form structure)', async () => {
-    const sb = await post({ user_away_timeout_mode: 'dynamic', user_away_instructions: 'Be formal, Hinglish' })
+    const sb = await post({ user_away_timeout_mode: 'dynamic' })
     expect(sb.user_away_timeout_mode).toBe('dynamic')
-    expect(sb.user_away_instructions).toBe('Be formal, Hinglish')
   })
 
-  it('route omits empty instructions and defaults to static', async () => {
-    const sb = await post({ user_away_instructions: '' })
-    expect(sb.user_away_timeout_mode).toBe('static')
-    expect('user_away_instructions' in sb).toBe(false)
-  })
-
-  it('does not send the built-in default text (the backend default keeps applying)', async () => {
-    const sb = await post({ user_away_timeout_mode: 'dynamic', user_away_instructions: DEFAULT_AWAY_INSTRUCTIONS })
-    expect(sb.user_away_timeout_mode).toBe('dynamic')
-    expect('user_away_instructions' in sb).toBe(false)
-  })
-
-  it('sends instructions the owner customised, trimmed', async () => {
-    const sb = await post({ user_away_timeout_mode: 'dynamic', user_away_instructions: '  Be brief and formal.  ' })
-    expect(sb.user_away_instructions).toBe('Be brief and formal.')
-  })
-
-  it('a new agent saved without touching anything stays static with no instructions', async () => {
+  it('a new agent saved without touching anything stays static', async () => {
     const sb = await post({})
     expect(sb.user_away_timeout_mode).toBe('static')
-    expect('user_away_instructions' in sb).toBe(false)
   })
 
   it('coexists with the eod_silence_seconds setting in the same payload', async () => {
-    const sb = await post({ user_away_timeout_mode: 'dynamic', user_away_instructions: 'Be formal', eod_silence_seconds: 5 })
+    const sb = await post({ user_away_timeout_mode: 'dynamic', eod_silence_seconds: 5 })
     expect(sb.user_away_timeout_mode).toBe('dynamic')
-    expect(sb.user_away_instructions).toBe('Be formal')
     expect(sb.eod_silence_seconds).toBe(5)
   })
 
+  it('sends a custom dynamic message prompt, trimmed', async () => {
+    const sb = await post({ user_away_timeout_mode: 'dynamic', user_away_prompt: '  Write one calm line.  ' })
+    expect(sb.user_away_prompt).toBe('Write one calm line.')
+  })
+
+  it.each([
+    ['undefined', undefined], ['null', null], ['an empty string', ''], ['blank text', '   '],
+    ['a number', 42], ['text over the cap', 'x'.repeat(6001)],
+  ])('does not send %s as a dynamic message prompt', async (_label, v) => {
+    const sb = await post({ user_away_timeout_mode: 'dynamic', user_away_prompt: v })
+    expect('user_away_prompt' in sb).toBe(false)
+  })
+
+  it('the multi-assistant builder carries the prompt only when the owner wrote one', () => {
+    expect(buildAssistantSessionBehaviorPayload(formWith({ user_away_prompt: ' Be brief. ' })).user_away_prompt).toBe('Be brief.')
+    expect('user_away_prompt' in buildAssistantSessionBehaviorPayload(formWith({ user_away_prompt: '' }))).toBe(false)
+    expect('user_away_prompt' in buildAssistantSessionBehaviorPayload(formWith({}))).toBe(false)
+  })
+
   it('multi-assistant payload builder', () => {
-    const sb = buildAssistantSessionBehaviorPayload(formWith({ user_away_timeout_mode: 'dynamic', user_away_instructions: 'Be brief' }))
+    const sb = buildAssistantSessionBehaviorPayload(formWith({ user_away_timeout_mode: 'dynamic' }))
     expect(sb.user_away_timeout_mode).toBe('dynamic')
-    expect(sb.user_away_instructions).toBe('Be brief')
-    expect('user_away_instructions' in buildAssistantSessionBehaviorPayload(formWith({ user_away_instructions: '' }))).toBe(false)
-    expect('user_away_instructions' in buildAssistantSessionBehaviorPayload(formWith({ user_away_instructions: DEFAULT_AWAY_INSTRUCTIONS }))).toBe(false)
     const both = buildAssistantSessionBehaviorPayload(formWith({ user_away_timeout_mode: 'dynamic', eod_silence_seconds: 7 }))
     expect(both.user_away_timeout_mode).toBe('dynamic')
     expect(both.eod_silence_seconds).toBe(7)

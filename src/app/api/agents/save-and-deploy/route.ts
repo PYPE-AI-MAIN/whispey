@@ -5,7 +5,7 @@ import { createServiceRoleClient } from '@/lib/supabase-server'
 import { deployAgentConfig } from '@/lib/deployAgentConfig'
 import { resolveDeploymentTargetForUser } from '@/lib/resolveDeploymentTarget'
 import { RAYA_PROVIDER, rayaConfigFromTts, rayaTtsPayload } from '@/lib/tts/raya'
-import { customAwayInstructions } from '@/config/agentDefaults'
+import { clampAwayTimeout, customAwayPrompt } from '@/config/agentDefaults'
 
 // Deploying to a running agent hot-reloads its worker on the backend (20-30s);
 // don't let Vercel kill this route at the default 10-15s.
@@ -435,7 +435,7 @@ function buildRouteSessionBehaviorPayload(formikValues: any): any {
     ...(session.endpointing_mode && { endpointing_mode: session.endpointing_mode }),
     // interruption_mode is intentionally omitted here — it's sent at the top level
     // (see transformFormDataToAgentConfig) and the backend hoists it into session_behavior on save.
-    ...(session.user_away_timeout !== undefined && { user_away_timeout: session.user_away_timeout }),
+    ...(clampAwayTimeout(session.user_away_timeout) !== undefined && { user_away_timeout: clampAwayTimeout(session.user_away_timeout) }),
     ...(session.user_away_timeout_message !== undefined && session.user_away_timeout_message !== null && session.user_away_timeout_message !== '' && {
       user_away_timeout_message: session.user_away_timeout_message
     }),
@@ -446,8 +446,8 @@ function buildRouteSessionBehaviorPayload(formikValues: any): any {
     ...(session.user_away_timeout_mode !== undefined && session.user_away_timeout_mode !== null && {
       user_away_timeout_mode: session.user_away_timeout_mode
     }),
-    ...(customAwayInstructions(session.user_away_instructions) !== undefined && {
-      user_away_instructions: customAwayInstructions(session.user_away_instructions)
+    ...(customAwayPrompt(session.user_away_prompt) !== undefined && {
+      user_away_prompt: customAwayPrompt(session.user_away_prompt)
     }),
     ...(session.eod_silence_seconds !== undefined && session.eod_silence_seconds !== null && { eod_silence_seconds: session.eod_silence_seconds })
   }

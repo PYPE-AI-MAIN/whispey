@@ -61,7 +61,7 @@ interface AgentAdvancedSettingsProps {
         user_away_timeout_max_count?: number
         user_away_timeout_end_message?: string
         user_away_timeout_mode?: 'static' | 'dynamic'
-        user_away_instructions?: string
+        user_away_prompt?: string
         eod_silence_seconds?: number
       }
       tools: {
@@ -310,7 +310,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, promptVariable
               user_away_timeout_max_count={advancedSettings.session.user_away_timeout_max_count}
               user_away_timeout_end_message={advancedSettings.session.user_away_timeout_end_message}
               user_away_timeout_mode={advancedSettings.session.user_away_timeout_mode}
-              user_away_instructions={advancedSettings.session.user_away_instructions}
+              user_away_prompt={advancedSettings.session.user_away_prompt}
               eod_silence_seconds={advancedSettings.session.eod_silence_seconds}
               onFieldChange={onFieldChange}
             />

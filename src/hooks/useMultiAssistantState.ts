@@ -1,7 +1,7 @@
 // hooks/useMultiAssistantState.ts
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { FormikProps } from 'formik'
-import { customAwayInstructions, getFallback } from '@/config/agentDefaults'
+import { clampAwayTimeout, customAwayPrompt, getFallback } from '@/config/agentDefaults'
 import { getModelBaseUrl } from '@/components/agents/AgentConfig/ModelSelector'
 import { RAYA_PROVIDER, rayaConfigFromTts, rayaTtsPayload } from '@/lib/tts/raya'
 
@@ -249,8 +249,8 @@ export function buildAssistantSessionBehaviorPayload(formValues: any): any {
     }),
     // interruption_mode is intentionally omitted here — it's sent at the top level
     // above and the backend hoists it into session_behavior on save.
-    ...(formValues.advancedSettings?.session?.user_away_timeout !== undefined && {
-      user_away_timeout: formValues.advancedSettings.session.user_away_timeout
+    ...(clampAwayTimeout(formValues.advancedSettings?.session?.user_away_timeout) !== undefined && {
+      user_away_timeout: clampAwayTimeout(formValues.advancedSettings?.session?.user_away_timeout)
     }),
     ...(formValues.advancedSettings?.session?.user_away_timeout_message !== undefined && formValues.advancedSettings.session.user_away_timeout_message !== null && {
       user_away_timeout_message: formValues.advancedSettings.session.user_away_timeout_message
@@ -264,8 +264,8 @@ export function buildAssistantSessionBehaviorPayload(formValues: any): any {
     ...(formValues.advancedSettings?.session?.user_away_timeout_mode !== undefined && formValues.advancedSettings.session.user_away_timeout_mode !== null && {
       user_away_timeout_mode: formValues.advancedSettings.session.user_away_timeout_mode
     }),
-    ...(customAwayInstructions(formValues.advancedSettings?.session?.user_away_instructions) !== undefined && {
-      user_away_instructions: customAwayInstructions(formValues.advancedSettings.session.user_away_instructions)
+    ...(customAwayPrompt(formValues.advancedSettings?.session?.user_away_prompt) !== undefined && {
+      user_away_prompt: customAwayPrompt(formValues.advancedSettings.session.user_away_prompt)
     }),
     ...(formValues.advancedSettings?.session?.eod_silence_seconds !== undefined && formValues.advancedSettings.session.eod_silence_seconds !== null && {
       eod_silence_seconds: formValues.advancedSettings.session.eod_silence_seconds

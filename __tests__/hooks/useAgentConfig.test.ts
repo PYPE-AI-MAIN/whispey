@@ -83,23 +83,24 @@ describe('buildFormValuesFromAgent — dynamic user-away message', () => {
   const session = (sb: any) =>
     (buildFormValuesFromAgent({ ...base, session_behavior: sb }, {}) as any).advancedSettings.session
 
-  it('restores dynamic mode and the owner instructions', () => {
-    const s = session({ user_away_timeout_mode: 'dynamic', user_away_instructions: 'Be formal' })
+  it('restores dynamic mode', () => {
+    const s = session({ user_away_timeout_mode: 'dynamic' })
     expect(s.user_away_timeout_mode).toBe('dynamic')
-    expect(s.user_away_instructions).toBe('Be formal')
   })
 
-  it('defaults to static with no instructions when nothing is saved', () => {
+  it('defaults to static when nothing is saved', () => {
     const s = session({})
     expect(s.user_away_timeout_mode).toBe('static')
-    expect(s.user_away_instructions).toBeUndefined()
+  })
+
+  it('restores a saved dynamic message prompt and leaves it undefined when absent or blank', () => {
+    expect(session({ user_away_timeout_mode: 'dynamic', user_away_prompt: 'Be brief.' }).user_away_prompt).toBe('Be brief.')
+    expect(session({}).user_away_prompt).toBeUndefined()
+    expect(session({ user_away_prompt: '' }).user_away_prompt).toBeUndefined()
+    expect(session({ user_away_prompt: '   ' }).user_away_prompt).toBeUndefined()
   })
 
   it('treats any unknown mode value as static', () => {
     expect(session({ user_away_timeout_mode: 'DYNAMIC!' }).user_away_timeout_mode).toBe('static')
-  })
-
-  it('does not surface an empty instructions string', () => {
-    expect(session({ user_away_instructions: '' }).user_away_instructions).toBeUndefined()
   })
 })
