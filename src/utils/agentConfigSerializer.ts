@@ -92,6 +92,8 @@ export interface SerializedAgentConfig {
         user_away_timeout_message?: string
         user_away_timeout_max_count?: number
         user_away_timeout_end_message?: string
+        user_away_timeout_mode?: 'static' | 'dynamic'
+        user_away_prompt?: string
         eod_silence_seconds?: number
       }
       tools: {

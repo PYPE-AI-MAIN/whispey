@@ -1,6 +1,6 @@
 // hooks/useAgentConfig.ts
 import { useState, useEffect } from "react"
-import { AGENT_DEFAULT_CONFIG, getFallback, getFormDefaults } from "@/config/agentDefaults"
+import { AGENT_DEFAULT_CONFIG, clampAwayTimeout, customAwayPrompt, getFallback, getFormDefaults } from "@/config/agentDefaults"
 import { languageOptions } from "@/utils/constants"
 import { RAYA_PROVIDER, rayaConfigFromTts } from "@/lib/tts/raya"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
@@ -184,6 +184,8 @@ export interface AgentConfigResponse {
         user_away_timeout_message?: string
         user_away_timeout_max_count?: number
         user_away_timeout_end_message?: string
+        user_away_timeout_mode?: "static" | "dynamic"
+        user_away_prompt?: string
         eod_silence_seconds?: number
       }
       dynamic_tts?: Array<{
@@ -1002,10 +1004,12 @@ export const buildFormValuesFromAgent = (assistant: any, agent?: any) => {
         max_endpointing_delay: sessionBehavior.max_endpointing_delay ?? getFallback(null, 'session_behavior.max_endpointing_delay'),
         endpointing_mode: sessionBehavior.endpointing_mode ?? null,
         interruption_mode: assistant.interruption_mode ?? sessionBehavior.interruption_mode ?? null,
-        user_away_timeout: sessionBehavior.user_away_timeout !== undefined && sessionBehavior.user_away_timeout !== null ? sessionBehavior.user_away_timeout : undefined,
+        user_away_timeout: clampAwayTimeout(sessionBehavior.user_away_timeout),
         user_away_timeout_message: sessionBehavior.user_away_timeout_message !== undefined && sessionBehavior.user_away_timeout_message !== null && sessionBehavior.user_away_timeout_message !== '' ? sessionBehavior.user_away_timeout_message : undefined,
         user_away_timeout_max_count: sessionBehavior.user_away_timeout_max_count !== undefined && sessionBehavior.user_away_timeout_max_count !== null ? sessionBehavior.user_away_timeout_max_count : undefined,
         user_away_timeout_end_message: sessionBehavior.user_away_timeout_end_message !== undefined && sessionBehavior.user_away_timeout_end_message !== null && sessionBehavior.user_away_timeout_end_message !== '' ? sessionBehavior.user_away_timeout_end_message : undefined,
+        user_away_timeout_mode: (sessionBehavior.user_away_timeout_mode === 'dynamic' ? 'dynamic' : 'static') as 'static' | 'dynamic',
+        user_away_prompt: customAwayPrompt(sessionBehavior.user_away_prompt),
         eod_silence_seconds: sessionBehavior.eod_silence_seconds ?? undefined
       },
       tools: {
