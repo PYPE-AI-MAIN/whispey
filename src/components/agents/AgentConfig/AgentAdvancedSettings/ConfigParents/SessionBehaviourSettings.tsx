@@ -105,13 +105,13 @@ export default function SessionBehaviourSettings({
     }
 
     // Allow partial decimals like "0." or "1."
-    if (value.endsWith('.') && !Number.isNaN(parseFloat(value.slice(0, -1)))) {
+    if (value.endsWith('.') && !Number.isNaN(Number.parseFloat(value.slice(0, -1)))) {
       setter(value)
       return
     }
 
     // Validate it's a number
-    const numValue = parseFloat(value)
+    const numValue = Number.parseFloat(value)
     if (Number.isNaN(numValue)) {
       return // Don't update if invalid
     }
@@ -135,7 +135,7 @@ export default function SessionBehaviourSettings({
     max?: number
   ) => {
     // If empty, default to 0 (not the original default value)
-    if (value === '' || value === '.' || Number.isNaN(parseFloat(value))) {
+    if (value === '' || value === '.' || Number.isNaN(Number.parseFloat(value))) {
       setter('0')
       onFieldChange(field, 0)
       return
@@ -145,12 +145,12 @@ export default function SessionBehaviourSettings({
     if (value.endsWith('.')) {
       const cleanValue = value.slice(0, -1) || '0'
       setter(cleanValue)
-      onFieldChange(field, parseFloat(cleanValue))
+      onFieldChange(field, Number.parseFloat(cleanValue))
       return
     }
 
     // Apply final constraints
-    let numValue = parseFloat(value)
+    let numValue = Number.parseFloat(value)
     if (numValue < min) numValue = min
     if (max !== undefined && numValue > max) numValue = max
     
@@ -460,7 +460,7 @@ export default function SessionBehaviourSettings({
               if (value === '') {
                 onFieldChange('advancedSettings.session.user_away_timeout', undefined)
               } else {
-                const numValue = parseFloat(value)
+                const numValue = Number.parseFloat(value)
                 if (!Number.isNaN(numValue) && numValue >= MIN_AWAY_TIMEOUT_SECONDS) {
                   onFieldChange('advancedSettings.session.user_away_timeout', numValue)
                 }
@@ -468,11 +468,11 @@ export default function SessionBehaviourSettings({
             }}
             onBlur={(e) => {
               const value = e.target.value
-              if (value === '' || Number.isNaN(parseFloat(value))) {
+              if (value === '' || Number.isNaN(Number.parseFloat(value))) {
                 setUserAwayTimeoutInput('')
                 onFieldChange('advancedSettings.session.user_away_timeout', undefined)
               } else {
-                const numValue = parseFloat(value)
+                const numValue = Number.parseFloat(value)
                 if (numValue < MIN_AWAY_TIMEOUT_SECONDS) {
                   setUserAwayTimeoutInput(String(MIN_AWAY_TIMEOUT_SECONDS))
                   onFieldChange('advancedSettings.session.user_away_timeout', MIN_AWAY_TIMEOUT_SECONDS)
@@ -586,7 +586,7 @@ export default function SessionBehaviourSettings({
               if (value === '') {
                 onFieldChange('advancedSettings.session.user_away_timeout_max_count', undefined)
               } else {
-                const numValue = parseInt(value, 10)
+                const numValue = Number.parseInt(value, 10)
                 if (!Number.isNaN(numValue) && numValue >= 1) {
                   onFieldChange('advancedSettings.session.user_away_timeout_max_count', numValue)
                 }
@@ -594,11 +594,11 @@ export default function SessionBehaviourSettings({
             }}
             onBlur={(e) => {
               const value = e.target.value
-              if (value === '' || Number.isNaN(parseInt(value, 10))) {
+              if (value === '' || Number.isNaN(Number.parseInt(value, 10))) {
                 setUserAwayMaxCountInput('')
                 onFieldChange('advancedSettings.session.user_away_timeout_max_count', undefined)
               } else {
-                const numValue = Math.max(1, parseInt(value, 10))
+                const numValue = Math.max(1, Number.parseInt(value, 10))
                 setUserAwayMaxCountInput(String(numValue))
                 onFieldChange('advancedSettings.session.user_away_timeout_max_count', numValue)
               }
