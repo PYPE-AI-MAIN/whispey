@@ -185,6 +185,8 @@ const Dedupe = z.object({
     fallback: z.enum(['call_id', 'none']).default('call_id'),
   }),
   winner: z.enum(['best_outcome', 'most_recent', 'first']).default('best_outcome'),
+  /** Only calls that were answered (completed / transfer_failed) compete — so "most_recent" means the last answered call, not an unanswered retry. */
+  answered_only: z.boolean().default(false),
   /** Which field carries the outcome. Required when winner = 'best_outcome'. */
   outcome: Ref.optional(),
   /** Where the outcome order comes from. The route resolves it into `ranking`. */

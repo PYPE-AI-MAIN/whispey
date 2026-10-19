@@ -834,6 +834,14 @@ describe('the same phone number written three ways is one person', () => {
     expect(sql).toMatch(/PARTITION BY .*regexp_replace/s)
   })
 
+  it('answered_only limits the one-per-patient scan to answered calls', () => {
+    const dedupe = { key: { field: { col: 'customer_number' }, fallback: 'call_id' }, winner: 'most_recent', lookback_days: 30 }
+    const run = (answered_only: boolean) =>
+      buildQuery(parse({ ...base, grain: 'entity', dedupe: { ...dedupe, answered_only } }), ctx, 'aggregate')
+    expect(run(true).params).toContainEqual(['completed', 'transfer_failed'])
+    expect(run(false).params).not.toContainEqual(['completed', 'transfer_failed'])
+  })
+
   it('does not touch a field that is not a phone number', () => {
     const { sql } = buildQuery(
       parse({ ...base, agg: { fn: 'count_distinct', field: { col: 'call_ended_reason' } } }),
