@@ -463,6 +463,11 @@ function ChartSettings({
   onChangeTitle: (title: string) => void
 }>) {
   const spec = widget.spec
+  let dedupeNote = 'Repeat calls collapse to one row, keeping the last call.'
+  if (spec.dedupe?.winner === 'best_outcome') dedupeNote = 'Repeat calls collapse to one row, keeping the best outcome from the agent’s order.'
+  else if (spec.dedupe?.answered_only) dedupeNote = 'Repeat calls collapse to one row, keeping the last answered call.'
+  let dedupePick = 'best_outcome'
+  if (spec.dedupe?.winner === 'most_recent') dedupePick = spec.dedupe.answered_only ? 'last_answered' : 'most_recent'
   const calculation = CALCULATIONS.find((c) => c.fn === spec.agg?.fn) ?? CALCULATIONS[0]
 
   const usable = useMemo(() => {
@@ -719,12 +724,43 @@ function ChartSettings({
         />
         {spec.grain === 'entity' && (
           <p className="mt-1 text-[11px] text-muted-foreground">
-            {spec.dedupe?.winner === 'best_outcome'
-              ? 'Repeat calls collapse to one row, keeping the best outcome from the agent’s order.'
-              : 'Repeat calls collapse to one row, keeping the most recent attempt.'}
+            {dedupeNote}
           </p>
         )}
       </Row>
+
+      {spec.grain === 'entity' && spec.dedupe && (
+        <Row label="Which call counts">
+          <Picker
+            value={dedupePick}
+            disabled={!canEdit}
+            options={[
+              { value: 'best_outcome', label: 'Best outcome', help: 'Keep the call whose outcome ranks highest in the agent’s outcome order' },
+              { value: 'last_answered', label: 'Last answered call', help: 'Keep the last call that was answered (completed or transfer failed), skipping unanswered retries' },
+              { value: 'most_recent', label: 'Last call', help: 'Keep the last call’s outcome, even if it was not answered' },
+            ]}
+            onChange={(winner) => {
+              const d = spec.dedupe!
+              if (winner === 'most_recent') return setSpec({ dedupe: { ...d, winner: 'most_recent', answered_only: false } })
+              if (winner === 'last_answered') return setSpec({ dedupe: { ...d, winner: 'most_recent', answered_only: true } })
+              if (!outcome) return
+              setSpec({
+                dedupe: {
+                  ...d,
+                  winner: 'best_outcome',
+                  answered_only: false,
+                  outcome: { col: outcome.col, ...(outcome.path.length ? { path: outcome.path } : {}) },
+                  ranking_ref: 'agent',
+                  ranking: undefined,
+                },
+              })
+            }}
+          />
+          {!outcome && (
+            <p className="mt-1 text-[11px] text-muted-foreground">Set an outcome order for this agent to rank by best outcome.</p>
+          )}
+        </Row>
+      )}
 
       {/* a count with a filter on it is not "how many calls" — this is where
           "Completed calls" stops being a number with no definition */}

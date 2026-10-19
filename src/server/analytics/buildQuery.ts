@@ -423,6 +423,9 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
     }
   }
   where.push(...conjunction(spec.filters, 'l'))
+  if (spec.grain === 'entity' && spec.dedupe?.answered_only) {
+    where.push(`l.call_ended_reason = ANY(${bind(['completed', 'transfer_failed'])}::text[])`)
+  }
 
   const scanCols = [
     'l.id',
