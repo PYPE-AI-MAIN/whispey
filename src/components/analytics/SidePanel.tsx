@@ -721,7 +721,9 @@ function ChartSettings({
           <p className="mt-1 text-[11px] text-muted-foreground">
             {spec.dedupe?.winner === 'best_outcome'
               ? 'Repeat calls collapse to one row, keeping the best outcome from the agent’s order.'
-              : 'Repeat calls collapse to one row, keeping the last call.'}
+              : spec.dedupe?.answered_only
+                ? 'Repeat calls collapse to one row, keeping the last answered call.'
+                : 'Repeat calls collapse to one row, keeping the last call.'}
           </p>
         )}
       </Row>
@@ -729,20 +731,23 @@ function ChartSettings({
       {spec.grain === 'entity' && spec.dedupe && (
         <Row label="Which call counts">
           <Picker
-            value={spec.dedupe.winner === 'most_recent' ? 'most_recent' : 'best_outcome'}
+            value={spec.dedupe.winner === 'most_recent' ? (spec.dedupe.answered_only ? 'last_answered' : 'most_recent') : 'best_outcome'}
             disabled={!canEdit}
             options={[
               { value: 'best_outcome', label: 'Best outcome', help: 'Keep the call whose outcome ranks highest in the agent’s outcome order' },
-              { value: 'most_recent', label: 'Last call', help: 'Keep the last call’s outcome, however many calls were made' },
+              { value: 'last_answered', label: 'Last answered call', help: 'Keep the last call that was answered (completed or transfer failed), skipping unanswered retries' },
+              { value: 'most_recent', label: 'Last call', help: 'Keep the last call’s outcome, even if it was not answered' },
             ]}
             onChange={(winner) => {
               const d = spec.dedupe!
-              if (winner === 'most_recent') return setSpec({ dedupe: { ...d, winner: 'most_recent' } })
+              if (winner === 'most_recent') return setSpec({ dedupe: { ...d, winner: 'most_recent', answered_only: false } })
+              if (winner === 'last_answered') return setSpec({ dedupe: { ...d, winner: 'most_recent', answered_only: true } })
               if (!outcome) return
               setSpec({
                 dedupe: {
                   ...d,
                   winner: 'best_outcome',
+                  answered_only: false,
                   outcome: { col: outcome.col, ...(outcome.path.length ? { path: outcome.path } : {}) },
                   ranking_ref: 'agent',
                   ranking: undefined,
