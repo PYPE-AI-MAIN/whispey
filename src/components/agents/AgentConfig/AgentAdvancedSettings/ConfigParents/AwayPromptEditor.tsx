@@ -34,9 +34,16 @@ export default function AwayPromptEditor({ value, onChange }: Readonly<AwayPromp
   const dirty = isAwayPromptDirty(draft, initial)
   const isBlank = text.trim() === ''
   const isDefaultText = defaults !== undefined && text.trim() === defaults.prompt.trim()
-  const preview = (value ?? defaults?.prompt ?? '').replace(/\s+/g, ' ').trim()
+  const preview = (value ?? defaults?.prompt ?? '').replaceAll(/\s+/g, ' ').trim()
   const waitingForDefault = value === undefined && query.isLoading
   const defaultFailed = value === undefined && query.isError
+
+  let previewNode = <Skeleton className="my-0.5 h-4 w-3/4" />
+  if (preview) {
+    previewNode = <span className="line-clamp-2 leading-5 text-muted-foreground">{preview}</span>
+  } else if (defaultFailed) {
+    previewNode = <span className="leading-5 text-muted-foreground">Built-in prompt (click to view)</span>
+  }
 
   const openEditor = () => {
     setDraft(null)
@@ -81,13 +88,7 @@ export default function AwayPromptEditor({ value, onChange }: Readonly<AwayPromp
           aria-label="Open dynamic message prompt editor"
           className="group relative block w-full rounded-md border border-input bg-transparent py-2 pl-3 pr-8 text-left text-xs shadow-xs transition-colors hover:border-ring/50 focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
         >
-          {preview ? (
-            <span className="line-clamp-2 leading-5 text-muted-foreground">{preview}</span>
-          ) : defaultFailed ? (
-            <span className="leading-5 text-muted-foreground">Built-in prompt (click to view)</span>
-          ) : (
-            <Skeleton className="my-0.5 h-4 w-3/4" />
-          )}
+          {previewNode}
           <Maximize2
             className="absolute right-2.5 top-2.5 h-3 w-3 text-muted-foreground transition-colors group-hover:text-foreground"
             aria-hidden="true"

@@ -7,7 +7,7 @@ import { customAwayPrompt } from '@/config/agentDefaults'
 export function awayPromptToSave(draft: string, defaultPrompt?: string): string | undefined {
   const text = customAwayPrompt(draft)
   if (text === undefined) return undefined
-  return defaultPrompt !== undefined && text === defaultPrompt.trim() ? undefined : text
+  return text === defaultPrompt?.trim() ? undefined : text
 }
 
 /** Whether the editor holds unsaved changes relative to what it opened with. */

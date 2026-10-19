@@ -105,14 +105,14 @@ export default function SessionBehaviourSettings({
     }
 
     // Allow partial decimals like "0." or "1."
-    if (value.endsWith('.') && !isNaN(parseFloat(value.slice(0, -1)))) {
+    if (value.endsWith('.') && !Number.isNaN(parseFloat(value.slice(0, -1)))) {
       setter(value)
       return
     }
 
     // Validate it's a number
     const numValue = parseFloat(value)
-    if (isNaN(numValue)) {
+    if (Number.isNaN(numValue)) {
       return // Don't update if invalid
     }
 
@@ -135,7 +135,7 @@ export default function SessionBehaviourSettings({
     max?: number
   ) => {
     // If empty, default to 0 (not the original default value)
-    if (value === '' || value === '.' || isNaN(parseFloat(value))) {
+    if (value === '' || value === '.' || Number.isNaN(parseFloat(value))) {
       setter('0')
       onFieldChange(field, 0)
       return
@@ -461,14 +461,14 @@ export default function SessionBehaviourSettings({
                 onFieldChange('advancedSettings.session.user_away_timeout', undefined)
               } else {
                 const numValue = parseFloat(value)
-                if (!isNaN(numValue) && numValue >= MIN_AWAY_TIMEOUT_SECONDS) {
+                if (!Number.isNaN(numValue) && numValue >= MIN_AWAY_TIMEOUT_SECONDS) {
                   onFieldChange('advancedSettings.session.user_away_timeout', numValue)
                 }
               }
             }}
             onBlur={(e) => {
               const value = e.target.value
-              if (value === '' || isNaN(parseFloat(value))) {
+              if (value === '' || Number.isNaN(parseFloat(value))) {
                 setUserAwayTimeoutInput('')
                 onFieldChange('advancedSettings.session.user_away_timeout', undefined)
               } else {
@@ -587,14 +587,14 @@ export default function SessionBehaviourSettings({
                 onFieldChange('advancedSettings.session.user_away_timeout_max_count', undefined)
               } else {
                 const numValue = parseInt(value, 10)
-                if (!isNaN(numValue) && numValue >= 1) {
+                if (!Number.isNaN(numValue) && numValue >= 1) {
                   onFieldChange('advancedSettings.session.user_away_timeout_max_count', numValue)
                 }
               }
             }}
             onBlur={(e) => {
               const value = e.target.value
-              if (value === '' || isNaN(parseInt(value, 10))) {
+              if (value === '' || Number.isNaN(parseInt(value, 10))) {
                 setUserAwayMaxCountInput('')
                 onFieldChange('advancedSettings.session.user_away_timeout_max_count', undefined)
               } else {
