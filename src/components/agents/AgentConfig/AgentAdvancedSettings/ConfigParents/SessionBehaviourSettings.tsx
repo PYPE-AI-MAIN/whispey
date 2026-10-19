@@ -1,8 +1,10 @@
 import React, { useState } from 'react'
+import { MIN_AWAY_TIMEOUT_SECONDS } from '@/config/agentDefaults'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Info, AlertTriangle } from 'lucide-react'
+import AwayPromptEditor from './AwayPromptEditor'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface SessionBehaviourSettingsProps {
@@ -17,9 +19,12 @@ interface SessionBehaviourSettingsProps {
   user_away_timeout_message?: string
   user_away_timeout_max_count?: number
   user_away_timeout_end_message?: string
+  user_away_timeout_mode?: 'static' | 'dynamic'
+  user_away_prompt?: string
   eod_silence_seconds?: number
   onFieldChange: (field: string, value: any) => void
 }
+
 
 export default function SessionBehaviourSettings({
   preemptiveGeneration,
@@ -33,6 +38,8 @@ export default function SessionBehaviourSettings({
   user_away_timeout_message,
   user_away_timeout_max_count,
   user_away_timeout_end_message,
+  user_away_timeout_mode = 'static',
+  user_away_prompt,
   eod_silence_seconds,
   onFieldChange
 }: Readonly<SessionBehaviourSettingsProps>) {
@@ -98,14 +105,14 @@ export default function SessionBehaviourSettings({
     }
 
     // Allow partial decimals like "0." or "1."
-    if (value.endsWith('.') && !isNaN(parseFloat(value.slice(0, -1)))) {
+    if (value.endsWith('.') && !Number.isNaN(Number.parseFloat(value.slice(0, -1)))) {
       setter(value)
       return
     }
 
     // Validate it's a number
-    const numValue = parseFloat(value)
-    if (isNaN(numValue)) {
+    const numValue = Number.parseFloat(value)
+    if (Number.isNaN(numValue)) {
       return // Don't update if invalid
     }
 
@@ -128,7 +135,7 @@ export default function SessionBehaviourSettings({
     max?: number
   ) => {
     // If empty, default to 0 (not the original default value)
-    if (value === '' || value === '.' || isNaN(parseFloat(value))) {
+    if (value === '' || value === '.' || Number.isNaN(Number.parseFloat(value))) {
       setter('0')
       onFieldChange(field, 0)
       return
@@ -138,12 +145,12 @@ export default function SessionBehaviourSettings({
     if (value.endsWith('.')) {
       const cleanValue = value.slice(0, -1) || '0'
       setter(cleanValue)
-      onFieldChange(field, parseFloat(cleanValue))
+      onFieldChange(field, Number.parseFloat(cleanValue))
       return
     }
 
     // Apply final constraints
-    let numValue = parseFloat(value)
+    let numValue = Number.parseFloat(value)
     if (numValue < min) numValue = min
     if (max !== undefined && numValue > max) numValue = max
     
@@ -437,7 +444,7 @@ export default function SessionBehaviourSettings({
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">
-                  Time in seconds before detecting user is away. Leave empty to disable, or set to 0 to use config default.
+                  Seconds of silence before the agent checks in. Minimum 4. Leave empty to turn off.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -445,7 +452,7 @@ export default function SessionBehaviourSettings({
           <Input
             type="number"
             step="0.1"
-            min="0"
+            min={MIN_AWAY_TIMEOUT_SECONDS}
             value={userAwayTimeoutInput}
             onChange={(e) => {
               const value = e.target.value
@@ -453,22 +460,22 @@ export default function SessionBehaviourSettings({
               if (value === '') {
                 onFieldChange('advancedSettings.session.user_away_timeout', undefined)
               } else {
-                const numValue = parseFloat(value)
-                if (!isNaN(numValue) && numValue >= 0) {
+                const numValue = Number.parseFloat(value)
+                if (!Number.isNaN(numValue) && numValue >= MIN_AWAY_TIMEOUT_SECONDS) {
                   onFieldChange('advancedSettings.session.user_away_timeout', numValue)
                 }
               }
             }}
             onBlur={(e) => {
               const value = e.target.value
-              if (value === '' || isNaN(parseFloat(value))) {
+              if (value === '' || Number.isNaN(Number.parseFloat(value))) {
                 setUserAwayTimeoutInput('')
                 onFieldChange('advancedSettings.session.user_away_timeout', undefined)
               } else {
-                const numValue = parseFloat(value)
-                if (numValue < 0) {
-                  setUserAwayTimeoutInput('0')
-                  onFieldChange('advancedSettings.session.user_away_timeout', 0)
+                const numValue = Number.parseFloat(value)
+                if (numValue < MIN_AWAY_TIMEOUT_SECONDS) {
+                  setUserAwayTimeoutInput(String(MIN_AWAY_TIMEOUT_SECONDS))
+                  onFieldChange('advancedSettings.session.user_away_timeout', MIN_AWAY_TIMEOUT_SECONDS)
                 } else {
                   setUserAwayTimeoutInput(String(numValue))
                   onFieldChange('advancedSettings.session.user_away_timeout', numValue)
@@ -510,6 +517,47 @@ export default function SessionBehaviourSettings({
           />
         </div>
 
+        {/* User Away Message Mode */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Label className="text-xs text-gray-600 dark:text-gray-400">
+              User Away Message Mode
+            </Label>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="w-3 h-3 text-gray-400 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs">
+                <p className="text-xs">
+                  <strong>Static</strong>: fixed message.<br />
+                  <strong>Dynamic</strong>: context-based message from the recent conversation.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <Select
+            value={user_away_timeout_mode}
+            onValueChange={(value) =>
+              onFieldChange('advancedSettings.session.user_away_timeout_mode', value)
+            }
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="static" className="text-xs">Static (default)</SelectItem>
+              <SelectItem value="dynamic" className="text-xs">Dynamic (context-aware)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {user_away_timeout_mode === 'dynamic' && (
+          <AwayPromptEditor
+            value={user_away_prompt}
+            onChange={(next) => onFieldChange('advancedSettings.session.user_away_prompt', next)}
+          />
+        )}
+
         {/* User Away Timeout Max Count */}
         <div className="space-y-2">
           <div className="flex items-center gap-2">
@@ -538,19 +586,19 @@ export default function SessionBehaviourSettings({
               if (value === '') {
                 onFieldChange('advancedSettings.session.user_away_timeout_max_count', undefined)
               } else {
-                const numValue = parseInt(value, 10)
-                if (!isNaN(numValue) && numValue >= 1) {
+                const numValue = Number.parseInt(value, 10)
+                if (!Number.isNaN(numValue) && numValue >= 1) {
                   onFieldChange('advancedSettings.session.user_away_timeout_max_count', numValue)
                 }
               }
             }}
             onBlur={(e) => {
               const value = e.target.value
-              if (value === '' || isNaN(parseInt(value, 10))) {
+              if (value === '' || Number.isNaN(Number.parseInt(value, 10))) {
                 setUserAwayMaxCountInput('')
                 onFieldChange('advancedSettings.session.user_away_timeout_max_count', undefined)
               } else {
-                const numValue = Math.max(1, parseInt(value, 10))
+                const numValue = Math.max(1, Number.parseInt(value, 10))
                 setUserAwayMaxCountInput(String(numValue))
                 onFieldChange('advancedSettings.session.user_away_timeout_max_count', numValue)
               }
@@ -572,7 +620,7 @@ export default function SessionBehaviourSettings({
               </TooltipTrigger>
               <TooltipContent side="right" className="max-w-xs">
                 <p className="text-xs">
-                  Message spoken before ending the call after the max count is reached. Requires Max Count to be set.
+                  Message spoken before ending the call after the max count is reached. Requires Max Count to be set. The end-of-call tag (&lt;eod/&gt;) is added automatically if missing.
                 </p>
               </TooltipContent>
             </Tooltip>
