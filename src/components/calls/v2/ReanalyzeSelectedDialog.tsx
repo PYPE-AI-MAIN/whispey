@@ -76,15 +76,15 @@ export function ReanalyzeSelectedDialog({ open, onOpenChange, calls, agentId, on
         </div>
 
         {done ? (
-          <div role="status" className="px-6 py-6 text-[13.5px]">
-            <p className="font-medium">
+          <output className="block px-6 py-6 text-[13.5px]">
+            <span className="block font-medium">
               Reanalyzing {state.queued} {state.queued === 1 ? "call" : "calls"}.
-            </p>
-            <p className="mt-1 text-[var(--cl-text3)]">New values show up in a minute or two. Refresh to see them.</p>
+            </span>
+            <span className="mt-1 block text-[var(--cl-text3)]">New values show up in a minute or two. Refresh to see them.</span>
             {!!state.failed && (
-              <p className="mt-2 text-[var(--cl-red-text)]">{state.failed} couldn&apos;t be started. Try those again.</p>
+              <span className="mt-2 block text-[var(--cl-red-text)]">{state.failed} couldn&apos;t be started. Try those again.</span>
             )}
-          </div>
+          </output>
         ) : (
           <div className="space-y-5 px-6 py-5">
             <fieldset>
@@ -93,25 +93,40 @@ export function ReanalyzeSelectedDialog({ open, onOpenChange, calls, agentId, on
                 {WHAT_OPTIONS.map((o) => (
                   <label
                     key={o.value}
+                    htmlFor={`reanalyze-what-${o.value}`}
                     className={cn(
                       "flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2 transition-colors",
                       what === o.value ? "border-[var(--cl-accent-line)] bg-[var(--cl-accent-soft)]" : "border-[var(--cl-border)] hover:bg-[var(--cl-hover)]",
                     )}
                   >
-                    <input type="radio" name="reanalyze-what" value={o.value} checked={what === o.value} onChange={() => setWhat(o.value)} className="accent-[var(--cl-accent)]" />
-                    <span className="min-w-0">
-                      <span className="block text-[13.5px] font-medium">{o.label}</span>
-                      <span className="block text-[12px] text-[var(--cl-text3)]">{o.hint}</span>
+                    <input
+                      id={`reanalyze-what-${o.value}`}
+                      type="radio"
+                      name="reanalyze-what"
+                      value={o.value}
+                      checked={what === o.value}
+                      onChange={() => setWhat(o.value)}
+                      className="accent-[var(--cl-accent)]"
+                    />
+                    <span className="min-w-0 text-[13.5px] font-medium">
+                      {o.label}
+                      <span className="block text-[12px] font-normal text-[var(--cl-text3)]">{o.hint}</span>
                     </span>
                   </label>
                 ))}
               </div>
             </fieldset>
 
-            <label className="flex cursor-pointer items-start gap-2.5 text-[13px]">
-              <input type="checkbox" checked={onlyMissing} onChange={(e) => setOnlyMissing(e.target.checked)} className="mt-0.5 accent-[var(--cl-accent)]" />
+            <label htmlFor="reanalyze-only-missing" className="flex cursor-pointer items-start gap-2.5 text-[13px]">
+              <input
+                id="reanalyze-only-missing"
+                type="checkbox"
+                checked={onlyMissing}
+                onChange={(e) => setOnlyMissing(e.target.checked)}
+                className="mt-0.5 accent-[var(--cl-accent)]"
+              />
               <span>
-                Only fill in missing values
+                <span className="block">Only fill in missing values</span>
                 <span className="block text-[12px] text-[var(--cl-text3)]">Leaves calls that already have results as they are.</span>
               </span>
             </label>
