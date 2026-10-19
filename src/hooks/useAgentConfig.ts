@@ -175,8 +175,9 @@ export interface AgentConfigResponse {
       }
       session_behavior?: {
         preemptive_generation: string
-        turn_detection: "multilingual" | "english" | "disabled"
+        turn_detection: "multilingual" | "english" | "disabled" | "v1-mini" | "cue"
         unlikely_threshold?: number
+        cue_threshold?: number
         min_endpointing_delay?: number
         max_endpointing_delay?: number
         user_away_timeout?: number
@@ -996,8 +997,9 @@ export const buildFormValuesFromAgent = (assistant: any, agent?: any) => {
       },
       session: {
         preemptiveGeneration: (sessionBehavior.preemptive_generation || getFallback(null, 'session_behavior.preemptive_generation')) as "disabled" | "enabled",
-        turn_detection: (sessionBehavior.turn_detection || getFallback(null, 'session_behavior.turn_detection')) as "multilingual" | "english" | "disabled" | "v1-mini",
+        turn_detection: (sessionBehavior.turn_detection || getFallback(null, 'session_behavior.turn_detection')) as "multilingual" | "english" | "disabled" | "v1-mini" | "cue",
         unlikely_threshold: sessionBehavior.unlikely_threshold ?? getFallback(null, 'session_behavior.unlikely_threshold'),
+        cue_threshold: sessionBehavior.cue_threshold,
         min_endpointing_delay: sessionBehavior.min_endpointing_delay ?? getFallback(null, 'session_behavior.min_endpointing_delay'),
         max_endpointing_delay: sessionBehavior.max_endpointing_delay ?? getFallback(null, 'session_behavior.max_endpointing_delay'),
         endpointing_mode: sessionBehavior.endpointing_mode ?? null,

@@ -430,6 +430,7 @@ function buildRouteSessionBehaviorPayload(formikValues: any): any {
     preemptive_generation: session.preemptiveGeneration || 'disabled',
     turn_detection: session.turn_detection,
     unlikely_threshold: session.unlikely_threshold,
+    cue_threshold: session.cue_threshold,
     min_endpointing_delay: session.min_endpointing_delay,
     max_endpointing_delay: session.max_endpointing_delay,
     ...(session.endpointing_mode && { endpointing_mode: session.endpointing_mode }),

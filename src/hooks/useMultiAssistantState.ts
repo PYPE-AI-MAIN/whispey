@@ -242,6 +242,7 @@ export function buildAssistantSessionBehaviorPayload(formValues: any): any {
     preemptive_generation: formValues.advancedSettings?.session?.preemptiveGeneration || getFallback(null, 'session_behavior.preemptive_generation'),
     turn_detection: formValues.advancedSettings?.session?.turn_detection || getFallback(null, 'session_behavior.turn_detection'),
     unlikely_threshold: formValues.advancedSettings?.session?.unlikely_threshold ?? getFallback(null, 'session_behavior.unlikely_threshold'),
+    cue_threshold: formValues.advancedSettings?.session?.cue_threshold,
     min_endpointing_delay: formValues.advancedSettings?.session?.min_endpointing_delay ?? getFallback(null, 'session_behavior.min_endpointing_delay'),
     max_endpointing_delay: formValues.advancedSettings?.session?.max_endpointing_delay ?? getFallback(null, 'session_behavior.max_endpointing_delay'),
     ...(formValues.advancedSettings?.session?.endpointing_mode && {

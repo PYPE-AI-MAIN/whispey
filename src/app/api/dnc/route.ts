@@ -4,6 +4,18 @@ import { DNC_TABLE, getSuperAdminEmail, toNumbersArray, buildDncRows, type DncSc
 
 export const runtime = 'nodejs'
 
+function scopeError(body: { scope?: DncScope; project_id?: string; agent_id?: string }): string | null {
+  if (body.scope !== 'global' && body.scope !== 'project' && body.scope !== 'agent') return "scope must be 'global', 'project' or 'agent'"
+  if (body.scope === 'project' && !body.project_id) return 'project_id is required for project scope'
+  if (body.scope === 'agent' && !body.agent_id) return 'agent_id is required for agent scope'
+  return null
+}
+
+async function agentProjectId(supabase: ReturnType<typeof createServiceRoleClient>, agentId: string): Promise<string | null> {
+  const { data, error } = await supabase.from('pype_voice_agents').select('project_id').eq('id', agentId).maybeSingle()
+  return error ? null : (data?.project_id ?? null)
+}
+
 /**
  * POST /api/dnc
  * Body: {
@@ -35,32 +47,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const scope = body.scope
-  if (scope !== 'global' && scope !== 'project' && scope !== 'agent') {
-    return NextResponse.json({ error: "scope must be 'global', 'project' or 'agent'" }, { status: 400 })
-  }
-  if (scope === 'project' && !body.project_id) {
-    return NextResponse.json({ error: 'project_id is required for project scope' }, { status: 400 })
-  }
-  if (scope === 'agent' && !body.agent_id) {
-    return NextResponse.json({ error: 'agent_id is required for agent scope' }, { status: 400 })
-  }
+  const scopeProblem = scopeError(body)
+  if (scopeProblem) return NextResponse.json({ error: scopeProblem }, { status: 400 })
+  const scope = body.scope as DncScope
 
   const supabase = createServiceRoleClient()
 
   // An agent entry belongs to the agent's own project, whatever the client sent.
-  let projectId = body.project_id ?? null
-  if (scope === 'agent') {
-    const { data: agent, error: agentError } = await supabase
-      .from('pype_voice_agents')
-      .select('project_id')
-      .eq('id', body.agent_id!)
-      .maybeSingle()
-    if (agentError || !agent?.project_id) {
-      return NextResponse.json({ error: 'Agent not found' }, { status: 400 })
-    }
-    projectId = agent.project_id
-  }
+  const projectId = scope === 'agent' ? await agentProjectId(supabase, body.agent_id!) : (body.project_id ?? null)
+  if (scope === 'agent' && !projectId) return NextResponse.json({ error: 'Agent not found' }, { status: 400 })
 
   const inputs = toNumbersArray(body.numbers)
   if (inputs.length === 0) {

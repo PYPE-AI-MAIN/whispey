@@ -9,8 +9,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 interface SessionBehaviourSettingsProps {
   preemptiveGeneration: 'enabled' | 'disabled'
-  turn_detection: 'multilingual' | 'english' | 'disabled' | 'v1-mini'
+  turn_detection: 'multilingual' | 'english' | 'disabled' | 'v1-mini' | 'cue'
   unlikely_threshold?: number
+  cue_threshold?: number
   min_endpointing_delay?: number
   max_endpointing_delay?: number
   endpointing_mode?: string | null
@@ -29,6 +30,7 @@ export default function SessionBehaviourSettings({
   preemptiveGeneration,
   turn_detection,
   unlikely_threshold = 0.6,
+  cue_threshold = 0.5,
   min_endpointing_delay = 0.7,
   max_endpointing_delay = 0.7,
   endpointing_mode,
@@ -43,6 +45,7 @@ export default function SessionBehaviourSettings({
 }: Readonly<SessionBehaviourSettingsProps>) {
   // Local state for input values to handle intermediate states
   const [thresholdInput, setThresholdInput] = useState(String(unlikely_threshold))
+  const [cueThresholdInput, setCueThresholdInput] = useState(String(cue_threshold))
   const [minDelayInput, setMinDelayInput] = useState(String(min_endpointing_delay))
   const [maxDelayInput, setMaxDelayInput] = useState(String(max_endpointing_delay))
   const [userAwayTimeoutInput, setUserAwayTimeoutInput] = useState(user_away_timeout !== undefined && user_away_timeout !== null ? String(user_away_timeout) : '')
@@ -55,6 +58,10 @@ export default function SessionBehaviourSettings({
   React.useEffect(() => {
     setThresholdInput(String(unlikely_threshold))
   }, [unlikely_threshold])
+
+  React.useEffect(() => {
+    setCueThresholdInput(String(cue_threshold))
+  }, [cue_threshold])
 
   React.useEffect(() => {
     setMinDelayInput(String(min_endpointing_delay))
@@ -210,13 +217,15 @@ export default function SessionBehaviourSettings({
               onFieldChange('advancedSettings.session.turn_detection', value)
             }
           >
-            <SelectTrigger className="h-8 text-xs">
+            {/* w-full + overflow-hidden: a long option name stays inside the panel instead of stretching it */}
+            <SelectTrigger className="h-8 w-full overflow-hidden text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="multilingual" className="text-xs">Multilingual</SelectItem>
               <SelectItem value="english" className="text-xs">English</SelectItem>
               <SelectItem value="v1-mini" className="text-xs">V1 Mini (Real Interruption Classifier)</SelectItem>
+              <SelectItem value="cue" className="text-xs">Cue v1</SelectItem>
               <SelectItem value="disabled" className="text-xs">Disabled</SelectItem>
             </SelectContent>
           </Select>
@@ -229,6 +238,41 @@ export default function SessionBehaviourSettings({
             </div>
           )}
         </div>
+
+        {turn_detection === 'cue' && (
+          <div className="space-y-2">
+            <div className="flex items-start gap-2 p-2.5 bg-muted/50 rounded-md border border-border">
+              <Info className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-muted-foreground">
+                Cue decides at every pause whether the caller is done, and how long to wait if not. It runs on Pype&apos;s Cue server, set up by your admin. If that server is unreachable the agent falls back to Multilingual.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-muted-foreground">Cue threshold</Label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="right" className="max-w-xs">
+                  <p className="text-xs">
+                    How sure Cue must be that the caller is finished before the agent replies. Range: 0.0 to 1.0. Higher waits longer and cuts in less. Default 0.5.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+            <Input
+              type="number"
+              step="0.05"
+              min="0"
+              max="1"
+              value={cueThresholdInput}
+              onChange={(e) => handleNumberInput(e.target.value, 'advancedSettings.session.cue_threshold', setCueThresholdInput, 0, 1)}
+              onBlur={(e) => handleBlur(e.target.value, 'advancedSettings.session.cue_threshold', setCueThresholdInput, 0, 1)}
+              className="h-8 text-xs"
+              placeholder="0.5"
+            />
+          </div>
+        )}
 
         {/* Unlikely Threshold - Only show for English and Multilingual */}
         {(turn_detection === 'english' || turn_detection === 'multilingual') && (

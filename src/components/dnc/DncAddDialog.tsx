@@ -33,6 +33,21 @@ interface AddResult {
   invalid: string[]
 }
 
+/** What the person still has to fill in before they can add, or null when the form is complete. */
+function missingInput(f: { scope: DncScope; projectId: string | null; agentId: string; count: number; mode: 'type' | 'csv' }): string | null {
+  if (f.scope !== 'global' && !f.projectId) return 'Choose an organization'
+  if (f.scope === 'agent' && !f.agentId) return 'Choose an agent'
+  if (f.count > 0) return null
+  return f.mode === 'csv' ? 'Upload a CSV with a phone column' : 'Type at least one number'
+}
+
+function readPhones(parsed: Papa.ParseResult<Record<string, string>>, dial: string): { phones: string[] } | { error: string } {
+  const key = findPhoneHeader(parsed.meta.fields)
+  if (!key) return { error: 'No "phone" column. Add a header row with a column named phone.' }
+  const phones = extractCsvPhones(parsed.data, key, dial)
+  return phones.length === 0 ? { error: 'The phone column had no valid numbers.' } : { phones }
+}
+
 export function DncAddDialog({
   open,
   onOpenChange,
@@ -92,19 +107,13 @@ export function DncAddDialog({
       header: true,
       skipEmptyLines: true,
       complete: (parsed) => {
-        const key = findPhoneHeader(parsed.meta.fields)
-        if (!key) {
+        const read = readPhones(parsed, country.dial)
+        if ('error' in read) {
           clearCsv()
-          setCsvError('No "phone" column. Add a header row with a column named phone.')
+          setCsvError(read.error)
           return
         }
-        const phones = extractCsvPhones(parsed.data, key, country.dial)
-        if (phones.length === 0) {
-          clearCsv()
-          setCsvError('The phone column had no valid numbers.')
-          return
-        }
-        setCsvNumbers(phones)
+        setCsvNumbers(read.phones)
         setCsvFileName(file.name)
       },
       error: () => setCsvError('Could not read that file.'),
@@ -138,10 +147,7 @@ export function DncAddDialog({
     },
   })
 
-  let missing: string | null = null
-  if (scope !== 'global' && !projectId) missing = 'Choose an organization'
-  else if (scope === 'agent' && !agentId) missing = 'Choose an agent'
-  else if (numbers.length === 0) missing = mode === 'csv' ? 'Upload a CSV with a phone column' : 'Type at least one number'
+  const missing = missingInput({ scope, projectId, agentId, count: numbers.length, mode })
 
   const close = (next: boolean) => {
     if (!next) {
@@ -355,11 +361,11 @@ export function DncAddDialog({
           </div>
 
           {result && (
-            <div role="status" className="rounded-lg border border-[var(--cl-border)] bg-[var(--cl-panel2)] px-3 py-2 text-[13px]">
+            <output className="block rounded-lg border border-[var(--cl-border)] bg-[var(--cl-panel2)] px-3 py-2 text-[13px]">
               <span className="font-medium">{result.added} added</span>
               {result.skipped_duplicates > 0 && <span className="text-[var(--cl-text3)]"> · {result.skipped_duplicates} already listed</span>}
               {result.invalid.length > 0 && <span className="text-[var(--cl-red-text)]"> · {result.invalid.length} not valid</span>}
-            </div>
+            </output>
           )}
           {add.isError && (
             <p role="alert" className="text-[13px] text-[var(--cl-red-text)]">{(add.error as Error).message}</p>
