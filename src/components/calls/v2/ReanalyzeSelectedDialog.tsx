@@ -117,19 +117,22 @@ export function ReanalyzeSelectedDialog({ open, onOpenChange, calls, agentId, on
               </div>
             </fieldset>
 
-            <label htmlFor="reanalyze-only-missing" className="flex cursor-pointer items-start gap-2.5 text-[13px]">
-              <input
-                id="reanalyze-only-missing"
-                type="checkbox"
-                checked={onlyMissing}
-                onChange={(e) => setOnlyMissing(e.target.checked)}
-                className="mt-0.5 accent-[var(--cl-accent)]"
-              />
-              <span>
-                <span className="block">Only fill in missing values</span>
-                <span className="block text-[12px] text-[var(--cl-text3)]">Leaves calls that already have results as they are.</span>
-              </span>
-            </label>
+            <div>
+              <label htmlFor="reanalyze-only-missing" className="flex cursor-pointer items-center gap-2.5 text-[13px]">
+                <input
+                  id="reanalyze-only-missing"
+                  type="checkbox"
+                  checked={onlyMissing}
+                  onChange={(e) => setOnlyMissing(e.target.checked)}
+                  aria-describedby="reanalyze-only-missing-hint"
+                  className="accent-[var(--cl-accent)]"
+                />
+                <span>Only fill in missing values</span>
+              </label>
+              <p id="reanalyze-only-missing-hint" className="mt-0.5 pl-[23px] text-[12px] text-[var(--cl-text3)]">
+                Leaves calls that already have results as they are.
+              </p>
+            </div>
 
             {skipped > 0 && (
               <p className="rounded-lg border border-[var(--cl-border)] bg-[var(--cl-panel2)] px-3 py-2 text-[12.5px] text-[var(--cl-text2)]">
