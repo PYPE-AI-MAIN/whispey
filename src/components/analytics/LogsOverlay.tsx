@@ -116,8 +116,9 @@ export function LogsOverlay({
   }, [open, load])
 
   const grain = widget?.spec.grain ?? 'interaction'
-  const winnerLabel =
-    widget?.spec.dedupe?.winner !== 'most_recent' ? 'best outcome' : widget.spec.dedupe.answered_only ? 'last answered call' : 'most recent attempt'
+  const dedupe = widget?.spec.dedupe
+  let winnerLabel = 'best outcome'
+  if (dedupe?.winner === 'most_recent') winnerLabel = dedupe.answered_only ? 'last answered call' : 'most recent attempt'
   // the breakdown column earns its space only when the rows differ in it
   const showSeries = Boolean(widget?.spec.dimension) && dimensionValue === undefined
 

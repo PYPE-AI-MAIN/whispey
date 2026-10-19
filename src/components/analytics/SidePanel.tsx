@@ -463,6 +463,11 @@ function ChartSettings({
   onChangeTitle: (title: string) => void
 }>) {
   const spec = widget.spec
+  let dedupeNote = 'Repeat calls collapse to one row, keeping the last call.'
+  if (spec.dedupe?.winner === 'best_outcome') dedupeNote = 'Repeat calls collapse to one row, keeping the best outcome from the agent’s order.'
+  else if (spec.dedupe?.answered_only) dedupeNote = 'Repeat calls collapse to one row, keeping the last answered call.'
+  let dedupePick = 'best_outcome'
+  if (spec.dedupe?.winner === 'most_recent') dedupePick = spec.dedupe.answered_only ? 'last_answered' : 'most_recent'
   const calculation = CALCULATIONS.find((c) => c.fn === spec.agg?.fn) ?? CALCULATIONS[0]
 
   const usable = useMemo(() => {
@@ -719,11 +724,7 @@ function ChartSettings({
         />
         {spec.grain === 'entity' && (
           <p className="mt-1 text-[11px] text-muted-foreground">
-            {spec.dedupe?.winner === 'best_outcome'
-              ? 'Repeat calls collapse to one row, keeping the best outcome from the agent’s order.'
-              : spec.dedupe?.answered_only
-                ? 'Repeat calls collapse to one row, keeping the last answered call.'
-                : 'Repeat calls collapse to one row, keeping the last call.'}
+            {dedupeNote}
           </p>
         )}
       </Row>
@@ -731,7 +732,7 @@ function ChartSettings({
       {spec.grain === 'entity' && spec.dedupe && (
         <Row label="Which call counts">
           <Picker
-            value={spec.dedupe.winner === 'most_recent' ? (spec.dedupe.answered_only ? 'last_answered' : 'most_recent') : 'best_outcome'}
+            value={dedupePick}
             disabled={!canEdit}
             options={[
               { value: 'best_outcome', label: 'Best outcome', help: 'Keep the call whose outcome ranks highest in the agent’s outcome order' },
