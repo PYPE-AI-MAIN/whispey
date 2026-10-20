@@ -13,12 +13,13 @@ import { cn } from "@/lib/utils"
 import type { FilterOperation } from "@/components/CallFilter"
 import FlagRulesDialog from "@/components/FlagRulesDialog"
 import { useCallLogsData, PAGE_SIZE } from "@/hooks/useCallLogsData"
+import { useCallLogById } from "@/hooks/useCallLogs"
 import { useCallLogsColumns, BASIC_COLUMNS, EXTRA_RESTRICTABLE_COLUMNS } from "@/hooks/useCallLogsColumns"
 import { useMemberVisibility } from "@/hooks/useMemberVisibility"
 import { useGlobalRole } from "@/hooks/useGlobalRole"
 import { canShowOrgSection } from "@/types/visibility"
 import { useCallLogsStore } from "@/stores/callLogsStore"
-import { flattenCallLogForCSV, isViewerRole, triggerCSVFileDownload } from "@/utils/callLogsUtils"
+import { flattenCallLogForCSV, getSelectColumns, isViewerRole, triggerCSVFileDownload } from "@/utils/callLogsUtils"
 import { AskPi, type FilterProposal } from "./AskPi"
 import { useCallLogsViewMode } from "@/hooks/useCallLogsViewMode"
 import type { CallLog } from "@/types/logs"
@@ -38,6 +39,7 @@ import { ColumnsPicker, type ColumnGroup, type PickerColumn } from "./ColumnsPic
 import { CallLogsTable } from "./CallLogsTable"
 import { StatusCell } from "./StatusCell"
 import { PrefetchTranscript, SplitView } from "./split/SplitView"
+import { ReanalyzeSelectedDialog } from "./ReanalyzeSelectedDialog"
 import { callDurationSeconds } from "./split/callData"
 import { CallEventCell, CallIdCell, CustomerNumberCell, DurationCell, FlagCell, StartTimeCell, TagsCell } from "./cells"
 import { V2_BTN, V2_ICON_BTN, V2_THEME } from "./theme"
@@ -378,6 +380,7 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
 
   // ── Selection actions (same output as the legacy page) ─────────────────────
   const selectedCalls = useMemo(() => currentPageCalls.filter((c) => selectedIds.has(c.id)), [currentPageCalls, selectedIds])
+  const [reanalyzeOpen, setReanalyzeOpen] = useState(false)
   const [copyFeedback, setCopyFeedback] = useState(false)
   const buildSelectedRecords = useCallback(
     () => selectedCalls.map((row) => flattenCallLogForCSV(row, visibleColumns.basic, visibleColumns.metadata, visibleColumns.transcription_metrics)),
@@ -421,13 +424,24 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
     else globalThis.history.replaceState(null, "", url)
   }, [pathname, searchParams])
   const splitOpen = !!openCallId && !selectedCampaign
-  const openedCall = splitOpen ? findCall(currentPageCalls, openCallId) : null
-  // Whether a call has been open on this visit. Only then may the page move the
-  // split to another call by itself; a link's call that isn't in the list shows
-  // "not found" instead of quietly opening someone else's call.
+  const pageCall = splitOpen ? findCall(currentPageCalls, openCallId) : null
+  // Whether a call has been opened from the list on this visit. Only then may the
+  // page move the split to another call by itself (paging, filters). A shared
+  // link's call that isn't in the loaded page is fetched on its own instead.
   const [browsingCalls, setBrowsingCalls] = useState(false)
-  useEffect(() => { if (openedCall) setBrowsingCalls(true) }, [openedCall])
-  const openCallMissing = splitOpen && !isLoading && !openedCall && (!browsingCalls || currentPageCalls.length === 0)
+  useEffect(() => { if (pageCall) setBrowsingCalls(true) }, [pageCall])
+  const needsLinkedCall = splitOpen && !isLoading && !pageCall && !browsingCalls
+  const linkedCall = useCallLogById({
+    agentId: agent?.id,
+    projectId: project?.id,
+    callId: openCallId,
+    select: getSelectColumns(role),
+    enabled: needsLinkedCall,
+    userId: user?.id,
+    userEmail: userEmail ?? undefined,
+  })
+  const openedCall = pageCall ?? (needsLinkedCall ? linkedCall.data ?? null : null)
+  const openCallMissing = needsLinkedCall && !linkedCall.isFetching && !linkedCall.data
 
   // From the table it's a new history entry; from the split list it's a switch.
   const openCall = useCallback((call: CallLog) => setOpenCallId(call.id, openCallId ? "replace" : "push"), [setOpenCallId, openCallId])
@@ -629,7 +643,17 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
             copyFeedback={copyFeedback}
             onCopy={copySelected}
             onExportCsv={() => triggerCSVFileDownload(buildSelectedRecords())}
+            onReanalyze={canReanalyze ? () => setReanalyzeOpen(true) : undefined}
             onClear={() => setSelectedIds(new Set())}
+          />
+        )}
+        {canReanalyze && agent?.id && (
+          <ReanalyzeSelectedDialog
+            open={reanalyzeOpen}
+            onOpenChange={setReanalyzeOpen}
+            calls={selectedCalls}
+            agentId={agent.id}
+            onQueued={() => setSelectedIds(new Set())}
           />
         )}
 
@@ -745,11 +769,13 @@ function LoadErrorState({ error, hasFilters, onClearFilters }: Readonly<{ error:
   )
 }
 
-function SelectionBar({ count, copyFeedback, onCopy, onExportCsv, onClear }: Readonly<{
+function SelectionBar({ count, copyFeedback, onCopy, onExportCsv, onReanalyze, onClear }: Readonly<{
   count: number
   copyFeedback: boolean
   onCopy: () => void
   onExportCsv: () => void
+  /** Rerun the field extractor / metrics on the selected calls; absent without permission. */
+  onReanalyze?: () => void
   onClear: () => void
 }>) {
   return (
@@ -762,6 +788,11 @@ function SelectionBar({ count, copyFeedback, onCopy, onExportCsv, onClear }: Rea
       <button type="button" className="h-6 rounded-md px-2 text-[var(--cl-text2)] hover:bg-[var(--cl-hover)] hover:text-[var(--cl-text)]" onClick={onExportCsv}>
         Export CSV
       </button>
+      {onReanalyze && (
+        <button type="button" className="h-6 rounded-md px-2 text-[var(--cl-text2)] hover:bg-[var(--cl-hover)] hover:text-[var(--cl-text)]" onClick={onReanalyze}>
+          Reanalyze
+        </button>
+      )}
       <button type="button" className="grid h-6 w-6 place-items-center rounded-md text-[var(--cl-text3)] hover:bg-[var(--cl-hover)]" aria-label="Clear selection" onClick={onClear}>
         <X className="h-3 w-3" />
       </button>
