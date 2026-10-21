@@ -6,6 +6,29 @@
  * Used in: agent creation, agent config UI, and payload building
  */
 
+/** Longest owner-written dynamic message prompt the backend accepts (it ignores longer ones). The backend's own cap
+ *  (pype-voice-agent utils/away_message.py MAX_PROMPT_CHARS) is served with the default prompt; this is the
+ *  value used until that loads. */
+export const AWAY_PROMPT_MAX_CHARS = 6000
+
+/**
+ * The dynamic message prompt worth saving: only text the owner wrote. Blank, non-string or oversized input returns
+ * undefined, so the agent keeps using the backend's default prompt (including any later improvement to it).
+ */
+/** Shortest allowed user-away timeout (seconds); lower values are raised to this. */
+export const MIN_AWAY_TIMEOUT_SECONDS = 4
+
+export function clampAwayTimeout(value: unknown): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined
+  return Math.max(value, MIN_AWAY_TIMEOUT_SECONDS)
+}
+
+export function customAwayPrompt(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const trimmed = value.trim()
+  return trimmed && trimmed.length <= AWAY_PROMPT_MAX_CHARS ? trimmed : undefined
+}
+
 export const AGENT_DEFAULT_CONFIG = {
     // Speech-to-Text (STT) Configuration
     stt: {
@@ -85,6 +108,8 @@ export const AGENT_DEFAULT_CONFIG = {
       user_away_timeout_message: undefined, // Message to speak each time user goes away
       user_away_timeout_max_count: undefined, // Max times to send message before ending call (undefined = unlimited)
       user_away_timeout_end_message: undefined, // Message to speak before ending call after max count
+      user_away_timeout_mode: "static" as "static" | "dynamic", // "dynamic" = LLM-generated, context-aware check-in (needs context_memory)
+      user_away_prompt: undefined as string | undefined, // Owner-written prompt for dynamic away messages (undefined = the backend default)
       eod_silence_seconds: undefined // Seconds to wait after the agent's <eod/> goodbye before ending the call (undefined = 3)
     },
   
@@ -242,8 +267,9 @@ export const AGENT_DEFAULT_CONFIG = {
       },
       session: {
         preemptiveGeneration: AGENT_DEFAULT_CONFIG.session_behavior.preemptive_generation as "disabled" | "enabled",
-        turn_detection: AGENT_DEFAULT_CONFIG.session_behavior.turn_detection as "multilingual" | "english" | "disabled",
+        turn_detection: AGENT_DEFAULT_CONFIG.session_behavior.turn_detection as "multilingual" | "english" | "disabled" | "v1-mini" | "cue",
         unlikely_threshold: AGENT_DEFAULT_CONFIG.session_behavior.unlikely_threshold,
+        cue_threshold: undefined as number | undefined,
         min_endpointing_delay: AGENT_DEFAULT_CONFIG.session_behavior.min_endpointing_delay,
         max_endpointing_delay: AGENT_DEFAULT_CONFIG.session_behavior.max_endpointing_delay,
         endpointing_mode: AGENT_DEFAULT_CONFIG.session_behavior.endpointing_mode,
@@ -252,6 +278,8 @@ export const AGENT_DEFAULT_CONFIG = {
         user_away_timeout_message: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_message,
         user_away_timeout_max_count: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_max_count,
         user_away_timeout_end_message: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_end_message,
+        user_away_timeout_mode: AGENT_DEFAULT_CONFIG.session_behavior.user_away_timeout_mode,
+        user_away_prompt: AGENT_DEFAULT_CONFIG.session_behavior.user_away_prompt,
         eod_silence_seconds: AGENT_DEFAULT_CONFIG.session_behavior.eod_silence_seconds
       },
       tools: {

@@ -305,7 +305,7 @@ export function useCsvExport(scope: AnalyticsScope | undefined) {
   const [state, setState] = useState<{ busy: boolean; rows: number; error?: string }>({ busy: false, rows: 0 })
 
   const run = useCallback(
-    async (spec: unknown, dimensionValue: string | null | undefined, filename: string, dashboard?: DashboardContext) => {
+    async (spec: unknown, dimensionValue: string | null | undefined, filename: string, dashboard?: DashboardContext, bucketValue?: string) => {
       if (!scope) return
       setState({ busy: true, rows: 0 })
       const parts: string[] = []
@@ -321,6 +321,7 @@ export function useCsvExport(scope: AnalyticsScope | undefined) {
               ...scopeParam(scope),
               spec,
               dimensionValue,
+              bucketValue,
               cursor,
               filters: dashboard?.filters,
               range: dashboard?.range,

@@ -9,7 +9,7 @@
  */
 import { describe, it, expect, vi } from 'vitest'
 import { Spec, type SpecInput } from '@/server/analytics/spec'
-import { buildQuery, planDashboardQueries, SpecError, type Ctx } from '@/server/analytics/buildQuery'
+import { buildQuery, bucketText, planDashboardQueries, SpecError, type Ctx } from '@/server/analytics/buildQuery'
 
 const AGENT = '11111111-1111-1111-1111-111111111111'
 
@@ -541,6 +541,32 @@ describe('drill-down and export walk the same rows as the chart', () => {
     expect(params).toContain(null)
   })
 
+  it('narrows a chart over time to the clicked bucket, and to one stacked value when given', () => {
+    const overTime = parse({ ...countByDisposition, bucket: 'day' })
+    const day = buildQuery(overTime, ctx, 'drill', { bucketValue: '2026-10-16 00:00:00' })
+    expect(day.sql).toMatch(/date_trunc\(\$\d+, \w+\.started_local\) = \$\d+::timestamp/)
+    expect(day.params).toContain('day')
+    expect(day.params).toContain('2026-10-16 00:00:00')
+    expect(day.sql).not.toContain('IS NOT DISTINCT FROM')
+    const both = buildQuery(overTime, ctx, 'drill', { bucketValue: '2026-10-16 00:00:00', dimensionValue: 'booked' })
+    expect(both.sql).toContain('IS NOT DISTINCT FROM $')
+    expect(both.sql).toContain('::timestamp')
+  })
+
+  it('tells a one-per-entity drill row how many calls it stands for', () => {
+    const entity = parse({ ...oneAppointment(), bucket: 'day' })
+    const drill = buildQuery(entity, ctx, 'drill', {})
+    expect(drill.sql).toMatch(/count\(\*\) OVER \(PARTITION BY .+\) AS n_calls/)
+    expect(drill.sql).toContain('n_calls AS calls_in_window')
+    expect(buildQuery(parse({ ...countByDisposition, bucket: 'day' }), ctx, 'drill', {}).sql).not.toContain('calls_in_window')
+    expect(buildQuery(entity, ctx, 'aggregate').sql).not.toContain('calls_in_window')
+  })
+
+  it('ignores a bucket on a chart that has none', () => {
+    const { sql } = buildQuery(parse({ ...countByDisposition, bucket: 'none' }), ctx, 'drill', { bucketValue: '2026-10-16 00:00:00' })
+    expect(sql).not.toContain('date_trunc')
+  })
+
   it('caps how much one page can ask for', () => {
     const { params } = buildQuery(parse(countByDisposition), ctx, 'export', { limit: 1_000_000 })
     expect(params).toContain(5000)
@@ -890,3 +916,17 @@ describe('a drill/export row always carries its own agent_id', () => {
     expect(sql).toMatch(/SELECT[^;]*\bagent_id\b/)
   })
 })
+
+describe('the bucket sent back to the server', () => {
+  it('round-trips the zone-less timestamp node-pg turned into an instant', () => {
+    // pg reads "2026-10-16 00:00:00" as local time; the text must come back identical in any zone
+    const local = new Date(2026, 9, 16, 0, 0, 0)
+    expect(bucketText(local.toISOString())).toBe('2026-10-16 00:00:00')
+    expect(bucketText(new Date(2026, 0, 5, 13, 0, 0).toISOString())).toBe('2026-01-05 13:00:00')
+  })
+
+  it('refuses text that is not a time', () => {
+    expect(() => bucketText('not a date')).toThrow()
+  })
+})
+

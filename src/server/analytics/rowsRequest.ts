@@ -10,7 +10,7 @@
  */
 import { z } from 'zod'
 import { Spec, FilterNode } from './spec'
-import { buildQuery, type Ctx, type Target } from './buildQuery'
+import { buildQuery, bucketText, type Ctx, type Target } from './buildQuery'
 import { runQuery } from './db'
 import { outcomeOrderFor } from './context'
 
@@ -22,6 +22,8 @@ export const RowsBody = z.object({
   spec: z.unknown(),
   /** Which bar was clicked. null means the empty bucket, which is a real answer. */
   dimensionValue: z.string().nullable().optional(),
+  /** Which day/hour/month was clicked on a chart over time: the bucket's `x`, as the chart received it. */
+  bucketValue: z.string().max(40).optional(),
   cursor: z.object({ startedAt: z.string(), id: z.string().uuid() }).nullable().optional(),
   limit: z.number().int().min(1).max(5000).optional(),
   // The dashboard's own controls — Period, filter chips, When — the same ones
@@ -67,6 +69,7 @@ export async function fetchRowPage(
     // only narrow by the clicked bar when the caller actually clicked one —
     // `undefined` means "all rows", `null` means "the empty bucket"
     ...(body.dimensionValue === undefined ? {} : { dimensionValue: body.dimensionValue }),
+    ...(body.bucketValue === undefined ? {} : { bucketValue: bucketText(body.bucketValue) }),
     ...(body.cursor ? { cursor: body.cursor } : {}),
     limit,
   })
