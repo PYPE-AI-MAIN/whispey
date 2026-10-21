@@ -282,7 +282,7 @@ const ExpressiveSettings = ({ config, setConfig }: {
     setConfig((prev) => ({ ...prev, audioTagNotes: { ...prev.audioTagNotes, [tag]: note } }))
   const toggle = (tag: string) => setTags(tags.includes(tag) ? tags.filter((t) => t !== tag) : [...tags, tag].slice(0, MAX_AUDIO_TAGS))
   const addCustom = () => {
-    const tag = custom.trim().replace(/^\[|\]$/g, '').toLowerCase()
+    const tag = custom.trim().replaceAll(/^\[|\]$/g, '').toLowerCase()
     if (/^[a-z][a-z '-]{0,30}$/.test(tag) && !tags.includes(tag)) setTags([...tags, tag].slice(0, MAX_AUDIO_TAGS))
     setCustom('')
   }
