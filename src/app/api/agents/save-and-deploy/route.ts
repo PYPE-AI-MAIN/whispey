@@ -311,7 +311,10 @@ function serializeRouteTts(ttsConfiguration: any): any {
       style: ttsConfiguration.config.style || 0.7,
       use_speaker_boost: ttsConfiguration.config.useSpeakerBoost || false,
       speed: ttsConfiguration.config.speed || 1.15
-    }
+    },
+    ...(/^eleven_v[34]/.test(ttsConfiguration.model || '') && ttsConfiguration.config.expressive
+      ? { expressive: true, audio_tags: ttsConfiguration.config.audioTags ?? [], audio_tag_notes: ttsConfiguration.config.audioTagNotes ?? {} }
+      : {})
   }
 }
 

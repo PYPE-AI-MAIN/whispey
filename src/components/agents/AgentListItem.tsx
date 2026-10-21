@@ -93,6 +93,10 @@ const getEnvironmentBadgeColor = (environment: string) => {
     case 'staging':
     case 'stage':
       return 'bg-amber-500/10 text-warning'
+    case 'development':
+    case 'dev':
+      // green in dark mode only: there the brand colour (default below) is coral and reads like prod's red
+      return 'bg-primary/10 text-primary dark:bg-success/10 dark:text-success'
     default:
       return 'bg-primary/10 text-primary'
   }

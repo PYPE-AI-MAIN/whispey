@@ -211,7 +211,7 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
         </div>
 
         {/* -m-1/p-1 leave room for card rings and shadows at the scroll edges */}
-        <div className="md:-m-1 md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain md:p-1">
+        <div className="agent-list-scroll md:-m-1 md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain md:p-1">
           {filteredAgents.length > 0 ? (
             <AgentList
               agents={filteredAgents}
