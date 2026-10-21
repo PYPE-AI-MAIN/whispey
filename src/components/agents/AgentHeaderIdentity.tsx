@@ -30,7 +30,8 @@ function environmentColor(environment: string): string {
       return 'bg-warning/10 text-warning border border-warning/20'
     case 'development':
     case 'dev':
-      return 'bg-primary/10 text-primary border border-primary/20'
+      // green in dark mode only: there the brand colour is coral and reads like prod's red
+      return 'bg-primary/10 text-primary border border-primary/20 dark:bg-success/10 dark:text-success dark:border-success/20'
     default:
       return 'bg-muted/50 text-foreground border border-border/60'
   }
