@@ -1915,7 +1915,9 @@ function pageBlock(ctx: ChatPageContext): string {
   return callLogsPromptBlock(ctx)
 }
 
-async function withAgentName(ctx: GenericPageContext, projectId: string): Promise<GenericPageContext> {
+async function withAgentName(rawCtx: GenericPageContext, projectId: string): Promise<GenericPageContext> {
+  // the page text can show customer numbers; they are masked here like every tool result
+  const ctx: GenericPageContext = { ...rawCtx, visibleText: redactPhoneLikeStrings(rawCtx.visibleText) as string, details: redactPhoneLikeStrings(rawCtx.details) as GenericPageContext['details'] }
   if (!ctx.agentId || !(await agentBelongsToProject(ctx.agentId, projectId))) return { ...ctx, agentId: null }
   const { data } = await createServiceRoleClient().from('pype_voice_agents').select('display_name, agent_type').eq('id', ctx.agentId).maybeSingle()
   return { ...ctx, agentName: data?.display_name ?? null, agentType: data?.agent_type ?? null }
