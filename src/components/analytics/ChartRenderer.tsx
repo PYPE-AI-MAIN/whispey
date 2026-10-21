@@ -199,14 +199,7 @@ export function ChartRenderer({
         <YAxis tick={axisStyle} tickLine={false} axisLine={false} width={44} unit={suffix || undefined} />
         <Tooltip
           cursor={{ fill: 'var(--muted)', opacity: 0.4, stroke: 'var(--border)' }}
-          content={(p) => (
-            <SeriesTooltip
-              active={p.active}
-              payload={p.payload as unknown as TooltipEntry[] | undefined}
-              label={shaped.axis === 'time' ? formatBucket(String(p.label), bucket) : String(p.label)}
-              spec={spec}
-            />
-          )}
+          content={<SeriesTooltip spec={spec} isTime={shaped.axis === 'time'} bucket={bucket} />}
         />
         {shaped.seriesKeys.length > 1 && (
           <Legend formatter={seriesLegendLabel} wrapperStyle={{ fontSize: 11 }} />
@@ -249,15 +242,24 @@ type TooltipEntry = { name?: string | number; value?: number | string | null; co
  * its colour, then the total — so the card adds up to the bar the pointer is on.
  * Zeros and gaps are left out; a stacked bar can have a dozen empty values.
  */
-function SeriesTooltip({ active, payload, label, spec }: Readonly<{ active?: boolean; payload?: TooltipEntry[]; label: string; spec: SpecInput }>) {
+function SeriesTooltip({ active, payload, label, spec, isTime, bucket }: Readonly<{
+  // recharts adds these three when it renders the element
+  active?: boolean
+  payload?: readonly TooltipEntry[]
+  label?: string | number
+  spec: SpecInput
+  isTime: boolean
+  bucket?: string
+}>) {
   if (!active || !payload?.length) return null
-  const entries = payload
+  const title = isTime ? formatBucket(String(label), bucket) : String(label)
+  const entries = [...payload]
     .filter((e) => typeof e.value === 'number' && e.value !== 0)
     .sort((a, b) => Number(b.value) - Number(a.value))
   const total = entries.reduce((sum, e) => sum + Number(e.value), 0)
   return (
     <div style={tooltipStyle.contentStyle} className="max-w-[16rem] px-3 py-2 shadow-md">
-      <div className="mb-1 font-medium">{label}</div>
+      <div className="mb-1 font-medium">{title}</div>
       {entries.length === 0 && <div className="text-muted-foreground">Nothing</div>}
       {entries.map((e) => (
         <div key={String(e.name)} className="flex items-center gap-2 py-px">

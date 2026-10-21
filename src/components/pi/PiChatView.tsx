@@ -169,7 +169,7 @@ export function ThinkingIndicator({ label }: Readonly<{ label?: string }> = {}) 
   }, [])
 
   return (
-    <span className="inline-flex items-center gap-2.5 py-2 text-[13px]" role="status">
+    <output className="inline-flex items-center gap-2.5 py-2 text-[13px]">
       <ThinkingOrb />
       <span className="pi-shimmer">{label ?? THINKING_PHRASES[phraseIndex]}</span>
       <span className="pi-dots" aria-hidden="true"><i /><i /><i /></span>
@@ -201,7 +201,7 @@ export function ThinkingIndicator({ label }: Readonly<{ label?: string }> = {}) 
           .pi-shimmer { color: var(--muted-foreground); background: none; }
         }
       `}</style>
-    </span>
+    </output>
   )
 }
 

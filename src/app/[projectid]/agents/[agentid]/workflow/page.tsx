@@ -112,7 +112,8 @@ function WorkflowPageInner() {
 
   const [needsTemplate, setNeedsTemplate] = useState(false)
   const dock = usePiDock()
-  usePiSurface({ label: `Workflow${workflow ? ` · ${workflow.nodes.length} nodes` : ''}` })
+  const nodeCount = workflow?.nodes.length
+  usePiSurface({ label: nodeCount === undefined ? 'Workflow' : `Workflow · ${nodeCount} nodes` })
   const [agentNotFound, setAgentNotFound] = useState(false)
 
   // Rotating copy for the initial-load screen — cycles regardless of whether

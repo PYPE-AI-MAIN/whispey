@@ -62,7 +62,7 @@ function describePage(pathname: string, agentId: string | undefined): { label: s
 /** The page as the user sees it: title and visible text of the main area. */
 function readPage(): { title: string; visibleText: string } {
   const main = document.querySelector('main') ?? document.body
-  const text = (main as HTMLElement).innerText?.replaceAll(/\n{3,}/g, '\n\n').trim() ?? ''
+  const text = main.innerText?.replaceAll(/\n{3,}/g, '\n\n').trim() ?? ''
   return { title: document.title, visibleText: text.slice(0, MAX_VISIBLE_CHARS) }
 }
 
