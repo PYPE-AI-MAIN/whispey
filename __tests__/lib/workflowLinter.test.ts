@@ -368,3 +368,22 @@ describe('lintWorkflow — tool names, notes and logic variables (mirror of the 
     expect(warnings(issues).some((m) => m.includes('undeclared'))).toBe(false)
   })
 })
+
+describe('language switches', () => {
+  const msgs = (languages: unknown[]) =>
+    lintWorkflow(wf({ agent: { languages } as never })).filter((i) => i.severity === 'warning').map((i) => i.message)
+
+  it('warns when a switch changes STT or TTS but has nothing to change to', () => {
+    const m = msgs([{ tool_name: 'to_hi', language_code: 'hi', switch_stt: true, switch_tts: true }])
+    expect(m.some((x) => x.includes("'hi' switches STT"))).toBe(true)
+    expect(m.some((x) => x.includes("'hi' switches TTS"))).toBe(true)
+  })
+
+  it('is quiet when the blocks are there or the switch is off', () => {
+    const m = msgs([
+      { tool_name: 'a', language_code: 'hi', switch_stt: true, switch_tts: true, stt: { name: 'sarvam' }, tts: { name: 'sarvam' } },
+      { tool_name: 'b', language_code: 'ta', switch_stt: false, switch_tts: false },
+    ])
+    expect(m.some((x) => x.includes('switches'))).toBe(false)
+  })
+})
