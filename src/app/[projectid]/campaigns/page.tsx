@@ -216,7 +216,7 @@ function Campaigns() {
       paused:    'bg-warning/15 text-warning border-warning/30',
       completed: 'bg-primary/15 text-primary border-primary/30',
       // fixed hex: the theme remaps Tailwind's blue/purple scales to brand colours
-      scheduled: 'bg-[#2563eb]/15 text-[#1d4ed8] border-[#2563eb]/40 dark:bg-[#3b82f6]/25 dark:text-[#8ab8ff] dark:border-[#3b82f6]/55',
+      scheduled: 'bg-[#d5e0f7] text-[#0f1f55] border-[#7d9ae3] dark:bg-[#6b9bff]/15 dark:text-[#6b9bff] dark:border-[#6b9bff]/30',
       failed:    'bg-destructive/15 text-destructive border-destructive/30',
       draft:     'bg-muted text-foreground border-border',
       ready:     'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800',
