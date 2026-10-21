@@ -10,7 +10,8 @@ const EMPTY_FILTERS: FilterOperation[] = []
 
 export { PAGE_SIZE }
 
-const hasDateFilter = (filters: FilterOperation[]) =>
+/** A filter on the call's date replaces the Period (and any other date range). */
+export const hasDateFilter = (filters: FilterOperation[]) =>
   filters.some((f) => f.type === 'filter' && f.column === 'call_started_at')
 
 export const useCallLogsData = (
