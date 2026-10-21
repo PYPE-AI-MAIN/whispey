@@ -13,6 +13,7 @@ import type { FilterOperation } from "@/components/CallFilter"
 import type { Message } from "@/lib/piStream"
 import { usePiConversation } from "@/hooks/usePiConversation"
 import { PiDockBody, usePiDock, usePiSurface } from "@/contexts/PiDockContext"
+import { ThinkingIndicator } from "@/components/pi/PiChatView"
 import { cn } from "@/lib/utils"
 
 export interface FilterProposal {
@@ -205,19 +206,23 @@ const AssistantMessage = memo(function AssistantMessage({
   onOpenCall: (id: string) => void
 }>) {
   const calls = message.toolCalls ?? []
-  const running = calls.find((tc) => tc.pending)
-  const lastStep = running ?? [...calls].reverse().find((tc) => TOOL_STEPS[tc.name])
+  const running = calls.find((tc) => tc.pending && TOOL_STEPS[tc.name])
+  // finished steps, each named once ("Reading transcripts" twice is still one line)
+  const done = calls.filter((tc) => !tc.pending && TOOL_STEPS[tc.name]).filter((tc, i, all) => all.findIndex((o) => TOOL_STEPS[o.name] === TOOL_STEPS[tc.name]) === i)
   const proposals = calls.filter((tc) => tc.success && tc.result?.__filterProposal)
-  const thinking = !message.isFinal && !message.content && !running
+  const working = !message.isFinal && !message.content
   return (
     <div className={cn("leading-[1.65] text-[var(--cl-text)]", large ? "text-[15px]" : "text-[14px]")}>
-      {lastStep && TOOL_STEPS[lastStep.name] && (
-        <div className="mb-2 inline-flex items-center gap-[7px] text-[13px] text-[var(--cl-text3)]">
-          <span className={cn("h-[11px] w-[11px] rounded-full border-[1.5px]", lastStep.pending ? "animate-spin border-[var(--cl-border2)] border-t-[var(--cl-violet)]" : "border-emerald-500 bg-emerald-500")} />
-          {TOOL_STEPS[lastStep.name]}{lastStep.pending ? "…" : ""}
-        </div>
+      {done.length > 0 && (
+        <ul className="mb-1 space-y-1">
+          {done.map((tc) => (
+            <li key={tc.id} className="flex items-center gap-2 text-[13px] text-[var(--cl-text3)]">
+              <Check className="h-3.5 w-3.5 text-emerald-500" />{TOOL_STEPS[tc.name]}
+            </li>
+          ))}
+        </ul>
       )}
-      {thinking && <div className="mb-2 inline-flex items-center gap-[7px] text-[13px] text-[var(--cl-text3)]"><span className="h-[11px] w-[11px] animate-spin rounded-full border-[1.5px] border-[var(--cl-border2)] border-t-[var(--cl-violet)]" />Thinking…</div>}
+      {working && <ThinkingIndicator label={running ? `${TOOL_STEPS[running.name]}…` : undefined} />}
       {message.content && <PiMarkdown text={message.content} onOpenCall={onOpenCall} />}
       {proposals.map((tc) => (
         <FilterCard key={tc.id} proposal={tc.result as FilterProposal} state={applied[tc.id]} onApply={() => onApply(tc.id, tc.result)} onDismiss={() => onDismiss(tc.id)} />

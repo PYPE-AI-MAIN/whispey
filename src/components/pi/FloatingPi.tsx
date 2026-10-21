@@ -191,8 +191,8 @@ export default function FloatingPi() {
           }
         }}
         className={cn(
-          'fixed bottom-24 right-5 z-[85] inline-flex h-10 cursor-pointer touch-none select-none items-center gap-2 rounded-full bg-[var(--cl-violet)] pl-1.5 pr-4 text-[14px] font-semibold text-white',
-          'shadow-[0_8px_24px_rgba(229,83,91,.35),0_2px_6px_rgba(0,0,0,.25)] transition-shadow hover:shadow-[0_10px_28px_rgba(124,58,237,.45),0_2px_6px_rgba(0,0,0,.25)] data-[dragging]:cursor-grabbing',
+          'fixed bottom-24 right-5 z-[85] inline-flex h-10 cursor-pointer touch-none select-none items-center gap-2 rounded-full bg-[#d23d47] pl-1.5 pr-4 text-[14px] font-semibold text-white',
+          'shadow-[0_8px_24px_rgba(229,83,91,.35),0_2px_6px_rgba(0,0,0,.25)] transition-shadow hover:shadow-[0_10px_28px_rgba(210,61,71,.5),0_2px_6px_rgba(0,0,0,.25)] data-[dragging]:cursor-grabbing',
           open && 'shadow-[0_0_0_3px_var(--cl-violet-soft),0_8px_24px_rgba(229,83,91,.35)]'
         )}
       >
@@ -205,7 +205,8 @@ export default function FloatingPi() {
       <section
         aria-label="Ask Pi"
         hidden={!open}
-        style={{ bottom: `calc(${148 - lift}px)` }}
+        // never taller than the room above it, wherever the button has been dragged to
+        style={{ bottom: `${148 - lift}px`, maxHeight: `calc(100vh - ${148 - lift + 16}px)` }}
         className={cn(
           'fixed right-5 z-[90] flex flex-col overflow-hidden rounded-2xl border border-[var(--cl-border2)] bg-[var(--cl-panel)] text-[var(--cl-text)] shadow-[var(--cl-shadow)] transition-[width,height] duration-200',
           max ? 'h-[min(760px,calc(100vh-120px))] w-[min(720px,calc(100vw-32px))]' : 'h-[min(560px,calc(100vh-180px))] w-[400px]'
@@ -214,7 +215,7 @@ export default function FloatingPi() {
         <div className="flex flex-none items-center gap-2 border-b border-[var(--cl-border)] py-[9px] pl-3 pr-2.5">
           <span className="grid h-[22px] w-[22px] place-items-center rounded-full bg-[var(--cl-violet)] text-white"><PiMark className="h-3 w-3" /></span>
           <b className="text-[14px]">Ask Pi</b>
-          <span className="min-w-0 truncate rounded-full border border-[var(--cl-border2)] px-[9px] py-0.5 text-[12.5px] text-[var(--cl-text3)]" title={label}>{label}</span>
+          <span className="min-w-0 truncate rounded-full border border-[var(--cl-border2)] px-[9px] py-0.5 text-[12.5px] text-[var(--cl-text2)]" title={label}>{label}</span>
           <span className="flex-1" />
           {!showCustom && <HeaderButton label="New chat" onClick={() => setChatKey((k) => k + 1)}><RotateCcw className="h-3.5 w-3.5" /></HeaderButton>}
           <HeaderButton label={max ? 'Shrink' : 'Expand'} onClick={() => dock.setMax(!max)}>{max ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}</HeaderButton>
