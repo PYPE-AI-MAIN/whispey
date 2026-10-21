@@ -155,6 +155,7 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
               initialProvider={agent.tts.name}
               initialModel={agent.tts.model ?? undefined}
               initialConfig={agent.tts.voice_settings ?? undefined}
+              allowAudioTags
               onVoiceSelect={(voiceId, provider, model, config) =>
                 updateAgentConfig({
                   tts: {

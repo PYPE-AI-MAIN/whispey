@@ -1379,6 +1379,7 @@ const inboundLookupVariables = useMemo(() => {
                       initialModel={formik.values.ttsModel}
                       initialConfig={formik.values.ttsVoiceConfig}
                       onVoiceSelect={handleVoiceSelect}
+                      allowAudioTags
                     />
                   ) : (
                     <SelectTTS

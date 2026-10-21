@@ -60,6 +60,9 @@ interface ElevenLabsConfig {
   style: number;
   useSpeakerBoost: boolean;
   speed: number;
+  expressive: boolean;
+  audioTags: string[];
+  audioTagNotes: Record<string, string>;
 }
 
 interface GoogleTTSVoice {
@@ -85,6 +88,8 @@ interface SelectTTSProps {
   onVoiceSelect?: (voiceId: string, provider: string, model?: string, config?: any) => void;
   /** Provider keys to hide here, for screens whose backend doesn't support them (e.g. Pipecat). */
   excludeProviders?: string[];
+  /** ElevenLabs v4 models and expressive mode (audio tags). Only for screens that save them and whose backend runs v4. */
+  allowAudioTags?: boolean;
 }
 
 // Raya's settings as the dialog edits them. Stored configs arrive in the same shape
@@ -180,6 +185,9 @@ function buildElevenLabsConfig(provider: string | undefined, model: string | und
     style: saved?.style || 0,
     useSpeakerBoost: saved?.useSpeakerBoost === undefined ? true : saved.useSpeakerBoost,
     speed: saved?.speed || 1,
+    expressive: saved?.expressive === true,
+    audioTags: Array.isArray(saved?.audioTags) ? saved.audioTags : [],
+    audioTagNotes: saved?.audioTagNotes && typeof saved.audioTagNotes === 'object' ? saved.audioTagNotes : {},
   }
 }
 
@@ -261,7 +269,7 @@ function LabelSkeleton() {
 // Main Component
 const NO_EXCLUDED_PROVIDERS: string[] = []
 
-function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig, onVoiceSelect, excludeProviders = NO_EXCLUDED_PROVIDERS }: Readonly<SelectTTSProps>) {
+function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig, onVoiceSelect, excludeProviders = NO_EXCLUDED_PROVIDERS, allowAudioTags = false }: Readonly<SelectTTSProps>) {
   const [isOpen, setIsOpen] = useState(false)
   const [elevenLabsVoices, setElevenLabsVoices] = useState<ElevenLabsVoice[]>([])
   const [isLoadingElevenLabs, setIsLoadingElevenLabs] = useState(false)
@@ -601,6 +609,7 @@ function SelectTTS({ selectedVoice, initialProvider, initialModel, initialConfig
                 setGoogleTTSConfig={setGoogleTTSConfig}
                 rayaConfig={rayaConfig}
                 setRayaConfig={setRayaConfig}
+                allowAudioTags={allowAudioTags}
               />
             )}
           </div>
