@@ -164,9 +164,9 @@ function NoCallsMessage() {
 
 // Renders the legacy or the redesigned Call Logs page, per the user's saved choice.
 // Both take the same props, so switching never changes what data is loaded.
-function CallLogsForMode(props: React.ComponentProps<typeof CallLogs>) {
+function CallLogsForMode({ isActive, ...props }: React.ComponentProps<typeof CallLogs> & { isActive?: boolean }) {
   const [viewMode] = useCallLogsViewMode()
-  return viewMode === 'new' ? <CallLogsV2 {...props} /> : <CallLogs {...props} />
+  return viewMode === 'new' ? <CallLogsV2 {...props} isActive={isActive} /> : <CallLogs {...props} />
 }
 
 type Agent = NonNullable<ReturnType<typeof useAgentById>['data']>
@@ -701,6 +701,7 @@ function DashboardContent({ agentId, agent, project, activeTab, isEnhancedProjec
             isLoading={loading || callsCheckLoading}
             openDownloadSettings={activeTab === 'logs' && openDownloadSettings}
             onAgentUpdated={refetchAgent}
+            isActive={activeTab === 'logs'}
           />
         )}
       </div>

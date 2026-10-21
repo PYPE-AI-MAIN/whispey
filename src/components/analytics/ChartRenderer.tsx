@@ -27,7 +27,16 @@ import { shape, zeroFill, formatValue, formatBucket, shortLabel, displayNumber, 
 export const SERIES_COLORS = [
   'var(--analytics-series-1)', 'var(--analytics-series-2)', 'var(--analytics-series-3)', 'var(--analytics-series-4)',
   'var(--analytics-series-5)', 'var(--analytics-series-6)', 'var(--analytics-series-7)', 'var(--analytics-series-8)',
+  'var(--analytics-series-9)', 'var(--analytics-series-10)', 'var(--analytics-series-11)', 'var(--analytics-series-12)',
 ]
+
+/**
+ * A series' colour. Each of the first 12 gets its own; past that, and for the
+ * catch-all `(other)` / `(empty)` series, a neutral grey, so two different
+ * values never share a colour just because the palette wrapped.
+ */
+export const seriesColor = (key: string, i: number): string =>
+  key === '(other)' || key === '(empty)' || i >= SERIES_COLORS.length ? 'var(--analytics-series-other)' : SERIES_COLORS[i]
 
 /** Above this a pie stops meaning anything; the card offers a bar instead. */
 export const PIE_MAX_SLICES = 8
@@ -54,6 +63,19 @@ export const readX = (datum: unknown): string | null => {
   return x === '(empty)' ? null : x
 }
 /**
+ * What a click on a bar means. On a category chart the bar IS the value. On a
+ * chart over time the bar's x is a time bucket, and only a stacked segment also
+ * names a value; reading the bucket as the value found no calls at all.
+ * `(other)` folds many values together, so it opens the whole bucket instead.
+ */
+export function drillTarget(datum: unknown, axis: string, seriesKey?: string): { value?: string | null; bucket?: string } {
+  if (axis !== 'time') return { value: readX(datum) }
+  const bucket = readX(datum) ?? undefined
+  if (!seriesKey || seriesKey === 'value' || seriesKey === '(other)') return { bucket }
+  return { value: seriesKey === '(empty)' ? null : seriesKey, bucket }
+}
+
+/**
  * How many ticks recharts' own `interval` prop should skip so a time axis
  * shows roughly `maxTicks` evenly-spaced labels instead of one per bucket.
  * recharts states `interval` as "render every Nth tick" (0 = every tick), so
@@ -74,11 +96,12 @@ function seriesLegendLabel(v: unknown) {
 const tooltipStyle = {
   contentStyle: {
     borderRadius: 8,
-    border: '1px solid rgb(209 213 219)',
+    border: '1px solid var(--border)',
     fontSize: 12,
-    background: 'rgb(255 255 255)',
-    color: 'rgb(17 24 39)',
+    background: 'var(--popover)',
+    color: 'var(--popover-foreground)',
   },
+
 } as const
 
 export function ChartRenderer({
@@ -91,7 +114,7 @@ export function ChartRenderer({
   /** Every value this field is known to produce, so a zero is drawn rather than dropped. */
   categories?: string[] | null
   /** Clicking a bar or a slice opens the calls behind it. */
-  onSelect?: (value: string | null) => void
+  onSelect?: (value?: string | null, bucket?: string) => void
   compact?: boolean
   /** A card only two grid rows tall: the big number has to come down a size. */
   short?: boolean
@@ -133,7 +156,7 @@ export function ChartRenderer({
             onClick={(slice: unknown) => onSelect?.(readX(slice))}
           >
             {shaped.points.map((p, i) => (
-              <Cell key={p.x} fill={SERIES_COLORS[i % SERIES_COLORS.length]} />
+              <Cell key={p.x} fill={seriesColor(p.x, i)} />
             ))}
           </Pie>
           <Tooltip {...tooltipStyle} formatter={(v: unknown) => formatValue(Number(v), spec)} />
@@ -175,9 +198,15 @@ export function ChartRenderer({
         />
         <YAxis tick={axisStyle} tickLine={false} axisLine={false} width={44} unit={suffix || undefined} />
         <Tooltip
-          {...tooltipStyle}
-          labelFormatter={(x: unknown) => (shaped.axis === 'time' ? formatBucket(String(x), bucket) : String(x))}
-          formatter={(v: unknown) => formatValue(Number(v), spec)}
+          cursor={{ fill: 'var(--muted)', opacity: 0.4, stroke: 'var(--border)' }}
+          content={(p) => (
+            <SeriesTooltip
+              active={p.active}
+              payload={p.payload as unknown as TooltipEntry[] | undefined}
+              label={shaped.axis === 'time' ? formatBucket(String(p.label), bucket) : String(p.label)}
+              spec={spec}
+            />
+          )}
         />
         {shaped.seriesKeys.length > 1 && (
           <Legend formatter={seriesLegendLabel} wrapperStyle={{ fontSize: 11 }} />
@@ -188,7 +217,7 @@ export function ChartRenderer({
               key={key}
               type="monotone"
               dataKey={key}
-              stroke={SERIES_COLORS[i % SERIES_COLORS.length]}
+              stroke={seriesColor(key, i)}
               strokeWidth={2}
               dot={false}
               // a gap is a day with no calls, not a value of zero
@@ -199,12 +228,12 @@ export function ChartRenderer({
               key={key}
               dataKey={key}
               stackId={shaped.seriesKeys.length > 1 ? 'a' : undefined}
-              fill={SERIES_COLORS[i % SERIES_COLORS.length]}
+              fill={seriesColor(key, i)}
               radius={shaped.seriesKeys.length > 1 ? 0 : [4, 4, 0, 0]}
               // one bucket would otherwise render as a wall the width of the card
               maxBarSize={64}
               cursor={onSelect ? 'pointer' : undefined}
-              onClick={(bar: unknown) => onSelect?.(readX(bar))}
+              onClick={(bar: unknown) => { const t = drillTarget(bar, shaped.axis, key); onSelect?.(t.value, t.bucket) }}
             />
           )
         )}
@@ -212,6 +241,43 @@ export function ChartRenderer({
     </ResponsiveContainer>
   )
 }
+
+type TooltipEntry = { name?: string | number; value?: number | string | null; color?: string }
+
+/**
+ * Hover card for a bar or line: every value that day, biggest first, each next to
+ * its colour, then the total — so the card adds up to the bar the pointer is on.
+ * Zeros and gaps are left out; a stacked bar can have a dozen empty values.
+ */
+function SeriesTooltip({ active, payload, label, spec }: Readonly<{ active?: boolean; payload?: TooltipEntry[]; label: string; spec: SpecInput }>) {
+  if (!active || !payload?.length) return null
+  const entries = payload
+    .filter((e) => typeof e.value === 'number' && e.value !== 0)
+    .sort((a, b) => Number(b.value) - Number(a.value))
+  const total = entries.reduce((sum, e) => sum + Number(e.value), 0)
+  return (
+    <div style={tooltipStyle.contentStyle} className="max-w-[16rem] px-3 py-2 shadow-md">
+      <div className="mb-1 font-medium">{label}</div>
+      {entries.length === 0 && <div className="text-muted-foreground">Nothing</div>}
+      {entries.map((e) => (
+        <div key={String(e.name)} className="flex items-center gap-2 py-px">
+          <span className="h-2 w-2 shrink-0 rounded-sm" style={{ background: e.color }} />
+          <span className="min-w-0 flex-1 truncate" title={String(e.name)}>{e.name === 'value' ? 'Value' : String(e.name)}</span>
+          <span className="tabular-nums">{formatValue(Number(e.value), spec)}</span>
+        </div>
+      ))}
+      {entries.length > 1 && isAdditive(spec) && (
+        <div className="mt-1 flex items-center justify-between gap-2 border-t pt-1 font-medium" style={{ borderColor: 'var(--border)' }}>
+          <span>Total</span>
+          <span className="tabular-nums">{formatValue(total, spec)}</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Counts and sums add up across a stack; averages, rates and percentiles do not. */
+export const isAdditive = (spec: SpecInput): boolean => ['count', 'count_distinct', 'sum', 'sum_ceil_minutes'].includes(spec.agg.fn)
 
 function sizeClass(short: boolean | undefined, compact: boolean | undefined): string {
   if (!short) return 'text-3xl'
@@ -256,15 +322,29 @@ function Table({
   shaped: ReturnType<typeof shape>
   spec: SpecInput
   bucket?: string
-  onSelect?: (value: string | null) => void
+  onSelect?: (value?: string | null, bucket?: string) => void
 }>) {
+  const isTime = shaped.axis === 'time'
+  const num = (v: unknown) => (typeof v === 'number' ? v : null)
+  // a Total only means something where values add up and there is more than one column
+  const showTotal = shaped.seriesKeys.length > 1 && isAdditive(spec)
+  const sum = (vals: unknown[]) => vals.reduce<number>((t, v) => t + (num(v) ?? 0), 0)
+  // biggest column first: with a dozen dispositions the ones that matter are on screen
+  const keys = [...shaped.seriesKeys].sort((a, b) => sum(shaped.points.map((p) => p[b])) - sum(shaped.points.map((p) => p[a])))
+  const open = (value: string | null | undefined, x: string) => {
+    if (!onSelect) return
+    if (isTime) onSelect(value, x)
+    else onSelect(x === '(empty)' ? null : x)
+  }
+  const clickable = onSelect ? 'cursor-pointer hover:bg-muted/50' : ''
   return (
     <div className="h-full overflow-auto">
       <table className="w-full text-sm">
         <thead className="sticky top-0 z-10 bg-card text-[11px] text-muted-foreground">
           <tr className="border-b border-border">
             <th className="whitespace-nowrap py-1.5 pr-3 text-left font-medium">{firstColumnLabel(shaped.axis, bucket, spec.dimension?.field?.col)}</th>
-            {shaped.seriesKeys.map((key) => (
+            {showTotal && <th className="whitespace-nowrap py-1.5 pl-3 text-right font-medium">Total</th>}
+            {keys.map((key) => (
               <th key={key} className="max-w-[10rem] truncate whitespace-nowrap py-1.5 pl-3 text-right font-medium" title={key}>
                 {key === 'value' ? 'Value' : shortLabel(key, 18)}
               </th>
@@ -273,25 +353,41 @@ function Table({
         </thead>
         <tbody>
           {shaped.points.map((p) => (
-            <tr
-              key={p.x}
-              className={cn(
-                'border-b border-border/60 last:border-0',
-                onSelect && 'cursor-pointer hover:bg-muted/50'
-              )}
-              onClick={() => onSelect?.(p.x === '(empty)' ? null : p.x)}
-            >
+            <tr key={p.x} className={cn('border-b border-border/60', clickable)} onClick={() => open(undefined, p.x)}>
               <td className="py-1.5 pr-3 text-foreground" title={p.x}>
-                {shaped.axis === 'time' ? formatBucket(p.x, bucket) : shortLabel(p.x, 40)}
+                {isTime ? formatBucket(p.x, bucket) : shortLabel(p.x, 40)}
               </td>
-              {shaped.seriesKeys.map((key) => (
-                <td key={key} className="py-1.5 text-right tabular-nums text-foreground">
-                  {formatValue(typeof p[key] === 'number' ? p[key] : null, spec)}
-                </td>
-              ))}
+              {showTotal && (
+                <td className="py-1.5 pl-3 text-right font-medium tabular-nums text-foreground">{formatValue(sum(keys.map((k) => p[k])), spec)}</td>
+              )}
+              {keys.map((key) => {
+                const v = num(p[key])
+                // on a chart over time a cell is one value on one day: it opens exactly those calls
+                const cell = isTime && keys.length > 1 && v ? (e: React.MouseEvent) => { e.stopPropagation(); open(key === '(empty)' ? null : key, p.x) } : undefined
+                return (
+                  <td
+                    key={key}
+                    onClick={cell}
+                    className={cn('py-1.5 pl-3 text-right tabular-nums text-foreground', cell && 'cursor-pointer underline-offset-2 hover:bg-muted hover:underline')}
+                  >
+                    {formatValue(v, spec)}
+                  </td>
+                )
+              })}
             </tr>
           ))}
         </tbody>
+        {showTotal && (
+          <tfoot className="sticky bottom-0 bg-card text-foreground">
+            <tr className="border-t border-border font-medium">
+              <td className="py-1.5 pr-3">Total</td>
+              <td className="py-1.5 pl-3 text-right tabular-nums">{formatValue(sum(shaped.points.flatMap((p) => keys.map((k) => p[k]))), spec)}</td>
+              {keys.map((key) => (
+                <td key={key} className="py-1.5 pl-3 text-right tabular-nums">{formatValue(sum(shaped.points.map((p) => p[key])), spec)}</td>
+              ))}
+            </tr>
+          </tfoot>
+        )}
       </table>
     </div>
   )

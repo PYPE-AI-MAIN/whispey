@@ -135,14 +135,13 @@ function lastChartOf(messages: Message[]): AiChart | null {
 }
 
 export function AiChartBuilderPanel({
-  agentId, fields, ranking, visible, onBack, onAdd,
+  agentId, fields, ranking, visible, onAdd,
 }: Readonly<{
   agentId: string
   fields: CatalogField[]
   ranking?: OutcomeRanking
-  /** The panel stays mounted while a chart's settings are open, so the chat is not lost; this is whether it is the one on screen. */
+  /** The floating Pi box is open. */
   visible: boolean
-  onBack: () => void
   /** Puts a chart on the dashboard as an unsaved draft. Must not change what is selected. */
   onAdd: (title: string, kind: ChartKind, spec: SpecInput) => void
 }>) {
@@ -306,23 +305,9 @@ export function AiChartBuilderPanel({
   const shown = messages.filter((m) => !m.hidden)
 
   return (
-    <aside className="flex h-full w-full flex-col border-l border-border bg-muted/50">
-      <div className="flex shrink-0 items-center gap-2 border-b border-border py-2.5 pl-3 pr-10">
-        <button
-          type="button"
-          onClick={onBack}
-          aria-label="Back to chart types"
-          className="rounded p-1 text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </button>
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/15">
-          <Sparkles className="h-3.5 w-3.5 text-primary" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-foreground">Generate with Pi</p>
-          <p className="truncate text-[11px] leading-tight text-muted-foreground">Describe charts, then add the ones you want</p>
-        </div>
+    <div className="flex min-h-0 flex-1 flex-col bg-muted/50">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border py-2 pl-4 pr-3">
+        <p className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">Describe charts for this dashboard, then add the ones you want</p>
         {messages.length > 0 && (
           <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={reset} title="Start over">
             <RotateCcw className="h-3.5 w-3.5" />
@@ -412,7 +397,7 @@ export function AiChartBuilderPanel({
           </Button>
         </div>
       </div>
-    </aside>
+    </div>
   )
 }
 

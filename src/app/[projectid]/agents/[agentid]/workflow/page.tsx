@@ -34,6 +34,7 @@ import { CanvasHintBanner } from '@/components/workflow/CanvasHintBanner'
 import TalkToAssistant from '@/components/agents/TalkToAssistant'
 import { LiveEventLog, type WorkflowEvent } from '@/components/workflow/LiveEventLog'
 import { WorkflowChat } from '@/components/workflow/WorkflowChat'
+import { PiDockBody, usePiDock, usePiSurface } from '@/contexts/PiDockContext'
 import { LoaderFive } from '@/components/ui/loader-five'
 
 const LOADING_LINES = ['yup, warming things up…', 'stitching your nodes together…', 'almost there, hang tight…']
@@ -110,7 +111,8 @@ function WorkflowPageInner() {
   useEffect(() => () => setTracePath(null), [setTracePath])
 
   const [needsTemplate, setNeedsTemplate] = useState(false)
-  const [chatOpen, setChatOpen] = useState(false)
+  const dock = usePiDock()
+  usePiSurface({ label: `Workflow${workflow ? ` · ${workflow.nodes.length} nodes` : ''}` })
   const [agentNotFound, setAgentNotFound] = useState(false)
 
   // Rotating copy for the initial-load screen — cycles regardless of whether
@@ -153,7 +155,7 @@ function WorkflowPageInner() {
     const blank = WORKFLOW_TEMPLATES.find((t) => t.id === 'blank') ?? WORKFLOW_TEMPLATES[0]
     handlePickTemplate(blank)
     setPendingChatMessage(prompt)
-    setChatOpen(true)
+    dock?.setOpen(true)
   }
 
   const [variablesOpen, setVariablesOpen] = useState(false)
@@ -314,8 +316,6 @@ function WorkflowPageInner() {
         issuesOpen={issuesOpen}
         onIssuesOpenChange={setIssuesOpen}
         isDirty={isDirty}
-        chatOpen={chatOpen}
-        onToggleChat={() => setChatOpen((v) => !v)}
         onOpenAgent={() => setSettingsOpen(true)}
         onOpenVariables={() => setVariablesOpen(true)}
         onOpenRules={() => setRulesOpen(true)}
@@ -341,7 +341,7 @@ function WorkflowPageInner() {
 
       <div className="flex-1 flex min-h-0 relative">
         <CanvasHintBanner
-          onAskPi={() => setChatOpen(true)}
+          onAskPi={() => dock?.setOpen(true)}
           onShowIssues={() => setIssuesOpen(true)}
           onOpenAgent={() => { setSettingsOpen(true); setVoiceChecked(true) }}
           onOpenKnowledge={() => setKnowledgeOpen(true)}
@@ -359,12 +359,13 @@ function WorkflowPageInner() {
           {paletteOpen && <WorkflowPalette />}
           <WorkflowCanvas />
         </ReactFlowProvider>
-        <WorkflowChat
-          open={chatOpen}
-          onOpenChange={setChatOpen}
-          initialMessage={pendingChatMessage}
-          onInitialMessageConsumed={() => setPendingChatMessage(null)}
-        />
+        <PiDockBody label="Edit flow">
+          <WorkflowChat
+            open={dock?.open ?? false}
+            initialMessage={pendingChatMessage}
+            onInitialMessageConsumed={() => setPendingChatMessage(null)}
+          />
+        </PiDockBody>
       </div>
 
       <Inspector />

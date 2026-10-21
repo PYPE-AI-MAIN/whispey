@@ -28,6 +28,8 @@ import { TextBlockCard } from './TextBlockCard'
 import { FormulaCard } from './FormulaCard'
 import { ChartErrorBoundary } from './ErrorBoundary'
 import { SidePanel, CHART_TYPE_DRAG_TYPE } from './SidePanel'
+import { AiChartBuilderPanel } from './AiChartBuilderPanel'
+import { PiDockBody, usePiDock } from '@/contexts/PiDockContext'
 import { LogsOverlay } from './LogsOverlay'
 import { FilterBar, decodeFilters, encodeFilters } from './FilterBar'
 import { WhenFilter, type TimeOfDay } from './WhenFilter'
@@ -85,7 +87,7 @@ type CardContext = {
   dashboardContext: DashboardContext
   csv: ReturnType<typeof useCsvExport>
   selectChart: (id: string) => void
-  setLogs: (v: { widget: ChartWidget; value: string | null | undefined } | null) => void
+  setLogs: (v: { widget: ChartWidget; value: string | null | undefined; bucket?: string } | null) => void
   duplicate: (w: Widget) => void
   setGrain: (w: ChartWidget, grain: 'interaction' | 'entity') => void
   removeWidget: (w: Widget) => void
@@ -299,7 +301,7 @@ function widgetCard(w: Widget, ctx: CardContext): React.ReactNode {
       grainLabel={grainLabel(cw, ctx.catalog)}
       definition={explainSpec(w.spec as SpecInput, ctx.catalog)}
       onSelect={onSelect}
-      onOpenLogs={(value) => ctx.setLogs({ widget: cw, value })}
+      onOpenLogs={(value, bucket) => ctx.setLogs({ widget: cw, value, bucket })}
       onEdit={onSelect}
       onDuplicate={() => ctx.duplicate(w)}
       onRemove={onRemove}
@@ -336,8 +338,8 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
 
   const [draft, setDraft] = useState<Widget[] | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [aiOpen, setAiOpen] = useState(false)
-  const [logs, setLogs] = useState<{ widget: ChartWidget; value: string | null | undefined } | null>(null)
+  const dock = usePiDock()
+  const [logs, setLogs] = useState<{ widget: ChartWidget; value: string | null | undefined; bucket?: string } | null>(null)
   const [orderEditor, setOrderEditor] = useState(false)
   const [droppingKind, setDroppingKind] = useState<ChartKind | null>(null)
 
@@ -683,14 +685,15 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
         <button
           onClick={togglePanel}
           aria-label="Show chart settings"
-          className="flex w-8 shrink-0 items-center justify-center border-l border-border text-muted-foreground transition hover:bg-muted/50 hover:text-muted-foreground"
+          className="flex w-10 shrink-0 flex-col items-center justify-center gap-3 border-l border-border bg-card text-primary transition hover:bg-primary/10"
         >
-          <PanelRightOpen className="h-4 w-4" />
+          <PanelRightOpen className="h-5 w-5" />
+          <span className="text-xs font-medium [writing-mode:vertical-rl]">Chart settings</span>
         </button>
       )}
 
       {!isMobile && panelOpen && (
-        <div className={cn('relative shrink-0', aiOpen && !selected ? 'w-96' : 'w-72')}>
+        <div className="relative shrink-0 w-72">
           <button
             onClick={togglePanel}
             aria-label="Hide chart settings"
@@ -700,7 +703,6 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
           </button>
           <SidePanel
             selected={selected}
-            agentId={agentId}
             fields={catalog}
             ranking={ranking}
             canEdit={canEdit}
@@ -729,12 +731,15 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
               selected && edit(selected.id, { kind, spec: adaptSpecToKind(selected.spec as SpecInput, kind, catalog) })
             }
             onChangeTitle={(title) => selected && edit(selected.id, { title })}
-            aiOpen={aiOpen}
-            onOpenAi={() => setAiOpen(true)}
-            onCloseAi={() => setAiOpen(false)}
-            onGenerateChart={addGenerated}
           />
         </div>
+      )}
+
+      {/* "Generate with Pi" lives in the floating Ask Pi box */}
+      {isActive && canEdit && agentId && (
+        <PiDockBody label="Build charts">
+          <AiChartBuilderPanel agentId={agentId} fields={catalog} ranking={ranking} visible={dock?.open ?? false} onAdd={addGenerated} />
+        </PiDockBody>
       )}
 
       <LogsOverlay
@@ -746,6 +751,8 @@ export default function AnalyticsCanvas({ project, agent, dateRange, isLoading, 
         grainLabel={logs ? grainLabel(logs.widget, catalog) : 'Every call'}
         seriesLabel={logs?.widget.spec.dimension?.field ? fieldName(logs.widget.spec.dimension.field, catalog) : null}
         dimensionValue={logs?.value}
+        bucketValue={logs?.bucket}
+        bucketUnit={logs ? charts.byWidget.get(logs.widget.id)?.meta?.bucket : undefined}
         open={Boolean(logs)}
         onClose={() => setLogs(null)}
         downloadDisabled={downloadDisabled}

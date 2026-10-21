@@ -37,6 +37,7 @@ import { Spec, ALL_COLS } from '@/server/analytics/spec'
 import { planDashboardQueries, isPhoneField } from '@/server/analytics/buildQuery'
 import { runQuery, isTimeout } from '@/server/analytics/db'
 import { parsePromptForgeContext, promptForgePromptBlock, type PromptForgePageContext } from '@/server/pi/promptForgeContext'
+import { parseGenericPageContext, genericPagePromptBlock, type GenericPageContext } from '@/server/pi/genericPageContext'
 import { requireForgeUser } from '@/server/promptForge/access'
 import { CALL_LOGS_TOOL_NAMES, SUMMARIZE_RESULT_CHARS, callLogsPromptBlock, callLogsToolSchemas, parsePageContext, withOpenCall, runCallBreakdown, runProposeCallFilters, runSummarizeCallTranscripts, type CallLogsPageContext } from '@/server/pi/callLogsTools'
 
@@ -1553,7 +1554,7 @@ type TurnContext = {
   userId: string
   canWrite: boolean
   /** Set when the message comes from the Call Logs page or Prompt Forge — unlocks the call tools. */
-  pageContext: CallLogsPageContext | PromptForgePageContext | null
+  pageContext: ChatPageContext | null
   /** The small model that summarises each transcript for summarize_call_transcripts. */
   transcriptModel: string
   conversation: any[]
@@ -1679,12 +1680,12 @@ const FIELD_NOT_FOUND_NUDGE = 'Your previous reply concluded a field/disposition
 // hoping static instructions get followed. Soft hint, not a forced tool
 // call: tool_choice stays 'auto', this just raises the odds in the exact
 // situation that kept failing.
-function buildConversation(projectId: string, canWrite: boolean, history: StoredMessage[], message: string, pageContext: CallLogsPageContext | PromptForgePageContext | null = null): any[] {
+function buildConversation(projectId: string, canWrite: boolean, history: StoredMessage[], message: string, pageContext: ChatPageContext | null = null): any[] {
   const lastAssistant = [...history].reverse().find((m) => m.role === 'assistant')
   const saidFieldNotFound = !!lastAssistant && /does not have a (disposition|field)|do not see any disposition/i.test(lastAssistant.content ?? '')
   const conversation: any[] = [
     { role: 'system', content: systemPrompt(projectId, canWrite, history) },
-    ...(pageContext ? [{ role: 'system', content: pageContext.surface === 'prompt_forge' ? promptForgePromptBlock(pageContext) : callLogsPromptBlock(pageContext) }] : []),
+    ...(pageContext ? [{ role: 'system', content: pageBlock(pageContext) }] : []),
     ...toWireMessages(history),
     { role: 'user', content: message },
   ]
@@ -1767,6 +1768,7 @@ async function runToolCall(tc: PendingToolCall, ctx: TurnContext) {
 function callLogsScope(pageContext: TurnContext['pageContext']): CallLogsPageContext | null {
   if (!pageContext) return null
   if (pageContext.surface === 'call_logs') return pageContext
+  if (!pageContext.agentId) return null
   return { surface: 'call_logs', agentId: pageContext.agentId }
 }
 
@@ -1905,7 +1907,19 @@ function invalidChatRequest(projectId: unknown, message: unknown, resolveAction:
   return null
 }
 
-type ChatPageContext = CallLogsPageContext | PromptForgePageContext
+type ChatPageContext = CallLogsPageContext | PromptForgePageContext | GenericPageContext
+
+function pageBlock(ctx: ChatPageContext): string {
+  if (ctx.surface === 'prompt_forge') return promptForgePromptBlock(ctx)
+  if (ctx.surface === 'page') return genericPagePromptBlock(ctx)
+  return callLogsPromptBlock(ctx)
+}
+
+async function withAgentName(ctx: GenericPageContext, projectId: string): Promise<GenericPageContext> {
+  if (!ctx.agentId || !(await agentBelongsToProject(ctx.agentId, projectId))) return { ...ctx, agentId: null }
+  const { data } = await createServiceRoleClient().from('pype_voice_agents').select('display_name, agent_type').eq('id', ctx.agentId).maybeSingle()
+  return { ...ctx, agentName: data?.display_name ?? null, agentType: data?.agent_type ?? null }
+}
 
 // Ask Pi on a page. Call Logs: members who can write (viewers don't get it).
 // Prompt Forge: anyone who can use Prompt Forge. Either way, only for an agent they can see.
@@ -1914,10 +1928,11 @@ async function resolvePageContext(
   projectId: string,
   canWrite: boolean,
 ): Promise<{ pageContext: ChatPageContext | null } | { response: Response }> {
-  const pageContext: ChatPageContext | null = parsePageContext(rawPageContext) ?? parsePromptForgeContext(rawPageContext)
+  const pageContext: ChatPageContext | null = parsePageContext(rawPageContext) ?? parsePromptForgeContext(rawPageContext) ?? parseGenericPageContext(rawPageContext)
   if (rawPageContext && !pageContext) return { response: NextResponse.json({ error: 'Invalid page context' }, { status: 400 }) }
   if (!pageContext) return { pageContext: null }
-  if (pageContext.surface === 'call_logs' && !canWrite) return { response: NextResponse.json({ error: 'Ask Pi is not available for viewers' }, { status: 403 }) }
+  if (pageContext.surface !== 'prompt_forge' && !canWrite) return { response: NextResponse.json({ error: 'Ask Pi is not available for viewers' }, { status: 403 }) }
+  if (pageContext.surface === 'page') return { pageContext: await withAgentName(pageContext, projectId) }
   if (pageContext.surface === 'prompt_forge') {
     const forge = await requireForgeUser(projectId)
     if ('response' in forge) return { response: forge.response }
@@ -1930,6 +1945,7 @@ async function resolvePageContext(
 // On a page, Pi also gets the call-log tools; only Call Logs can propose filters.
 function chatTools(pageContext: ChatPageContext | null, canWrite: boolean) {
   if (!pageContext) return toolSchemas(canWrite)
+  if (pageContext.surface === 'page' && !pageContext.agentId) return toolSchemas(canWrite)
   return [
     ...toolSchemas(canWrite),
     ...callLogsToolSchemas().filter((t) => pageContext.surface === 'call_logs' || (t.type === 'function' && t.function.name !== 'propose_call_filters')),

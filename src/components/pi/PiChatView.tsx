@@ -3,7 +3,7 @@
 import { createContext, memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowUp, Bot, ChevronDown, Mic, PhoneIncoming, ShieldAlert, TrendingUp, Trophy, type LucideIcon } from 'lucide-react'
+import { ArrowUp, Bot, ChevronDown, Mic, PhoneIncoming, ShieldAlert, Sparkles, TrendingUp, Trophy, type LucideIcon } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { buildAgentLinkMap, resolvePiHref } from '@/lib/piLinks'
 import { fetchWithBackoff } from '@/lib/piFetch'
@@ -546,6 +546,9 @@ export default function PiChatView({
   readOnlyLabel,
   onSessionCreated,
   onTurnComplete,
+  pageContext,
+  suggestions,
+  compact,
 }: Readonly<{
   projectId: string
   sessionId?: string
@@ -554,6 +557,12 @@ export default function PiChatView({
   readOnlyLabel?: string
   onSessionCreated?: (sessionId: string) => void
   onTurnComplete?: () => void
+  /** The floating Pi: what the page shows right now, read when each message is sent. */
+  pageContext?: () => unknown
+  /** Replaces the starter chips (a page's own questions). */
+  suggestions?: { label: string; prompt: string }[]
+  /** Floating-box layout: tighter spacing, no footer chips. */
+  compact?: boolean
 }>) {
   const router = useRouter()
   const [messages, setMessages] = useState<Message[]>(initialMessages ?? [])
@@ -741,7 +750,7 @@ export default function PiChatView({
       const res = await fetchWithBackoff('/api/pi/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userContent, projectId, sessionId: sessionIdRef.current, model }),
+        body: JSON.stringify({ message: userContent, projectId, sessionId: sessionIdRef.current, model, pageContext: pageContext?.() }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Request failed' }))
@@ -758,7 +767,7 @@ export default function PiChatView({
     } finally {
       setIsStreaming(false)
     }
-  }, [isStreaming, projectId, readOnly, model, onTurnComplete, pinToBottom, handleStreamLine])
+  }, [isStreaming, projectId, readOnly, model, onTurnComplete, pageContext, pinToBottom, handleStreamLine])
 
   const autoGrow = useCallback(() => {
     const el = textareaRef.current
@@ -904,16 +913,18 @@ export default function PiChatView({
 
       <div className="relative min-h-0 flex-1">
       <div ref={scrollRef} className="h-full overflow-x-hidden overflow-y-auto">
-        <div ref={contentRef} className="mx-auto min-w-0 max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
+        <div ref={contentRef} className={compact ? 'min-w-0 px-4 py-4' : 'mx-auto min-w-0 max-w-3xl px-4 py-8 sm:px-6 sm:py-10'}>
           {messages.length === 0 && !readOnly && (
-            <div className="pt-[8vh] sm:pt-[10vh]">
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[28px]">Hi, I'm π.</h1>
-              <p className="mt-2 max-w-xl text-[15px] leading-7 text-muted-foreground">
-                Ask about your call analytics, create or update agents, attach inbound numbers, or check whether a phone number is spam — right here in this chat.
+            <div className={compact ? 'pt-1' : 'pt-[8vh] sm:pt-[10vh]'}>
+              <h1 className={compact ? 'text-xl font-semibold tracking-tight text-foreground' : 'text-2xl font-semibold tracking-tight text-foreground sm:text-[28px]'}>Hi, I'm π.</h1>
+              <p className={compact ? 'mt-1.5 text-[13.5px] leading-6 text-muted-foreground' : 'mt-2 max-w-xl text-[15px] leading-7 text-muted-foreground'}>
+                {compact
+                  ? 'I can see the page you are on. Ask about it, your calls and analytics, or have me change an agent.'
+                  : 'Ask about your call analytics, create or update agents, attach inbound numbers, or check whether a phone number is spam — right here in this chat.'}
               </p>
 
-              <div className="mt-6 flex flex-wrap gap-2">
-                {SUGGESTIONS.map(({ label, icon: Icon, prompt, mode }) => (
+              <div className={compact ? 'mt-4 flex flex-wrap gap-1.5' : 'mt-6 flex flex-wrap gap-2'}>
+                {(suggestions ? suggestions.map((q) => ({ ...q, icon: Sparkles, mode: 'send' as const })) : SUGGESTIONS).map(({ label, icon: Icon, prompt, mode }) => (
                   <button
                     key={label}
                     type="button"
@@ -986,7 +997,7 @@ export default function PiChatView({
       </div>
 
       {!readOnly && (
-        <div className="shrink-0 border-t border-border bg-card px-4 py-4 sm:px-6">
+        <div className={compact ? 'shrink-0 border-t border-border bg-card px-3 py-3' : 'shrink-0 border-t border-border bg-card px-4 py-4 sm:px-6'}>
           <div className="mx-auto max-w-3xl">
             <div className="rounded-2xl border border-border bg-card px-3 py-2.5 focus-within:border-border">
               <textarea
@@ -1022,13 +1033,13 @@ export default function PiChatView({
                 </button>
               </div>
             </div>
-            <p className="mt-2 text-center text-[11px] text-muted-foreground">
+            {!compact && <p className="mt-2 text-center text-[11px] text-muted-foreground">
               Pi is AI and can make mistakes — check key numbers against your call logs.
-            </p>
+            </p>}
             {micError && (
               <p className="mt-2 text-center text-[11px] text-red-400">{micError}</p>
             )}
-            {contextUsage && (() => {
+            {!compact && contextUsage && (() => {
               const pct = Math.min(100, Math.round((contextUsage.used / contextUsage.limit) * 100))
               return (
                 <div className="mt-2 flex items-center justify-center gap-2" title={`${contextUsage.used.toLocaleString()} / ${contextUsage.limit.toLocaleString()} tokens used this turn`}>
@@ -1066,7 +1077,7 @@ export default function PiChatView({
                 Phone numbers masked
               </span>
             </div>
-            {showContextHint && (
+            {!compact && showContextHint && (
               <p className="mt-2 text-center text-[11px] text-muted-foreground">
                 This chat is saved for your organization. Pi remembers recent messages in this thread when replying.
               </p>

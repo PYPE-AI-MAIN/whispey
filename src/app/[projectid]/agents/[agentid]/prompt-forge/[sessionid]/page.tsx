@@ -28,9 +28,7 @@ import { cn } from '@/lib/utils'
 import CallFilter, { type FilterOperation } from '@/components/CallFilter'
 import { extractFiltersAndDistinct } from '@/utils/callLogsUtils'
 import { extractorKeys } from '@/components/calls/v2/split/callData'
-import ReactMarkdown, { type Components } from 'react-markdown'
-import { usePiConversation } from '@/hooks/usePiConversation'
-import type { Message as PiMessage } from '@/lib/piStream'
+import { usePiSurface } from '@/contexts/PiDockContext'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -1479,13 +1477,12 @@ function ImportedBanner({ meta, onClose }: Readonly<{ meta: ImportedMeta; onClos
   )
 }
 
-/** The message box: Enter sends, Shift+Enter is a new line, the switch below turns it into Ask Pi. */
-function MessageComposer({ inputRef, value, onChange, onSend, busy, blockedReason, onAskPi }: Readonly<{
+/** The message box: Enter sends, Shift+Enter is a new line, */
+function MessageComposer({ inputRef, value, onChange, onSend, busy, blockedReason }: Readonly<{
   inputRef: React.RefObject<HTMLTextAreaElement | null>
   value: string; onChange: (v: string) => void; onSend: () => void; busy: boolean
   /** Why the chosen model can't run here, if it can't. */
   blockedReason: string | null
-  onAskPi: () => void
 }>) {
   const canSend = !!value.trim() && !busy
   return (
@@ -1524,9 +1521,8 @@ function MessageComposer({ inputRef, value, onChange, onSend, busy, blockedReaso
           </button>
         </div>
       </label>
-      <div className="flex items-center justify-between mt-1.5 px-1">
+      <div className="flex items-center mt-1.5 px-1">
         <span className="text-[10px] text-muted-foreground flex items-center gap-1"><CornerDownLeft className="w-2.5 h-2.5" />Enter to send · Shift+Enter for new line</span>
-        <AskPiSwitch on={false} onChange={on => { if (on) onAskPi() }} />
       </div>
     </div>
   )
@@ -1616,10 +1612,6 @@ function ForgeUI({
     document.addEventListener('pointerup', up)
   }, [])
 
-  // Ask Pi mode: the message box becomes a chat with Pi about this draft and test
-  const [piMode, setPiMode] = useState(false)
-  const piInputRef = useRef<HTMLTextAreaElement>(null)
-
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
 
   // The agent's config can arrive after the page opened (its server is slow at
@@ -1651,9 +1643,11 @@ function ForgeUI({
   // system variables the prompt uses — mentioned in one small line, not editable rows
   const autoFilledVariables = useMemo(() => usedVariableNames(systemPrompt, greeting.text).filter(isSystemVariable), [systemPrompt, greeting.text])
 
-  const pi = usePiConversation({
-    projectId,
-    getPageContext: () => ({
+  // The floating Ask Pi sees this draft and the test chat.
+  usePiSurface({
+    label: 'Prompt Forge',
+    suggestions: PI_FORGE_SUGGESTIONS,
+    getContext: () => ({
       surface: 'prompt_forge',
       agentId,
       systemPrompt,
@@ -1665,7 +1659,6 @@ function ForgeUI({
       transcript: messages.filter(m => m.isFinal).map(m => ({ role: m.role, content: m.content, tools: m.toolCalls?.map(tc => tc.name) })),
     }),
   })
-  useEffect(() => { (piMode ? piInputRef : inputRef).current?.focus() }, [piMode])
 
   // "/" jumps to the message box, unless you're already typing somewhere.
   useEffect(() => {
@@ -1675,13 +1668,11 @@ function ForgeUI({
       if (t && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName) || t.closest('.monaco-editor'))) return
       if (document.querySelector('[role="dialog"]')) return
       e.preventDefault()
-      ;(piModeRef.current ? piInputRef : inputRef).current?.focus()
+      inputRef.current?.focus()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [])
-  const piModeRef = useRef(piMode)
-  piModeRef.current = piMode
 
   useEffect(() => {
     fetch(`/api/prompt-forge/providers?project_id=${projectId}`)
@@ -2091,15 +2082,10 @@ function ForgeUI({
                   )
                 }
               </div>
-              {piMode ? (
-                <ForgePiPanel pi={pi} inputRef={piInputRef} onExit={() => setPiMode(false)} />
-              ) : (
-                <MessageComposer
-                  inputRef={inputRef} value={input} onChange={setInput} onSend={handleSend} busy={isStreaming}
-                  blockedReason={providerBlocked ? (availability?.[provider]?.reason ?? 'This model can’t run here.') : null}
-                  onAskPi={() => setPiMode(true)}
-                />
-              )}
+              <MessageComposer
+                inputRef={inputRef} value={input} onChange={setInput} onSend={handleSend} busy={isStreaming}
+                blockedReason={providerBlocked ? (availability?.[provider]?.reason ?? 'This model can’t run here.') : null}
+              />
             </div>
           </div>
 
@@ -2113,134 +2099,12 @@ function ForgeUI({
   )
 }
 
-// ─── Ask Pi mode ──────────────────────────────────────────────────────────────
-
-function PiGlyph({ className }: Readonly<{ className?: string }>) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M9 4v16M4 7c0-1.7 1.3-3 3-3h13M18 20c-1.7 0-3-1.3-3-3V4" />
-    </svg>
-  )
-}
-
-/** Talk to the agent ↔ ask Pi about it. */
-function AskPiSwitch({ on, onChange }: Readonly<{ on: boolean; onChange: (on: boolean) => void }>) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      onClick={() => onChange(!on)}
-      title={on ? 'Back to testing the agent' : 'Ask Pi about this prompt and test'}
-      className={cn('inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors',
-        on ? 'border-violet-400 bg-violet-500 text-white' : 'border-border text-muted-foreground hover:border-violet-300 hover:text-violet-600 dark:hover:text-violet-300')}
-    >
-      <span className={cn('relative inline-block h-3 w-5 rounded-full transition-colors', on ? 'bg-white/40' : 'bg-gray-300 dark:bg-gray-600')}>
-        <span className={cn('absolute top-0.5 h-2 w-2 rounded-full bg-card transition-all', on ? 'left-2.5' : 'left-0.5')} />
-      </span>
-      <PiGlyph className="w-3 h-3" />Ask Pi
-    </button>
-  )
-}
-
 const PI_FORGE_SUGGESTIONS = [
   'Why did the agent answer like that?',
   'What’s missing or contradictory in this prompt?',
   'How do I make it ask for the date before booking?',
   'Summarise how this test conversation went',
-]
-
-const PI_TOOL_STEPS: Record<string, string> = {
-  call_breakdown: 'Counting calls',
-  summarize_call_transcripts: 'Reading call transcripts',
-  get_agent_details: 'Reading the live agent',
-  query_analytics: 'Running numbers',
-}
-
-// How Pi's replies render. Outside the panel so they aren't redefined on every render.
-const PI_MARKDOWN_COMPONENTS: Components = {
-  img: () => null,
-  a: ({ children }) => <span>{children}</span>,
-  p: ({ children }) => <p className="my-1">{children}</p>,
-  ul: ({ children }) => <ul className="my-1 list-disc pl-5">{children}</ul>,
-  ol: ({ children }) => <ol className="my-1 list-decimal pl-5">{children}</ol>,
-  code: ({ children }) => <code className="rounded bg-muted px-1 font-mono text-[12px]">{children}</code>,
-  pre: ({ children }) => <pre className="my-1.5 whitespace-pre-wrap rounded-md bg-muted p-2 text-[12px]">{children}</pre>,
-}
-
-// The message box, switched to Ask Pi: a taller box with the Pi conversation
-// right above it. Pi sees the draft (prompt, model, greeting, tools, variables)
-// and the test chat. Switching back keeps this conversation.
-function ForgePiPanel({ pi, inputRef, onExit }: Readonly<{
-  pi: { messages: PiMessage[]; busy: boolean; ask: (t: string) => void; reset: () => void }
-  inputRef: React.RefObject<HTMLTextAreaElement | null>
-  onExit: () => void
-}>) {
-  const [text, setText] = useState('')
-  const listRef = useRef<HTMLDivElement>(null)
-  useEffect(() => { const el = listRef.current; if (el) el.scrollTop = el.scrollHeight }, [pi.messages])
-  const send = (q: string) => {
-    if (!q.trim() || pi.busy) return
-    pi.ask(q)
-    setText('')
-  }
-  return (
-    <div className="shrink-0 flex flex-col border-t-2 border-violet-400/60 bg-violet-50/40 dark:bg-violet-950/20" style={{ height: '46%', minHeight: 260 }}>
-      <div className="shrink-0 flex items-center gap-2 px-4 py-2">
-        <span className="grid h-5 w-5 place-items-center rounded-full bg-violet-500 text-white"><PiGlyph className="w-3 h-3" /></span>
-        <span className="text-xs font-semibold text-foreground">Ask Pi</span>
-        <span className="text-[11px] text-muted-foreground truncate">knows this prompt, model, greeting, tools and the test chat</span>
-        <span className="flex-1" />
-        {pi.messages.length > 0 && (
-          <button onClick={pi.reset} className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1"><RotateCcw className="w-3 h-3" />New chat</button>
-        )}
-        <AskPiSwitch on onChange={on => { if (!on) onExit() }} />
-      </div>
-      <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto px-4 space-y-3 pb-2">
-        {pi.messages.length === 0 ? (
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {PI_FORGE_SUGGESTIONS.map(q => (
-              <button key={q} onClick={() => send(q)} className="rounded-full border border-violet-200 dark:border-violet-800/60 bg-card px-2.5 py-1 text-xs text-muted-foreground hover:border-violet-400">
-                {q}
-              </button>
-            ))}
-          </div>
-        ) : pi.messages.map(m => m.role === 'user' ? (
-          <div key={m.id} className="ml-auto max-w-[80%] w-fit rounded-2xl rounded-tr-sm bg-violet-500 text-white px-3 py-1.5 text-sm">{m.content}</div>
-        ) : (
-          <div key={m.id} className="max-w-[92%] text-sm text-foreground leading-relaxed">
-            {(() => {
-              const step = [...(m.toolCalls ?? [])].reverse().find(tc => PI_TOOL_STEPS[tc.name])
-              return step ? <p className="mb-1 text-[11px] text-muted-foreground">{PI_TOOL_STEPS[step.name]}{step.pending ? '…' : ''}</p> : null
-            })()}
-            {!m.content && !m.isFinal ? <span className="text-xs text-muted-foreground">Thinking…</span> : (
-              <ReactMarkdown components={PI_MARKDOWN_COMPONENTS}>{m.content}</ReactMarkdown>
-            )}
-          </div>
-        ))}
-      </div>
-      <div className="shrink-0 px-4 pb-3">
-        <div className="rounded-xl border border-violet-300 dark:border-violet-700 bg-card px-3 py-2 focus-within:ring-2 focus-within:ring-violet-200 dark:focus-within:ring-violet-900">
-          <textarea
-            ref={inputRef}
-            value={text}
-            rows={3}
-            onChange={e => setText(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(text) } }}
-            placeholder="Ask Pi about this prompt, the test chat, or the agent’s real calls…"
-            className="w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
-          />
-          <div className="flex justify-end">
-            <button onClick={() => send(text)} disabled={!text.trim() || pi.busy} aria-label="Ask Pi"
-              className="grid h-7 w-7 place-items-center rounded-lg bg-violet-500 text-white disabled:opacity-30">
-              {pi.busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+].map(q => ({ label: q, prompt: q }))
 
 // ─── Chat sub-components ──────────────────────────────────────────────────────
 

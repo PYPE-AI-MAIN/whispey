@@ -50,7 +50,7 @@ export function ChartCard({
   /** Off on a phone: the canvas is for reading there, not for building. */
   draggable: boolean
   onSelect: () => void
-  onOpenLogs: (dimensionValue?: string | null) => void
+  onOpenLogs: (dimensionValue?: string | null, bucketValue?: string) => void
   onEdit: () => void
   onDuplicate: () => void
   onRemove: () => void
@@ -233,7 +233,7 @@ function CardBody({
   fieldMissing: boolean
   /** Two grid rows tall — the number has to be smaller or it draws over the words. */
   short: boolean
-  onSelect: (value: string | null) => void
+  onSelect: (value?: string | null, bucketValue?: string) => void
 }>) {
   if (isLoading && !result) return <Skeleton className="h-full w-full rounded-lg" />
 

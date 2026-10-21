@@ -1,18 +1,18 @@
 "use client"
 
-// Ask Pi on the Call Logs page, as in the mockup: a brand-coloured button floating
-// bottom-right (drag it up or down), opening a small chat box above it that can
-// be expanded. It talks to the existing Pi backend with this page's context, so
+// Ask Pi's chat on the Call Logs page, shown inside the floating Pi box
+// (FloatingPi). It talks to the existing Pi backend with this page's context, so
 // "today's calls", "these calls" and "this call" mean what is on screen. Pi can
 // read transcripts and suggest filters; filters only change on an Apply click.
 // Not rendered for viewers.
 
-import React, { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import React, { memo, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react"
 import ReactMarkdown, { type Components } from "react-markdown"
-import { ArrowUp, Check, Filter, Maximize2, Minimize2, RotateCcw, X } from "lucide-react"
+import { ArrowUp, Check, Filter, RotateCcw } from "lucide-react"
 import type { FilterOperation } from "@/components/CallFilter"
 import type { Message } from "@/lib/piStream"
 import { usePiConversation } from "@/hooks/usePiConversation"
+import { PiDockBody, usePiDock, usePiSurface } from "@/contexts/PiDockContext"
 import { cn } from "@/lib/utils"
 
 export interface FilterProposal {
@@ -57,19 +57,8 @@ const TOOL_STEPS: Record<string, string> = {
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-const FAB_OFFSET_KEY = "whispey:askPiFabOffset"
-const maxFabLift = () => Math.max(0, Math.min(320, globalThis.innerHeight - 260))
 
-function readOffset(): number {
-  try {
-    const v = Number(globalThis.localStorage?.getItem(FAB_OFFSET_KEY))
-    return Number.isFinite(v) ? v : 0
-  } catch {
-    return 0
-  }
-}
-
-function PiMark({ className }: Readonly<{ className?: string }>) {
+export function PiMark({ className }: Readonly<{ className?: string }>) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M9 4v16M4 7c0-1.7 1.3-3 3-3h13M18 20c-1.7 0-3-1.3-3-3V4" />
@@ -78,113 +67,14 @@ function PiMark({ className }: Readonly<{ className?: string }>) {
 }
 
 export function AskPi(props: Readonly<AskPiProps>) {
-  const { contextLabel } = props
-  const [open, setOpen] = useState(false)
-  const [max, setMax] = useState(false)
-  // How far the button has been dragged up from its resting place (negative = up).
-  const [lift, setLift] = useState(0)
-  useEffect(() => setLift(Math.max(-maxFabLift(), Math.min(0, readOffset()))), [])
-  const drag = useRef<{ y: number; start: number; moved: boolean } | null>(null)
-  const fabRef = useRef<HTMLButtonElement>(null)
-
-  const endDrag = useCallback(() => {
-    const d = drag.current
-    if (!d) return
-    drag.current = null
-    if (fabRef.current) delete fabRef.current.dataset.dragging
-    if (d.moved) {
-      try { globalThis.localStorage?.setItem(FAB_OFFSET_KEY, String(lift)) } catch { /* per-viewer nicety only */ }
-    }
-  }, [lift])
-
-  useEffect(() => {
-    globalThis.addEventListener("pointerup", endDrag)
-    globalThis.addEventListener("blur", endDrag)
-    return () => {
-      globalThis.removeEventListener("pointerup", endDrag)
-      globalThis.removeEventListener("blur", endDrag)
-    }
-  }, [endDrag])
-
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopPropagation()
-        setOpen(false)
-      }
-    }
-    // capture: Esc here closes Pi instead of also closing the open call
-    document.addEventListener("keydown", onKey, true)
-    return () => document.removeEventListener("keydown", onKey, true)
-  }, [open])
-
-  return (
-    <>
-      <button
-        ref={fabRef}
-        type="button"
-        title="Ask Pi about the calls in this view · drag up or down to move"
-        style={{ transform: `translateY(${lift}px)` }}
-        onPointerDown={(e) => {
-          if (e.button !== 0) return
-          drag.current = { y: e.clientY, start: lift, moved: false }
-          try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* ignore */ }
-        }}
-        onPointerMove={(e) => {
-          const d = drag.current
-          if (!d) return
-          if (e.buttons === 0) return endDrag()
-          const dy = e.clientY - d.y
-          if (!d.moved && Math.abs(dy) > 4) {
-            d.moved = true
-            e.currentTarget.dataset.dragging = ""
-          }
-          if (d.moved) setLift(Math.max(-maxFabLift(), Math.min(0, d.start + dy)))
-        }}
-        onPointerCancel={endDrag}
-        onLostPointerCapture={endDrag}
-        onClick={() => {
-          // a drag ends with a click; it shouldn't also toggle the box
-          if (fabRef.current?.dataset.justDragged) return
-          setOpen((o) => !o)
-        }}
-        onPointerUp={(e) => {
-          if (drag.current?.moved) {
-            e.currentTarget.dataset.justDragged = "1"
-            setTimeout(() => { if (fabRef.current) delete fabRef.current.dataset.justDragged }, 0)
-          }
-        }}
-        className={cn(
-          "fixed bottom-24 right-5 z-[85] inline-flex h-10 cursor-pointer touch-none select-none items-center gap-2 rounded-full bg-[var(--cl-violet)] pl-1.5 pr-4 text-[14px] font-semibold text-white",
-          "shadow-[0_8px_24px_rgba(229,83,91,.35),0_2px_6px_rgba(0,0,0,.25)] transition-shadow hover:shadow-[0_10px_28px_rgba(124,58,237,.45),0_2px_6px_rgba(0,0,0,.25)] data-[dragging]:cursor-grabbing",
-          open && "shadow-[0_0_0_3px_var(--cl-violet-soft),0_8px_24px_rgba(229,83,91,.35)]"
-        )}
-      >
-        <span className="grid h-7 w-7 place-items-center rounded-full bg-white/20"><PiMark className="h-3.5 w-3.5" /></span>
-        <span>Ask Pi</span>
-      </button>
-
-      {/* Kept mounted while closed, so the conversation survives closing the box. */}
-      {/* A region, not a dialog: the page stays usable (and its shortcuts live) while it's open. */}
-      <section
-        aria-label="Ask Pi"
-        hidden={!open}
-        style={{ bottom: `calc(${148 - lift}px)` }}
-        className={cn(
-          "fixed right-5 z-[90] flex flex-col overflow-hidden rounded-2xl border border-[var(--cl-border2)] bg-[var(--cl-panel)] text-[var(--cl-text)] shadow-[var(--cl-shadow)] transition-[width,height] duration-200",
-          max ? "h-[min(680px,calc(100vh-120px))] w-[min(620px,calc(100vw-32px))]" : "h-[min(480px,calc(100vh-180px))] w-[380px]"
-        )}
-      >
-        <PiChat {...props} max={max} onToggleMax={() => setMax((m) => !m)} onClose={() => setOpen(false)} contextLabel={contextLabel} />
-      </section>
-    </>
-  )
+  usePiSurface({ label: props.contextLabel })
+  return <PiDockBody><PiChat {...props} /></PiDockBody>
 }
 
 function PiChat({
-  projectId, agentId, openCallId, filters, dateRange, contextLabel, onApplyFilters, onOpenCall, max, onToggleMax, onClose,
-}: Readonly<AskPiProps & { max: boolean; onToggleMax: () => void; onClose: () => void }>) {
+  projectId, agentId, openCallId, filters, dateRange, onApplyFilters, onOpenCall,
+}: Readonly<AskPiProps>) {
+  const max = usePiDock()?.max ?? false
   const [input, setInput] = useState("")
   const [applied, setApplied] = useState<Record<string, "applied" | "dismissed">>({})
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -220,15 +110,11 @@ function PiChat({
 
   return (
     <>
-      <div className="flex flex-none items-center gap-2 border-b border-[var(--cl-border)] py-[9px] pl-3 pr-2.5">
-        <span className="grid h-[22px] w-[22px] place-items-center rounded-full bg-[var(--cl-violet)] text-white"><PiMark className="h-3 w-3" /></span>
-        <b className="text-[14px]">Ask Pi</b>
-        <span className="min-w-0 truncate rounded-full border border-[var(--cl-border2)] px-[9px] py-0.5 text-[12.5px] text-[var(--cl-text3)]" title={contextLabel}>{contextLabel}</span>
-        <span className="flex-1" />
-        {messages.length > 0 && <HeaderButton label="New chat" onClick={reset}><RotateCcw className="h-3.5 w-3.5" /></HeaderButton>}
-        <HeaderButton label={max ? "Shrink" : "Expand"} onClick={onToggleMax}>{max ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}</HeaderButton>
-        <HeaderButton label="Close (Esc)" onClick={onClose}><X className="h-4 w-4" /></HeaderButton>
-      </div>
+      {messages.length > 0 && (
+        <div className="flex flex-none justify-end px-2.5 pt-1.5">
+          <HeaderButton label="New chat" onClick={reset}><RotateCcw className="h-3.5 w-3.5" /></HeaderButton>
+        </div>
+      )}
 
       <div ref={bodyRef} className={cn("flex min-h-0 flex-1 flex-col overflow-y-auto", max ? "gap-[22px] px-6 py-5" : "gap-4 px-4 py-3.5")}>
         {messages.length === 0 ? (
