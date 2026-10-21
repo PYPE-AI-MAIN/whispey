@@ -212,10 +212,6 @@ export function ChartCard({
         <CardBody widget={widget} result={result} isLoading={isLoading} rows={rows} categories={categories} fieldMissing={fieldMissing} short={short} onSelect={onOpenLogs} />
       </div>
 
-            <div className="relative z-10 pointer-events-none flex shrink-0 items-center justify-between gap-2 px-4 pb-3 text-[11px] text-muted-foreground">
-        <span />
-        {result?.meta?.lookbackDays ? <span>Best of 90 days</span> : null}
-      </div>
     </div>
   )
 }

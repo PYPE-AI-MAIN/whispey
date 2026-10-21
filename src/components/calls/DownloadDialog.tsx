@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import CheckboxRow from '@/components/calls/CheckboxRow'
 import { downloadCSV, DownloadProgress } from '@/utils/callLogsUtils'
 import type { FilterOperation } from '@/components/CallFilter'
+import { hasDateFilter } from '@/hooks/useCallLogsData'
 
 const LARGE_EXPORT_THRESHOLD = 20_000
 
@@ -151,6 +152,52 @@ function useDownloadColumnSelection(
   }
 }
 
+/** From/To for the export, or a note when a Date filter already sets the dates. */
+function DateRangeFields({ datesFromFilter, from, to, onFromChange, onToChange }: Readonly<{
+  datesFromFilter: boolean
+  from: Date | undefined
+  to: Date | undefined
+  onFromChange: (d: Date | undefined) => void
+  onToChange: (d: Date | undefined) => void
+}>) {
+  if (datesFromFilter) {
+    return <p className="text-xs text-muted-foreground">Dates come from your Date filter.</p>
+  }
+  return (
+    <div className="flex items-center gap-2">
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 flex-1 justify-start">
+            <CalendarIcon className="h-3 w-3 opacity-60" />
+            {from ? format(from, 'MMM dd, yyyy') : 'From'}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar mode="single" selected={from} onSelect={onFromChange} initialFocus />
+        </PopoverContent>
+      </Popover>
+      <span className="text-xs text-muted-foreground">to</span>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 flex-1 justify-start">
+            <CalendarIcon className="h-3 w-3 opacity-60" />
+            {to ? format(to, 'MMM dd, yyyy') : 'To'}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar mode="single" selected={to} onSelect={onToChange} initialFocus />
+        </PopoverContent>
+      </Popover>
+    </div>
+  )
+}
+
+/** The dates to export by: none while a Date filter decides them. */
+function exportDateRange(datesFromFilter: boolean, from: Date | undefined, to: Date | undefined) {
+  if (datesFromFilter || (!from && !to)) return undefined
+  return { from: from ? format(from, 'yyyy-MM-dd') : '', to: to ? format(to, 'yyyy-MM-dd') : '' }
+}
+
 export default function DownloadDialog({
   open, onOpenChange, agentId, projectId, activeFilters,
   basicColumns, metadataColumns, transcriptionColumns, hiddenColumns, initialDateRange,
@@ -194,7 +241,10 @@ export default function DownloadDialog({
     persistExcludedColumns,
   } = useDownloadColumnSelection(agentId, open, allowedBasic, allowedMetadata, allowedTranscription, transcriptAllowed, setError)
 
-  const { count, countLoading } = useCallCount(agentId, open, from, to)
+  // A Date filter decides the dates on its own; a second range here would fight it.
+  const datesFromFilter = hasDateFilter(activeFilters)
+  // The estimate can only count by date, so it's left out while a Date filter is on.
+  const { count, countLoading } = useCallCount(agentId, open && !datesFromFilter, from, to)
 
   const toggle = (list: string[], setList: (v: string[]) => void, col: string) => {
     setList(list.includes(col) ? list.filter(c => c !== col) : [...list, col])
@@ -211,7 +261,7 @@ export default function DownloadDialog({
         { basic: selectedBasic, metadata: selectedMetadata, transcription_metrics: selectedTranscription, transcript: includeTranscript },
         projectId,
         setProgress,
-        from || to ? { from: from ? format(from, 'yyyy-MM-dd') : '', to: to ? format(to, 'yyyy-MM-dd') : '' } : undefined,
+        exportDateRange(datesFromFilter, from, to),
         timezone
       )
       onOpenChange(false)
@@ -241,31 +291,7 @@ export default function DownloadDialog({
           <div className="rounded-xl border border-border p-3 space-y-3">
             <div>
               <span className="text-xs font-medium text-muted-foreground mb-1.5 block">Date range</span>
-              <div className="flex items-center gap-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 flex-1 justify-start">
-                      <CalendarIcon className="h-3 w-3 opacity-60" />
-                      {from ? format(from, 'MMM dd, yyyy') : 'From'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={from} onSelect={setFrom} initialFocus />
-                  </PopoverContent>
-                </Popover>
-                <span className="text-xs text-muted-foreground">to</span>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 flex-1 justify-start">
-                      <CalendarIcon className="h-3 w-3 opacity-60" />
-                      {to ? format(to, 'MMM dd, yyyy') : 'To'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={to} onSelect={setTo} initialFocus />
-                  </PopoverContent>
-                </Popover>
-              </div>
+              <DateRangeFields datesFromFilter={datesFromFilter} from={from} to={to} onFromChange={setFrom} onToChange={setTo} />
             </div>
 
             <div>
@@ -283,6 +309,7 @@ export default function DownloadDialog({
           </div>
 
           {/* Row count estimate — prominent callout, amber when large */}
+          {!datesFromFilter && (
           <div
             className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 ${
               isLarge
@@ -307,7 +334,7 @@ export default function DownloadDialog({
               {getCountDisplay(countLoading, count)}
             </span>
           </div>
-
+          )}
           {/* Columns — collapsible */}
           <Collapsible open={columnsOpen} onOpenChange={setColumnsOpen}>
             <CollapsibleTrigger asChild>
