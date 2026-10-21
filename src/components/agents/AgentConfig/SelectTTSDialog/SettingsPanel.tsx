@@ -36,6 +36,9 @@ export interface ElevenLabsConfig {
   style: number
   useSpeakerBoost: boolean
   speed: number
+  expressive: boolean
+  audioTags: string[]
+  audioTagNotes: Record<string, string>
 }
 
 export interface GoogleTTSConfig {
@@ -53,6 +56,7 @@ interface SettingsPanelProps {
   setGoogleTTSConfig: React.Dispatch<React.SetStateAction<GoogleTTSConfig>>
   rayaConfig: RayaConfig
   setRayaConfig: React.Dispatch<React.SetStateAction<RayaConfig>>
+  allowAudioTags?: boolean
 }
 
 const CopyButton = ({ text, className = '' }: { text: string; className?: string }) => {
@@ -258,6 +262,105 @@ const SarvamSettings = ({
   )
 }
 
+// Audio tags ("[warmly] ...") are understood by the ElevenLabs v3 and v4 families only.
+const supportsAudioTags = (model: string) => /^eleven_v[34]/.test(model)
+
+const SUGGESTED_AUDIO_TAGS = [
+  'empathetically', 'warmly', 'patiently', 'confidently', 'excitedly', 'enthusiastically',
+  'seriously', 'chuckles', 'laughing', 'sighs',
+]
+const MAX_AUDIO_TAGS = 20
+
+const ExpressiveSettings = ({ config, setConfig }: {
+  config: ElevenLabsConfig
+  setConfig: React.Dispatch<React.SetStateAction<ElevenLabsConfig>>
+}) => {
+  const [custom, setCustom] = useState('')
+  const tags = config.audioTags
+  const setTags = (next: string[]) => setConfig((prev) => ({ ...prev, audioTags: next }))
+  const setNote = (tag: string, note: string) =>
+    setConfig((prev) => ({ ...prev, audioTagNotes: { ...prev.audioTagNotes, [tag]: note } }))
+  const toggle = (tag: string) => setTags(tags.includes(tag) ? tags.filter((t) => t !== tag) : [...tags, tag].slice(0, MAX_AUDIO_TAGS))
+  const addCustom = () => {
+    const tag = custom.trim().replace(/^\[|\]$/g, '').toLowerCase()
+    if (/^[a-z][a-z '-]{0,30}$/.test(tag) && !tags.includes(tag)) setTags([...tags, tag].slice(0, MAX_AUDIO_TAGS))
+    setCustom('')
+  }
+  const options = [...SUGGESTED_AUDIO_TAGS, ...tags.filter((t) => !SUGGESTED_AUDIO_TAGS.includes(t))]
+
+  return (
+    <ConfigSection title="Expressive mode">
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <Label htmlFor="expressive-mode">Let the agent use audio tags</Label>
+            <p className="text-xs text-muted-foreground">
+              The prompt tells the model to open sentences with tags like [warmly]. They are spoken as delivery, never read aloud, and are hidden from transcripts. SSML pauses do not work on v4.
+            </p>
+          </div>
+          <Switch
+            id="expressive-mode"
+            checked={config.expressive}
+            onCheckedChange={(checked) => setConfig((prev) => ({ ...prev, expressive: checked }))}
+          />
+        </div>
+
+        {config.expressive && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label>Suggested audio tags</Label>
+              <span className="text-xs text-muted-foreground">{tags.length}/{MAX_AUDIO_TAGS}</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {options.map((tag) => (
+                <Button
+                  key={tag}
+                  type="button"
+                  size="sm"
+                  variant={tags.includes(tag) ? 'default' : 'outline'}
+                  className="h-7 text-xs"
+                  onClick={() => toggle(tag)}
+                >
+                  {tags.includes(tag) ? '' : '+ '}{tag}
+                </Button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                value={custom}
+                onChange={(e) => setCustom(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustom() } }}
+                placeholder="Add your own, e.g. whispers"
+              />
+              <Button type="button" variant="outline" onClick={addCustom}>Add</Button>
+            </div>
+            {tags.length === 0 && (
+              <p className="text-xs text-muted-foreground">No tags picked: the agent uses empathetically, warmly and patiently.</p>
+            )}
+            {tags.length > 0 && (
+              <div className="space-y-2">
+                <Label>When to use each tag (optional)</Label>
+                {tags.map((tag) => (
+                  <div key={tag} className="flex items-center gap-2">
+                    <span className="w-32 shrink-0 truncate text-xs font-medium">[{tag}]</span>
+                    <Input
+                      value={config.audioTagNotes[tag] ?? ''}
+                      maxLength={200}
+                      onChange={(e) => setNote(tag, e.target.value)}
+                      placeholder="e.g. throughout the call"
+                    />
+                  </div>
+                ))}
+                <p className="text-xs text-muted-foreground">Added to the end of the prompt as "- [tag]: when to use it".</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </ConfigSection>
+  )
+}
+
 const SettingsPanel: React.FC<SettingsPanelProps> = ({
   selectedProvider,
   sarvamConfig,
@@ -268,6 +371,7 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   setGoogleTTSConfig,
   rayaConfig,
   setRayaConfig,
+  allowAudioTags = false,
 }) => {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const normalizedProvider = normalizeTtsProvider(selectedProvider)
@@ -344,6 +448,12 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                       <SelectItem value="eleven_turbo_v2_5">Turbo v2.5</SelectItem>
                       <SelectItem value="eleven_flash_v2_5">Flash v2.5</SelectItem>
                       <SelectItem value="eleven_v3">Eleven v3</SelectItem>
+                      {(allowAudioTags || supportsAudioTags(elevenLabsConfig.model)) && (
+                        <>
+                          <SelectItem value="eleven_v4_turbo">Eleven v4 Turbo (real-time)</SelectItem>
+                          <SelectItem value="eleven_v4">Eleven v4</SelectItem>
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -363,6 +473,10 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 <span className="text-sm font-medium">Advanced Configuration</span>
               </Button>
             </div>
+
+            {allowAudioTags && supportsAudioTags(elevenLabsConfig.model) && (
+              <ExpressiveSettings config={elevenLabsConfig} setConfig={setElevenLabsConfig} />
+            )}
 
             {showAdvanced && (
               <ConfigSection title="Advanced Settings">

@@ -796,6 +796,9 @@ export function deriveTtsVoiceConfig(tts: any): any {
       style: tts.voice_settings?.style ?? getFallback(null, 'tts.voice_settings.style'),
       useSpeakerBoost: tts.voice_settings?.use_speaker_boost ?? getFallback(null, 'tts.voice_settings.use_speaker_boost'),
       speed: tts.voice_settings?.speed ?? getFallback(null, 'tts.voice_settings.speed'),
+      expressive: tts.expressive === true,
+      audioTags: Array.isArray(tts.audio_tags) ? tts.audio_tags : [],
+      audioTagNotes: tts.audio_tag_notes && typeof tts.audio_tag_notes === 'object' ? tts.audio_tag_notes : {},
     }
   }
 
