@@ -3,7 +3,7 @@
 import { createContext, memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowUp, Bot, ChevronDown, Mic, PhoneIncoming, ShieldAlert, TrendingUp, Trophy, type LucideIcon } from 'lucide-react'
+import { ArrowUp, Bot, ChevronDown, Mic, PhoneIncoming, ShieldAlert, Sparkles, TrendingUp, Trophy, type LucideIcon } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { buildAgentLinkMap, resolvePiHref } from '@/lib/piLinks'
 import { fetchWithBackoff } from '@/lib/piFetch'
@@ -113,51 +113,54 @@ const SUGGESTIONS: { label: string; icon: LucideIcon; prompt: string; mode: 'sen
 ]
 
 
-// Pure CSS — no animation library needed for a decorative loading orb.
-// Several large, softly-blurred radial gradients drift against each other to
-// read as one glossy, shifting sphere, the same trick behind most "AI is
-// thinking" orbs — no WebGL/Three.js/Lottie asset required.
+// Pure CSS, no animation library: a coral π badge with a ripple that expands and
+// fades, so "working" reads as alive without a spinner. Reduced-motion users get
+// the still badge.
 function ThinkingOrb() {
   return (
-    <span className="pi-orb" aria-hidden="true">
+    <span className="pi-badge" aria-hidden="true">
+      <span className="pi-ripple" />
+      <svg viewBox="0 0 24 24" className="pi-mark" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 4v16M4 7c0-1.7 1.3-3 3-3h13M18 20c-1.7 0-3-1.3-3-3V4" />
+      </svg>
       <style jsx>{`
-        .pi-orb {
-          display: inline-block;
-          width: 20px;
-          height: 20px;
+        .pi-badge {
+          position: relative;
+          display: inline-grid;
+          place-items: center;
+          width: 22px;
+          height: 22px;
           border-radius: 9999px;
-          overflow: hidden;
           flex-shrink: 0;
-          box-shadow: 0 0 6px 1px rgba(56, 189, 248, 0.35);
-          animation: pi-orb-pulse 2.4s ease-in-out infinite;
+          color: #fff;
+          background: linear-gradient(135deg, #ff7a80, #d23d47);
         }
-        .pi-orb::before {
-          content: '';
-          display: block;
-          width: 100%;
-          height: 100%;
+        .pi-mark { width: 12px; height: 12px; position: relative; animation: pi-breathe 1.8s ease-in-out infinite; }
+        .pi-ripple {
+          position: absolute;
+          inset: 0;
           border-radius: inherit;
-          background:
-            radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9), transparent 45%),
-            radial-gradient(circle at 65% 70%, #7dd3fc 0%, transparent 55%),
-            radial-gradient(circle at 70% 25%, #38bdf8 0%, transparent 60%),
-            radial-gradient(circle at 25% 70%, #1e3a8a 0%, #0c1b3a 70%);
-          animation: pi-orb-spin 3s linear infinite;
+          background: #e5535b;
+          animation: pi-ripple 1.8s ease-out infinite;
         }
-        @keyframes pi-orb-spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
+        @keyframes pi-ripple {
+          0% { transform: scale(1); opacity: 0.55; }
+          100% { transform: scale(2.1); opacity: 0; }
         }
-        @keyframes pi-orb-pulse {
+        @keyframes pi-breathe {
           0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.15); }
+          50% { transform: scale(1.18); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .pi-ripple, .pi-mark { animation: none; }
         }
       `}</style>
     </span>
   )
 }
 
-function ThinkingIndicator() {
+/** Pi at work: the badge and shimmering text. `label` names the step in progress instead of the cycling phrases. */
+export function ThinkingIndicator({ label }: Readonly<{ label?: string }> = {}) {
   const [phraseIndex, setPhraseIndex] = useState(0)
 
   useEffect(() => {
@@ -166,10 +169,39 @@ function ThinkingIndicator() {
   }, [])
 
   return (
-    <span className="inline-flex items-center gap-2 py-2 text-[13px] text-muted-foreground">
+    <output className="inline-flex items-center gap-2.5 py-2 text-[13px]">
       <ThinkingOrb />
-      {THINKING_PHRASES[phraseIndex]}
-    </span>
+      <span className="pi-shimmer">{label ?? THINKING_PHRASES[phraseIndex]}</span>
+      <span className="pi-dots" aria-hidden="true"><i /><i /><i /></span>
+      <style jsx>{`
+        .pi-shimmer {
+          color: transparent;
+          background: linear-gradient(90deg, var(--muted-foreground) 35%, var(--foreground) 50%, var(--muted-foreground) 65%) 0 0 / 250% 100%;
+          -webkit-background-clip: text;
+          background-clip: text;
+          animation: pi-shimmer 2.2s linear infinite;
+        }
+        .pi-dots { display: inline-flex; gap: 3px; margin-left: -4px; }
+        .pi-dots i {
+          width: 3px;
+          height: 3px;
+          border-radius: 9999px;
+          background: var(--muted-foreground);
+          animation: pi-dot 1.2s ease-in-out infinite;
+        }
+        .pi-dots i:nth-child(2) { animation-delay: 0.15s; }
+        .pi-dots i:nth-child(3) { animation-delay: 0.3s; }
+        @keyframes pi-shimmer { to { background-position: -150% 0; } }
+        @keyframes pi-dot {
+          0%, 60%, 100% { opacity: 0.25; transform: translateY(0); }
+          30% { opacity: 1; transform: translateY(-3px); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .pi-shimmer, .pi-dots i { animation: none; }
+          .pi-shimmer { color: var(--muted-foreground); background: none; }
+        }
+      `}</style>
+    </output>
   )
 }
 
@@ -546,6 +578,9 @@ export default function PiChatView({
   readOnlyLabel,
   onSessionCreated,
   onTurnComplete,
+  pageContext,
+  suggestions,
+  compact,
 }: Readonly<{
   projectId: string
   sessionId?: string
@@ -554,6 +589,12 @@ export default function PiChatView({
   readOnlyLabel?: string
   onSessionCreated?: (sessionId: string) => void
   onTurnComplete?: () => void
+  /** The floating Pi: what the page shows right now, read when each message is sent. */
+  pageContext?: () => unknown
+  /** Replaces the starter chips (a page's own questions). */
+  suggestions?: { label: string; prompt: string }[]
+  /** Floating-box layout: tighter spacing, no footer chips. */
+  compact?: boolean
 }>) {
   const router = useRouter()
   const [messages, setMessages] = useState<Message[]>(initialMessages ?? [])
@@ -741,7 +782,7 @@ export default function PiChatView({
       const res = await fetchWithBackoff('/api/pi/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userContent, projectId, sessionId: sessionIdRef.current, model }),
+        body: JSON.stringify({ message: userContent, projectId, sessionId: sessionIdRef.current, model, pageContext: pageContext?.() }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Request failed' }))
@@ -758,7 +799,7 @@ export default function PiChatView({
     } finally {
       setIsStreaming(false)
     }
-  }, [isStreaming, projectId, readOnly, model, onTurnComplete, pinToBottom, handleStreamLine])
+  }, [isStreaming, projectId, readOnly, model, onTurnComplete, pageContext, pinToBottom, handleStreamLine])
 
   const autoGrow = useCallback(() => {
     const el = textareaRef.current
@@ -904,16 +945,18 @@ export default function PiChatView({
 
       <div className="relative min-h-0 flex-1">
       <div ref={scrollRef} className="h-full overflow-x-hidden overflow-y-auto">
-        <div ref={contentRef} className="mx-auto min-w-0 max-w-3xl px-4 py-8 sm:px-6 sm:py-10">
+        <div ref={contentRef} className={compact ? 'min-w-0 px-4 py-4' : 'mx-auto min-w-0 max-w-3xl px-4 py-8 sm:px-6 sm:py-10'}>
           {messages.length === 0 && !readOnly && (
-            <div className="pt-[8vh] sm:pt-[10vh]">
-              <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[28px]">Hi, I'm π.</h1>
-              <p className="mt-2 max-w-xl text-[15px] leading-7 text-muted-foreground">
-                Ask about your call analytics, create or update agents, attach inbound numbers, or check whether a phone number is spam — right here in this chat.
+            <div className={compact ? 'pt-1' : 'pt-[8vh] sm:pt-[10vh]'}>
+              <h1 className={compact ? 'text-xl font-semibold tracking-tight text-foreground' : 'text-2xl font-semibold tracking-tight text-foreground sm:text-[28px]'}>Hi, I'm π.</h1>
+              <p className={compact ? 'mt-1.5 text-[13.5px] leading-6 text-muted-foreground' : 'mt-2 max-w-xl text-[15px] leading-7 text-muted-foreground'}>
+                {compact
+                  ? 'I can see the page you are on. Ask about it, your calls and analytics, or have me change an agent.'
+                  : 'Ask about your call analytics, create or update agents, attach inbound numbers, or check whether a phone number is spam — right here in this chat.'}
               </p>
 
-              <div className="mt-6 flex flex-wrap gap-2">
-                {SUGGESTIONS.map(({ label, icon: Icon, prompt, mode }) => (
+              <div className={compact ? 'mt-4 flex flex-wrap gap-1.5' : 'mt-6 flex flex-wrap gap-2'}>
+                {(suggestions ? suggestions.map((q) => ({ ...q, icon: Sparkles, mode: 'send' as const })) : SUGGESTIONS).map(({ label, icon: Icon, prompt, mode }) => (
                   <button
                     key={label}
                     type="button"
@@ -986,7 +1029,7 @@ export default function PiChatView({
       </div>
 
       {!readOnly && (
-        <div className="shrink-0 border-t border-border bg-card px-4 py-4 sm:px-6">
+        <div className={compact ? 'shrink-0 border-t border-border bg-card px-3 py-3' : 'shrink-0 border-t border-border bg-card px-4 py-4 sm:px-6'}>
           <div className="mx-auto max-w-3xl">
             <div className="rounded-2xl border border-border bg-card px-3 py-2.5 focus-within:border-border">
               <textarea
@@ -1022,13 +1065,13 @@ export default function PiChatView({
                 </button>
               </div>
             </div>
-            <p className="mt-2 text-center text-[11px] text-muted-foreground">
+            {!compact && <p className="mt-2 text-center text-[11px] text-muted-foreground">
               Pi is AI and can make mistakes — check key numbers against your call logs.
-            </p>
+            </p>}
             {micError && (
               <p className="mt-2 text-center text-[11px] text-red-400">{micError}</p>
             )}
-            {contextUsage && (() => {
+            {!compact && contextUsage && (() => {
               const pct = Math.min(100, Math.round((contextUsage.used / contextUsage.limit) * 100))
               return (
                 <div className="mt-2 flex items-center justify-center gap-2" title={`${contextUsage.used.toLocaleString()} / ${contextUsage.limit.toLocaleString()} tokens used this turn`}>
@@ -1066,7 +1109,7 @@ export default function PiChatView({
                 Phone numbers masked
               </span>
             </div>
-            {showContextHint && (
+            {!compact && showContextHint && (
               <p className="mt-2 text-center text-[11px] text-muted-foreground">
                 This chat is saved for your organization. Pi remembers recent messages in this thread when replying.
               </p>

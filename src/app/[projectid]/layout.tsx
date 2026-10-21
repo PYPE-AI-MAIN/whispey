@@ -2,6 +2,8 @@
 'use client'
 
 import { UserPermissionsProvider } from '@/contexts/UserPermissionsContext'
+import { PiDockProvider } from '@/contexts/PiDockContext'
+import FloatingPi from '@/components/pi/FloatingPi'
 import { useParams, usePathname } from 'next/navigation'
 
 export default function ProjectLayout({
@@ -21,7 +23,10 @@ export default function ProjectLayout({
 
   return (
     <UserPermissionsProvider projectId={projectId}>
-      {children}
+      <PiDockProvider>
+        {children}
+        <FloatingPi />
+      </PiDockProvider>
     </UserPermissionsProvider>
   )
 }

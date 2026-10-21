@@ -52,6 +52,8 @@ interface CallLogsV2Props {
   dateRange?: { from: string; to: string }
   onAgentUpdated?: () => void
   openDownloadSettings?: boolean
+  /** False while another tab of the dashboard is showing; the floating Ask Pi then belongs to that tab. */
+  isActive?: boolean
 }
 
 const columnIdFor = (group: ColumnGroup, key: string) => {
@@ -232,7 +234,7 @@ function handleCallLogsKey(e: KeyboardEvent, k: CallLogsKeyContext) {
 }
 
 const CallLogsV2: React.FC<CallLogsV2Props> = ({
-  project, agent, isLoading: parentLoading, dateRange, onAgentUpdated, openDownloadSettings,
+  project, agent, isLoading: parentLoading, dateRange, onAgentUpdated, openDownloadSettings, isActive = true,
 }) => {
   const router = useRouter()
   const { user } = useUser()
@@ -735,7 +737,7 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
       />
 
       {/* Viewers don't get Ask Pi (the server refuses them too). */}
-      {project?.id && agent?.id && role && !isViewerRole(role) && (
+      {isActive && project?.id && agent?.id && role && !isViewerRole(role) && (
         <AskPi
           projectId={project.id}
           agentId={agent.id}

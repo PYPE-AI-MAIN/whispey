@@ -95,6 +95,8 @@ export type BuildOpts = {
   companions?: { id: string; agg: Spec['agg']; having: Spec['having'] }[]
   /** drill/export: which bar was clicked. null means the empty bucket. */
   dimensionValue?: string | null
+  /** drill/export: the clicked time bucket, as the `timestamp` text the bucket column holds (no zone). Ignored when the chart has no time bucket. */
+  bucketValue?: string
   /** drill/export: keyset cursor from the previous page. Never OFFSET (§9.4). */
   cursor?: { startedAt: string; id: string }
   limit?: number
@@ -115,6 +117,19 @@ export type Built = {
 
 /** Something the person can act on: no permission, no outcome order, range too long. */
 export class SpecError extends Error {}
+
+/**
+ * A chart's bucket reaches the browser as an instant: node-pg reads the zone-less
+ * `date_trunc(...)` timestamp as this process's local time. Reading the instant
+ * back with local getters recovers the exact text Postgres produced, whatever
+ * zone this server runs in.
+ */
+export function bucketText(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) throw new SpecError('Unreadable time bucket')
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+}
 
 /**
  * A bug in this file. The message names the invariant so it is useful in a log,
@@ -463,7 +478,7 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
     // silently grouped with every other keyless call
     const keyless = d.key.fallback === 'none' ? `\n  WHERE ${key} IS NOT NULL` : ''
     ctes.push(
-      `ranked AS (\n  SELECT s.*, row_number() OVER (PARTITION BY ${partition} ORDER BY ${order.join(', ')}) AS rn\n  FROM scanned s${keyless}\n)`,
+      `ranked AS (\n  SELECT s.*, row_number() OVER (PARTITION BY ${partition} ORDER BY ${order.join(', ')}) AS rn,\n    count(*) OVER (PARTITION BY ${partition}) AS n_calls\n  FROM scanned s${keyless}\n)`,
       `picked AS (\n  SELECT * FROM ranked WHERE rn = 1 AND started_at >= ${bind(pgTimestamp(range.lo))}::timestamp\n)`
     )
     stage = 'picked'
@@ -609,6 +624,9 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
     if (opts.dimensionValue !== undefined && dimExpr) {
       rowFilters.push(`${dimExpr} IS NOT DISTINCT FROM ${bind(opts.dimensionValue)}`)
     }
+    if (opts.bucketValue !== undefined && bucket !== 'none') {
+      rowFilters.push(`date_trunc(${bind(bucket)}, ${t}.started_local) = ${bind(opts.bucketValue)}::timestamp`)
+    }
     if (opts.cursor) {
       rowFilters.push(`(${t}.started_at, ${t}.id) < (${bind(opts.cursor.startedAt)}::timestamp, ${bind(opts.cursor.id)}::uuid)`)
     }
@@ -625,6 +643,8 @@ export function buildQuery(spec: Spec, ctx: Ctx, target: Target, opts: BuildOpts
       `${t}.call_ended_reason`,
       ...(target === 'export' ? [`${t}.recording_url`] : []),
       ...(dimExpr ? [`${dimExpr} AS series`] : []),
+      // one row stands for every call that number made in the look-back window; say how many
+      ...(target === 'drill' && spec.grain === 'entity' ? [`${t}.n_calls AS calls_in_window`] : []),
     ]
     const sql =
       `${withClause()}SELECT ${cols.join(', ')}\n` +
