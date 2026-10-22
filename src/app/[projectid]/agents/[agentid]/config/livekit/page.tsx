@@ -187,6 +187,7 @@ export default function AgentConfig() {
   const lastDraftStampRef = useRef<string | null>(null)
   const lastSavedSigRef = useRef<string | null>(null)
   const lastConflictCheckRef = useRef(0)
+  const snapshotPromiseRef = useRef<Promise<any> | null>(null)
   const baselineSigPendingRef = useRef(false)
   const draftChainRef = useRef<Promise<unknown>>(Promise.resolve())
   const draftLoadedForRef = useRef<string | null>(null)
@@ -589,16 +590,29 @@ export default function AgentConfig() {
     setIsCommitModalOpen(true)
 
     setIsDiffLoading(true)
-    fetch(`/api/agents/${agentid}/history?page=1&limit=1`)
-      .then(res => (res.ok ? res.json() : null))
-      .then(data => {
-        const latest = data?.history?.[0]
-        if (!latest?.id) return null
-        return fetch(`/api/agents/${agentid}/history/${latest.id}`).then(r => (r.ok ? r.json() : null))
-      })
-      .then(detail => setPublishedSnapshot(detail?.entry?.config_snapshot ?? null))
-      .catch(() => setPublishedSnapshot(null))
+    fetchPublishedSnapshot()
+      .then(setPublishedSnapshot)
       .finally(() => setIsDiffLoading(false))
+  }
+
+  // Latest published snapshot for the Publish diff. Prefetched once edits start so the dialog opens ready.
+  const fetchPublishedSnapshot = (): Promise<any> => {
+    if (!snapshotPromiseRef.current) {
+      snapshotPromiseRef.current = fetch(`/api/agents/${agentid}/history?page=1&limit=1`)
+        .then(res => (res.ok ? res.json() : null))
+        .then(data => {
+          const latest = data?.history?.[0]
+          if (!latest?.id) return null
+          return fetch(`/api/agents/${agentid}/history/${latest.id}`).then(r => (r.ok ? r.json() : null))
+        })
+        .then(detail => detail?.entry?.config_snapshot ?? null)
+        .catch(() => null)
+        .then(snapshot => {
+          if (snapshot == null) snapshotPromiseRef.current = null // don't cache a miss
+          return snapshot
+        })
+    }
+    return snapshotPromiseRef.current
   }
 
   const handleSaveVersion = async () => {
@@ -658,6 +672,7 @@ export default function AgentConfig() {
         return
       }
       toast.success('Changes published')
+      snapshotPromiseRef.current = null
       setRestoredDraft(null)
       lastSavedSigRef.current = null
       writeDraft(pendingCheckpoint.config, { discarded: true }).catch(err => console.warn('Draft clean-up failed:', err))
@@ -988,6 +1003,10 @@ const inboundLookupVariables = useMemo(() => {
     if (!remote || remote.updated_at === lastDraftStampRef.current) return null
     return remote.updated_by && remote.updated_by !== user?.id ? remote : null
   }
+
+  useEffect(() => {
+    if (isFormDirty && agentid) fetchPublishedSnapshot()
+  }, [isFormDirty, agentid])
 
   const canAutosave = isFormDirty && promptValidation.isValid && !isBackendUnavailable && !isProdLocked && !isPublishing
   const autosaveDraft = async () => {
