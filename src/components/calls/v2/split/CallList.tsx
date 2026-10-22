@@ -152,10 +152,11 @@ function CallListItem({
 
 function QuickDetails({ call, role, hasSummaryField }: Readonly<{ call: CallLog; role: string | null; hasSummaryField: boolean }>) {
   const summary = callSummary(call, hasSummaryField)
-  const { dispositions } = splitTranscriptionMetrics(call)
+  const { outcome, dispositions } = splitTranscriptionMetrics(call)
   const tags: string[] = Array.isArray(call.transcription_metrics?.tags) ? call.transcription_metrics.tags : []
   const flags = normalizeFlags(call.transcription_metrics?.flag)
-  const shown = dispositions.filter(([, v]) => formatValue(v)).slice(0, 4)
+  // how the call ended up first, then the other extracted values
+  const shown = [...outcome, ...dispositions].filter(([, v]) => formatValue(v)).slice(0, 4)
   return (
     <Tooltip>
       <TooltipTrigger asChild>

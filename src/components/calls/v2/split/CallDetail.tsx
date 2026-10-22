@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils"
 import CallAgainDialog from "../../CallAgainDialog"
 import { TagEditor } from "../../TagEditor"
 import { FlagEditor } from "../../FlagEditor"
-import { callDurationSeconds, callLabel, callSummary, formatClock, numberMaskFor, plainToolName, toolArgumentsText, type TranscriptCue } from "./callData"
+import { callDurationSeconds, callLabel, askedNotToCall, callSummary, finalDisposition, formatClock, numberMaskFor, plainToolName, toolArgumentsText, type TranscriptCue } from "./callData"
 
 export interface ToolRef {
   key: string
@@ -113,6 +113,7 @@ function DetailHeader({
 }: Readonly<CallDetailProps>) {
   const label = callLabel(call)
   const summary = callSummary(call, hasSummaryField)
+  const disposition = finalDisposition(call)
   const tags: string[] = Array.isArray(call.transcription_metrics?.tags) ? call.transcription_metrics.tags : []
   const tagComments = call.transcription_metrics?.tagComments
   const status = call.call_ended_reason || "—"
@@ -132,6 +133,23 @@ function DetailHeader({
         </h2>
         {label.isId && <CopyButton text={call.call_id || call.id} label="Copy call ID" />}
         {summary && <SummarySpark summary={summary} />}
+        {disposition && (
+          <span
+            title="Final disposition"
+            className="ml-1 inline-flex max-w-[240px] flex-none items-center gap-1.5 truncate rounded-full border border-[var(--cl-border2)] bg-[var(--cl-panel2)] px-2.5 py-0.5 text-[12.5px] font-medium capitalize text-[var(--cl-text)]"
+          >
+            <i className="h-1.5 w-1.5 flex-none rounded-full bg-[var(--cl-text3)]" />
+            {disposition}
+          </span>
+        )}
+        {askedNotToCall(call) && (
+          <span
+            title="The caller asked not to be called again"
+            className="inline-flex flex-none items-center rounded-full border border-[var(--cl-red-line)] bg-[var(--cl-red-soft)] px-2.5 py-0.5 text-[12.5px] font-medium text-[var(--cl-red-text)]"
+          >
+            Do not call
+          </span>
+        )}
         <div className="ml-1">
           <FlagEditor
             variant="quiet"

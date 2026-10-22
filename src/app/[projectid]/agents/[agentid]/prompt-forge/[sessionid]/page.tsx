@@ -6,6 +6,7 @@ import {
   FlaskConical, Lock, Send, Copy, Check, RotateCcw, Download,
   Bot, WifiOff, Settings2, ChevronLeft, ChevronRight, CornerDownLeft,
   Zap, ChevronDown, Phone, X, Loader2, Code2, Save, Link2, History, Eye, CopyPlus, MessageSquareText,
+  ArrowLeftRight, Pencil, Languages,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
@@ -23,12 +24,17 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { VariableTextarea } from '@/components/agents/variables/VariableTextarea'
+import { useTranscriptEnglishToggle } from '@/hooks/useTranscriptEnglishToggle'
+import { applyPromptEdit as applyPromptEditTo } from '@/lib/promptEdit'
+import { CompareVersionsDialog, type CompareSide } from '@/components/prompt-forge/CompareVersionsDialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import CallFilter, { type FilterOperation } from '@/components/CallFilter'
 import { extractFiltersAndDistinct } from '@/utils/callLogsUtils'
 import { extractorKeys } from '@/components/calls/v2/split/callData'
 import { usePiSurface } from '@/contexts/PiDockContext'
+import { formatIstTimestamp } from '@/lib/istTime'
+import { builtInAgentTools } from '@/lib/promptForgeTools'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -367,7 +373,7 @@ async function fetchCallLogPage(agentId: string, page: number, filters: FilterOp
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       p_agent_id: agentId, p_pre_distinct_filters: preDistinctFilters, p_post_distinct_filters: postDistinctFilters,
-      p_select: 'id,call_id,customer_number,created_at,duration_seconds,call_ended_reason,wcall_event',
+      p_select: 'id,call_id,customer_number,call_started_at,created_at,duration_seconds,call_ended_reason,wcall_event',
       p_order_by_column: 'created_at', p_order_ascending: false,
       p_limit: IMPORT_PAGE_SIZE + 1, p_offset: (page - 1) * IMPORT_PAGE_SIZE,
       p_distinct_column: distinctConfig?.column ?? null, p_distinct_json_field: distinctConfig?.jsonField ?? null, p_distinct_order: distinctConfig?.order ?? 'desc',
@@ -429,7 +435,8 @@ function buildImportPageItems(current: number, maxKnown: number, hasNext: boolea
 function extractToolsFromAssistant(assistant: any): AgentTool[] {
   // assistant is the raw API response: tools live at assistant.tools (not advancedSettings)
   const toolsDef: any[] = assistant?.tools ?? []
-  return toolsDef
+  const builtIn: AgentTool[] = builtInAgentTools(assistant).map(t => ({ id: crypto.randomUUID(), ...t }))
+  const custom: AgentTool[] = toolsDef
     .filter((t: any) => t.type === 'custom_function')
     .map((t: any) => ({
       id: crypto.randomUUID(),
@@ -447,6 +454,7 @@ function extractToolsFromAssistant(assistant: any): AgentTool[] {
         required: p.required ?? false,
       })),
     }))
+  return [...custom, ...builtIn]
 }
 
 // ─── Guard ────────────────────────────────────────────────────────────────────
@@ -848,7 +856,7 @@ function ImportLogDialog({ open, onClose, agentId, onImport, transcriptionFields
                       {log.customer_number || 'Unknown caller'}
                     </p>
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                      <span className="text-[10px] text-muted-foreground">{formatRelative(log.created_at)}</span>
+                      <span className="text-[10px] text-muted-foreground" title={formatRelative(log.created_at)}>{formatIstTimestamp(log.call_started_at || log.created_at)}</span>
                       {log.duration_seconds > 0 && <><span className="text-gray-300 dark:text-gray-700">·</span><span className="text-[10px] text-gray-400 dark:text-gray-600">{formatDuration(log.duration_seconds)}</span></>}
                       {log.call_ended_reason && <><span className="text-gray-300 dark:text-gray-700">·</span><span className="text-[10px] text-gray-400 dark:text-gray-600 capitalize">{log.call_ended_reason.replaceAll('_', ' ')}</span></>}
                     </div>
@@ -891,6 +899,8 @@ const TOOL_TYPE_STYLES: Record<string, string> = {
   custom_function:  'bg-primary/10 text-primary border-primary/30',
   transfer_call:    'bg-warning/10 text-warning border-warning/30',
   knowledge_search: 'bg-success/10 text-success border-success/30',
+  tts_switch:       'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/30',
+  language_switch:  'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/30',
 }
 
 /** The parts of a tool someone can change here — to tell an edited tool from the agent's. */
@@ -1072,7 +1082,7 @@ function ToolsSheet({ open, onClose, tools, onChange, readOnly, agentTools }: Re
           </SheetTitle>
           <SheetDescription className="text-xs text-muted-foreground">
             {readOnly
-              ? 'Read-only. Custom functions call their endpoints (or their mock response); transfer and knowledge tools are mocked.'
+              ? 'Read-only. Custom functions call their endpoints (or their mock response); built-in tools (end call, transfer, TTS and language switch…) are simulated.'
               : 'Edit anything here to test — changes apply to the next message and save with this session, not the agent. Use “Mock response” to test a reply without calling the real API.'}
           </SheetDescription>
         </SheetHeader>
@@ -1289,7 +1299,7 @@ function SessionNameEditor({ name, onSave }: { name: string; onSave: (v: string)
 
 // ─── Main forge UI ────────────────────────────────────────────────────────────
 
-type SaveState = 'idle' | 'saving' | 'saved'
+type SaveState = 'idle' | 'saving' | 'saved' | 'unchanged'
 type DraftState = 'saved' | 'pending' | 'saving' | 'error'
 const DRAFT_SAVE_DELAY_MS = 1500
 
@@ -1323,6 +1333,7 @@ function promptPlaceholder(agentConfigLoading: boolean, backendDown: boolean): s
 function saveButtonLabel(state: SaveState, latestVersion: number | undefined): string {
   if (state === 'saving') return 'Saving…'
   if (state === 'saved') return `Saved v${latestVersion ?? ''}`
+  if (state === 'unchanged') return `No changes since v${latestVersion ?? ''}`
   return 'Save'
 }
 
@@ -1386,6 +1397,7 @@ function DraftStatus({ state, onRetry }: Readonly<{ state: DraftState; onRetry: 
 const SAVE_ICONS: Record<SaveState, React.ReactNode> = {
   saving: <Loader2 className="w-3 h-3 animate-spin" />,
   saved: <Check className="w-3 h-3" />,
+  unchanged: <Check className="w-3 h-3" />,
   idle: <Save className="w-3 h-3" />,
 }
 
@@ -1419,7 +1431,7 @@ function versionsLabel(count: number): string {
 }
 
 /** Saved versions: each Save is one; `onOpen(null)` opens the working draft. */
-function VersionsMenu({ versions, viewingVersion, onOpen }: Readonly<{ versions: SessionVersion[]; viewingVersion: number | null; onOpen: (version: number | null) => void }>) {
+function VersionsMenu({ versions, viewingVersion, onOpen, onCompare }: Readonly<{ versions: SessionVersion[]; viewingVersion: number | null; onOpen: (version: number | null) => void; onCompare: () => void }>) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -1428,6 +1440,10 @@ function VersionsMenu({ versions, viewingVersion, onOpen }: Readonly<{ versions:
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-72 max-h-80 overflow-y-auto">
+        <DropdownMenuItem className="text-xs font-medium" onClick={onCompare}>
+          <ArrowLeftRight className="w-3 h-3" />Compare versions…
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuLabel className="text-xs">Saved versions</DropdownMenuLabel>
         <DropdownMenuItem className="text-xs" onClick={() => onOpen(null)}>
           <span className="flex-1">Working draft</span>{viewingVersion === null && <Check className="w-3 h-3" />}
@@ -1577,6 +1593,7 @@ function ForgeUI({
   const [versions, setVersions] = useState<SessionVersion[]>(initialVersions)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [linkCopied, setLinkCopied] = useState(false)
+  const [compareOpen, setCompareOpen] = useState(false)
   const [availability, setAvailability] = useState<Record<string, { available: boolean; reason?: string }> | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -1658,6 +1675,14 @@ function ForgeUI({
       variables: variables.map(v => ({ name: v.name, value: v.value })),
       transcript: messages.filter(m => m.isFinal).map(m => ({ role: m.role, content: m.content, tools: m.toolCalls?.map(tc => tc.name) })),
     }),
+    // Ask Pi's suggested edits ("Apply to prompt") change this draft, never the live agent.
+    applyPromptEdit: (find, replace) => {
+      if (readOnly) return { ok: false, reason: 'This session is read-only' }
+      const result = applyPromptEditTo(systemPrompt, { find, replace })
+      if (!result.ok) return result
+      setSystemPrompt(result.prompt)
+      return { ok: true }
+    },
   })
 
   // "/" jumps to the message box, unless you're already typing somewhere.
@@ -1753,6 +1778,12 @@ function ForgeUI({
       })
       const body = await res.json()
       if (!res.ok) throw new Error(body?.error ?? 'Save failed')
+      if (body?.unchanged) {
+        // nothing changed since the latest version, so no new one
+        setSaveState('unchanged')
+        setTimeout(() => setSaveState('idle'), 2500)
+        return
+      }
       setVersions(v => [body, ...v])
       // saving a version also brings the draft up to date on the server
       savedDraftRef.current = JSON.stringify(snapshot())
@@ -1801,6 +1832,14 @@ function ForgeUI({
     setTimeout(() => setLinkCopied(false), 2000)
   }, [viewingVersion, projectId, agentId, sessionId])
 
+  // Compare opens on the version you're looking at against the one before it,
+  // or, on the draft, the latest version against the draft.
+  const compareDraft = useMemo(() => snapshot(), [snapshot])
+  const compareTo: CompareSide = viewingVersion?.version ?? 'draft'
+  const compareFrom: CompareSide = viewingVersion
+    ? (versions.find(v => v.version < viewingVersion.version)?.version ?? viewingVersion.version)
+    : (versions[0]?.version ?? 'draft')
+
   const draftPath = `/${projectId}/agents/${agentId}/prompt-forge/${sessionId}`
   const openDraft = useCallback(() => router.push(draftPath), [router, draftPath])
   const openVersion = useCallback((v: number | null) => router.push(v ? `${draftPath}?v=${v}` : draftPath), [router, draftPath])
@@ -1828,7 +1867,12 @@ function ForgeUI({
     setMessages([...history, assistantMsg])
     setImportedFrom(null)
     setIsStreaming(true)
-    const historyForApi = history.map(m => ({ role: m.role, content: m.content }))
+    // tool calls go too, so the model sees the tools the conversation used (an imported call's TTS switch…)
+    const historyForApi = history.map(m => ({
+      role: m.role,
+      content: m.content,
+      toolCalls: m.toolCalls?.filter(tc => !tc.pending).map(tc => ({ name: tc.name, arguments: tc.arguments, result: tc.result })),
+    }))
     const effectivePrompt = substituteVariables(systemPrompt, variables)
     try {
       const res = await fetch('/api/prompt-forge/chat', {
@@ -1890,14 +1934,27 @@ function ForgeUI({
     sendMessage(content, messages)
   }, [input, messages, sendMessage])
 
+  /** Asks again for an agent reply, from the user message before it. */
   const handleReplay = useCallback((messageIndex: number) => {
     if (isStreaming) return
-    const target = messages[messageIndex]
-    const userIdx = target.role === 'user' ? messageIndex : messageIndex - 1
+    const userIdx = messageIndex - 1
     const userMsg = messages[userIdx]
     if (!userMsg || userMsg.role !== 'user') return
     sendMessage(userMsg.content, messages.slice(0, userIdx))
   }, [isStreaming, messages, sendMessage])
+
+  /** Sends an edited user message in place of the original; everything after it is redone. */
+  const handleEdit = useCallback((messageIndex: number, text: string) => {
+    if (isStreaming || !text.trim()) return
+    sendMessage(text.trim(), messages.slice(0, messageIndex))
+  }, [isStreaming, messages, sendMessage])
+
+  // Original / English, like Call Logs: finished messages, translated on demand.
+  const translatable = useMemo(
+    () => messages.filter(m => m.isFinal && m.content).map(m => (m.role === 'user' ? { user_transcript: m.content } : { agent_response: m.content })),
+    [messages],
+  )
+  const { viewEnglish, setViewEnglish, isTranslating, formatTranscript } = useTranscriptEnglishToggle(translatable)
 
   const modelLabel = useMemo(() => modelLabelFor(provider, model), [provider, model])
   const providerBlocked = availability?.[provider]?.available === false
@@ -1972,7 +2029,7 @@ function ForgeUI({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted px-2"
-                  onClick={startConversation} disabled={!conversationStarted || isStreaming}>
+                  onClick={startConversation} disabled={messages.length === 0 || isStreaming}>
                   <RotateCcw className="w-3 h-3" /><span>Restart</span>
                 </Button>
               </TooltipTrigger>
@@ -1980,7 +2037,7 @@ function ForgeUI({
             </Tooltip>
 
             {/* Saved versions: each Save is one; open any read-only. */}
-            <VersionsMenu versions={versions} viewingVersion={viewingVersion?.version ?? null} onOpen={openVersion} />
+            <VersionsMenu versions={versions} viewingVersion={viewingVersion?.version ?? null} onOpen={openVersion} onCompare={() => setCompareOpen(true)} />
             <ShareButton copied={linkCopied} version={viewingVersion?.version ?? null} onShare={shareLink} />
 
             <HeaderAction
@@ -2068,6 +2125,11 @@ function ForgeUI({
             {/* Right: Chat */}
             <div className="flex-1 flex flex-col overflow-hidden bg-card">
               {importedFrom && <ImportedBanner meta={importedFrom} onClose={() => setImportedFrom(null)} />}
+              {messages.length > 0 && (
+                <div className="h-9 shrink-0 flex items-center justify-end px-4 border-b border-border bg-card">
+                  <LanguageToggle english={viewEnglish} onChange={setViewEnglish} translating={isTranslating} />
+                </div>
+              )}
               <div className="flex-1 overflow-y-auto">
                 {messages.length === 0
                   ? <ChatEmptyState hasTools={tools.length > 0} hasVariables={variables.length > 0}
@@ -2075,7 +2137,14 @@ function ForgeUI({
                   : (
                     <div className="px-6 py-5 space-y-5 max-w-3xl mx-auto w-full">
                       {messages.map((m, i) => (
-                        <MessageBubble key={m.id} message={m} onReplay={isStreaming ? undefined : () => handleReplay(i)} />
+                        <MessageBubble
+                          key={m.id}
+                          message={m}
+                          busy={isStreaming}
+                          onReplay={m.isGreeting ? startConversation : () => handleReplay(i)}
+                          onEdit={text => handleEdit(i, text)}
+                          displayText={formatTranscript}
+                        />
                       ))}
                       <div ref={messagesEndRef} />
                     </div>
@@ -2093,6 +2162,15 @@ function ForgeUI({
         <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} provider={provider} onProviderChange={setProvider} model={model} onModelChange={setModel} temperature={temperature} onTemperatureChange={setTemperature} availability={availability} readOnly={readOnly} />
         <ConfigImportDialog open={configImportOpen} onClose={() => setConfigImportOpen(false)} onApply={handleConfigApply} />
         <ImportLogDialog open={importOpen} onClose={() => setImportOpen(false)} agentId={agentId} onImport={handleImport} transcriptionFields={extractorFields} />
+        <CompareVersionsDialog
+          open={compareOpen}
+          onClose={() => setCompareOpen(false)}
+          sessionId={sessionId}
+          versions={versions}
+          draft={compareDraft}
+          initialLeft={compareFrom}
+          initialRight={compareTo}
+        />
         <ToolsSheet open={toolsOpen} onClose={() => setToolsOpen(false)} tools={tools} onChange={setTools} readOnly={readOnly} agentTools={agentDefaults?.tools ?? null} />
       </div>
     </TooltipProvider>
@@ -2142,7 +2220,84 @@ function ChatEmptyState({ hasTools, hasVariables, onGenerateGreeting }: Readonly
   )
 }
 
-function MessageBubble({ message, onReplay }: { message: Message; onReplay?: () => void }) {
+/** Original / English for the test chat, as in Call Logs. */
+function LanguageToggle({ english, onChange, translating }: Readonly<{ english: boolean; onChange: (english: boolean) => void; translating: boolean }>) {
+  return (
+    <div role="radiogroup" aria-label="Conversation language" className="flex items-center gap-0.5 rounded-md border border-border bg-muted/50 p-0.5">
+      <Languages className="ml-1 mr-0.5 h-3 w-3 text-muted-foreground" aria-hidden />
+      {([['Original', false], ['English', true]] as const).map(([label, value]) => (
+        <button
+          key={label}
+          type="button"
+          role="radio"
+          aria-checked={english === value}
+          onClick={() => onChange(value)}
+          className={cn(
+            'rounded px-2 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground',
+            english === value && 'bg-card text-foreground shadow-sm',
+          )}
+        >
+          {label}
+          {value && translating && <Loader2 className="ml-1 inline h-3 w-3 animate-spin" />}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** The hover action next to a message: edit yours, regenerate a reply, or restart from the greeting. */
+function MessageAction({ label, onClick, children }: Readonly<{ label: string; onClick: () => void; children: React.ReactNode }>) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button type="button" onClick={onClick} aria-label={label} className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted mt-1">
+          {children}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="top">{label}</TooltipContent>
+    </Tooltip>
+  )
+}
+
+/** A user message being edited in place: Enter (or Send) sends it, Escape cancels. */
+function MessageEditor({ initial, onSend, onCancel }: Readonly<{ initial: string; onSend: (text: string) => void; onCancel: () => void }>) {
+  const [text, setText] = useState(initial)
+  return (
+    <div className="w-full rounded-2xl rounded-tr-sm border border-border bg-muted/50 p-2">
+      <textarea
+        autoFocus
+        aria-label="Edit message"
+        value={text}
+        onChange={e => setText(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (text.trim()) onSend(text) }
+          if (e.key === 'Escape') onCancel()
+        }}
+        rows={Math.min(8, Math.max(2, text.split('\n').length))}
+        className="w-full resize-none bg-transparent px-2 py-1 text-sm text-foreground outline-none"
+      />
+      <div className="flex justify-end gap-1.5 pt-1">
+        <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={onCancel}>Cancel</Button>
+        <Button type="button" size="sm" className="h-7 text-xs gap-1" disabled={!text.trim()} onClick={() => onSend(text)}>
+          <Send className="w-3 h-3" />Send
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function MessageBubble({ message, busy, onReplay, onEdit, displayText }: Readonly<{
+  message: Message
+  busy?: boolean
+  /** Agent reply: regenerate it; greeting: restart the conversation. */
+  onReplay?: () => void
+  /** User message: send it again with new text (what came after is redone). */
+  onEdit?: (text: string) => void
+  /** Text to show in place of the original, e.g. its English translation. */
+  displayText?: (text: string) => string
+}>) {
+  const [editing, setEditing] = useState(false)
+  const show = (t: string) => (displayText ? displayText(t) : t)
   const isUser = message.role === 'user'
   const isThinking = !message.isFinal && message.content === '' && (message.toolCalls ?? []).length === 0
 
@@ -2187,34 +2342,41 @@ function MessageBubble({ message, onReplay }: { message: Message; onReplay?: () 
           <div className="w-full space-y-1.5">
             {message.parts!.map((part, i) => {
               if (part.type === 'text') {
+                if (!part.text.trim()) return null
                 const last = i === message.parts!.length - 1
-                return part.text.trim() ? textBubble(part.text, `t${i}`, last && !message.isFinal) : null
+                const text = message.isFinal ? show(part.text) : part.text
+                return textBubble(text, `t${i}`, last && !message.isFinal)
               }
               const tc = message.toolCalls!.find(t => t.id === part.id)
               return tc ? <ToolCallBlock key={`c${part.id}`} tc={tc} /> : null
             })}
           </div>
         )}
-        {!ordered && (message.content || !hasTools) && (
+        {editing && onEdit && (
+          <MessageEditor
+            initial={message.content}
+            onCancel={() => setEditing(false)}
+            onSend={text => { setEditing(false); onEdit(text) }}
+          />
+        )}
+        {!editing && !ordered && (message.content || !hasTools) && (
           <div className={cn('rounded-2xl px-4 py-2.5 text-sm leading-relaxed w-full',
             isUser ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-tr-sm' : 'bg-muted/50 text-foreground border border-border rounded-tl-sm')}>
             <p className="whitespace-pre-wrap break-words">
-              {message.content}
+              {message.isFinal ? show(message.content) : message.content}
               {!message.isFinal && message.content && <span className="inline-block w-0.5 h-3.5 bg-current ml-0.5 align-middle animate-pulse" />}
             </p>
           </div>
         )}
         {!ordered && hasTools && <div className="w-full space-y-0">{message.toolCalls!.map((tc, i) => <ToolCallBlock key={tc.id ?? i} tc={tc} />)}</div>}
       </div>
-      {message.isFinal && onReplay && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button onClick={onReplay} className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 w-6 h-6 flex items-center justify-center rounded-md text-gray-300 dark:text-gray-700 hover:text-gray-500 dark:hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 mt-1">
-              <RotateCcw className="w-3.5 h-3.5" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top">Replay from here</TooltipContent>
-        </Tooltip>
+      {message.isFinal && !busy && !editing && isUser && onEdit && (
+        <MessageAction label="Edit and resend" onClick={() => setEditing(true)}><Pencil className="w-3.5 h-3.5" /></MessageAction>
+      )}
+      {message.isFinal && !busy && !isUser && onReplay && (
+        <MessageAction label={message.isGreeting ? 'Restart the conversation' : 'Regenerate this reply'} onClick={onReplay}>
+          <RotateCcw className="w-3.5 h-3.5" />
+        </MessageAction>
       )}
     </div>
   )

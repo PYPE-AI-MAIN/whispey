@@ -28,23 +28,74 @@ export function callSummary(call: CallLog, hasSummaryField: boolean): string | n
   return typeof value === "string" && value.trim() ? value.trim() : null
 }
 
-/** Dispositions vs yes/no QA checks (`is_*` booleans), both from transcription_metrics. */
+/** The field-extractor keys that say how the call ended up, shown first and in the call header. */
+export const OUTCOME_KEYS = ["final_disposition", "dnc_requested"] as const
+export const FINAL_DISPOSITION_KEY = "final_disposition"
+
+const CHECK_TRUE = new Set(["true", "yes", "1", "y"])
+const CHECK_FALSE = new Set(["false", "no", "0", "n"])
+
+/**
+ * A QA check's result: true / false, or null when it didn't apply ("-", "n/a",
+ * empty). undefined when the value isn't a yes/no at all. Field extractors
+ * return these as text ("1", "0", "-"), not only as booleans.
+ */
+export function checkResult(value: unknown): boolean | null | undefined {
+  if (typeof value === "boolean") return value
+  if (value === null || value === undefined) return null
+  if (typeof value === "number") return numberCheck(value)
+  if (typeof value !== "string") return undefined
+  const v = value.trim().toLowerCase()
+  if (CHECK_TRUE.has(v)) return true
+  if (CHECK_FALSE.has(v)) return false
+  return formatValue(v) === "" ? null : undefined
+}
+
+function numberCheck(value: number): boolean | undefined {
+  if (value === 1) return true
+  if (value === 0) return false
+  return undefined
+}
+
+/**
+ * A call's extracted fields (transcription_metrics), in three parts:
+ * - outcome: the final disposition and whether they asked not to be called again
+ * - checks: yes/no QA checks (`is_*` fields), as true / false / null (didn't apply)
+ * - dispositions: every other extracted value
+ */
 export function splitTranscriptionMetrics(call: CallLog) {
   const tm: Record<string, unknown> = call.transcription_metrics ?? {}
+  const outcome: Array<[string, unknown]> = []
   const dispositions: Array<[string, unknown]> = []
-  const checks: Array<[string, unknown]> = []
+  const checks: Array<[string, boolean | null]> = []
   for (const [key, value] of Object.entries(tm)) {
     if (NON_DISPOSITION_KEYS.has(key)) continue
-    if (key.startsWith("is_") && (typeof value === "boolean" || value === null)) checks.push([key, value])
-    else dispositions.push([key, value])
+    if ((OUTCOME_KEYS as readonly string[]).includes(key)) {
+      outcome.push([key, value])
+      continue
+    }
+    const result = key.startsWith("is_") ? checkResult(value) : undefined
+    if (result === undefined) dispositions.push([key, value])
+    else checks.push([key, result])
   }
-  return { dispositions, checks }
+  // the final disposition leads
+  outcome.sort(([a], [b]) => Number(b === FINAL_DISPOSITION_KEY) - Number(a === FINAL_DISPOSITION_KEY))
+  return { outcome, dispositions, checks }
+}
+
+/** The call's final disposition, when it has one. */
+export function finalDisposition(call: CallLog): string | null {
+  const text = formatValue(call.transcription_metrics?.[FINAL_DISPOSITION_KEY])
+  return text ? text.replaceAll("_", " ") : null
 }
 
 export function visibleMetadata(call: CallLog): Array<[string, unknown]> {
   const meta: Record<string, unknown> = call.metadata && typeof call.metadata === "object" ? call.metadata : {}
   return Object.entries(meta).filter(([key]) => key !== WORKFLOW_PATH_KEY && !EXCLUDED_METADATA_COLUMNS.includes(key))
 }
+
+/** Whether the caller asked not to be called again (the DNC field-extractor field said yes). */
+export const askedNotToCall = (call: CallLog) => checkResult(call.transcription_metrics?.dnc_requested) === true
 
 const WORKFLOW_PATH_KEY = "workflow_path"
 
