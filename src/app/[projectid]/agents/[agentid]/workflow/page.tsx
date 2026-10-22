@@ -1,23 +1,32 @@
 'use client'
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { ReactFlowProvider } from '@xyflow/react'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Braces, ClipboardPaste, Copy, Loader2, Play, PhoneIcon, Rocket, Settings2, ShieldCheck, Sparkles, Square } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { useSupabaseQuery } from '@/hooks/useSupabase'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { useAgentLifecycle } from '@/hooks/useAgentLifecycle'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import { safeParseWorkflow } from '@/lib/workflow/schema'
+import { deployable, stripExpandedEdges } from '@/lib/workflow/globalRules'
+import { tracePathIds } from '@/lib/workflow/canvasModel'
 import { hasErrors } from '@/lib/workflow/linter'
 import { WORKFLOW_TEMPLATES, type WorkflowTemplate } from '@/lib/workflow/templates'
 import { WorkflowPalette } from '@/components/workflow/WorkflowPalette'
 import { WorkflowCanvas } from '@/components/workflow/WorkflowCanvas'
 import { Inspector } from '@/components/workflow/Inspector'
+import type { LintIssue } from '@/lib/workflow/linter'
+import { WorkflowHeader } from '@/components/workflow/WorkflowHeader'
+import { PublishDialog } from '@/components/workflow/PublishDialog'
+import { WorkflowHistory } from '@/components/workflow/WorkflowHistory'
+import { WebhookPanel } from '@/components/workflow/WebhookPanel'
+import { useWorkflowDeploy } from '@/hooks/useWorkflowDeploy'
+import { KnowledgePanel } from '@/components/workflow/KnowledgePanel'
+import { GlobalRulesPanel } from '@/components/workflow/GlobalRulesPanel'
 import { VariablesPanel } from '@/components/workflow/VariablesPanel'
 import { AgentSettingsPanel } from '@/components/workflow/AgentSettingsPanel'
 import { TemplatePicker } from '@/components/workflow/TemplatePicker'
@@ -25,72 +34,15 @@ import { CanvasHintBanner } from '@/components/workflow/CanvasHintBanner'
 import TalkToAssistant from '@/components/agents/TalkToAssistant'
 import { LiveEventLog, type WorkflowEvent } from '@/components/workflow/LiveEventLog'
 import { WorkflowChat } from '@/components/workflow/WorkflowChat'
+import { PiDockBody, usePiDock, usePiSurface } from '@/contexts/PiDockContext'
 import { LoaderFive } from '@/components/ui/loader-five'
 
 const LOADING_LINES = ['yup, warming things up…', 'stitching your nodes together…', 'almost there, hang tight…']
 import { ImportJsonSheet } from '@/components/workflow/ImportJsonSheet'
 
-/** "3 errors" / "1 warning" label for the lint badge — plural-aware, no nested ternary. */
-function formatLintBadgeLabel(errorCount: number, warningCount: number): string {
-  if (errorCount > 0) return `${errorCount} error${errorCount > 1 ? 's' : ''}`
-  return `${warningCount} warning${warningCount > 1 ? 's' : ''}`
-}
-
-/** Standalone Deploy only makes sense against an already-running agent (a hot
- * config reload) — while stopped, "Deploy & Start" is the one and only way to
- * ship changes, so Deploy stays disabled instead of offering two redundant
- * paths to the same place. */
-function deployButtonTitle(isDirty: boolean, agentStatus: string): string | undefined {
-  if (agentStatus !== 'running') return 'Agent isn\'t running — use "Deploy & Start" instead'
-  if (!isDirty) return 'Already deployed — no changes to send'
-  return undefined
-}
-
-/** Start/Stop/Starting/Stopping button for the agent lifecycle — kept out of the
- * main render to avoid a nested-ternary pileup for a single button slot. */
-function AgentLifecycleButton({
-  status,
-  isLoading,
-  backendAgentName,
-  isDirty,
-  onStart,
-  onStop,
-}: Readonly<{
-  status: string
-  isLoading: boolean
-  backendAgentName: string
-  isDirty: boolean
-  onStart: () => void
-  onStop: () => void
-}>) {
-  if (status === 'running') {
-    return (
-      <Button variant="outline" size="sm" onClick={onStop} disabled={isLoading}>
-        {isLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Square className="h-3.5 w-3.5 mr-1.5" />}
-        Stop Agent
-      </Button>
-    )
-  }
-  if (status === 'starting' || status === 'stopping') {
-    return (
-      <Button variant="outline" size="sm" disabled>
-        <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-        {status === 'starting' ? 'Starting...' : 'Stopping...'}
-      </Button>
-    )
-  }
-  return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={onStart}
-      disabled={isLoading || !backendAgentName}
-      title={isDirty ? 'Deploys your changes first, then starts the agent' : undefined}
-    >
-      {isLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Play className="h-3.5 w-3.5 mr-1.5" />}
-      {isDirty ? 'Deploy & Start' : 'Start Agent'}
-    </Button>
-  )
+/** Deploy is always available; it just has nothing to send when the canvas is unchanged. */
+function deployButtonTitle(isDirty: boolean): string | undefined {
+  return isDirty ? undefined : 'Already deployed — no changes to send'
 }
 
 /**
@@ -145,11 +97,23 @@ function WorkflowPageInner() {
   const isDirty = useWorkflowStore((s) => s.isDirty)
   const lintIssues = useWorkflowStore((s) => s.lintIssues)
   const setWorkflow = useWorkflowStore((s) => s.setWorkflow)
-  const markClean = useWorkflowStore((s) => s.markClean)
   const setActiveNode = useWorkflowStore((s) => s.setActiveNode)
+  const setTracePath = useWorkflowStore((s) => s.setTracePath)
+
+  // "Show on canvas" from a call's details: ?path=Step one > Step two. Applied once per link, so Clear stays cleared.
+  const pathParam = useSearchParams().get('path')
+  const appliedPath = useRef<string | null>(null)
+  useEffect(() => {
+    if (!pathParam || !workflow || appliedPath.current === pathParam) return
+    appliedPath.current = pathParam
+    setTracePath(tracePathIds(workflow, pathParam.split(' > ')))
+  }, [pathParam, workflow, setTracePath])
+  useEffect(() => () => setTracePath(null), [setTracePath])
 
   const [needsTemplate, setNeedsTemplate] = useState(false)
-  const [chatOpen, setChatOpen] = useState(false)
+  const dock = usePiDock()
+  const nodeCount = workflow?.nodes.length
+  usePiSurface({ label: nodeCount === undefined ? 'Workflow' : `Workflow · ${nodeCount} nodes` })
   const [agentNotFound, setAgentNotFound] = useState(false)
 
   // Rotating copy for the initial-load screen — cycles regardless of whether
@@ -172,7 +136,7 @@ function WorkflowPageInner() {
     if (existing.success) {
       // This is already the deployed config (it came from the agent row we
       // just loaded), not new content waiting to be deployed.
-      setWorkflow(existing.data, { dirty: false })
+      setWorkflow(stripExpandedEdges(existing.data), { dirty: false })
     } else {
       setNeedsTemplate(true)
     }
@@ -192,14 +156,27 @@ function WorkflowPageInner() {
     const blank = WORKFLOW_TEMPLATES.find((t) => t.id === 'blank') ?? WORKFLOW_TEMPLATES[0]
     handlePickTemplate(blank)
     setPendingChatMessage(prompt)
-    setChatOpen(true)
+    dock?.setOpen(true)
   }
 
   const [variablesOpen, setVariablesOpen] = useState(false)
+  const [rulesOpen, setRulesOpen] = useState(false)
+  const [issuesOpen, setIssuesOpen] = useState(false)
+  const [knowledgeOpen, setKnowledgeOpen] = useState(false)
+  const [serverIssues, setServerIssues] = useState<LintIssue[]>([])
+  // Results from a server check describe the flow as it was then; drop them once it changes.
+  useEffect(() => setServerIssues([]), [workflow])
+  // Steps are added with the + on a step, so the side list stays out of the way until asked for.
+  // Open by default, like Retell: the node types are always in view.
+  const [paletteOpen, setPaletteOpen] = useState(true)
+  const [voiceChecked, setVoiceChecked] = useState(false)
+  const [tested, setTested] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [deploying, setDeploying] = useState(false)
+  const [publishOpen, setPublishOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [webhookOpen, setWebhookOpen] = useState(false)
 
   // Copy the canvas as workflow JSON — the counterpart to ImportJsonSheet.
   const copyJson = useCallback(async () => {
@@ -243,7 +220,6 @@ function WorkflowPageInner() {
   )
 
   const errorCount = useMemo(() => lintIssues.filter((i) => i.severity === 'error').length, [lintIssues])
-  const warningCount = lintIssues.length - errorCount
 
   const handleValidate = async () => {
     if (!workflow) return
@@ -252,15 +228,21 @@ function WorkflowPageInner() {
       const res = await fetch('/api/workflow/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workflow }),
+        body: JSON.stringify({ workflow: deployable(workflow) }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         toast.error(data?.message || 'Validation request failed')
       } else if (data?.valid === false) {
-        toast.error(`Backend found ${data.issues?.length ?? 'some'} issue(s)`)
+        const found = ((data.issues ?? []) as Array<{ severity: 'error' | 'warning'; message: string; node_id?: string; edge_id?: string }>).map(
+          (i) => ({ severity: i.severity, message: i.message, nodeId: i.node_id ?? undefined, edgeId: i.edge_id ?? undefined })
+        )
+        setServerIssues(found)
+        setIssuesOpen(true)
+        toast.error(`Found ${found.length || 'some'} ${found.length === 1 ? 'problem' : 'problems'} to fix`)
       } else {
-        toast.success('Workflow is valid')
+        setServerIssues([])
+        toast.success('No problems found')
       }
     } catch {
       toast.error('Could not reach the validation endpoint')
@@ -269,68 +251,32 @@ function WorkflowPageInner() {
     }
   }
 
-  // Deploy only ever saves + hot-reloads (the backend re-reads config per call,
-  // live or not) — it never starts the agent. Start is the one button that
-  // goes live, so the two buttons each have exactly one job instead of
-  // overlapping: previously Deploy also auto-started whenever the agent
-  // wasn't running, which is precisely when the Start button is visible too —
-  // so both buttons did the identical "deploy + start" in that state.
-  const handleDeploy = async (): Promise<boolean> => {
-    if (!workflow || !backendAgentName) return false
-    if (hasErrors(lintIssues)) {
-      const errors = lintIssues.filter((i) => i.severity === 'error')
-      const errorList = errors.map((e) => `• ${e.message}`).join('\n')
-      toast.error(`Fix ${errorCount} error(s):\n${errorList}`, { duration: 6000 })
-      return false
-    }
-    setDeploying(true)
-    try {
-      const res = await fetch(`/api/workflow/${encodeURIComponent(backendAgentName)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workflow }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (res.ok) {
-        toast.success('Workflow deployed')
-        if (data?.warning) toast.error(data.warning, { duration: 8000 })
-        markClean()
-        return true
-      }
-      toast.error(data?.message || `Deploy failed (${res.status})`)
-      return false
-    } catch {
-      toast.error('Could not reach the deploy endpoint')
-      return false
-    } finally {
-      setDeploying(false)
-    }
-  }
+  const { deploying, deploy } = useWorkflowDeploy({ backendAgentName, agentId, onDeployed: agentLifecycle.refresh })
 
-  // A workflow agent's backend runtime files are generated at deploy time, so a
-  // Start before the first deploy 404s. Auto-deploy the current canvas when
-  // there are undeployed changes, then start — one click instead of the
-  // Deploy-then-Start dance.
-  const handleStartAgent = async () => {
-    if (isDirty) {
-      const deployed = await handleDeploy()
-      if (!deployed) return
+  // Deploy asks what changed first; a flow with errors cannot be deployed, so show them instead.
+  const requestDeploy = () => {
+    if (!workflow || !backendAgentName) return
+    if (hasErrors(lintIssues)) {
+      // The list opens next to the button: a long multi-line toast ran its lines together.
+      setIssuesOpen(true)
+      toast.error(`Fix ${errorCount} ${errorCount === 1 ? 'problem' : 'problems'} before deploying`)
+      return
     }
-    agentLifecycle.start()
+    setPublishOpen(true)
   }
 
   if (!agentId || !projectId) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-900">
-        <p className="text-sm text-gray-600 dark:text-gray-400">Invalid agent or project.</p>
+      <div className="min-h-screen flex items-center justify-center p-4 bg-muted/50">
+        <p className="text-sm text-muted-foreground">Invalid agent or organization.</p>
       </div>
     )
   }
 
   if (agentNotFound) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-3 p-4 bg-gray-50 dark:bg-gray-900">
-        <p className="text-sm text-gray-600 dark:text-gray-400">This agent could not be found.</p>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 p-4 bg-muted/50">
+        <p className="text-sm text-muted-foreground">This agent could not be found.</p>
         <Button variant="outline" size="sm" onClick={() => router.push(`/${projectId}/agents`)}>
           <ArrowLeft className="h-3.5 w-3.5 mr-1.5" /> Back to agents
         </Button>
@@ -340,20 +286,20 @@ function WorkflowPageInner() {
 
   if (agentLoading || (!workflow && !needsTemplate)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <LoaderFive text={LOADING_LINES[loadingLineIndex]} className="text-sm text-gray-500 dark:text-gray-400" />
+      <div className="min-h-screen flex items-center justify-center bg-muted/50">
+        <LoaderFive text={LOADING_LINES[loadingLineIndex]} className="text-sm text-muted-foreground" />
       </div>
     )
   }
 
   if (needsTemplate) {
     return (
-      <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-        <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center gap-3 px-4 py-2.5 shrink-0">
+      <div className="h-screen flex flex-col bg-muted/50">
+        <div className="border-b border-border bg-card flex items-center gap-3 px-4 py-2.5 shrink-0">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.push(`/${projectId}/agents/${agentId}`)}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{agentRow?.name || 'Workflow'}</h1>
+          <h1 className="text-sm font-semibold text-foreground">{agentRow?.name || 'Workflow'}</h1>
         </div>
         <TemplatePicker onPick={handlePickTemplate} onStartWithPrompt={handleStartWithPrompt} />
       </div>
@@ -361,99 +307,75 @@ function WorkflowPageInner() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      {/* flex-wrap: shadcn Buttons are whitespace-nowrap so they cannot shrink —
-          without it this 10-button row overflows the viewport instead of reflowing. */}
-      <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 shrink-0">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.push(`/${projectId}/agents/${agentId}`)}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{agentRow?.name || 'Workflow'}</h1>
-        {isDirty && <Badge variant="secondary" className="text-[10px]">Unsaved</Badge>}
-
-        <div className="flex-1" />
-
-        {lintIssues.length > 0 && (
-          <Badge
-            variant={errorCount > 0 ? 'destructive' : 'secondary'}
-            className="text-[10px] cursor-help"
-            title={lintIssues.map((i) => `[${i.severity}] ${i.message}`).join('\n')}
-          >
-            {formatLintBadgeLabel(errorCount, warningCount)}
-          </Badge>
-        )}
-
-        <AgentLifecycleButton
-          status={agentLifecycle.status.status}
-          isLoading={agentLifecycle.isLoading || deploying}
-          backendAgentName={backendAgentName}
-          isDirty={isDirty}
-          onStart={handleStartAgent}
-          onStop={agentLifecycle.stop}
-        />
-        <Button
-          variant={chatOpen ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setChatOpen((v) => !v)}
-          className={chatOpen ? 'bg-violet-600 hover:bg-violet-700 text-white' : ''}
-        >
-          <Sparkles className="h-3.5 w-3.5 mr-1.5" /> AI Builder
-        </Button>
-        {/* icon-only: the toolbar has no room left for two more labels */}
-        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setImportOpen(true)}
-                title="Paste workflow JSON" aria-label="Paste workflow JSON">
-          <ClipboardPaste className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="outline" size="icon" className="h-8 w-8" onClick={copyJson}
-                title="Copy workflow JSON" aria-label="Copy workflow JSON">
-          <Copy className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setVariablesOpen(true)}>
-          <Braces className="h-3.5 w-3.5 mr-1.5" /> Variables
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setSettingsOpen(true)}>
-          <Settings2 className="h-3.5 w-3.5 mr-1.5" /> Agent
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setTalkOpen(true)}
-          disabled={agentLifecycle.status.status !== 'running'}
-          title={agentLifecycle.status.status === 'running' ? undefined : 'Start the agent first to talk to it'}
-        >
-          <PhoneIcon className="h-3.5 w-3.5 mr-1.5" /> Talk to Assistant
-        </Button>
-        <Button variant="outline" size="sm" onClick={handleValidate} disabled={saving}>
-          {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <ShieldCheck className="h-3.5 w-3.5 mr-1.5" />}
-          Validate
-        </Button>
-        <Button
-          size="sm"
-          onClick={() => handleDeploy()}
-          disabled={deploying || !isDirty || agentLifecycle.status.status !== 'running'}
-          title={deployButtonTitle(isDirty, agentLifecycle.status.status)}
-        >
-          {deploying ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Rocket className="h-3.5 w-3.5 mr-1.5" />}
-          Deploy
-        </Button>
-      </div>
+    <div className="h-screen flex flex-col bg-muted/50">
+      <WorkflowHeader
+        name={agentRow?.name || 'Workflow'}
+        onBack={() => router.push(`/${projectId}/agents/${agentId}`)}
+        paletteOpen={paletteOpen}
+        onTogglePalette={() => setPaletteOpen((v) => !v)}
+        serverIssues={serverIssues}
+        issuesOpen={issuesOpen}
+        onIssuesOpenChange={setIssuesOpen}
+        isDirty={isDirty}
+        onOpenAgent={() => setSettingsOpen(true)}
+        onOpenVariables={() => setVariablesOpen(true)}
+        onOpenRules={() => setRulesOpen(true)}
+        rulesCount={workflow?.globalRules?.length ?? 0}
+        onOpenKnowledge={() => setKnowledgeOpen(true)}
+        canTest={agentLifecycle.status.status === 'running'}
+        onTest={() => {
+          // The call runs the deployed version, so unsaved edits are not in it.
+          if (isDirty) toast('You have unsaved changes. This test uses the last deployed version. Deploy first to include them.', { duration: 6000 })
+          setTalkOpen(true)
+          setTested(true)
+        }}
+        onValidate={handleValidate}
+        validating={saving}
+        onPaste={() => setImportOpen(true)}
+        onCopy={copyJson}
+        onDeploy={requestDeploy}
+        onOpenHistory={() => setHistoryOpen(true)}
+        onOpenWebhook={() => setWebhookOpen(true)}
+        deploying={deploying}
+        deployTitle={deployButtonTitle(isDirty)}
+      />
 
       <div className="flex-1 flex min-h-0 relative">
-        <CanvasHintBanner />
+        <CanvasHintBanner
+          onAskPi={() => dock?.setOpen(true)}
+          onShowIssues={() => setIssuesOpen(true)}
+          onOpenAgent={() => { setSettingsOpen(true); setVoiceChecked(true) }}
+          onOpenKnowledge={() => setKnowledgeOpen(true)}
+          onTest={() => {
+            if (agentLifecycle.status.status !== 'running') return toast('Deploy first, then you can test it')
+            setTalkOpen(true)
+            setTested(true)
+          }}
+          deployed={!isDirty && agentLifecycle.status.status === 'running'}
+          tested={tested}
+          voiceChecked={voiceChecked}
+          paletteOpen={paletteOpen}
+        />
         <ReactFlowProvider>
-          <WorkflowPalette />
+          {paletteOpen && <WorkflowPalette />}
           <WorkflowCanvas />
         </ReactFlowProvider>
-        <WorkflowChat
-          open={chatOpen}
-          onOpenChange={setChatOpen}
-          initialMessage={pendingChatMessage}
-          onInitialMessageConsumed={() => setPendingChatMessage(null)}
-        />
+        <PiDockBody label="Edit flow">
+          <WorkflowChat
+            open={dock?.open ?? false}
+            initialMessage={pendingChatMessage}
+            onInitialMessageConsumed={() => setPendingChatMessage(null)}
+          />
+        </PiDockBody>
       </div>
 
       <Inspector />
       <VariablesPanel open={variablesOpen} onOpenChange={setVariablesOpen} />
+      <GlobalRulesPanel open={rulesOpen} onOpenChange={setRulesOpen} />
+      <PublishDialog open={publishOpen} onOpenChange={setPublishOpen} publishing={deploying} onPublish={async (m) => { if (await deploy(m)) setPublishOpen(false) }} />
+      <WorkflowHistory open={historyOpen} onOpenChange={setHistoryOpen} agentId={agentId} />
+      <WebhookPanel open={webhookOpen} onOpenChange={setWebhookOpen} agentId={agentId} projectId={projectId} />
+      <KnowledgePanel open={knowledgeOpen} onOpenChange={setKnowledgeOpen} agentName={backendAgentName} />
       <ImportJsonSheet open={importOpen} onOpenChange={setImportOpen} />
       <AgentSettingsPanel open={settingsOpen} onOpenChange={setSettingsOpen} />
 

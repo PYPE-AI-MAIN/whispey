@@ -11,8 +11,32 @@ import { DynamicJsonCell } from './sub-components'
 import { CostTooltip } from "../tool-tip/costToolTip"
 import { BASIC_COLUMNS } from "@/hooks/useCallLogsColumns"
 import { TagEditor } from './TagEditor'
-import { FlagEditor, FlagData } from './FlagEditor'
+import { FlagEditor } from './FlagEditor'
 import { cn } from "@/lib/utils"
+
+// Column ids are prefixed by which bucket built them (`metadata-`,
+// `transcription-`, `metrics-`) — see createTableColumns below. Reusing that
+// prefix (instead of a second lookup table) to tint header + body cells by
+// column type, so both `<th>` and `<td>` render the same color from one place.
+// One color family (slate) at three intensities, not three different hues —
+// a multi-hue combination is what kept reading as unprofessional/patchwork
+// no matter how muted each individual color was.
+// Plain solid shades, no opacity modifiers — the fractional-opacity variants
+// (bg-slate-800/25 etc.) weren't compiling reliably; these exact classes are
+// already used elsewhere in the app (ModelSelector.tsx, CampaignSelector.tsx),
+// so they're proven safe.
+// Four groups need four distinct tiers, including the plain "call info"
+// columns (customer_number, call_id, ...) — leaving them untinted fell back
+// to the row's own default dark background, which happened to land almost
+// exactly on the disposition tint below, making two different groups look
+// like the same one. Every tier is explicit now, one ladder, darkest to
+// lightest as you move from "just a call info column" to "a metric".
+export function getColumnGroupBgClass(columnId: string): string {
+  if (columnId.startsWith("metadata-")) return "bg-muted"
+  if (columnId.startsWith("transcription-")) return "bg-muted"
+  if (columnId.startsWith("metrics-")) return "bg-muted-foreground/30"
+  return "bg-muted/50"
+}
 import { isViewerRole } from '@/utils/callLogsUtils'
 
 // ── Basic-column cell renderers ──────────────────────────────────────────
@@ -32,7 +56,7 @@ function renderCustomerNumberCell(call: CallLog) {
           </div>
           <span
             className={cn(
-              "font-medium text-gray-900 dark:text-gray-100 text-sm",
+              "font-medium text-foreground text-sm",
               isLongNumber && "truncate"
             )}
             style={{ maxWidth: isLongNumber ? '140px' : 'none' }}
@@ -78,7 +102,7 @@ function CallIdCell({ callId }: Readonly<{ callId: string }>) {
         className="flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:hover:bg-gray-700/60 transition-colors shrink-0 cursor-pointer"
         aria-label="Copy call ID"
       >
-        {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+        {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
       </button>
     </div>
   )
@@ -177,16 +201,21 @@ function renderTagsCell(
   )
 }
 
-function renderFlagCell(call: CallLog, onTagsUpdated?: () => void) {
+function renderFlagCell(
+  call: CallLog,
+  role: string | null,
+  currentUserId: string | null,
+  currentUserEmail: string | null,
+  onTagsUpdated?: () => void
+) {
+  const canDeleteAnyFlag = role !== null && !isViewerRole(role)
   return (
     <FlagEditor
       callId={call.id}
-      initialFlag={
-        call.transcription_metrics?.flag &&
-        typeof call.transcription_metrics.flag === 'object'
-          ? (call.transcription_metrics.flag as FlagData)
-          : null
-      }
+      initialFlag={call.transcription_metrics?.flag}
+      currentUserId={currentUserId}
+      currentUserEmail={currentUserEmail}
+      canDeleteAnyFlag={canDeleteAnyFlag}
       onUpdated={onTagsUpdated}
     />
   )
@@ -197,6 +226,9 @@ function renderBasicCell(
   call: CallLog,
   availableTags: string[],
   canComment: boolean,
+  role: string | null,
+  currentUserId: string | null,
+  currentUserEmail: string | null,
   onTagsUpdated?: () => void
 ) {
   switch (key) {
@@ -219,7 +251,7 @@ function renderBasicCell(
     case "tags":
       return renderTagsCell(call, availableTags, canComment, onTagsUpdated)
     case "flag":
-      return renderFlagCell(call, onTagsUpdated)
+      return renderFlagCell(call, role, currentUserId, currentUserEmail, onTagsUpdated)
     default:
       return <span>{call[key as keyof CallLog] ?? "-"}</span>
   }
@@ -285,11 +317,17 @@ export const createTableColumns = (
     onTagsUpdated?: () => void
     /** Current user role — used to gate comment & flag capabilities */
     role?: string | null
+    /** Current user's Clerk id — used to gate deleting other people's flags */
+    currentUserId?: string | null
+    /** Current user's email — shown as flag attribution */
+    currentUserEmail?: string | null
   }
 ): ColumnDef<CallLog>[] => {
   const availableTags = options?.availableTags ?? []
   const onTagsUpdated = options?.onTagsUpdated
   const role = options?.role ?? null
+  const currentUserId = options?.currentUserId ?? null
+  const currentUserEmail = options?.currentUserEmail ?? null
   // owner/admin can add per-tag annotations; viewers cannot
   const canComment = role !== null && !isViewerRole(role)
   const cols: ColumnDef<CallLog>[] = []
@@ -302,7 +340,7 @@ export const createTableColumns = (
       id: key,
       accessorKey: key,
       header: col?.label ?? key,
-      cell: ({ row }) => renderBasicCell(key, row.original, availableTags, canComment, onTagsUpdated),
+      cell: ({ row }) => renderBasicCell(key, row.original, availableTags, canComment, role, currentUserId, currentUserEmail, onTagsUpdated),
       minSize: key === "customer_number" ? 180 : key === "tags" ? 200 : key === "flag" ? 100 : 150,
       size: key === "customer_number" ? 180 : key === "tags" ? 220 : key === "flag" ? 110 : undefined,
     })
@@ -320,7 +358,7 @@ export const createTableColumns = (
         // Special rendering for voicemail-detection
         if (key === 'voicemail-detection' && call.metadata?.['voicemail-detection'] === 'true') {
           return (
-            <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
+            <Badge variant="secondary" className="text-xs font-medium px-2 py-0.5 bg-warning/15 text-warning">
               Voicemail
             </Badge>
           )

@@ -155,12 +155,16 @@ export async function PATCH(
     return NextResponse.json({ error: 'User not found' }, { status: 404 })
   }
 
+  // .limit(1): this match is deliberately broad (clerk_id OR email, same as
+  // the list query above), so a target user with dual accounts sharing this
+  // email must not turn "found a mapping" into a 500.
   const { data: mapping, error: mappingErr } = await supabase
     .from('pype_voice_email_project_mapping')
     .select('id, permissions')
     .eq('project_id', projectId)
     .or(`clerk_id.eq.${targetUser.clerk_id},email.ilike.${targetUser.email}`)
     .or('is_active.is.null,is_active.eq.true')
+    .limit(1)
     .maybeSingle()
 
   if (mappingErr || !mapping) {

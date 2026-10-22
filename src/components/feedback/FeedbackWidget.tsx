@@ -7,8 +7,7 @@ import { useFeedbackTiming } from '@/hooks/useFeedbackTiming'
 // Pages where feedback widget should not appear
 const EXCLUDED_PATHS = [
   '/sign-in',
-  '/sign-up', 
-  '/docs'
+  '/sign-up'
 ]
 
 export default function FeedbackWidget() {

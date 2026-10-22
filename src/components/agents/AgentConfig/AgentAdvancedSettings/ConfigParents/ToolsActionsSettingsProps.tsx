@@ -505,7 +505,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
 
   return (
     <div className="space-y-3">
-      <div className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+      <div className="text-xs text-muted-foreground mb-3">
         Configure actions your assistant can perform during conversations
       </div>
 
@@ -560,25 +560,25 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
       {/* Tools List */}
       <div className="space-y-2">
         {kbEnabled && (
-          <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-950/40 rounded border border-blue-200 dark:border-blue-700">
-            <BookOpen className="w-3 h-3 text-blue-500" />
-            <span className="text-xs font-medium text-blue-700 dark:text-blue-300 flex-1">
+          <div className="flex items-center gap-2 p-2 bg-primary/10 rounded border border-primary/30">
+            <BookOpen className="w-3 h-3 text-primary" />
+            <span className="text-xs font-medium text-primary flex-1">
               Knowledge Search
             </span>
-            <span className="text-xs text-blue-500 dark:text-blue-400 flex-shrink-0">Managed by RAG Settings</span>
+            <span className="text-xs text-primary flex-shrink-0">Managed by RAG Settings</span>
           </div>
         )}
         {tools.length === 0 && languageSwitchTools.length === 0 && !kbEnabled ? (
-          <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-4 bg-gray-50 dark:bg-gray-900 rounded">
+          <div className="text-xs text-muted-foreground text-center py-4 bg-muted/50 rounded">
             No tools configured
           </div>
         ) : (
           <>
             {tools.map((tool) => (
-              <div key={tool.id} className="flex items-center justify-between gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div key={tool.id} className="flex items-center justify-between gap-2 p-2 bg-muted/50 rounded border border-border overflow-hidden">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   {getToolIcon(tool.type)}
-                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">
+                  <span className="text-xs font-medium text-foreground truncate">
                     {tool.name}
                   </span>
                 </div>
@@ -587,7 +587,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                     variant="ghost"
                     size="sm"
                     onClick={() => handleEditTool(tool)}
-                    className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700"
+                    className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
                   >
                     <EditIcon className="w-3 h-3" />
                   </Button>
@@ -595,7 +595,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                     variant="ghost"
                     size="sm"
                     onClick={() => handleDeleteTool(tool.id)}
-                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                    className="h-6 w-6 p-0 text-destructive hover:text-destructive"
                   >
                     <TrashIcon className="w-3 h-3" />
                   </Button>
@@ -603,20 +603,20 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
               </div>
             ))}
             {languageSwitchTools.map((ls, idx) => (
-              <div key={`ls-${ls.tool_name}`} className="flex items-center justify-between gap-2 p-2 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div key={`ls-${ls.tool_name}`} className="flex items-center justify-between gap-2 p-2 bg-muted/50 rounded border border-border overflow-hidden">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <Languages className="w-3 h-3 text-purple-500" />
-                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate font-mono">
+                  <Languages className="w-3 h-3 text-primary" />
+                  <span className="text-xs font-medium text-foreground truncate font-mono">
                     {ls.tool_name}
                   </span>
-                  <span className="text-xs text-gray-400">{ls.language_code}</span>
+                  <span className="text-xs text-muted-foreground">{ls.language_code}</span>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => { setEditingLSIndex(idx); setIsLSOpen(true) }}
-                    className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700"
+                    className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
                   >
                     <EditIcon className="w-3 h-3" />
                   </Button>
@@ -624,7 +624,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                     variant="ghost"
                     size="sm"
                     onClick={() => onFieldChange('advancedSettings.tools.languageSwitchTools', languageSwitchTools.filter((_, i) => i !== idx))}
-                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                    className="h-6 w-6 p-0 text-destructive hover:text-destructive"
                   >
                     <TrashIcon className="w-3 h-3" />
                   </Button>
@@ -653,9 +653,9 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
           setToolNameError(null)
         }
       }}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-sm text-gray-900 dark:text-gray-100">
+            <DialogTitle className="text-sm text-foreground">
               {editingTool ? 'Edit' : 'Add'} {
                 selectedToolType === 'end_call' ? 'End Call' : 
                 selectedToolType === 'handoff' ? 'Handoff Agent' : 
@@ -672,77 +672,75 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
           <div className="space-y-3 mt-4">
             {/* Tool Name */}
             <div>
-              <Label className="text-xs text-gray-700 dark:text-gray-300">Tool Name</Label>
+              <Label className="text-xs text-foreground">Tool Name</Label>
               <Input
                 value={formData.name}
                 maxLength={30}
                 onChange={(e) => { setFormData(prev => ({ ...prev, name: e.target.value.replaceAll(/\s/g, '_') })); setToolNameError(null) }}
-                className={`h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 ${toolNameError ? 'border-red-500' : ''}`}
+                className={`h-7 text-xs mt-1 bg-card border-border text-foreground ${toolNameError ? 'border-red-500' : ''}`}
                 placeholder={selectedToolType === 'ivr_navigator' ? 'Send DTMF' : 'Enter tool name...'}
               />
-              {toolNameError && <p className="text-xs text-red-500 mt-1">{toolNameError}</p>}
+              {toolNameError && <p className="text-xs text-destructive mt-1">{toolNameError}</p>}
             </div>
 
             {/* Description */}
             <div>
-              <Label className="text-xs text-gray-700 dark:text-gray-300">Description</Label>
+              <Label className="text-xs text-foreground">Description</Label>
               <Textarea
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                className="text-xs mt-1 min-h-[60px] resize-none bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                className="text-xs mt-1 min-h-[60px] resize-none bg-card border-border text-foreground"
                 placeholder={selectedToolType === 'ivr_navigator' ? 'Send a DTMF tone to pick IVR menu options' : 'Describe what this tool does...'}
               />
             </div>
 
             {/* IVR Navigator specific fields */}
             {selectedToolType === 'ivr_navigator' && (
-              <>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs text-gray-700 dark:text-gray-300">Function Name</Label>
+                    <Label className="text-xs text-foreground">Function Name</Label>
                     <Input
                       value={formData.function_name}
                       onChange={(e) => setFormData(prev => ({ ...prev, function_name: e.target.value }))}
-                      className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                      className="h-7 text-xs mt-1 bg-card border-border text-foreground"
                       placeholder="send_dtmf_code"
                     />
                   </div>
 
                   <div>
-                    <Label className="text-xs text-gray-700 dark:text-gray-300">Cooldown (seconds)</Label>
+                    <Label className="text-xs text-foreground">Cooldown (seconds)</Label>
                     <Input
                       type="number"
                       min="0"
                       max="60"
                       value={formData.cooldown_seconds}
                       onChange={(e) => setFormData(prev => ({ ...prev, cooldown_seconds: Number.parseInt(e.target.value) || 3 }))}
-                      className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                      className="h-7 text-xs mt-1 bg-card border-border"
                       placeholder="3"
                     />
                   </div>
                 </div>
-              </>
             )}
 
             {/* Handoff Agent specific fields */}
             {selectedToolType === 'handoff' && (
               <>
                 <div>
-                  <Label className="text-xs text-gray-700 dark:text-gray-300">Target Agent</Label>
+                  <Label className="text-xs text-foreground">Target Agent</Label>
                   <Input
                     value={formData.targetAgent}
                     onChange={(e) => setFormData(prev => ({ ...prev, targetAgent: e.target.value }))}
-                    className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    className="h-7 text-xs mt-1 bg-card border-border text-foreground"
                     placeholder="Name of the agent to transfer to"
                   />
                 </div>
 
                 <div>
-                  <Label className="text-xs text-gray-700 dark:text-gray-300">Handoff Message</Label>
+                  <Label className="text-xs text-foreground">Handoff Message</Label>
                   <Textarea
                     value={formData.handoffMessage}
                     onChange={(e) => setFormData(prev => ({ ...prev, handoffMessage: e.target.value }))}
-                    className="text-xs mt-1 min-h-[60px] resize-none bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    className="text-xs mt-1 min-h-[60px] resize-none bg-card border-border text-foreground"
                     placeholder="Message to display during transfer"
                   />
                 </div>
@@ -753,8 +751,8 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
             {selectedToolType === 'transfer_call' && (
               <>
                 {/* Trigger mode — how the LLM activates the transfer */}
-                <div className="rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 p-3">
-                  <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+                <div className="rounded-md border border-border bg-muted/50 p-3">
+                  <Label className="text-xs font-medium text-foreground mb-2 block">
                     How should the LLM trigger this transfer?
                   </Label>
                   <div className="space-y-2">
@@ -767,10 +765,10 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                         }
                       />
                       <div className="flex-1">
-                        <label htmlFor="transfer-enable-as-tool" className="text-xs font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                        <label htmlFor="transfer-enable-as-tool" className="text-xs font-medium text-foreground cursor-pointer select-none">
                           Add as Tool
                         </label>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                        <p className="text-xs text-muted-foreground">
                           Exposes <code>transfer_call</code> as a function tool the LLM can decide to invoke.
                         </p>
                       </div>
@@ -784,10 +782,10 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                         }
                       />
                       <div className="flex-1">
-                        <label htmlFor="transfer-enable-as-tag" className="text-xs font-medium text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                        <label htmlFor="transfer-enable-as-tag" className="text-xs font-medium text-foreground cursor-pointer select-none">
                           Add as Tag
                         </label>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                        <p className="text-xs text-muted-foreground">
                           Looks for <code>&lt;transfer/&gt;</code> in the LLM's spoken text and triggers the transfer
                           (the tag is stripped from TTS so the caller never hears it).
                           Add this instruction to your system prompt:{' '}
@@ -796,41 +794,43 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                       </div>
                     </div>
                     {!formData.enableAsTool && !formData.enableAsTag && (
-                      <p className="text-xs text-amber-600 dark:text-amber-400 pt-1">
-                        ⚠️ Neither trigger is enabled — the transfer config will be saved but the LLM has no way to fire it.
+                      <p className="text-xs text-warning pt-1">
+                        Neither trigger is enabled — the transfer config will be saved but the LLM has no way to fire it.
                       </p>
                     )}
                   </div>
                 </div>
 
                 <div>
-                  <Label className="text-xs text-gray-700 dark:text-gray-300">Transfer Number</Label>
+                  <Label className="text-xs text-foreground">Transfer Number</Label>
                   <Input
                     value={formData.transferNumber}
                     onChange={(e) => setFormData(prev => ({ ...prev, transferNumber: e.target.value }))}
-                    className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    className="h-7 text-xs mt-1 bg-card border-border text-foreground"
                     placeholder="e.g., +1234567890"
                   />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     The phone number to transfer the call to. The call will be transferred to this number in a conference.
                   </p>
                 </div>
                 <div>
-                  <Label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
+                  <Label className="text-xs font-medium text-foreground mb-1.5 flex items-center gap-1.5">
                     <Phone className="w-3 h-3" />
                     SIP Trunk
                   </Label>
-                  {loadingPhoneNumbers ? (
-                    <div className="w-full h-8 flex items-center justify-center border border-gray-300 dark:border-gray-700 rounded-lg">
-                      <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                  {loadingPhoneNumbers && (
+                    <div className="w-full h-8 flex items-center justify-center border border-border rounded-lg">
+                      <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
                     </div>
-                  ) : phoneNumbers.length === 0 ? (
-                    <div className="w-full h-8 flex items-center px-3 border border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                  )}
+                  {!loadingPhoneNumbers && phoneNumbers.length === 0 && (
+                    <div className="w-full h-8 flex items-center px-3 border border-border rounded-lg bg-muted/50">
+                      <span className="text-xs text-muted-foreground">
                         {projectId ? 'No phone numbers available for this project' : 'No phone numbers available for outbound calls'}
                       </span>
                     </div>
-                  ) : (
+                  )}
+                  {!loadingPhoneNumbers && phoneNumbers.length !== 0 && (
                     <Select
                       value={formData.selectedPhoneId || '__none__'}
                       onValueChange={(phoneId) => {
@@ -853,14 +853,14 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__none__">
-                          <span className="text-xs text-gray-400">None (bridge / Acefone calls)</span>
+                          <span className="text-xs text-muted-foreground">None (bridge / Acefone calls)</span>
                         </SelectItem>
                         {phoneNumbers.map((phone) => (
                           <SelectItem key={phone.id} value={phone.id}>
                             <div className="flex items-center gap-2">
                               <span className="font-mono text-xs">{phone.phone_number}</span>
                               {phone.provider && (
-                                <span className="text-gray-500 text-xs">({phone.provider})</span>
+                                <span className="text-muted-foreground text-xs">({phone.provider})</span>
                               )}
                             </div>
                           </SelectItem>
@@ -868,45 +868,45 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                       </SelectContent>
                     </Select>
                   )}
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Select a phone number to use its SIP trunk for the transfer. The trunk ID will be automatically used.
                   </p>
                   {formData.sipTrunkId && (
-                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                    <p className="text-xs text-primary mt-1">
                       Selected SIP Trunk: <span className="font-mono">{formData.sipTrunkId}</span>
                     </p>
                   )}
                 </div>
                 <div>
-                  <Label className="text-xs text-gray-700 dark:text-gray-300">
-                    Acefone Token <span className="text-gray-400">(bridge calls only — optional)</span>
+                  <Label className="text-xs text-foreground">
+                    Acefone Token <span className="text-muted-foreground">(bridge calls only — optional)</span>
                   </Label>
                   <Input
                     type="password"
                     value={formData.acefoneToken}
                     onChange={(e) => setFormData(prev => ({ ...prev, acefoneToken: e.target.value }))}
-                    className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    className="h-7 text-xs mt-1 bg-card border-border text-foreground"
                     placeholder="Per-agent Acefone API token"
                   />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Required for transfer on Acefone bridge calls. For SIP calls, leave empty and use the SIP Trunk above.
                   </p>
                 </div>
                 <div>
-                  <Label className="text-xs text-gray-700 dark:text-gray-300">Pre-Transfer Webhook URL <span className="text-gray-400">(optional)</span></Label>
+                  <Label className="text-xs text-foreground">Pre-Transfer Webhook URL <span className="text-muted-foreground">(optional)</span></Label>
                   <Input
                     value={formData.preTransferWebhookUrl}
                     onChange={(e) => setFormData(prev => ({ ...prev, preTransferWebhookUrl: e.target.value }))}
-                    className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    className="h-7 text-xs mt-1 bg-card border-border text-foreground"
                     placeholder="https://your-api.com/webhook"
                   />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Called automatically before the transfer is dialed. Receives session ID, transcript, and transfer number.
                   </p>
                 </div>
                 {formData.preTransferWebhookUrl && (
                   <div>
-                    <Label className="text-xs text-gray-700 dark:text-gray-300">Fields to include in webhook payload</Label>
+                    <Label className="text-xs text-foreground">Fields to include in webhook payload</Label>
                     <div className="mt-2 grid grid-cols-2 gap-y-2 gap-x-3">
                       {WEBHOOK_FIELD_OPTIONS.map(({ key, label }) => {
                         const checked = formData.preTransferWebhookFields.includes(key)
@@ -917,7 +917,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                               checked={checked}
                               onCheckedChange={(v) => toggleWebhookField(key, v === true)}
                             />
-                            <label htmlFor={`wf-${key}`} className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer select-none">{label}</label>
+                            <label htmlFor={`wf-${key}`} className="text-xs text-muted-foreground cursor-pointer select-none">{label}</label>
                           </div>
                         )
                       })}
@@ -933,7 +933,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                         setFormData(prev => ({ ...prev, transferFailureMessageEnabled: v === true }))
                       }
                     />
-                    <label htmlFor="transfer-failure-message-enabled" className="text-xs text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+                    <label htmlFor="transfer-failure-message-enabled" className="text-xs text-foreground cursor-pointer select-none">
                       Speak a message if the transfer fails (no answer / SIP error)
                     </label>
                   </div>
@@ -942,11 +942,11 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                       <Textarea
                         value={formData.transferFailureMessage}
                         onChange={(e) => setFormData(prev => ({ ...prev, transferFailureMessage: e.target.value }))}
-                        className="text-xs mt-2 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                        className="text-xs mt-2 bg-card border-border text-foreground"
                         rows={2}
                         placeholder="I'm sorry, no one is picking up the call right now. Please try calling again after some time."
                       />
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         Spoken to the caller before hanging up if no one picks up. Leave blank to use the default message above.
                       </p>
                     </>
@@ -959,26 +959,26 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
             {selectedToolType === 'custom_function' && (
               <>
                 <div>
-                  <Label className="text-xs text-gray-700 dark:text-gray-300">API URL</Label>
+                  <Label className="text-xs text-foreground">API URL</Label>
                   <Input
                     value={formData.endpoint}
                     onChange={(e) => setFormData(prev => ({ ...prev, endpoint: e.target.value }))}
-                    className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    className="h-7 text-xs mt-1 bg-card border-border text-foreground"
                     placeholder="e.g., https://api.example.com/weather"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs text-gray-700 dark:text-gray-300">HTTP Method</Label>
+                    <Label className="text-xs text-foreground">HTTP Method</Label>
                     <Select
                       value={formData.method}
                       onValueChange={(value) => setFormData(prev => ({ ...prev, method: value }))}
                     >
-                      <SelectTrigger className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                      <SelectTrigger className="h-7 text-xs mt-1 bg-card border-border">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                      <SelectContent className="bg-card border-border">
                         <SelectItem value="GET">GET</SelectItem>
                         <SelectItem value="POST">POST</SelectItem>
                         <SelectItem value="PUT">PUT</SelectItem>
@@ -988,21 +988,21 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                   </div>
 
                   <div>
-                    <Label className="text-xs text-gray-700 dark:text-gray-300">Timeout (seconds)</Label>
+                    <Label className="text-xs text-foreground">Timeout (seconds)</Label>
                     <Input
                       type="number"
                       min="1"
                       max="120"
                       value={formData.timeout}
                       onChange={(e) => setFormData(prev => ({ ...prev, timeout: Number.parseInt(e.target.value) || 10 }))}
-                      className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                      className="h-7 text-xs mt-1 bg-card border-border"
                       placeholder="10"
                     />
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs text-gray-700 dark:text-gray-300">Async Execution</Label>
+                  <Label className="text-xs text-foreground">Async Execution</Label>
                   <Switch
                     checked={formData.asyncExecution}
                     onCheckedChange={(checked) => setFormData(prev => ({ ...prev, asyncExecution: checked }))}
@@ -1012,21 +1012,21 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
 
                 {/* Custom Payload */}
                 <div>
-                  <Label className="text-xs text-gray-700 dark:text-gray-300">Custom Payload (JSON Template)</Label>
+                  <Label className="text-xs text-foreground">Custom Payload (JSON Template)</Label>
                   <Textarea
                     value={formData.body}
                     onChange={(e) => setFormData(prev => ({ ...prev, body: e.target.value }))}
-                    className="text-xs mt-1 min-h-[80px] resize-none font-mono break-all bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    className="text-xs mt-1 min-h-[80px] resize-none font-mono break-all bg-card border-border text-foreground"
                     placeholder='e.g., {"order": {"customer_id": customer_id, "items": items, "timestamp": "{{timestamp}}"}}'
                   />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Use parameter names as variables and {`{{timestamp}}`} for current timestamp
                   </p>
                 </div>
 
                 {/* Headers Configuration */}
                 <div>
-                  <Label className="text-xs text-gray-700 dark:text-gray-300">Headers (JSON)</Label>
+                  <Label className="text-xs text-foreground">Headers (JSON)</Label>
                   <Textarea
                     value={headersJsonString}
                     onChange={(e) => {
@@ -1042,14 +1042,14 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                         // Allow invalid JSON while typing - don't update formData.headers
                       }
                     }}
-                    className="text-xs mt-1 min-h-[80px] resize-none font-mono break-all bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    className="text-xs mt-1 min-h-[80px] resize-none font-mono break-all bg-card border-border text-foreground"
                     placeholder={`{
                   "Content-Type": "application/json",
                   "Authorization": "Bearer YOUR_TOKEN",
                   "X-Custom-Header": "value"
                 }`}
                   />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Add custom HTTP headers as JSON key-value pairs
                   </p>
                 </div>
@@ -1057,12 +1057,12 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                 {/* Parameters Section */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label className="text-xs text-gray-700 dark:text-gray-300">Parameters</Label>
+                    <Label className="text-xs text-foreground">Parameters</Label>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handleAddParameter}
-                      className="h-6 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      className="h-6 text-xs bg-card border-border hover:bg-muted/50"
                     >
                       <PlusIcon className="w-3 h-3 mr-1" />
                       Add Parameter
@@ -1070,22 +1070,22 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                   </div>
 
                   {formData.parameters.length === 0 ? (
-                    <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-3 bg-gray-50 dark:bg-gray-900 rounded border border-dashed border-gray-300 dark:border-gray-700">
+                    <div className="text-xs text-muted-foreground text-center py-3 bg-muted/50 rounded border border-dashed border-border">
                       No parameters defined. Click "Add Parameter" to add one.
                     </div>
                   ) : (
                     <div className="space-y-3">
                       {formData.parameters.map((param, index) => (
-                        <div key={param.id} className="p-3 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 space-y-2">
+                        <div key={param.id} className="p-3 bg-muted/50 rounded border border-border space-y-2">
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                            <span className="text-xs font-medium text-foreground">
                               Parameter #{index + 1}
                             </span>
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleRemoveParameter(param.id)}
-                              className="h-5 w-5 p-0 text-red-500 hover:text-red-700"
+                              className="h-5 w-5 p-0 text-destructive hover:text-destructive"
                             >
                               <TrashIcon className="w-3 h-3" />
                             </Button>
@@ -1093,25 +1093,25 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
 
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <Label className="text-xs text-gray-700 dark:text-gray-300">Name</Label>
+                              <Label className="text-xs text-foreground">Name</Label>
                               <Input
                                 value={param.name}
                                 onChange={(e) => handleUpdateParameter(param.id, 'name', e.target.value)}
-                                className="h-6 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                                className="h-6 text-xs mt-1 bg-card border-border text-foreground"
                                 placeholder="e.g., location"
                               />
                             </div>
 
                             <div>
-                              <Label className="text-xs text-gray-700 dark:text-gray-300">Type</Label>
+                              <Label className="text-xs text-foreground">Type</Label>
                               <Select
                                 value={param.type}
                                 onValueChange={(value) => handleUpdateParameter(param.id, 'type', value)}
                               >
-                                <SelectTrigger className="h-6 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                                <SelectTrigger className="h-6 text-xs mt-1 bg-card border-border">
                                   <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                                <SelectContent className="bg-card border-border">
                                   <SelectItem value="string">string</SelectItem>
                                   <SelectItem value="number">number</SelectItem>
                                   <SelectItem value="boolean">boolean</SelectItem>
@@ -1123,17 +1123,17 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                           </div>
 
                           <div>
-                            <Label className="text-xs text-gray-700 dark:text-gray-300">Description</Label>
+                            <Label className="text-xs text-foreground">Description</Label>
                             <Input
                               value={param.description}
                               onChange={(e) => handleUpdateParameter(param.id, 'description', e.target.value)}
-                              className="h-6 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                              className="h-6 text-xs mt-1 bg-card border-border text-foreground"
                               placeholder="Describe this parameter"
                             />
                           </div>
 
                           <div className="flex items-center justify-between">
-                            <Label className="text-xs text-gray-700 dark:text-gray-300">Required</Label>
+                            <Label className="text-xs text-foreground">Required</Label>
                             <Switch
                               checked={param.required}
                               onCheckedChange={(checked) => handleUpdateParameter(param.id, 'required', checked)}
@@ -1148,24 +1148,24 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
 
                 {/* Response Mapping */}
                 <div>
-                  <Label className="text-xs text-gray-700 dark:text-gray-300">Response Mapping (JSON)</Label>
+                  <Label className="text-xs text-foreground">Response Mapping (JSON)</Label>
                   <Textarea
                     value={formData.responseMapping}
                     onChange={(e) => setFormData(prev => ({ ...prev, responseMapping: e.target.value }))}
-                    className="text-xs mt-1 min-h-[80px] resize-none font-mono break-all bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    className="text-xs mt-1 min-h-[80px] resize-none font-mono break-all bg-card border-border text-foreground"
                     placeholder="{}"
                   />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Map API response fields to tool response using dot notation (e.g., "data.user.name")
                   </p>
                 </div>
 
                 {/* ── Tool Call Filler Words ──────────────────────────────── */}
-                <div className="border border-gray-200 dark:border-gray-700 rounded-md p-3 space-y-3">
+                <div className="border border-border rounded-md p-3 space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Tool Call Filler Words</p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500">Speak phrases while this tool is running</p>
+                      <p className="text-xs font-medium text-foreground">Tool Call Filler Words</p>
+                      <p className="text-xs text-muted-foreground">Speak phrases while this tool is running</p>
                     </div>
                     <Switch
                       checked={formData.filler_config?.enabled ?? false}
@@ -1184,7 +1184,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                       {/* Threshold + Interval */}
                       <div className="flex gap-2">
                         <div className="flex-1 space-y-1">
-                          <Label className="text-xs text-gray-700 dark:text-gray-300">Delay before first filler (sec)</Label>
+                          <Label className="text-xs text-foreground">Delay before first filler (sec)</Label>
                           <Input
                             type="number"
                             value={formData.filler_config.threshold}
@@ -1197,11 +1197,11 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                                 filler_config: { ...prev.filler_config!, threshold: isNaN(v) ? prev.filler_config!.threshold : v },
                               }))
                             }}
-                            className="h-7 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                            className="h-7 text-xs bg-card border-border"
                           />
                         </div>
                         <div className="flex-1 space-y-1">
-                          <Label className="text-xs text-gray-700 dark:text-gray-300">Repeat interval (sec)</Label>
+                          <Label className="text-xs text-foreground">Repeat interval (sec)</Label>
                           <Input
                             type="number"
                             value={formData.filler_config.interval}
@@ -1214,14 +1214,14 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                                 filler_config: { ...prev.filler_config!, interval: isNaN(v) ? prev.filler_config!.interval : v },
                               }))
                             }}
-                            className="h-7 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                            className="h-7 text-xs bg-card border-border"
                           />
                         </div>
                       </div>
 
                       {/* Mode */}
                       <div className="space-y-1">
-                        <Label className="text-xs text-gray-700 dark:text-gray-300">Selection mode</Label>
+                        <Label className="text-xs text-foreground">Selection mode</Label>
                         <Select
                           value={formData.filler_config.mode}
                           onValueChange={v =>
@@ -1231,10 +1231,10 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                             }))
                           }
                         >
-                          <SelectTrigger className="h-7 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                          <SelectTrigger className="h-7 text-xs bg-card border-border">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                          <SelectContent className="bg-card border-border">
                             <SelectItem value="random" className="text-xs">Random — pick randomly each time</SelectItem>
                             <SelectItem value="sequential" className="text-xs">Sequential — cycle through in order</SelectItem>
                           </SelectContent>
@@ -1243,10 +1243,10 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
 
                       {/* Messages list */}
                       <div className="space-y-2">
-                        <Label className="text-xs text-gray-700 dark:text-gray-300">Filler messages</Label>
+                        <Label className="text-xs text-foreground">Filler messages</Label>
 
                         {(formData.filler_config.messages ?? []).length === 0 && (
-                          <p className="text-xs text-gray-400 italic">No messages added yet.</p>
+                          <p className="text-xs text-muted-foreground italic">No messages added yet.</p>
                         )}
 
                         {(formData.filler_config.messages ?? []).map((msg, i) => (
@@ -1262,7 +1262,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                                 }))
                               }}
                               placeholder="e.g. okay I am checking…"
-                              className="h-7 text-xs flex-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                              className="h-7 text-xs flex-1 bg-card border-border text-foreground"
                             />
                             <Button
                               variant="ghost"
@@ -1274,7 +1274,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                                   filler_config: { ...prev.filler_config!, messages: msgs },
                                 }))
                               }}
-                              className="h-6 w-6 p-0 text-red-500 hover:text-red-700 flex-shrink-0"
+                              className="h-6 w-6 p-0 text-destructive hover:text-destructive flex-shrink-0"
                             >
                               <TrashIcon className="w-3 h-3" />
                             </Button>
@@ -1299,7 +1299,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                               }
                             }}
                             placeholder="Type a message and press Enter or +"
-                            className="h-7 text-xs flex-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                            className="h-7 text-xs flex-1 bg-card border-border text-foreground"
                           />
                           <Button
                             variant="outline"
@@ -1315,7 +1315,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
                               }))
                               setNewFillerMessage('')
                             }}
-                            className="h-6 w-6 p-0 flex-shrink-0 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                            className="h-6 w-6 p-0 flex-shrink-0 bg-card border-border"
                           >
                             <PlusIcon className="w-3 h-3" />
                           </Button>
@@ -1332,41 +1332,41 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs text-gray-700 dark:text-gray-300">Max Results</Label>
+                    <Label className="text-xs text-foreground">Max Results</Label>
                     <Input
                       type="number"
                       min="1"
                       max="20"
                       value={formData.max_results}
                       onChange={(e) => setFormData(prev => ({ ...prev, max_results: Number.parseInt(e.target.value) || 3 }))}
-                      className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                      className="h-7 text-xs mt-1 bg-card border-border"
                       placeholder="3"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <Label className="text-xs text-gray-700 dark:text-gray-300">Hospitals (JSON array)</Label>
+                  <Label className="text-xs text-foreground">Hospitals (JSON array)</Label>
                   <Textarea
                     value={formData.hospitals_json}
                     onChange={(e) => setFormData(prev => ({ ...prev, hospitals_json: e.target.value }))}
-                    className="text-xs mt-1 min-h-[120px] resize-none font-mono break-all bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    className="text-xs mt-1 min-h-[120px] resize-none font-mono break-all bg-card border-border text-foreground"
                     placeholder='[{"name":"Sparsh Hospital","location":"Koramangala","address":"...","phone":"+91...","latitude":12.93,"longitude":77.62}]'
                   />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Must include latitude/longitude for each hospital.
                   </p>
                 </div>
 
                 <div>
-                  <Label className="text-xs text-gray-700 dark:text-gray-300">Areas (JSON object)</Label>
+                  <Label className="text-xs text-foreground">Areas (JSON object)</Label>
                   <Textarea
                     value={formData.areas_json}
                     onChange={(e) => setFormData(prev => ({ ...prev, areas_json: e.target.value }))}
-                    className="text-xs mt-1 min-h-[120px] resize-none font-mono break-all bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    className="text-xs mt-1 min-h-[120px] resize-none font-mono break-all bg-card border-border text-foreground"
                     placeholder='{"koramangala":[12.9352,77.6245],"jayanagar":[12.9250,77.5937]}'
                   />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Keys should be lowercase area names. Values are [lat, lng].
                   </p>
                 </div>
@@ -1376,38 +1376,38 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
             {/* Voicemail Detection specific fields */}
             {selectedToolType === 'voicemail_detection' && (
               <>
-                <div className="flex items-start gap-2 p-2.5 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border border-yellow-200 dark:border-yellow-800">
-                  <Info className="w-3.5 h-3.5 text-yellow-600 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                <div className="flex items-start gap-2 p-2.5 bg-warning/10 rounded-md border border-warning/30">
+                  <Info className="w-3.5 h-3.5 text-warning mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-warning">
                     Powered by LiveKit's built-in Answering Machine Detection (AMD). It runs its own dedicated LLM (Azure OpenAI GPT-4.1-mini) and STT (Sarvam saaras:v3, language="unknown" (auto-detect) and mode="transcribe" ) for classification, independent of this agent's configured LLM and STT.
                   </p>
                 </div>
 
                 <div>
-                  <Label className="text-xs text-gray-700 dark:text-gray-300">Voicemail Message</Label>
+                  <Label className="text-xs text-foreground">Voicemail Message</Label>
                   <Textarea
                     value={formData.vm_message}
                     onChange={(e) => setFormData(prev => ({ ...prev, vm_message: e.target.value }))}
-                    className="text-xs mt-1 min-h-[60px] resize-none bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                    className="text-xs mt-1 min-h-[60px] resize-none bg-card border-border text-foreground"
                     placeholder="It looks like I've reached a voicemail. Please call us back when you're available. Thank you, goodbye."
                   />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     Spoken directly (not generated by the LLM). Leave blank to end the call silently, with no message.
                   </p>
                 </div>
 
                 <div>
-                  <Label className="text-xs text-gray-700 dark:text-gray-300">Reply Wait Timeout (seconds)</Label>
+                  <Label className="text-xs text-foreground">Reply Wait Timeout (seconds)</Label>
                   <Input
                     type="number"
                     min="0"
                     step="0.5"
                     value={formData.vm_wait_timeout}
                     onChange={(e) => setFormData(prev => ({ ...prev, vm_wait_timeout: Number.parseFloat(e.target.value) || 0 }))}
-                    className="h-7 text-xs mt-1 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                    className="h-7 text-xs mt-1 bg-card border-border"
                     placeholder="7"
                   />
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     How long to wait for a reply after speaking before hanging up. Set to 0 to hang up immediately.
                   </p>
                 </div>
@@ -1416,7 +1416,7 @@ function ToolsActionsSettings({ tools, languageSwitchTools = [], turnDetection, 
           </div>
 
           <div className="flex gap-2 mt-6">
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="flex-1 h-7 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="flex-1 h-7 text-xs bg-card border-border hover:bg-muted/50">
               Cancel
             </Button>
             <Button onClick={handleSaveTool} className="flex-1 h-7 text-xs">

@@ -83,14 +83,18 @@ export interface SerializedAgentConfig {
       }
       session: {
         preemptiveGeneration: 'disabled' | 'enabled'
-        turn_detection: 'multilingual' | 'english' | 'disabled'
+        turn_detection: 'multilingual' | 'english' | 'disabled' | 'v1-mini' | 'cue'
         unlikely_threshold?: number
+        cue_threshold?: number
         min_endpointing_delay?: number
         max_endpointing_delay?: number
         user_away_timeout?: number
         user_away_timeout_message?: string
         user_away_timeout_max_count?: number
         user_away_timeout_end_message?: string
+        user_away_timeout_mode?: 'static' | 'dynamic'
+        user_away_prompt?: string
+        eod_silence_seconds?: number
       }
       tools: {
         tools: any[]

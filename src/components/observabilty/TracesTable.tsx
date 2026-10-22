@@ -1,6 +1,7 @@
 // src/components/observability/TracesTable.tsx
 "use client"
 
+import { downloadTranscriptJson } from '@/lib/transcriptExport'
 import { useState, useMemo, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -18,6 +19,7 @@ import { formatProviderLabel } from "@/utils/providerDisplay";
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { useTranscriptEnglishToggle } from "@/hooks/useTranscriptEnglishToggle"
+import { useCallTranscript, type TraceLog } from "@/hooks/useCallTranscript"
 import { useConfigTabAccess } from "@/hooks/useConfigTabAccess"
 
 interface TracesTableProps {
@@ -32,42 +34,97 @@ interface TracesTableProps {
   }
 }
 
-interface TraceLog {
-  id: string
-  session_id: string
-  turn_id: string
-  user_transcript: string
-  agent_response: string
-  trace_id?: string
-  otel_spans?: OTelSpan[]
-  tool_calls?: any[]
-  enhanced_data?: { fallback_events?: any[]; [key: string]: any }
-  trace_duration_ms?: number
-  trace_cost_usd?: number
-  stt_metrics?: any
-  llm_metrics?: any
-  tts_metrics?: any
-  eou_metrics?: any
-  created_at: string
-  unix_timestamp: number
-  phone_number?: string
-  lesson_day?: number
-  call_success?: boolean
-  lesson_completed?: boolean
-  bug_report?: boolean
-  metadata?: any
+
+
+// Shared metrics-logs select lives with the transcript hook; re-exported for ObservabilityStats.
+export { METRICS_LOGS_SELECT } from "@/hooks/useCallTranscript"
+
+// Extracted so TracesTable's row-render callback doesn't carry this branching itself
+// (keeps that callback's cognitive complexity down).
+function getLatencyColorClass(latency: number): string {
+  if (latency === 0) return "text-muted-foreground"
+  if (latency > 5000) return "text-destructive"
+  if (latency > 2000) return "text-warning"
+  return "text-success"
 }
 
-// Shared select for pype_voice_metrics_logs used here AND in ObservabilityStats.
-// MUST be identical in both places so React Query deduplicates into a single network request.
-// `otel_spans` is intentionally excluded — it is a large embedded JSONB tree per turn
-// that duplicates data already in the pype_voice_spans table and is not rendered directly.
-export const METRICS_LOGS_SELECT =
-  "id, session_id, turn_id, user_transcript, agent_response, " +
-  "stt_metrics, llm_metrics, tts_metrics, eou_metrics, " +
-  "tool_calls, enhanced_data, trace_id, trace_duration_ms, trace_cost_usd, " +
-  "created_at, unix_timestamp, bug_report, " +
-  "call_success, lesson_day, lesson_completed, phone_number"
+function getStatusIcon(status: string) {
+  if (status === "bug_report") return <AlertTriangle className="w-4 h-4 text-destructive" />
+  if (status === "error") return <XCircle className="w-4 h-4 text-destructive" />
+  if (status === "warning") return <AlertTriangle className="w-4 h-4 text-warning" />
+  return <CheckCircle className="w-4 h-4 text-success" />
+}
+
+// One tool-call line in the Conversation column — pulled out of the row map so its
+// own conditionals don't add to the row callback's cognitive complexity.
+function ToolCallLine({ tool, idx }: Readonly<{ tool: any; idx: number }>) {
+  const toolName = tool.tool_name || tool.name || 'unknown'
+  const isError = tool.success === false || tool.status === 'error'
+  const result = tool.result === undefined ? null : String(tool.result)
+  const argKeys = tool.arguments && typeof tool.arguments === 'object'
+    ? Object.keys(tool.arguments)
+    : []
+  return (
+    <div key={idx} className="flex items-start gap-1 text-xs">
+      <Wrench className={cn(
+        "w-3 h-3 mt-0.5 shrink-0",
+        isError ? "text-destructive" : "text-warning"
+      )} />
+      <div className="min-w-0">
+        <span className={cn(
+          "font-medium",
+          isError ? "text-destructive" : "text-warning"
+        )}>
+          {toolName}
+        </span>
+        {argKeys.length > 0 && (
+          <span className="text-muted-foreground font-mono ml-1">
+            ({argKeys.join(', ')})
+          </span>
+        )}
+        {result && (
+          <span className="text-muted-foreground ml-1">
+            → {result.length > 60 ? result.slice(0, 60) + '…' : result}
+          </span>
+        )}
+        {isError && (
+          <span className="ml-1 text-destructive font-medium">✗ failed</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// One fallback-event line — same reasoning as ToolCallLine above.
+function FallbackEventLine({ fb, idx }: Readonly<{ fb: any; idx: number }>) {
+  const isRecovery = fb.event_type === 'provider_recovered'
+  const isTotalFailure = !isRecovery && fb.all_providers_failed
+  const eventKey = `${fb.provider_type}-${fb.event_type}-${fb.timestamp}-${idx}`
+
+  let icon = <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0 text-destructive" />
+  let textClass = "text-destructive"
+  let summary = `${fb.provider_type || 'Provider'} fallback: ${fb.provider_label || formatProviderLabel(fb.provider_name)} → ${fb.fallback_label || formatProviderLabel(fb.fallback_provider)}`
+  if (isRecovery) {
+    icon = <CheckCircle className="w-3 h-3 mt-0.5 shrink-0 text-success" />
+    textClass = "text-success"
+    summary = `${fb.provider_type || 'Provider'} recovered: ${fb.provider_label || formatProviderLabel(fb.provider_name)}`
+  } else if (isTotalFailure) {
+    icon = <XCircle className="w-3 h-3 mt-0.5 shrink-0 text-destructive" />
+    summary = `${fb.provider_type || 'Provider'} failed, no fallback available: ${fb.provider_label || formatProviderLabel(fb.provider_name)}`
+  }
+
+  return (
+    <div key={eventKey} className="flex items-start gap-1 text-xs">
+      {icon}
+      <span className={textClass}>{summary}</span>
+      {!isRecovery && fb.error_reason && (
+        <span className="text-muted-foreground">
+          — {fb.error_reason.length > 50 ? fb.error_reason.slice(0, 50) + '…' : fb.error_reason}
+        </span>
+      )}
+    </div>
+  )
+}
 
 const TracesTable: React.FC<TracesTableProps> = ({ agentId, projectId, agent, sessionId, filters }) => { // NOSONAR javascript:S3776
 
@@ -91,32 +148,8 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, projectId, agent, se
     totalCount: totalSpansCount
   } = useSessionSpansInfinite(sessionTrace, spansEnabled, agentId);
 
-  // Lightweight targeted fetch — only function_tool spans for turn enrichment.
-  // Avoids loading the full paginated span set just to find a handful of tool calls.
-  const { data: functionToolSpans = [] } = useSupabaseQuery<any>('pype_voice_spans',
-    sessionTrace?.trace_key ? {
-      select: 'span_id, name, start_time_ns, duration_ms, status, attributes, captured_at',
-      filters: [
-        { column: 'trace_key', operator: 'eq', value: sessionTrace.trace_key },
-        { column: 'name', operator: 'eq', value: 'function_tool' },
-      ],
-      auth: agentId ? { agentId } : undefined,
-    } : null
-  );
 
 
-  // Get call data to access bug report metadata + transcript fallback + audio URL.
-  // Select only the columns actually used; limit:1 matches page.tsx query so React
-  // Query can share the same cache entry (identical select + filters + limit).
-  const { data: callData } = useSupabaseQuery("pype_voice_call_logs", {
-    select: "id, agent_id, metadata, transcript_json, recording_url, call_started_at, created_at",
-    filters: sessionId 
-      ? [{ column: "id", operator: "eq", value: sessionId }]
-      : [{ column: "agent_id", operator: "eq", value: agentId }],
-    orderBy: { column: "created_at", ascending: false },
-    limit: 1,
-    auth: { agentId },
-  })
 
   const isVapiAgent = useMemo(() => {
     if (!agent) return false
@@ -129,257 +162,9 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, projectId, agent, se
   }, [agent])
 
 
-  // trace data — use the shared select so React Query deduplicates with ObservabilityStats
   const {
-    data: traceData,
-    isLoading: traceDataLoading,
-    error,
-  } = useSupabaseQuery("pype_voice_metrics_logs", {
-    select: METRICS_LOGS_SELECT,
-    filters: sessionId 
-      ? [{ column: "session_id", operator: "eq", value: sessionId }]
-      : [{ column: "session_id::text", operator: "like", value: `${agentId}%` }],
-    orderBy: { column: "unix_timestamp", ascending: true },
-    auth: { agentId },
-  })
-
-  // Extract bug report data from call metadata
-  const bugReportData = useMemo(() => {
-    if (!callData?.length) return null
-    
-    const call = callData[0]
-    if (!call?.metadata) return null
-
-    try {
-      const metadata = typeof call.metadata === "string" ? JSON.parse(call.metadata) : call.metadata
-      return {
-        bug_reports: metadata?.bug_reports || null,
-        bug_flagged_turns: metadata?.bug_flagged_turns || null
-      }
-    } catch (e) {
-      return null
-    }
-  }, [callData])
-
-  // Check for bug report flags
-  const checkBugReportFlags = useMemo(() => {
-    const bugReportTurnIds = new Set()
-
-    // Use metadata bug_flagged_turns
-    if (bugReportData?.bug_flagged_turns && Array.isArray(bugReportData.bug_flagged_turns)) {
-      bugReportData.bug_flagged_turns.forEach((flaggedTurn: any) => {
-        if (flaggedTurn.turn_id) {
-          bugReportTurnIds.add(flaggedTurn.turn_id.toString())
-        }
-      })
-    }
-
-    // Fallback: Check transcript logs for explicit bug_report flags
-    if (traceData?.length) {
-      traceData.forEach((log: TraceLog) => {
-        if (log.bug_report === true) {
-          bugReportTurnIds.add(log.turn_id.toString())
-        }
-      })
-    }
-
-    return bugReportTurnIds
-  }, [traceData, bugReportData])
-
-  // Filter and process data
-  const processedTraces = useMemo(() => {
-    if (traceData?.length) {
-      const filtered = traceData.filter((item: TraceLog) => 
-        item.user_transcript || item.agent_response || item.tool_calls?.length || item.otel_spans?.length
-      )
-    
-      filtered.sort((a, b) => {
-        const aTurnNum = parseInt(a.turn_id.replace('turn_', '')) || 0
-        const bTurnNum = parseInt(b.turn_id.replace('turn_', '')) || 0
-        return aTurnNum - bTurnNum
-      })
-
-      // If at least one turn has actual transcript text, use the metrics data.
-      // Otherwise fall through to transcript_json so the conversation is still visible.
-      const hasTranscriptContent = filtered.some(t => t.user_transcript || t.agent_response)
-      if (hasTranscriptContent) return filtered
-    }
-
-    // Fallback: build traces from transcript_json in call_logs.
-    // Used when metrics logs are absent OR contain no transcript text.
-    if (callData?.length) {
-      const call = callData[0]
-      let transcriptJson = call?.transcript_json
-      if (!transcriptJson) return []
-
-      if (typeof transcriptJson === 'string') {
-        try { transcriptJson = JSON.parse(transcriptJson) } catch { return [] }
-      }
-      if (!Array.isArray(transcriptJson) || transcriptJson.length === 0) return []
-
-      // Pair messages into conversation turns: each turn holds one user message
-      // and the immediately following assistant reply (or vice-versa for agent-opens flows).
-      const getText = (msg: any): string => {
-        const c = msg.content
-        if (Array.isArray(c)) return c.join(' ').trim()
-        return (c || '').trim()
-      }
-
-      const turns: TraceLog[] = []
-      let turnIdx = 0
-      let i = 0
-
-      while (i < transcriptJson.length) {
-        const msg = transcriptJson[i]
-        const role = msg.role?.toLowerCase()
-        const text = getText(msg)
-
-        if (!text) { i++; continue }
-
-        if (role === 'assistant') {
-          // Check if the previous message was a user message already consumed
-          // — if so this is an agent reply to a pending user turn (handled below).
-          // Stand-alone assistant message (e.g. opening greeting): emit its own turn.
-          const nextMsg = transcriptJson[i + 1]
-          const nextRole = nextMsg?.role?.toLowerCase()
-
-          if (nextRole === 'user') {
-            // Pair: assistant[i] is an opening, keep it alone
-            turns.push({
-              id: `transcript_${turnIdx}`,
-              session_id: call.id,
-              turn_id: `turn_${turnIdx + 1}`,
-              user_transcript: '',
-              agent_response: text,
-              created_at: call.created_at,
-              unix_timestamp: turnIdx,
-            } as TraceLog)
-            turnIdx++
-            i++
-          } else {
-            // Orphan assistant message at end
-            turns.push({
-              id: `transcript_${turnIdx}`,
-              session_id: call.id,
-              turn_id: `turn_${turnIdx + 1}`,
-              user_transcript: '',
-              agent_response: text,
-              created_at: call.created_at,
-              unix_timestamp: turnIdx,
-            } as TraceLog)
-            turnIdx++
-            i++
-          }
-        } else if (role === 'user') {
-          // Pair user message with the immediately following assistant reply
-          const nextMsg = transcriptJson[i + 1]
-          const nextRole = nextMsg?.role?.toLowerCase()
-          const nextText = nextMsg ? getText(nextMsg) : ''
-
-          if (nextRole === 'assistant' && nextText) {
-            turns.push({
-              id: `transcript_${turnIdx}`,
-              session_id: call.id,
-              turn_id: `turn_${turnIdx + 1}`,
-              user_transcript: text,
-              agent_response: nextText,
-              created_at: call.created_at,
-              unix_timestamp: turnIdx,
-            } as TraceLog)
-            turnIdx++
-            i += 2 // consume both
-          } else {
-            // User message with no following assistant reply
-            turns.push({
-              id: `transcript_${turnIdx}`,
-              session_id: call.id,
-              turn_id: `turn_${turnIdx + 1}`,
-              user_transcript: text,
-              agent_response: '',
-              created_at: call.created_at,
-              unix_timestamp: turnIdx,
-            } as TraceLog)
-            turnIdx++
-            i++
-          }
-        } else {
-          i++
-        }
-      }
-
-      return turns.filter(t => t.user_transcript || t.agent_response)
-    }
-
-    return []
-  }, [traceData, callData, filters])
-
-  // Enrich turns that have no tool_calls using the targeted functionToolSpans fetch.
-  // In LiveKit's span structure, function_tool is a child of agent_turn which
-  // is a sibling of user_turn — no user_turn ancestor exists, so match by time.
-  const enrichedTraces = useMemo(() => {
-    if (!processedTraces.length || !functionToolSpans.length) return processedTraces
-
-    // captured_at is an ISO string ("2026-04-07T10:05:23.763").
-    // start_time_ns is a nanosecond integer. Convert to seconds for comparison.
-    const toUnixSec = (span: any): number | null => {
-      if (span.start_time_ns) return span.start_time_ns / 1e9
-      if (span.captured_at) return new Date(span.captured_at + 'Z').getTime() / 1000
-      return null
-    }
-
-    // Assign each function_tool span to the closest TraceLog turn (within 120s).
-    const toolsByTurnId = new Map<string, any[]>()
-    functionToolSpans.forEach((toolSpan: any) => {
-      const spanSec = toUnixSec(toolSpan)
-      if (spanSec === null) return
-
-      let closestTurn: TraceLog | null = null
-      let minDiff = Infinity
-      processedTraces.forEach((turn: TraceLog) => {
-        const diff = Math.abs(turn.unix_timestamp - spanSec)
-        if (diff < minDiff) { minDiff = diff; closestTurn = turn }
-      })
-
-      if (closestTurn && minDiff < 120) {
-        const id = (closestTurn as TraceLog).turn_id
-        if (!toolsByTurnId.has(id)) toolsByTurnId.set(id, [])
-        toolsByTurnId.get(id)!.push(toolSpan)
-      }
-    })
-
-    if (!toolsByTurnId.size) return processedTraces
-
-    return processedTraces.map((turn: TraceLog) => {
-      if (turn.tool_calls?.length) return turn
-      const toolSpans = toolsByTurnId.get(turn.turn_id)
-      if (!toolSpans?.length) return turn
-
-      return {
-        ...turn,
-        tool_calls: toolSpans.map((s: any) => {
-          const a = s.attributes || {}
-          // LiveKit OTEL attribute keys for function_tool spans
-          const toolName = a['lk.function_tool.name'] ?? a['livekit.function.name'] ?? a['function.name'] ?? 'unknown'
-          const rawArgs = a['lk.function_tool.arguments'] ?? a['livekit.function.arguments'] ?? a['function.arguments'] ?? null
-          let args: any = null
-          if (rawArgs) {
-            try { args = typeof rawArgs === 'string' ? JSON.parse(rawArgs) : rawArgs } catch { args = rawArgs }
-          }
-          const result = a['lk.function_tool.output'] ?? a['livekit.function.result'] ?? a['function.result'] ?? undefined
-          const isError = a['lk.function_tool.is_error'] === true || s.status?.code === 2 || s.status === 'error'
-          return {
-            tool_name: toolName,
-            name: toolName,
-            arguments: args,
-            result,
-            success: !isError,
-            status: isError ? 'error' : 'success',
-            duration_ms: s.duration_ms,
-          }
-        }),
-      }
-    })
-  }, [processedTraces, functionToolSpans])
+    callData, traceDataLoading, error, bugReportData, checkBugReportFlags, turns: enrichedTraces,
+  } = useCallTranscript({ sessionId, agentId })
 
   const { viewEnglish, setViewEnglish, isTranslating, formatTranscript } =
     useTranscriptEnglishToggle(enrichedTraces)
@@ -421,16 +206,12 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, projectId, agent, se
     }
   }
 
-  const getOperationColor = (operation: string) => {
-    switch (operation) {
-      case "tool": return "text-orange-600 dark:text-orange-400"
-      case "llm": return "text-purple-600 dark:text-purple-400"
-      case "stt": return "text-blue-600 dark:text-blue-400"
-      case "tts": return "text-green-600 dark:text-green-400"
-      case "eou": return "text-orange-600 dark:text-orange-400"
-      default: return "text-gray-600 dark:text-gray-400"
-    }
-  }
+  // Each operation already has its own icon (see getOperationIcon above) — color
+  // doesn't need to re-encode the same distinction. Reserved for "tool" only,
+  // since a tool call is the one thing in this column worth scanning for; every
+  // other stage (stt/llm/tts/eou) reads as plain text like the rest of the row.
+  // (Previously stt/llm/tts/eou each had their own hue, and "eou" and "tool"
+  // shared the same orange — neither told you anything the icon didn't.)
 
   const formatDuration = (ms: number) => {
     if (ms < 1000) return `${ms.toFixed(1)}ms`
@@ -541,75 +322,7 @@ const TracesTable: React.FC<TracesTableProps> = ({ agentId, projectId, agent, se
     })
   }
 
-  const downloadFullTranscript = () => {
-    if (!enrichedTraces.length) return
-
-    // Format all conversation turns as JSON
-    const transcriptData = {
-      session_id: sessionId || 'unknown',
-      agent_id: agentId,
-      total_turns: enrichedTraces.length,
-      exported_at: new Date().toISOString(),
-      turns: enrichedTraces.map((trace: TraceLog) => {
-        const turnData: any = {
-          turn_id: trace.turn_id,
-        }
-        
-        // Add user transcript if available
-        if (trace.user_transcript && trace.user_transcript.trim()) {
-          turnData.user = trace.user_transcript.trim()
-        }
-
-        // Add tool calls if present — between user and assistant for readability
-        if (trace.tool_calls && trace.tool_calls.length > 0) {
-          turnData.tool_calls = trace.tool_calls.map((tool: any) => ({
-            name: tool.tool_name || tool.name || 'unknown',
-            ...(tool.arguments !== undefined && { arguments: tool.arguments }),
-            ...(tool.result !== undefined && { result: tool.result }),
-            success: tool.success !== false && tool.status !== 'error',
-            ...(tool.latency_ms !== undefined && { latency_ms: tool.latency_ms }),
-            ...(tool.error && { error: tool.error }),
-          }))
-        }
-
-        // Add assistant response if available
-        if (trace.agent_response && trace.agent_response.trim()) {
-          turnData.assistant = trace.agent_response.trim()
-        }
-
-        // Add timestamp if available
-        if (trace.unix_timestamp) {
-          turnData.timestamp = new Date(trace.unix_timestamp * 1000).toISOString()
-        }
-
-        // Add additional metadata if available
-        if (trace.trace_id) {
-          turnData.trace_id = trace.trace_id
-        }
-
-        return turnData
-      })
-    }
-
-    // Create JSON string with pretty formatting
-    const transcriptJson = JSON.stringify(transcriptData, null, 2)
-
-    // Create filename with session ID and timestamp
-    const sessionIdShort = sessionId ? sessionId.slice(-8) : 'unknown'
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
-    const filename = `transcript-session-${sessionIdShort}-${timestamp}.json`
-
-    // Create blob and download
-    const blob = new Blob([transcriptJson], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = filename
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-  }
+  const downloadFullTranscript = () => downloadTranscriptJson(enrichedTraces, sessionId, agentId)
 
 
 const handleRowClick = (trace: TraceLog) => {
@@ -641,16 +354,16 @@ const handleRowClick = (trace: TraceLog) => {
 
   if (traceDataLoading) {
     return (
-      <div className="flex items-center justify-center h-full bg-white dark:bg-gray-900">
-        <div className="text-sm text-gray-500 dark:text-gray-400">Loading traces...</div>
+      <div className="flex items-center justify-center h-full bg-card">
+        <div className="text-sm text-muted-foreground">Loading traces...</div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full bg-white dark:bg-gray-900">
-        <div className="text-center text-red-600 dark:text-red-400 text-sm">
+      <div className="flex items-center justify-center h-full bg-card">
+        <div className="text-center text-destructive text-sm">
           Error loading traces: {error.message}
         </div>
       </div>
@@ -659,9 +372,9 @@ const handleRowClick = (trace: TraceLog) => {
 
   return (
     <>
-      <div className="flex flex-col h-full bg-white dark:bg-gray-900">
+      <div className="flex flex-col h-full bg-card">
         {/* Tab Navigation */}
-        <div className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 px-3 py-1.5">
+        <div className="border-b border-border bg-muted/50 px-3 py-1.5">
           <div className="flex items-center justify-between">
             <nav className="flex space-x-2">
               <button 
@@ -669,8 +382,8 @@ const handleRowClick = (trace: TraceLog) => {
                 className={cn(
                   "px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors",
                   activeTab === "turns" 
-                    ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800" 
-                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    ? "bg-primary/15 text-primary border border-primary/30" 
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 )}
               >
                 Turns ({enrichedTraces.length})
@@ -682,8 +395,8 @@ const handleRowClick = (trace: TraceLog) => {
                 className={cn(
                   "px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors",
                   activeTab === "trace" 
-                    ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800" 
-                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    ? "bg-primary/15 text-primary border border-primary/30" 
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 )}
               >
                 Trace {spansLoading ? "…" : totalSpansCount > 0 ? `(${totalSpansCount})` : ""}
@@ -693,8 +406,8 @@ const handleRowClick = (trace: TraceLog) => {
                 className={cn(
                   "px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors",
                   activeTab === "waterfall" 
-                    ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800" 
-                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                    ? "bg-primary/15 text-primary border border-primary/30" 
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 )}
               >
                 Timeline {spansLoading ? "…" : totalSpansCount > 0 ? `(${totalSpansCount})` : ""}
@@ -707,8 +420,8 @@ const handleRowClick = (trace: TraceLog) => {
               className={cn(
                 "px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors",
                 activeTab === "config"
-                  ? "bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
-                  : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  ? "bg-primary/15 text-primary border border-primary/30"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               )}
             >
               Config
@@ -729,12 +442,12 @@ const handleRowClick = (trace: TraceLog) => {
                 />
                 <Label
                   htmlFor="transcript-view-english"
-                  className="text-xs text-gray-600 dark:text-gray-400 cursor-pointer whitespace-nowrap"
+                  className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap"
                 >
                   English
                 </Label>
                 {isTranslating && (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-500" aria-hidden />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" aria-hidden />
                 )}
               </div>
               <Button
@@ -755,18 +468,18 @@ const handleRowClick = (trace: TraceLog) => {
         {activeTab === "turns" && (
           <>
             {/* Header */}
-            <div className="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 px-4 py-2">
-              <div className="grid grid-cols-12 gap-3 text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+            <div className="border-b border-border bg-muted/50 px-4 py-2">
+              <div className="grid grid-cols-12 gap-3 text-xs font-medium text-muted-foreground">
                 <div className="col-span-3">Trace Info</div>
                 <div className="col-span-4 flex items-center gap-2">
                   Conversation
                   <button
                     onClick={copyTranscript}
                     title="Copy transcript"
-                    className="flex items-center gap-1 text-[10px] font-normal normal-case tracking-normal text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                    className="flex items-center gap-1 text-[11px] font-normal normal-case tracking-normal text-muted-foreground hover:text-foreground transition-colors"
                   >
                     {copied
-                      ? <><Check className="w-3 h-3 text-green-500" /><span className="text-green-500">Copied</span></>
+                      ? <><Check className="w-3 h-3 text-success" /><span className="text-success">Copied</span></>
                       : <><Copy className="w-3 h-3" /><span>Copy</span></>
                     }
                   </button>
@@ -779,10 +492,10 @@ const handleRowClick = (trace: TraceLog) => {
             </div>
   
             {/* Table Body */}
-            <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-900">
+            <div className="flex-1 overflow-y-auto bg-card">
               {enrichedTraces.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
-                  <div className="text-center text-sm text-gray-500 dark:text-gray-400">
+                  <div className="text-center text-sm text-muted-foreground">
                     <TrendingUp className="w-8 h-8 mx-auto mb-2 opacity-50" />
                     <div>No traces found</div>
                     {filters.search || filters.status !== "all" ? (
@@ -793,7 +506,7 @@ const handleRowClick = (trace: TraceLog) => {
                   </div>
                 </div>
               ) : (
-                <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                <div className="divide-y divide-border/60">
                   {enrichedTraces.map((trace: TraceLog) => {
                     const status = getTraceStatus(trace)
                     const toolInfo = getToolCallsInfo(trace.tool_calls)
@@ -806,38 +519,43 @@ const handleRowClick = (trace: TraceLog) => {
                     const spansLength = trace.otel_spans?.length || 0
                     
                     return (
-                      <div
+                      <button
+                        type="button"
                         key={trace.id}
                         onClick={() => handleRowClick(trace)}
                         className={cn(
-                          "grid grid-cols-12 gap-3 px-4 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-900/10 cursor-pointer border-l-2 transition-all text-sm",
+                          "w-full appearance-none bg-transparent text-left grid grid-cols-12 gap-3 px-4 py-2.5 hover:bg-primary/10 cursor-pointer border-l-2 transition-all text-sm",
                           hasBugReport
-                            ? "border-l-red-500 bg-red-50 dark:bg-red-900/10 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            ? "border-l-red-500 bg-destructive/10 hover:bg-destructive/10"
                             : "border-l-transparent hover:border-l-blue-500 dark:hover:border-l-blue-400"
                         )}
                       >
                         {/* Trace Info */}
                         <div className="col-span-3 space-y-1">
                           <div className="flex items-center gap-2">
-                            <div className={cn("text-sm", getOperationColor(mainOp))}>
+                            {/* Every operation already has its own icon shape
+                                (getOperationIcon above) and, for tool calls, its own
+                                neutral badge in the Operations column — a colored
+                                icon here too would just compete for attention. */}
+                            <div className="text-sm text-muted-foreground">
                               {getOperationIcon(mainOp)}
                             </div>
-                            <div className="font-mono text-xs text-blue-600 dark:text-blue-400 font-semibold">
+                            <div className="font-mono text-xs text-primary font-semibold">
                               {trace.trace_id ? `${trace.trace_id.slice(0, 8)}...` : `Turn-${trace.turn_id}`}
                             </div>
                             {hasBugReport && (
                               <div className="flex items-center gap-1">
-                                <AlertTriangle className="w-3 h-3 text-red-600 dark:text-red-400" />
+                                <AlertTriangle className="w-3 h-3 text-destructive" />
                                 <Badge variant="destructive" className="text-xs px-1 py-0">
                                   Bug
                                 </Badge>
                               </div>
                             )}
                           </div>
-                          <div className="text-xs text-gray-400 dark:text-gray-500 space-y-0.5">
+                          <div className="text-xs text-muted-foreground space-y-0.5">
                             <div>Session: {trace.session_id.slice(-8)}</div>
                             {trace.phone_number && (
-                              <div>📞 {trace.phone_number.slice(-4)}</div>
+                              <div>{trace.phone_number.slice(-4)}</div>
                             )}
                           </div>
                         </div>
@@ -846,8 +564,8 @@ const handleRowClick = (trace: TraceLog) => {
                         <div className="col-span-4 space-y-1">
                           {trace.user_transcript && (
                             <div className="text-xs">
-                              <span className="text-blue-600 dark:text-blue-400 font-medium">→</span>
-                              <span className="ml-1 text-gray-800 dark:text-gray-200">
+                              <span className="text-primary font-medium">→</span>
+                              <span className="ml-1 text-foreground">
                                 {formatTranscript(trace.user_transcript)}
                               </span>
                             </div>
@@ -855,62 +573,28 @@ const handleRowClick = (trace: TraceLog) => {
 
                           {/* Tool calls — shown between user input and agent response */}
                           {trace.tool_calls && trace.tool_calls.length > 0 && (
-                            <div className="space-y-0.5 pl-1 border-l-2 border-orange-200 dark:border-orange-800 ml-1">
-                              {trace.tool_calls.map((tool: any, idx: number) => {
-                                const toolName = tool.tool_name || tool.name || 'unknown'
-                                const isError = tool.success === false || tool.status === 'error'
-                                const result = tool.result !== undefined ? String(tool.result) : null
-                                const argKeys = tool.arguments && typeof tool.arguments === 'object'
-                                  ? Object.keys(tool.arguments)
-                                  : []
-                                return (
-                                  <div key={idx} className="flex items-start gap-1 text-xs">
-                                    <Wrench className={cn(
-                                      "w-3 h-3 mt-0.5 shrink-0",
-                                      isError ? "text-red-500 dark:text-red-400" : "text-orange-500 dark:text-orange-400"
-                                    )} />
-                                    <div className="min-w-0">
-                                      <span className={cn(
-                                        "font-medium",
-                                        isError ? "text-red-700 dark:text-red-300" : "text-orange-700 dark:text-orange-300"
-                                      )}>
-                                        {toolName}
-                                      </span>
-                                      {argKeys.length > 0 && (
-                                        <span className="text-gray-400 dark:text-gray-500 font-mono ml-1">
-                                          ({argKeys.join(', ')})
-                                        </span>
-                                      )}
-                                      {result && (
-                                        <span className="text-gray-500 dark:text-gray-400 ml-1">
-                                          → {result.length > 60 ? result.slice(0, 60) + '…' : result}
-                                        </span>
-                                      )}
-                                      {isError && (
-                                        <span className="ml-1 text-red-500 dark:text-red-400 font-medium">✗ failed</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                )
-                              })}
+                            <div className="space-y-0.5 pl-1 border-l-2 border-warning/40 ml-1">
+                              {trace.tool_calls.map((tool: any, idx: number) => (
+                                <ToolCallLine key={`${tool.tool_name || tool.name || 'unknown'}-${idx}`} tool={tool} idx={idx} />
+                              ))}
                             </div>
                           )}
 
                           {trace.agent_response && (
                             <div className={cn(
                               "text-xs",
-                              hasBugReport && "text-red-700 dark:text-red-300 font-medium"
+                              hasBugReport && "text-destructive font-medium"
                             )}>
                               <span className={cn(
                                 "font-medium",
-                                hasBugReport ? "text-red-600 dark:text-red-400" : "text-gray-500 dark:text-gray-400"
+                                hasBugReport ? "text-destructive" : "text-muted-foreground"
                               )}>←</span>
                               <span className={cn(
                                 "ml-1",
-                                hasBugReport ? "text-red-800 dark:text-red-300" : "text-gray-600 dark:text-gray-300"
+                                hasBugReport ? "text-destructive" : "text-muted-foreground"
                               )}>{formatTranscript(trace.agent_response)}</span>
                               {hasBugReport && (
-                                <span className="ml-2 text-red-600 dark:text-red-400 font-medium">[REPORTED]</span>
+                                <span className="ml-2 text-destructive font-medium">[REPORTED]</span>
                               )}
                             </div>
                           )}
@@ -918,41 +602,15 @@ const handleRowClick = (trace: TraceLog) => {
                               same pattern as tool_calls: full detail lives in the row's detail
                               sheet (click row → Fallback Events card), not duplicated here. */}
                           {fallbackEvents.length > 0 && (
-                            <div className="space-y-0.5 pl-1 border-l-2 border-red-200 dark:border-red-800 ml-1">
-                              {fallbackEvents.map((fb: any, idx: number) => {
-                                const isRecovery = fb.event_type === 'provider_recovered'
-                                const isTotalFailure = !isRecovery && fb.all_providers_failed
-                                const eventKey = `${fb.provider_type}-${fb.event_type}-${fb.timestamp}-${idx}`
-
-                                let icon = <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0 text-red-500 dark:text-red-400" />
-                                let textClass = "text-red-700 dark:text-red-300"
-                                let summary = `${fb.provider_type || 'Provider'} fallback: ${fb.provider_label || formatProviderLabel(fb.provider_name)} → ${fb.fallback_label || formatProviderLabel(fb.fallback_provider)}`
-                                if (isRecovery) {
-                                  icon = <CheckCircle className="w-3 h-3 mt-0.5 shrink-0 text-green-500 dark:text-green-400" />
-                                  textClass = "text-green-700 dark:text-green-300"
-                                  summary = `${fb.provider_type || 'Provider'} recovered: ${fb.provider_label || formatProviderLabel(fb.provider_name)}`
-                                } else if (isTotalFailure) {
-                                  icon = <XCircle className="w-3 h-3 mt-0.5 shrink-0 text-red-500 dark:text-red-400" />
-                                  summary = `${fb.provider_type || 'Provider'} failed, no fallback available: ${fb.provider_label || formatProviderLabel(fb.provider_name)}`
-                                }
-
-                                return (
-                                  <div key={eventKey} className="flex items-start gap-1 text-xs">
-                                    {icon}
-                                    <span className={textClass}>{summary}</span>
-                                    {!isRecovery && fb.error_reason && (
-                                      <span className="text-gray-400 dark:text-gray-500">
-                                        — {fb.error_reason.length > 50 ? fb.error_reason.slice(0, 50) + '…' : fb.error_reason}
-                                      </span>
-                                    )}
-                                  </div>
-                                )
-                              })}
+                            <div className="space-y-0.5 pl-1 border-l-2 border-destructive/30 ml-1">
+                              {fallbackEvents.map((fb: any, idx: number) => (
+                                <FallbackEventLine key={`${fb.provider_type}-${fb.event_type}-${fb.timestamp}-${idx}`} fb={fb} idx={idx} />
+                              ))}
                             </div>
                           )}
 
                           {!trace.user_transcript && !trace.agent_response && (!trace.tool_calls || trace.tool_calls.length === 0) && (
-                            <div className="text-xs text-gray-400 dark:text-gray-500 italic">
+                            <div className="text-xs text-muted-foreground italic">
                               {trace.lesson_day ? `Lesson Day ${trace.lesson_day}` : 'System operation'}
                             </div>
                           )}
@@ -963,17 +621,17 @@ const handleRowClick = (trace: TraceLog) => {
                           <div className="flex items-center gap-2 flex-wrap">
                             {toolInfo.total > 0 && (
                               <div className="flex items-center gap-1 text-xs">
-                                <Wrench className="w-3 h-3 text-orange-600 dark:text-orange-400" />
-                                <span className="font-medium text-orange-700 dark:text-orange-300">{toolInfo.total}</span>
-                                <span className="text-gray-400 dark:text-gray-500">
+                                <Wrench className="w-3 h-3 text-warning" />
+                                <span className="font-medium text-warning">{toolInfo.total}</span>
+                                <span className="text-muted-foreground">
                                   ({toolInfo.successful}✓)
                                 </span>
                               </div>
                             )}
                             {metrics.length > 0 && (
                               <div className="flex gap-1">
-                                {metrics.map((metric, idx) => (
-                                  <Badge key={idx} variant="outline" className="text-[10px] px-1 py-0 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800">
+                                {metrics.map((metric) => (
+                                  <Badge key={metric.type} variant="outline" className="text-[11px] px-1 py-0 border-border text-foreground bg-card">
                                     {metric.type}
                                   </Badge>
                                 ))}
@@ -981,51 +639,41 @@ const handleRowClick = (trace: TraceLog) => {
                             )}
                             {fallbackFailureCount > 0 && (
                               <div className="flex items-center gap-1 text-xs">
-                                <AlertTriangle className="w-3 h-3 text-red-600 dark:text-red-400" />
-                                <span className="font-medium text-red-700 dark:text-red-300">{fallbackFailureCount}</span>
+                                <AlertTriangle className="w-3 h-3 text-destructive" />
+                                <span className="font-medium text-destructive">{fallbackFailureCount}</span>
                               </div>
                             )}
                           </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                          <div className="text-xs text-muted-foreground">
                             {spansLength > 0 ? `${spansLength} spans` : ""}
                           </div>
                         </div>
   
-                        {/* Latency */}
+                        {/* Latency — same good/fair/bad shades ObservabilityStats' getLatencyColor
+                            uses (was text-green-600 here, a different green from that component's
+                            text-emerald-600 for the same "good" meaning) */}
                         <div className="col-span-1">
-                          <span className={cn(
-                            "text-xs font-semibold",
-                            latency === 0 ? "text-gray-400 dark:text-gray-500" : 
-                            latency > 5000 ? "text-red-600 dark:text-red-400" :
-                            latency > 2000 ? "text-amber-600 dark:text-amber-400" : "text-green-600 dark:text-green-400"
-                          )}>
+                          <span className={cn("text-xs font-semibold", getLatencyColorClass(latency))}>
                             {latency > 0 ? formatDuration(latency) : "N/A"}
                           </span>
                         </div>
-  
-                        {/* Cost */}
+
+                        {/* Cost — plain like Turns/Duration in the stats row above; a
+                            number doesn't need its own hue unless it's signaling status */}
                         <div className="col-span-1">
-                          <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
+                          <span className="text-xs font-semibold text-foreground">
                             {trace.trace_cost_usd ? formatCost(parseFloat(trace.trace_cost_usd.toString())) : "N/A"}
                           </span>
                         </div>
-  
+
                         {/* Status */}
                         <div className="col-span-1">
                           <div className="flex items-center pl-5">
-                            {status === "bug_report" ? (
-                              <AlertTriangle className="w-4 h-4 text-red-500 dark:text-red-400" />
-                            ) : status === "error" ? (
-                              <XCircle className="w-4 h-4 text-red-500 dark:text-red-400" />
-                            ) : status === "warning" ? (
-                              <AlertTriangle className="w-4 h-4 text-amber-500 dark:text-amber-400" />
-                            ) : (
-                              <CheckCircle className="w-4 h-4 text-green-500 dark:text-green-400" />
-                            )}
+                            {getStatusIcon(status)}
                           </div>
                         </div>
-  
-                      </div>
+
+                      </button>
                     )
                   })}
                 </div>

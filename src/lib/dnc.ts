@@ -51,9 +51,14 @@ export function toNumbersArray(raw: string | string[] | null | undefined): strin
   return [raw]
 }
 
+export type DncScope = 'global' | 'project' | 'agent'
+
 export interface DncRowMeta {
-  scope: 'global' | 'project'
+  scope: DncScope
+  /** Required for 'project' and 'agent' (the agent's own project). */
   projectId: string | null
+  /** Required for 'agent'. */
+  agentId?: string | null
   reason: string | null
   source: string
   addedBy: string
@@ -82,7 +87,8 @@ export function buildDncRows(inputs: string[], meta: DncRowMeta): {
       phone_e164: e164,
       phone_raw: input,
       scope: meta.scope,
-      project_id: meta.scope === 'project' ? meta.projectId : null,
+      project_id: meta.scope === 'global' ? null : meta.projectId,
+      agent_id: meta.scope === 'agent' ? (meta.agentId ?? null) : null,
       reason: meta.reason,
       source: meta.source,
       added_by: meta.addedBy,
@@ -96,18 +102,35 @@ export interface DncCheckResult {
   input: string
   normalized: string | null
   blocked: boolean
-  scope?: 'global' | 'project'
+  scope?: DncScope
 }
 
 /**
- * Check one or more numbers against the DNC list for a given project context.
+ * The PostgREST filter for rows that apply to a call: global rows always,
+ * project rows for its project, agent rows (e.g. added by the DNC checker) for
+ * its agent only. Same rule as the backend (utils/dnc.py) and the scheduler.
+ */
+export function dncScopeFilter(projectId?: string | null, agentId?: string | null): string {
+  const clauses = ['scope.eq.global']
+  if (projectId) clauses.push(`and(scope.eq.project,project_id.eq.${projectId})`)
+  if (agentId) clauses.push(`and(scope.eq.agent,agent_id.eq.${agentId})`)
+  return clauses.join(',')
+}
+
+// When a number is blocked at more than one level, the widest one is reported.
+const SCOPE_RANK: Record<DncScope, number> = { global: 3, project: 2, agent: 1 }
+
+/**
+ * Check one or more numbers against the DNC list for a given project and agent.
  * A number is blocked if an active row matches its normalized form AND the row
- * is either global or scoped to `projectId`. Unparseable numbers are treated as
- * NOT blocked (they can't be dialed meaningfully anyway) but flagged normalized:null.
+ * is global, scoped to `projectId`, or scoped to `agentId`. Unparseable numbers
+ * are treated as NOT blocked (they can't be dialed meaningfully anyway) but
+ * flagged normalized:null.
  */
 export async function checkDncNumbers(
   numbers: string[],
-  projectId?: string | null
+  projectId?: string | null,
+  agentId?: string | null
 ): Promise<DncCheckResult[]> {
   const supabase = createServiceRoleClient()
   const normalized = numbers.map((n) => ({ input: n, normalized: normalizePhone(n) }))
@@ -120,28 +143,20 @@ export async function checkDncNumbers(
   // Chunk the `.in()` lookup so large campaign uploads don't blow past query
   // limits. 200 numbers per query is comfortably within Supabase/PostgREST bounds.
   const CHUNK = 200
-  const blockedMap = new Map<string, 'global' | 'project'>()
+  const blockedMap = new Map<string, DncScope>()
   for (let i = 0; i < lookup.length; i += CHUNK) {
     const slice = lookup.slice(i, i + CHUNK)
-    let query = supabase
+    const { data, error } = await supabase
       .from(DNC_TABLE)
-      .select('phone_e164, scope, project_id')
+      .select('phone_e164, scope, project_id, agent_id')
       .eq('is_active', true)
       .in('phone_e164', slice)
-
-    // Match global rows always; project rows only for this project.
-    if (projectId) {
-      query = query.or(`scope.eq.global,and(scope.eq.project,project_id.eq.${projectId})`)
-    } else {
-      query = query.eq('scope', 'global')
-    }
-
-    const { data, error } = await query
+      .or(dncScopeFilter(projectId, agentId))
     if (error) throw error
     for (const row of data ?? []) {
-      // Prefer 'global' label if a number is blocked both globally and per-project.
+      const scope = row.scope as DncScope
       const existing = blockedMap.get(row.phone_e164)
-      if (existing !== 'global') blockedMap.set(row.phone_e164, row.scope)
+      if (!existing || SCOPE_RANK[scope] > SCOPE_RANK[existing]) blockedMap.set(row.phone_e164, scope)
     }
   }
 

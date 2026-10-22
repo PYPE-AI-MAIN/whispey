@@ -22,31 +22,31 @@ interface SupportSheetProps {
 export default function SupportSheet({ isOpen, onClose }: SupportSheetProps) {
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="right" className="w-80 p-0 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800">
-        <SheetHeader className="p-4 border-b border-gray-200 dark:border-gray-800">
-          <SheetTitle className="text-base text-gray-900 dark:text-gray-100">Support</SheetTitle>
-          <SheetDescription className="text-xs text-gray-600 dark:text-gray-400">
+      <SheetContent side="right" className="w-80 p-0 bg-card border-l border-border">
+        <SheetHeader className="p-4 border-b border-border">
+          <SheetTitle className="text-base text-foreground">Support</SheetTitle>
+          <SheetDescription className="text-xs text-muted-foreground">
             Get help with Whispey
           </SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-col h-full overflow-y-auto">
           {/* Documentation Section */}
-          <div className="p-4 border-b border-gray-200 dark:border-gray-800">
+          <div className="p-4 border-b border-border">
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-6 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                <FileText className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400" />
+              <div className="w-6 h-6 rounded bg-muted flex items-center justify-center">
+                <FileText className="w-3.5 h-3.5 text-muted-foreground" />
               </div>
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Documentation</h3>
+              <h3 className="text-sm font-semibold text-foreground">Documentation</h3>
             </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 leading-relaxed">
+            <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
               Guides, concepts, and API reference with clear examples.
             </p>
             <Button 
               variant="outline"
-              className="w-full text-xs h-8 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-900 dark:text-gray-100"
+              className="w-full text-xs h-8 border-border bg-card hover:bg-muted/50 text-foreground"
               onClick={() => {
-                window.open('/docs', '_blank')
+                window.open('/docs', '_blank', 'noopener,noreferrer')
                 onClose()
               }}
             >
@@ -55,19 +55,19 @@ export default function SupportSheet({ isOpen, onClose }: SupportSheetProps) {
           </div>
 
           {/* Email Support Section */}
-          <div className="p-4 border-b border-gray-200 dark:border-gray-800">
+          <div className="p-4 border-b border-border">
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-6 rounded bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                <Mail className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400" />
+              <div className="w-6 h-6 rounded bg-muted flex items-center justify-center">
+                <Mail className="w-3.5 h-3.5 text-muted-foreground" />
               </div>
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Get Help</h3>
+              <h3 className="text-sm font-semibold text-foreground">Get Help</h3>
             </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 leading-relaxed">
+            <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
               Connect with our support engineers for assistance.
             </p>
             <Button 
               variant="outline"
-              className="w-full text-xs h-8 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-900 dark:text-gray-100"
+              className="w-full text-xs h-8 border-border bg-card hover:bg-muted/50 text-foreground"
               onClick={() => {
                 const subject = encodeURIComponent('Whispey Support Request')
                 const body = encodeURIComponent(`Hi team,
@@ -78,7 +78,7 @@ I need help with:
 
 Best regards,
 User`)
-                window.open(`mailto:deepesh@pypeai.com?subject=${subject}&body=${body}`, '_blank')
+                window.open(`mailto:deepesh@pypeai.com?subject=${subject}&body=${body}`, '_blank', 'noopener,noreferrer')
                 onClose()
               }}
             >

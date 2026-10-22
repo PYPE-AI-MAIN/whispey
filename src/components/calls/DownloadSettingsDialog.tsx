@@ -67,28 +67,28 @@ export default function DownloadSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+      <DialogContent className="max-w-md bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="text-base font-semibold text-gray-900 dark:text-gray-100">Download settings</DialogTitle>
+          <DialogTitle className="text-base font-semibold text-foreground">Download settings</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-3 flex items-start justify-between gap-3">
+          <div className="rounded-xl border border-border p-3 flex items-start justify-between gap-3">
             <div>
-              <p className="text-xs font-medium text-gray-800 dark:text-gray-200">
+              <p className="text-xs font-medium text-foreground">
                 Allow non-superadmins to download call logs
               </p>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+              <p className="text-[11px] text-muted-foreground mt-0.5">
                 When off, only superadmins can download or configure this agent&apos;s export.
               </p>
             </div>
             <Switch checked={enabled} onCheckedChange={setEnabled} className="flex-shrink-0 mt-0.5" />
           </div>
 
-          <div className={`rounded-lg border border-gray-200 dark:border-gray-800 p-3 transition-opacity ${enabled ? '' : 'opacity-50'}`}>
+          <div className={`rounded-xl border border-border p-3 transition-opacity ${enabled ? '' : 'opacity-50'}`}>
             <div className="flex items-start gap-2 mb-2">
-              <ShieldAlert className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-              <p className="text-[11px] text-gray-600 dark:text-gray-400">
+              <ShieldAlert className="h-3.5 w-3.5 text-warning flex-shrink-0 mt-0.5" />
+              <p className="text-[11px] text-muted-foreground">
                 {enabled
                   ? <>These columns are hidden from anyone who isn&apos;t a superadmin, both on-screen and in downloads. This is an access-control decision, not a display preference.</>
                   : <>Downloads are off for non-superadmins, so column restrictions don&apos;t apply right now. Turn on the switch above to configure them.</>}
@@ -97,11 +97,11 @@ export default function DownloadSettingsDialog({
 
             <div
               aria-disabled={!enabled}
-              className={`rounded-lg border border-gray-200 dark:border-gray-800 max-h-56 overflow-y-auto p-2 space-y-2 ${enabled ? '' : 'pointer-events-none'}`}
+              className={`rounded-xl border border-border max-h-56 overflow-y-auto p-2 space-y-2 ${enabled ? '' : 'pointer-events-none'}`}
             >
               {basicCols.length > 0 && (
                 <div className="space-y-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 px-1">Basic columns</p>
+                  <p className="text-[11px] font-semibold text-muted-foreground px-1">Basic columns</p>
                   {basicCols.map(col => (
                     <CheckboxRow key={col.key} checked={restricted.has(col.key)} onToggle={() => toggle(col.key)} label={col.label} />
                   ))}
@@ -110,8 +110,8 @@ export default function DownloadSettingsDialog({
 
               {extraCols.length > 0 && (
                 <div className="space-y-1">
-                  {basicCols.length > 0 && <div className="border-t border-gray-100 dark:border-gray-800 pt-1.5" />}
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 px-1">Sensitive columns</p>
+                  {basicCols.length > 0 && <div className="border-t border-border/60 pt-1.5" />}
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-warning px-1">Sensitive columns</p>
                   {extraCols.map(col => (
                     <CheckboxRow key={col.key} checked={restricted.has(col.key)} onToggle={() => toggle(col.key)} label={col.label} />
                   ))}

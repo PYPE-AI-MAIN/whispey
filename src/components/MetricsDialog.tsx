@@ -12,6 +12,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { useGlobalRole } from "@/hooks/useGlobalRole"
+import { CreateMetricTemplateForm, type CreatedMetricTemplate } from "@/components/CreateMetricTemplateForm"
 
 interface MetricConfig {
   metric_id: string
@@ -33,6 +35,24 @@ interface MetricTemplate {
   icon: string
 }
 
+// Same order as the Category dropdown in CreateMetricTemplateForm — anything
+// else (empty, or a category no longer offered there) falls into "General".
+const CATEGORY_ORDER = ['effectiveness', 'efficiency', 'reliability', 'quality', 'compliance', 'experience']
+
+function groupTemplatesByCategory(templates: MetricTemplate[]): { category: string; templates: MetricTemplate[] }[] {
+  const byCategory = new Map<string, MetricTemplate[]>()
+  for (const t of templates) {
+    const key = t.category && CATEGORY_ORDER.includes(t.category) ? t.category : 'general'
+    const list = byCategory.get(key) ?? []
+    list.push(t)
+    byCategory.set(key, list)
+  }
+  const order = [...CATEGORY_ORDER, 'general']
+  return order
+    .filter((category) => byCategory.has(category))
+    .map((category) => ({ category, templates: byCategory.get(category)! }))
+}
+
 interface MetricsDialogProps {
   initialMetrics?: Record<string, MetricConfig>
   onSave: (metrics: Record<string, MetricConfig>) => void
@@ -47,6 +67,10 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
   const [metrics, setMetrics] = useState<Record<string, MetricConfig>>(initialMetrics)
   const [loadingTemplates, setLoadingTemplates] = useState(false)
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
+  // Creating a metric *template* (the scoring rubric itself, not just enabling
+  // one on this agent) is platform-wide, not per-agent — same superadmin gate
+  // as Settings > Users > Metrics, which is the only other place this form appears.
+  const { isSuperAdmin } = useGlobalRole()
 
   // Sync metrics state when initialMetrics prop changes (e.g., after refresh)
   useEffect(() => {
@@ -57,14 +81,14 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
     }
   }, [initialMetrics])
 
-  // Fetch metrics templates when dialog opens
+  // Fetch metrics templates every time the dialog opens, so one created elsewhere (e.g. in Settings) shows without a page reload
   useEffect(() => {
-    if (isOpen && metricsTemplates.length === 0) {
+    if (isOpen) {
       setLoadingTemplates(true)
       fetch('/api/metrics-templates')
         .then(res => res.json())
         .then(data => {
-          setMetricsTemplates(data)
+          setMetricsTemplates(prev => (Array.isArray(data) ? data : prev))
           setLoadingTemplates(false)
         })
         .catch(err => {
@@ -72,7 +96,7 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
           setLoadingTemplates(false)
         })
     }
-  }, [isOpen, metricsTemplates.length])
+  }, [isOpen])
 
   const addMetric = (template: MetricTemplate) => {
     setMetrics(prev => ({
@@ -114,10 +138,10 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
       <DialogTrigger asChild>
         <Button
           variant="outline"
-          className="group relative overflow-hidden border-2 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-400 transition-all duration-300 hover:shadow-lg hover:shadow-blue-400/25 bg-transparent"
+          className="group relative overflow-hidden border-2 border-border hover:border-blue-400 dark:hover:border-blue-400 transition-all duration-300 hover:shadow-lg hover:shadow-blue-400/25 bg-transparent"
         >
-          <Activity className="w-4 h-4 mr-2 text-gray-600 dark:text-gray-400 group-hover:text-blue-500 transition-colors duration-300" />
-          <span className="relative z-10 font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300">
+          <Activity className="w-4 h-4 mr-2 text-muted-foreground group-hover:text-primary transition-colors duration-300" />
+          <span className="relative z-10 font-medium group-hover:text-primary transition-colors duration-300">
             Metrics
           </span>
           {enabledCount > 0 && (
@@ -130,10 +154,10 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
       </DialogTrigger>
       <DialogContent className="max-w-4xl rounded-lg shadow-xl p-0 flex flex-col h-[90vh]">
         <DialogHeader className="p-6 pb-4 flex-shrink-0">
-          <DialogTitle className="text-2xl font-semibold text-gray-900 dark:text-gray-50">
+          <DialogTitle className="text-2xl font-semibold text-foreground">
             Metrics Configuration
           </DialogTitle>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Enable and configure evaluation metrics for your agent
           </p>
         </DialogHeader>
@@ -143,14 +167,14 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
         <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0">
           {loadingTemplates ? (
             <div className="flex items-center justify-center h-40">
-              <div className="text-sm text-gray-500">Loading metrics templates...</div>
+              <div className="text-sm text-muted-foreground">Loading metrics templates...</div>
             </div>
           ) : (
             <div className="space-y-6 pr-2">
               {/* Added Metrics Section */}
               {Object.keys(metrics).length > 0 && (
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                  <h3 className="text-sm font-semibold text-foreground mb-3">
                     Added Metrics ({Object.keys(metrics).length})
                   </h3>
                   <div className="space-y-3">
@@ -158,13 +182,13 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                       const template = metricsTemplates.find(t => t.metric_id === metricConfig.metric_id)
 
                       if (!template) return (
-                        <div key={metricConfig.metric_id} className="border rounded-lg p-4 dark:border-gray-700 border-yellow-200 dark:border-yellow-800/50 bg-yellow-50/30 dark:bg-yellow-900/5">
+                        <div key={metricConfig.metric_id} className="border rounded-lg p-4 dark:border-gray-700 border-warning/30 bg-yellow-50/30 dark:bg-yellow-900/5">
                           {/* Header */}
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <h4 className="font-medium text-gray-900 dark:text-gray-100 font-mono text-sm">{metricConfig.metric_id}</h4>
-                                <Badge className="text-xs bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700">
+                                <h4 className="font-medium text-foreground font-mono text-sm">{metricConfig.metric_id}</h4>
+                                <Badge className="text-xs bg-warning/15 text-warning border-warning/40">
                                   Template deleted
                                 </Badge>
                                 {!metricConfig.enabled && (
@@ -174,7 +198,7 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                             </div>
                             <div className="flex items-center gap-2">
                               <div className="flex items-center gap-2">
-                                <Label htmlFor={`enable-${metricConfig.metric_id}`} className="text-xs text-gray-600 dark:text-gray-400">
+                                <Label htmlFor={`enable-${metricConfig.metric_id}`} className="text-xs text-muted-foreground">
                                   {metricConfig.enabled ? 'Enabled' : 'Disabled'}
                                 </Label>
                                 <Switch
@@ -187,7 +211,7 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => setConfirmRemoveId(metricConfig.metric_id)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -195,14 +219,14 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                           </div>
 
                           {/* Warning notice */}
-                          <div className="text-xs text-yellow-700 dark:text-yellow-400 bg-yellow-100/60 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/50 rounded-md px-3 py-2 mb-3">
+                          <div className="text-xs text-warning bg-yellow-100/60 dark:bg-yellow-900/20 border border-warning/30 rounded-md px-3 py-2 mb-3">
                             This template no longer exists in the library. The metric is still being evaluated using the saved criteria below. You can edit or remove it.
                           </div>
 
                           {/* Criteria editor — always shown */}
                           <div className="space-y-3">
                             <div>
-                              <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                              <Label className="text-xs font-medium text-foreground">
                                 Evaluation Criteria
                               </Label>
                               <Textarea
@@ -214,7 +238,7 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                               <div>
-                                <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                <Label className="text-xs font-medium text-foreground">
                                   Scoring Mode
                                 </Label>
                                 <Select
@@ -233,7 +257,7 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                                 </Select>
                               </div>
                               <div>
-                                <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                <Label className="text-xs font-medium text-foreground">
                                   Threshold
                                 </Label>
                                 <Input
@@ -256,13 +280,13 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                       return (
                         <div key={metricConfig.metric_id} className={`border rounded-lg p-4 dark:border-gray-700 transition-all ${
                           metricConfig.enabled 
-                            ? 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800' 
-                            : 'bg-gray-50/50 dark:bg-gray-800/50 opacity-60'
+                            ? 'bg-blue-50/50 dark:bg-blue-900/10 border-primary/30 dark:border-blue-800' 
+                            : 'bg-muted/50 opacity-60'
                         }`}>
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex-1">
                               <div className="flex items-center gap-2">
-                                <h4 className="font-medium text-gray-900 dark:text-gray-100">{template.name}</h4>
+                                <h4 className="font-medium text-foreground">{template.name}</h4>
                                 <Badge variant="outline" className="text-xs">{template.category}</Badge>
                                 {template.priority === 'critical' && (
                                   <Badge variant="destructive" className="text-xs">Critical</Badge>
@@ -274,7 +298,7 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                             </div>
                             <div className="flex items-center gap-2">
                               <div className="flex items-center gap-2">
-                                <Label htmlFor={`enable-${metricConfig.metric_id}`} className="text-xs text-gray-600 dark:text-gray-400">
+                                <Label htmlFor={`enable-${metricConfig.metric_id}`} className="text-xs text-muted-foreground">
                                   {metricConfig.enabled ? 'Enabled' : 'Disabled'}
                                 </Label>
                                 <Switch
@@ -289,7 +313,7 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => removeMetric(metricConfig.metric_id)}
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -299,7 +323,7 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                           {metricConfig.enabled && (
                             <div className="space-y-3 mt-3 pt-3 border-t dark:border-gray-700">
                               <div>
-                                <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                <Label className="text-xs font-medium text-foreground">
                                   Evaluation Criteria
                                 </Label>
                                 <Textarea
@@ -311,7 +335,7 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                               </div>
                               <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                  <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                  <Label className="text-xs font-medium text-foreground">
                                     Scoring Mode
                                   </Label>
                                   <Select
@@ -330,7 +354,7 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                                   </Select>
                                 </div>
                                 <div>
-                                  <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                  <Label className="text-xs font-medium text-foreground">
                                     Threshold
                                   </Label>
                                   <Input
@@ -355,50 +379,67 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
                 </div>
               )}
 
-              {/* Available Templates Section */}
+              {/* Only a superadmin can author a new template — everyone else picks
+                  from the library below, same as before. */}
+              {isSuperAdmin && (
+                <CreateMetricTemplateForm
+                  onCreated={(t: CreatedMetricTemplate) => setMetricsTemplates(prev => [...prev, { ...t, icon: '' }])}
+                />
+              )}
+
+              {/* Available Templates Section — grouped by category so the list
+                  stays scannable once there are more than a handful of templates,
+                  rather than one long flat list. */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">
+                <h3 className="text-sm font-semibold text-foreground mb-3">
                   Available Metrics Templates
                 </h3>
-                <div className="space-y-2">
-                  {metricsTemplates
-                    .filter(template => !metrics[template.metric_id])
-                    .map((template) => (
-                      <div key={template.metric_id} className="border rounded-lg p-3 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">{template.name}</h4>
-                              <Badge variant="outline" className="text-xs">{template.category}</Badge>
-                              {template.priority === 'critical' && (
-                                <Badge variant="destructive" className="text-xs">Critical</Badge>
-                              )}
+                <div className="space-y-5">
+                  {groupTemplatesByCategory(metricsTemplates.filter(template => !metrics[template.metric_id]))
+                    .map(({ category, templates }) => (
+                      <div key={category}>
+                        <h4 className="text-xs font-semibold text-muted-foreground mb-2">
+                          {category} <span className="font-normal normal-case text-muted-foreground">({templates.length})</span>
+                        </h4>
+                        <div className="space-y-2">
+                          {templates.map((template) => (
+                            <div key={template.metric_id} className="border rounded-lg p-3 dark:border-gray-700 hover:border-primary/30 transition-colors">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="text-sm font-medium text-foreground">{template.name}</h4>
+                                    {template.priority === 'critical' && (
+                                      <Badge variant="destructive" className="text-xs">Critical</Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mt-1">{template.description}</p>
+                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => addMetric(template)}
+                                  className="ml-3"
+                                >
+                                  <Plus className="w-4 h-4 mr-1" />
+                                  Add
+                                </Button>
+                              </div>
                             </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{template.description}</p>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => addMetric(template)}
-                            className="ml-3"
-                          >
-                            <Plus className="w-4 h-4 mr-1" />
-                            Add
-                          </Button>
+                          ))}
                         </div>
                       </div>
                     ))}
                 </div>
 
                 {metricsTemplates.filter(t => !metrics[t.metric_id]).length === 0 && (
-                  <div className="text-center py-6 text-gray-500">
+                  <div className="text-center py-6 text-muted-foreground">
                     <p className="text-sm">All available metrics have been added</p>
                   </div>
                 )}
               </div>
 
               {metricsTemplates.length === 0 && !loadingTemplates && (
-                <div className="flex items-center justify-center h-40 text-gray-500">
+                <div className="flex items-center justify-center h-40 text-muted-foreground">
                   <div className="text-center">
                     <Activity className="w-12 h-12 mx-auto mb-2 opacity-30" />
                     <p className="text-sm">No metrics templates available</p>
@@ -434,17 +475,17 @@ const MetricsDialog: React.FC<MetricsDialogProps> = ({
       <Dialog open={!!confirmRemoveId} onOpenChange={open => { if (!open) setConfirmRemoveId(null) }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold text-gray-900 dark:text-gray-50">
+            <DialogTitle className="text-base font-semibold text-foreground">
               Remove Metric
             </DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-muted-foreground">
             This metric&apos;s template has been deleted, but the evaluation criteria and scoring config are still saved on this agent.
           </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-muted-foreground">
             Removing it will permanently delete this configuration. If the template is never recreated, this metric cannot be recovered.
           </p>
-          <p className="text-sm font-medium text-red-600 dark:text-red-400">This cannot be undone.</p>
+          <p className="text-sm font-medium text-destructive">This cannot be undone.</p>
           <div className="flex gap-2 mt-2">
             <Button
               variant="outline"

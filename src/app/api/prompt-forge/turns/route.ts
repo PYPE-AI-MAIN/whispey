@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { requireForgeUser } from '@/server/promptForge/access'
 
 export const runtime = 'nodejs'
 
@@ -22,10 +23,10 @@ function transcriptJsonToTurns(transcriptJson: any[]): any[] {
       const next = transcriptJson[i + 1]
       const nextRole = next?.role?.toLowerCase()
       const agentText = (nextRole === 'assistant') ? getText(next) : ''
-      turns.push({ user_transcript: text, agent_response: agentText, tool_calls: [] })
+      turns.push({ id: `transcript_${turns.length}`, user_transcript: text, agent_response: agentText, tool_calls: [] })
       i += agentText ? 2 : 1
     } else if (role === 'assistant') {
-      turns.push({ user_transcript: '', agent_response: text, tool_calls: [] })
+      turns.push({ id: `transcript_${turns.length}`, user_transcript: '', agent_response: text, tool_calls: [] })
       i++
     } else {
       i++
@@ -45,6 +46,17 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = createServiceRoleClient()
 
+    // The call must belong to a project where the caller can use Prompt Forge.
+    const { data: call } = await supabase
+      .from('pype_voice_call_logs')
+      .select('agent_id, transcript_json')
+      .eq('id', sessionId)
+      .maybeSingle()
+    if (!call) return NextResponse.json({ error: 'Call not found' }, { status: 404 })
+    const { data: agent } = await supabase.from('pype_voice_agents').select('project_id').eq('id', call.agent_id).maybeSingle()
+    const access = await requireForgeUser(agent?.project_id)
+    if ('response' in access) return access.response
+
     const { data: metricsData, error } = await supabase
       .from('pype_voice_metrics_logs')
       .select('id, user_transcript, agent_response, tool_calls, unix_timestamp, created_at')
@@ -57,13 +69,7 @@ export async function GET(request: NextRequest) {
     if (hasContent) return NextResponse.json(metricsData)
 
     // Fallback: transcript_json from call log (used by pipecat agents)
-    const { data: callLog } = await supabase
-      .from('pype_voice_call_logs')
-      .select('transcript_json')
-      .eq('id', sessionId)
-      .maybeSingle()
-
-    let transcriptJson = callLog?.transcript_json
+    let transcriptJson = call.transcript_json
     if (!transcriptJson) return NextResponse.json([])
     if (typeof transcriptJson === 'string') {
       try { transcriptJson = JSON.parse(transcriptJson) } catch { return NextResponse.json([]) }

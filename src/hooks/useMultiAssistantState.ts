@@ -1,7 +1,9 @@
 // hooks/useMultiAssistantState.ts
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { FormikProps } from 'formik'
-import { getFallback } from '@/config/agentDefaults'
+import { clampAwayTimeout, customAwayPrompt, getFallback } from '@/config/agentDefaults'
+import { getModelBaseUrl } from '@/components/agents/AgentConfig/ModelSelector'
+import { RAYA_PROVIDER, rayaConfigFromTts, rayaTtsPayload } from '@/lib/tts/raya'
 
 function serializeSarvamLanguageSwitchSTT(stt: any): any {
   const out: any = { name: stt.name, language: stt.language, model: stt.model }
@@ -93,19 +95,36 @@ function serializeGoogleLanguageSwitchTTS(tts: any): any {
   return out
 }
 
-function serializeLanguageSwitchTTS(tts: any): any {
+export function serializeLanguageSwitchTTS(tts: any): any {
   if (!tts) return {}
   if (tts.name === 'sarvam') return serializeSarvamLanguageSwitchTTS(tts)
   if (tts.name === 'elevenlabs') return serializeElevenlabsLanguageSwitchTTS(tts)
   if (tts.name === 'google') return serializeGoogleLanguageSwitchTTS(tts)
+  // Without this a Raya entry would collapse to `{ name }` and lose its voice, language and speed.
+  if (tts.name === RAYA_PROVIDER) return rayaTtsPayload(tts.voice_id || '', tts.model, rayaConfigFromTts(tts))
   return { name: tts.name }
 }
 
-export function buildAgentEnvelope(name: string, type: string, assistant: any[], agentId?: string) {
-  return { agent: { name, type, ...(agentId ? { agent_id: agentId } : {}), assistant } }
+/** Agent-level settings that sit beside `assistant`, not inside it. */
+export function buildInboundVariablesPayload(formValues: any) {
+  const cfg = formValues?.advancedSettings?.inboundVariables
+  if (!cfg) return {}
+  return {
+    inbound_variables: {
+      enabled: cfg.enabled ?? false,
+      url: cfg.url ?? '',
+      auth_header: cfg.authHeader ?? '',
+      timeout_ms: cfg.timeoutMs ?? 1000,
+      cache_ttl_s: cfg.cacheTtlS ?? 90,
+    },
+  }
 }
 
-function buildFallbackTtsPayload(formValues: any) {
+export function buildAgentEnvelope(name: string, type: string, assistant: any[], agentId?: string, agentLevel: Record<string, any> = {}) {
+  return { agent: { name, type, ...(agentId ? { agent_id: agentId } : {}), ...agentLevel, assistant } }
+}
+
+export function buildFallbackTtsPayload(formValues: any) {
   const provider = formValues.fallbackTtsProvider
   // cfg is either already normalized (camelCase from SelectTTS) or raw (snake_case from backend).
   // All lookups try the normalized key first, then fall back to voice_settings nested format.
@@ -129,6 +148,8 @@ function buildFallbackTtsPayload(formValues: any) {
         pitch: cfg.pitch ?? cfg.voice_settings?.pitch ?? 0.0,
       },
     }
+  } else if (provider === RAYA_PROVIDER) {
+    return rayaTtsPayload(formValues.fallbackTtsVoiceId, formValues.fallbackTtsModel, cfg)
   } else if (provider === 'google') {
     const result: any = {
       name: 'google',
@@ -155,6 +176,17 @@ function buildFallbackTtsPayload(formValues: any) {
       },
     }
   }
+}
+
+// ElevenLabs v3/v4 audio tags: only written when the option is on, so other voices and old agents save as before.
+function expressiveTtsFields(model: string | undefined, expressive: unknown, tags: unknown, notes?: unknown): {
+  expressive?: true; audio_tags?: string[]; audio_tag_notes?: Record<string, string>
+} {
+  if (!/^eleven_v[34]/.test(model || '') || expressive !== true) return {}
+  const picked = Array.isArray(tags) ? (tags as string[]) : []
+  const given = notes && typeof notes === 'object' ? (notes as Record<string, string>) : {}
+  const kept = Object.fromEntries(picked.filter((t) => given[t]?.trim()).map((t) => [t, given[t].trim()]))
+  return { expressive: true, audio_tags: picked, ...(Object.keys(kept).length ? { audio_tag_notes: kept } : {}) }
 }
 
 function getInterruptionModeFields(formValues: any): { interruption_mode: string | null; adaptive_stt: boolean; real_interruption_guard: boolean } {
@@ -216,11 +248,12 @@ function buildAssistantVadPayload(formValues: any): any {
   }
 }
 
-function buildAssistantSessionBehaviorPayload(formValues: any): any {
+export function buildAssistantSessionBehaviorPayload(formValues: any): any {
   return {
     preemptive_generation: formValues.advancedSettings?.session?.preemptiveGeneration || getFallback(null, 'session_behavior.preemptive_generation'),
     turn_detection: formValues.advancedSettings?.session?.turn_detection || getFallback(null, 'session_behavior.turn_detection'),
     unlikely_threshold: formValues.advancedSettings?.session?.unlikely_threshold ?? getFallback(null, 'session_behavior.unlikely_threshold'),
+    cue_threshold: formValues.advancedSettings?.session?.cue_threshold,
     min_endpointing_delay: formValues.advancedSettings?.session?.min_endpointing_delay ?? getFallback(null, 'session_behavior.min_endpointing_delay'),
     max_endpointing_delay: formValues.advancedSettings?.session?.max_endpointing_delay ?? getFallback(null, 'session_behavior.max_endpointing_delay'),
     ...(formValues.advancedSettings?.session?.endpointing_mode && {
@@ -228,8 +261,8 @@ function buildAssistantSessionBehaviorPayload(formValues: any): any {
     }),
     // interruption_mode is intentionally omitted here — it's sent at the top level
     // above and the backend hoists it into session_behavior on save.
-    ...(formValues.advancedSettings?.session?.user_away_timeout !== undefined && {
-      user_away_timeout: formValues.advancedSettings.session.user_away_timeout
+    ...(clampAwayTimeout(formValues.advancedSettings?.session?.user_away_timeout) !== undefined && {
+      user_away_timeout: clampAwayTimeout(formValues.advancedSettings?.session?.user_away_timeout)
     }),
     ...(formValues.advancedSettings?.session?.user_away_timeout_message !== undefined && formValues.advancedSettings.session.user_away_timeout_message !== null && {
       user_away_timeout_message: formValues.advancedSettings.session.user_away_timeout_message
@@ -239,6 +272,15 @@ function buildAssistantSessionBehaviorPayload(formValues: any): any {
     }),
     ...(formValues.advancedSettings?.session?.user_away_timeout_end_message !== undefined && formValues.advancedSettings.session.user_away_timeout_end_message !== null && formValues.advancedSettings.session.user_away_timeout_end_message !== '' && {
       user_away_timeout_end_message: formValues.advancedSettings.session.user_away_timeout_end_message
+    }),
+    ...(formValues.advancedSettings?.session?.user_away_timeout_mode !== undefined && formValues.advancedSettings.session.user_away_timeout_mode !== null && {
+      user_away_timeout_mode: formValues.advancedSettings.session.user_away_timeout_mode
+    }),
+    ...(customAwayPrompt(formValues.advancedSettings?.session?.user_away_prompt) !== undefined && {
+      user_away_prompt: customAwayPrompt(formValues.advancedSettings.session.user_away_prompt)
+    }),
+    ...(formValues.advancedSettings?.session?.eod_silence_seconds !== undefined && formValues.advancedSettings.session.eod_silence_seconds !== null && {
+      eod_silence_seconds: formValues.advancedSettings.session.eod_silence_seconds
     })
   }
 }
@@ -395,7 +437,7 @@ function buildSingleAssistantSttPayload(formValues: any, currentSttConfig: any):
   }
 }
 
-function buildSingleAssistantLlmPayload(formValues: any, currentAzureConfig: any, fallbackAzureConfig: any): any {
+export function buildSingleAssistantLlmPayload(formValues: any, currentAzureConfig: any, fallbackAzureConfig: any): any {
   return {
     name: formValues.selectedProvider || getFallback(null, 'llm.name'),
     provider: formValues.selectedProvider === 'azure_openai' ? 'azure' : formValues.selectedProvider || getFallback(null, 'llm.provider'),
@@ -410,6 +452,12 @@ function buildSingleAssistantLlmPayload(formValues: any, currentAzureConfig: any
     ...(formValues.selectedProvider === 'openai' && { api_key_env: 'OPENAI_API_KEY' }),
     ...(formValues.selectedProvider === 'groq' && { api_key_env: 'GROQ_API_KEY' }),
     ...(formValues.selectedProvider === 'cerebras' && { api_key_env: 'CEREBRAS_API_KEY' }),
+    ...(formValues.selectedProvider === 'self_hosted' && {
+      // Falls back to the backend's default GEMMA_LLM_BASE_URL/GEMMA_LLM_API_KEY env vars
+      // when a model doesn't declare its own baseUrl (see ModelSelector.getModelBaseUrl).
+      base_url: getModelBaseUrl('self_hosted', formValues.selectedModel) || getFallback(null, 'llm.base_url'),
+      api_key_env: 'GEMMA_LLM_API_KEY'
+    }),
     ...(formValues.fallbackLlmProvider && {
       fallback: {
         name: formValues.fallbackLlmProvider,
@@ -425,12 +473,16 @@ function buildSingleAssistantLlmPayload(formValues: any, currentAzureConfig: any
         ...(formValues.fallbackLlmProvider === 'openai' && { api_key_env: 'OPENAI_API_KEY' }),
         ...(formValues.fallbackLlmProvider === 'groq' && { api_key_env: 'GROQ_API_KEY' }),
         ...(formValues.fallbackLlmProvider === 'cerebras' && { api_key_env: 'CEREBRAS_API_KEY' }),
+        ...(formValues.fallbackLlmProvider === 'self_hosted' && {
+          base_url: getModelBaseUrl('self_hosted', formValues.fallbackLlmModel) || getFallback(null, 'llm.base_url'),
+          api_key_env: 'GEMMA_LLM_API_KEY'
+        }),
       }
     }),
   }
 }
 
-function buildSingleAssistantTtsPayload(formValues: any, currentTtsConfig: any): any {
+export function buildSingleAssistantTtsPayload(formValues: any, currentTtsConfig: any): any {
   const ttsProvider = currentTtsConfig?.provider || formValues.ttsProvider || getFallback(null, 'tts.name')
   const isSarvam = ttsProvider === 'sarvam' || ttsProvider === 'sarvam_tts'
   const isGoogle = ttsProvider === 'google'
@@ -459,6 +511,16 @@ function buildSingleAssistantTtsPayload(formValues: any, currentTtsConfig: any):
         loudness: sarvamLoudness,
         enable_preprocessing: currentTtsConfig?.config?.enable_preprocessing ?? formValues.ttsVoiceConfig?.enable_preprocessing ?? true
       },
+      ...fallbackTtsPayload,
+    }
+  }
+
+  if (ttsProvider === RAYA_PROVIDER) {
+    // Unlike the generic branch below, no ElevenLabs defaults: getFallback() voice ids and
+    // voice_settings would be wrong for Raya, whose voice ids are bound to its own models.
+    const rayaConfig = { ...formValues.ttsVoiceConfig, ...currentTtsConfig?.config }
+    return {
+      ...rayaTtsPayload(formValues.selectedVoice || '', currentTtsConfig?.model || formValues.ttsModel, rayaConfig),
       ...fallbackTtsPayload,
     }
   }
@@ -493,6 +555,12 @@ function buildSingleAssistantTtsPayload(formValues: any, currentTtsConfig: any):
       use_speaker_boost: currentTtsConfig?.config?.useSpeakerBoost ?? formValues.ttsVoiceConfig?.useSpeakerBoost ?? getFallback(null, 'tts.voice_settings.use_speaker_boost'),
       speed: currentTtsConfig?.config?.speed ?? formValues.ttsVoiceConfig?.speed ?? getFallback(null, 'tts.voice_settings.speed')
     },
+    ...expressiveTtsFields(
+      currentTtsConfig?.model || formValues.ttsModel,
+      currentTtsConfig?.config?.expressive ?? formValues.ttsVoiceConfig?.expressive,
+      currentTtsConfig?.config?.audioTags ?? formValues.ttsVoiceConfig?.audioTags,
+      currentTtsConfig?.config?.audioTagNotes ?? formValues.ttsVoiceConfig?.audioTagNotes,
+    ),
     ...fallbackTtsPayload,
   }
 }
@@ -830,7 +898,7 @@ export function useMultiAssistantState({
         useBackgroundAudioFallbacks: true,
       })
 
-      return buildAgentEnvelope(agentName, agentType, [assistant], agentId)
+      return buildAgentEnvelope(agentName, agentType, [assistant], agentId, buildInboundVariablesPayload(formValues))
     }
 
     // For multiple assistants (future implementation)
@@ -860,16 +928,30 @@ export function useMultiAssistantState({
             style: data.ttsConfig?.voice_settings?.style ?? formValues.ttsVoiceConfig?.style ?? getFallback(null, 'tts.voice_settings.style'),
             use_speaker_boost: data.ttsConfig?.voice_settings?.use_speaker_boost ?? formValues.ttsVoiceConfig?.useSpeakerBoost ?? getFallback(null, 'tts.voice_settings.use_speaker_boost'),
             speed: data.ttsConfig?.voice_settings?.speed ?? formValues.ttsVoiceConfig?.speed ?? getFallback(null, 'tts.voice_settings.speed')
-          }
+          },
+          ...expressiveTtsFields(
+            data.ttsConfig?.model || formValues.ttsModel,
+            data.ttsConfig?.expressive ?? formValues.ttsVoiceConfig?.expressive,
+            data.ttsConfig?.audio_tags ?? formValues.ttsVoiceConfig?.audioTags,
+            data.ttsConfig?.audio_tag_notes ?? formValues.ttsVoiceConfig?.audioTagNotes,
+          ),
         },
         tools: formValues.advancedSettings?.tools?.tools?.map(serializeAssistantToolBasic) || getFallback(null, 'tools'),
         useBackgroundAudioFallbacks: false,
       })
     })
 
-    return buildAgentEnvelope(agentName, agentType, assistants)
+    // inbound_variables is agent-level, so it comes from the live form, not from
+    // any one assistant's payload.
+    return buildAgentEnvelope(
+      agentName,
+      agentType,
+      assistants,
+      agentId,
+      buildInboundVariablesPayload(currentFormik?.values),
+    )
   }, [
-    assistantNames, 
+    assistantNames,
     assistantsData,
     getAssistantData,
     agentName,
@@ -878,7 +960,8 @@ export function useMultiAssistantState({
     currentTtsConfig,
     currentSttConfig,
     currentAzureConfig,
-    fallbackAzureConfig
+    fallbackAzureConfig,
+    agentId
   ])
 
   const registerFormikRef = useCallback((assistantName: string, formikRef: FormikProps<any>) => {

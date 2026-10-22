@@ -9,6 +9,7 @@ export const modelOptions = [
   { value: "azure_openai", label: "Azure OpenAI" },
   { value: "groq", label: "Groq" },
   { value: "cerebras", label: "Cerebras" },
+  { value: "livekit", label: "LiveKit Inference" },
 ]
 
 export const languageOptions = [

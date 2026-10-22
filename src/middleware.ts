@@ -62,7 +62,6 @@ const isPublicRoute = createRouteMatcher([
   '/sign-up(.*)',
   "/terms-of-service(.*)",
   "/privacy-policy(.*)",
-  '/docs(.*)',
   '/playground(.*)',
   '/invite(.*)',
   // Public API routes (external callers — no Clerk session)
@@ -75,10 +74,15 @@ const isPublicRoute = createRouteMatcher([
   '/api/logs/call-logs(.*)',
   '/api/logs/failure-report(.*)',
   '/api/send-logs(.*)',
+  '/api/journeys/events(.*)',
   // Public playground needs these without a Clerk session
   '/api/agents/status(.*)',
   '/api/agent-config(.*)',
   '/api/agents/:id/update-voice',
+  // Studio secret is checked in the handler. Clerk must not see these calls:
+  // protect() rewrites a non-session Authorization to /clerk_* (HTTP 404).
+  '/api/mcp(.*)',
+  '/api/askpi(.*)',
 ]);
 
 // GET-only reads the public playground needs (PATCH/DELETE on the same path must stay protected)
@@ -146,6 +150,8 @@ export default clerkMiddleware(async (auth, request) => {
 
 export const config = {
   matcher: [
+    // The docs are signed-in only, files included (the search index holds every page)
+    '/docs/:path*',
     // Skip Next.js internals and all static files, unless found in search params
     '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)', // NOSONAR javascript:S7780 — String.raw breaks Next.js static analysis of config.matcher
     // Always run for API routes

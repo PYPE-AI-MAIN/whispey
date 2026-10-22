@@ -46,6 +46,8 @@ interface SidebarContext {
   projectId?: string
   agentType?: string
   hasWorkflow?: boolean
+  /** Agent was created through the MCP — the only kind Agent Studio can show. */
+  createdViaMcp?: boolean
   canAccessPhoneCalls: boolean
   canAccessPhoneSettings: boolean
   canCreatePypeAgent: boolean
@@ -59,6 +61,28 @@ interface SidebarContext {
   isGlobalSuperAdmin: boolean
 }
 
+// Agent Studio (beta) — LiveKit agents only; its test panel uses the LiveKit
+// session flow. Members only get the entry for agents built through the MCP (an
+// agent that wasn't would just open an empty "build it through the MCP" page).
+// Owners and admins keep it on every LiveKit agent, so they can still reach
+// that page and its preview.
+function agentStudioNavItems(
+  projectId: string,
+  agentId: string,
+  agentType: string | undefined,
+  createdViaMcp: boolean | undefined,
+  isOwnerOrAdmin: boolean
+) {
+  if (agentType !== 'pype_agent' || !(createdViaMcp || isOwnerOrAdmin)) return []
+  return [{
+    id: 'agent-studio',
+    name: 'Agent Studio',
+    icon: 'Zap',
+    path: `/${projectId}/agents/${agentId}/studio`,
+    group: 'Build',
+  }]
+}
+
 interface NavigationItem {
   id: string
   name: string
@@ -66,6 +90,8 @@ interface NavigationItem {
   path: string
   group?: string
   external?: boolean
+  disabled?: boolean
+  badge?: string
 }
 
 export interface SidebarConfig {
@@ -80,7 +106,9 @@ export interface SidebarConfig {
 const matchRoute = (pathname: string, pattern: string): RouteParams | null => {
   if (pattern.endsWith('*')) {
     const basePattern = pattern.slice(0, -1)
-    if (!pathname.startsWith(basePattern)) {
+    // Literal prefixes only (`/sign*`). `/:projectId/pi*` cannot startsWith the
+    // unsubstituted pattern, and would miss every real /{uuid}/pi URL.
+    if (!basePattern.includes(':') && !pathname.startsWith(basePattern)) {
       return null
     }
     
@@ -126,11 +154,10 @@ const matchRoute = (pathname: string, pattern: string): RouteParams | null => {
 
 // sidebarRoutes array
 const sidebarRoutes: SidebarRoute[] = [
-  // Hide sidebar for auth and docs pages ONLY
+  // Hide sidebar for auth pages ONLY
   {
     patterns: [
-      { pattern: '/sign*' },
-      { pattern: '/docs*' }
+      { pattern: '/sign*' }
     ],
     getSidebarConfig: () => null,
     priority: 100
@@ -163,7 +190,9 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/settings/dnc' },
       { pattern: '/:projectId/campaigns/:campaignId' },
       { pattern: '/:projectId/campaigns/create' },
-      { pattern: '/:projectId/analytics' }, 
+      { pattern: '/:projectId/analytics' },
+      { pattern: '/:projectId/pi' },
+      { pattern: '/:projectId/pi/:sessionId' },
     ],
     getSidebarConfig: (params, context) => {
       const { projectId } = params
@@ -172,17 +201,15 @@ const sidebarRoutes: SidebarRoute[] = [
       const baseNavigation = [
          {
           id: 'analytics',
-          name: 'Org Overview',
+          name: 'Overview',
           icon: 'BarChart3',
-          path: `/${projectId}/analytics`,
-          group: 'Agents'
+          path: `/${projectId}/analytics`
         },
         {
           id: 'agent-list',
-          name: 'Agent List',
+          name: 'Agents',
           icon: 'Activity',
-          path: `/${projectId}/agents`,
-          group: 'Agents'
+          path: `/${projectId}/agents`
         }
       ]
 
@@ -197,7 +224,7 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Campaigns',
           icon: 'Calendar',
           path: `/${projectId}/campaigns`,
-          group: 'Batch Calls'
+          group: 'Calling'
         })
       }
 
@@ -208,7 +235,7 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Phone Settings',
           icon: 'Phone',
           path: `/${projectId}/agents/sip-management`,
-          group: 'configuration'
+          group: 'Calling'
         })
       }
 
@@ -217,10 +244,10 @@ const sidebarRoutes: SidebarRoute[] = [
       if (userCanViewApiKeys) {
         projectSettingItems.push({
           id: 'api-keys',
-          name: 'Project API Key',
+          name: 'API key',
           icon: 'Key',
           path: `/${projectId}/agents/api-keys`,
-          group: 'Project Settings'
+          group: 'Settings'
         })
       }
       if (showSettings) {
@@ -229,7 +256,7 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Settings',
           icon: 'Settings',
           path: `/${projectId}/settings`,
-          group: 'Project Settings'
+          group: 'Settings'
         })
       }
 
@@ -244,7 +271,7 @@ const sidebarRoutes: SidebarRoute[] = [
         ],
         showBackButton: false,
         backPath: '/projects',
-        backLabel: 'Back to Organisations'
+        backLabel: 'Back to Organizations'
       }
     },
     priority: 95
@@ -254,6 +281,7 @@ const sidebarRoutes: SidebarRoute[] = [
   {
     patterns: [
       { pattern: '/:projectId/agents/:agentId' },
+      { pattern: '/:projectId/agents/:agentId/studio' },
       { pattern: '/:projectId/agents/:agentId/config' },
       { pattern: '/:projectId/agents/:agentId/config/pipecat' },
       { pattern: '/:projectId/agents/:agentId/config/pipecat/knowledgebase' },
@@ -261,6 +289,7 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '/:projectId/agents/:agentId/observability' },
       { pattern: '/:projectId/agents/:agentId/phone-call-config' },
       { pattern: '/:projectId/agents/:agentId/phone-call-config/pipecat' },
+      { pattern: '/:projectId/agents/:agentId/qa' },
       { pattern: '/:projectId/agents/:agentId/knowledge' },
       { pattern: '/:projectId/agents/:agentId/workflow' },
       { pattern: '/:projectId/agents/:agentId/prompt-forge' },
@@ -268,9 +297,9 @@ const sidebarRoutes: SidebarRoute[] = [
     ],
     getSidebarConfig: (params, context) => {
       const { projectId, agentId } = params
-      const { isEnhancedProject, agentType, isOwnerOrAdmin, visibility, isSuperAdmin, hasWorkflow } = context
+      const { isEnhancedProject, agentType, isOwnerOrAdmin, visibility, isSuperAdmin, hasWorkflow, createdViaMcp } = context
 
-      const reservedPaths = ['api-keys', 'settings', 'config', 'observability', 'sip-management'];
+      const reservedPaths = ['api-keys', 'settings', 'config', 'observability', 'sip-management', 'qa'];
       if (reservedPaths.includes(agentId)) {
         return null;
       }
@@ -281,14 +310,14 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Overview', 
           icon: 'Activity', 
           path: `/${projectId}/agents/${agentId}?tab=overview`,
-          group: 'LOGS' 
+          group: 'Monitor'
         },
         { 
           id: 'logs', 
           name: 'Call Logs', 
           icon: 'List', 
           path: `/${projectId}/agents/${agentId}?tab=logs`,
-          group: 'LOGS' 
+          group: 'Monitor'
         }
       ]
 
@@ -317,13 +346,15 @@ const sidebarRoutes: SidebarRoute[] = [
         agentType === 'pype_agent' && hasWorkflow &&
         (isOwnerOrAdmin || canShowAgentSection(visibility, 'agentConfig'))
 
+      configItems.push(...agentStudioNavItems(projectId, agentId, agentType, createdViaMcp, isOwnerOrAdmin))
+
       if (showWorkflow) {
         configItems.push({
           id: 'workflow',
           name: 'Workflow',
           icon: 'GitBranch',
           path: `/${projectId}/agents/${agentId}/workflow`,
-          group: 'configuration'
+          group: 'Build'
         })
       }
 
@@ -333,7 +364,7 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Agent Config', 
           icon: 'Settings', 
           path: `/${projectId}/agents/${agentId}/config`,
-          group: 'configuration' 
+          group: 'Build'
         })
       }
 
@@ -343,7 +374,7 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Agent Config',
           icon: 'Settings',
           path: `/${projectId}/agents/${agentId}/config/pipecat`,
-          group: 'configuration'
+          group: 'Build'
         })
       }
 
@@ -358,7 +389,7 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Knowledge Base', 
           icon: 'BookOpen', 
           path: kbPath,
-          group: 'configuration' 
+          group: 'Build'
         })
       }
 
@@ -369,9 +400,20 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Phone Calls',
           icon: 'Phone',
           path: `/${projectId}/agents/${agentId}/phone-call-config`,
-          group: 'call configuration'
+          group: 'Calls'
         })
       }
+
+      // Sits with the other call-review pages under Monitor. Not gated behind a visibility flag:
+      // it only lists flags and reviews for calls this person can already see,
+      // and the page itself re-checks access server-side.
+      const qaItems = [{
+        id: 'qa-audit',
+        name: 'QA Audit',
+        icon: 'ShieldCheck',
+        path: `/${projectId}/agents/${agentId}/qa`,
+        group: 'Monitor'
+      }]
 
       const enhancedItems = []
       if (isEnhancedProject) {
@@ -380,7 +422,7 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Campaign Logs',
           icon: 'BarChart3',
           path: `/${projectId}/agents/${agentId}?tab=campaign-logs`,
-          group: 'Batch Calls'
+          group: 'Calls'
         })
       }
 
@@ -391,16 +433,17 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Prompt Forge',
           icon: 'FlaskConical',
           path: `/${projectId}/agents/${agentId}/prompt-forge`,
-          group: 'Dev Tools'
+          group: 'Build'
         })
       }
 
       const navigation = [
         ...baseNavigation,
+        ...qaItems,
         ...configItems,
+        ...superAdminItems,
         ...callItems,
-        ...enhancedItems,
-        ...superAdminItems
+        ...enhancedItems
       ]
 
       return {
@@ -413,14 +456,14 @@ const sidebarRoutes: SidebarRoute[] = [
     priority: 90
   },
 
-  // Main Organisations/projects route
+  // Main Organizations/projects route
   {
     patterns: [
       { pattern: '/', exact: true },
       { pattern: '/projects', exact: true }
     ],
     getSidebarConfig: () => ({
-      type: 'organisations',
+      type: 'organizations',
       context: {},
       navigation: [],
       showBackButton: false
@@ -434,7 +477,7 @@ const sidebarRoutes: SidebarRoute[] = [
       { pattern: '*' }
     ],
     getSidebarConfig: () => ({
-      type: 'organisations',
+      type: 'organizations',
       context: {},
       navigation: [],
       showBackButton: false
@@ -494,7 +537,8 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   // collapsed there without touching the user's saved preference for every
   // other page, so it re-expands automatically the moment they navigate away.
   const isWorkflowRoute = pathname?.endsWith('/workflow') ?? false
-  const effectiveCollapsed = isDesktopCollapsed || isWorkflowRoute
+  const [workflowExpanded, setWorkflowExpanded] = useState(false)
+  const effectiveCollapsed = isWorkflowRoute ? !workflowExpanded : isDesktopCollapsed
   const [userCanViewApiKeys, setUserCanViewApiKeys] = useState<boolean>(false)
   const [permissionsLoading, setPermissionsLoading] = useState<boolean>(true)
 
@@ -534,6 +578,10 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
   }, [])
 
   const handleDesktopToggle = () => {
+    if (isWorkflowRoute) {
+      setWorkflowExpanded((v) => !v)
+      return
+    }
     const newState = !isDesktopCollapsed
     setIsDesktopCollapsed(newState)
     if (typeof window !== 'undefined') {
@@ -569,6 +617,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     projectId,
     agentType: agent?.agent_type,
     hasWorkflow: !!agent?.hasWorkflow,
+    createdViaMcp: !!agent?.createdViaMcp,
     canAccessPhoneCalls,
     canAccessPhoneSettings,
     canCreatePypeAgent,
@@ -588,7 +637,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     <div className="h-screen flex">
       {isMobile ? (
         <>
-          <div className="fixed top-0 left-0 right-0 h-14 bg-white dark:bg-gray-800 border-b flex items-center justify-between px-4 z-50 md:hidden">
+          <div className="fixed top-0 left-0 right-0 h-14 bg-background border-b border-border flex items-center justify-between px-4 z-50 md:hidden">
             <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px' }}>
               <a href="https://pypeai.com/" target="_blank" rel="noopener noreferrer">
                 <img src="/logo-light.png" alt="Pype" style={{ width: '30px', height: '30px', objectFit: 'contain' }} className="dark:hidden" />
@@ -596,14 +645,14 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
               </a>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', height: '32px', justifyContent: 'space-between' }}>
                 <span
-                  className="text-[#111827] dark:text-[#F3F4F6]"
+                  className="text-foreground"
                   style={{ fontSize: '17px', fontWeight: 600, lineHeight: 1, fontFamily: '-apple-system, "Segoe UI", sans-serif', alignSelf: 'flex-start' }}
                 >
                   Whispey
                 </span>
                 <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '5px' }}>
                   <span
-                    className="text-[#6D28D9] dark:text-[#8B7BC9]"
+                    className="text-muted-foreground"
                     style={{ fontSize: '10px', fontWeight: 600, fontFamily: '-apple-system, "Segoe UI", sans-serif' }}
                   >
                     by
@@ -635,7 +684,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
             </Sheet>
           </div>
           
-          <main className="flex-1 pt-14 overflow-auto">
+          <main className={`flex-1 pt-14 min-h-0 ${pathname?.includes('/pi') ? 'overflow-hidden' : 'overflow-auto'}`}>
             {children}
           </main>
         </>
@@ -653,7 +702,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
             />
           </div>
           
-          <main className="flex-1 overflow-auto">
+          <main className={`flex-1 min-h-0 ${pathname?.includes('/pi') ? 'overflow-hidden' : 'overflow-auto'}`}>
             {children}
           </main>
         </>

@@ -160,7 +160,7 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
     initialFlagRules?.rules?.length
       ? initialFlagRules.rules.map((r) => ({
           ...r,
-          conditions: r.conditions.map((c) => ({ ...c, id: c.id || newId() })), // backfill ids on load (persisted configs have none)
+          conditions: r.conditions.map((c) => ({ ...c, id: c.id || newId(), matchType: c.matchType ?? "exact", value: c.value ?? "" })), // backfill ids + fields older configs lack
         }))
       : [newRule()]
   )
@@ -220,29 +220,29 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800">
+        <Button variant="outline" size="sm" className="border-border hover:bg-muted/50">
           <Flag className="w-4 h-4 mr-2" />
           Flag Rules
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-3xl rounded-lg shadow-xl p-0 flex flex-col h-[85vh]">
         <DialogHeader className="p-6 pb-3 flex-shrink-0">
-          <DialogTitle className="text-2xl font-semibold text-gray-900 dark:text-gray-50">Call Flagging</DialogTitle>
-          <DialogDescription className="text-sm text-gray-500 dark:text-gray-400">
+          <DialogTitle className="text-2xl font-semibold text-foreground">Call Flagging</DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground">
             Flag calls for review when they match your rules — flagged calls are highlighted and filterable in Call Logs.
           </DialogDescription>
         </DialogHeader>
         <Separator className="flex-shrink-0" />
 
         <div className="flex-shrink-0 px-6 py-4">
-          <div className="flex items-center justify-between p-3 rounded-md bg-gray-50 dark:bg-gray-800">
-            <Label htmlFor="flagging-enabled" className="text-base font-medium text-gray-700 dark:text-gray-300">
+          <div className="flex items-center justify-between p-3 rounded-md bg-muted/50">
+            <Label htmlFor="flagging-enabled" className="text-base font-medium text-foreground">
               Enable Flagging
             </Label>
             <Switch id="flagging-enabled" checked={enabled} onCheckedChange={setEnabled} />
           </div>
           {extractorKeys.length === 0 && (
-            <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+            <p className="text-xs text-warning mt-2">
               No field extractor fields configured yet — set those up first so there's something to flag on.
             </p>
           )}
@@ -251,26 +251,26 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
         <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                Flags <span className="font-normal text-gray-400 dark:text-gray-500">({rules.length})</span>
+              <h3 className="text-sm font-semibold text-foreground">
+                Flags <span className="font-normal text-muted-foreground">({rules.length})</span>
               </h3>
-              <span className="text-xs text-gray-400 dark:text-gray-500">each flag is checked independently</span>
+              <span className="text-xs text-muted-foreground">each flag is checked independently</span>
             </div>
             {rules.map((rule, ruleIndex) => (
               <div key={rule.id}>
                 {ruleIndex > 0 && (
                   <div className="flex items-center gap-2 my-3">
                     <Separator className="flex-1" />
-                    <span className="text-xs font-medium text-gray-400 dark:text-gray-500">OR</span>
+                    <span className="text-xs font-medium text-muted-foreground">OR</span>
                     <Separator className="flex-1" />
                   </div>
                 )}
-                <div className="rounded-md border border-gray-200 dark:border-gray-700 p-3 space-y-3">
+                <div className="rounded-md border border-border p-3 space-y-3">
                   <div className="flex items-center gap-2">
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-900 text-xs font-semibold text-white dark:bg-gray-100 dark:text-gray-900">
                       {ruleIndex + 1}
                     </span>
-                    <Label className="text-sm font-semibold text-gray-800 dark:text-gray-200 whitespace-nowrap">Flag</Label>
+                    <Label className="text-sm font-semibold text-foreground whitespace-nowrap">Flag</Label>
                     <Input
                       placeholder="name this flag — e.g. task_incomplete (defaults to the field name)"
                       value={rule.reason}
@@ -281,23 +281,23 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
                       variant="ghost" size="icon"
                       onClick={() => removeRule(ruleIndex)}
                       aria-label={`Remove flag ${ruleIndex + 1}`}
-                      className="h-8 w-8 p-0 rounded-full text-gray-400 hover:bg-gray-100 hover:text-red-500 dark:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-red-400 shrink-0"
+                      className="h-8 w-8 p-0 rounded-full text-muted-foreground hover:bg-muted hover:text-destructive shrink-0"
                     >
                       <X className="w-4 h-4" />
                     </Button>
                   </div>
 
                   <div className="grid grid-cols-12 gap-2 px-1">
-                    <div className="col-span-3 text-[10px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">What to check</div>
-                    <div className="col-span-3 text-[10px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Field</div>
-                    <div className="col-span-3 text-[10px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Condition</div>
-                    <div className="col-span-2 text-[10px] font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Value</div>
+                    <div className="col-span-3 text-[10px] font-medium text-muted-foreground">What to check</div>
+                    <div className="col-span-3 text-[10px] font-medium text-muted-foreground">Field</div>
+                    <div className="col-span-3 text-[10px] font-medium text-muted-foreground">Condition</div>
+                    <div className="col-span-2 text-[10px] font-medium text-muted-foreground">Value</div>
                     <div className="col-span-1" />
                   </div>
 
                   {rule.conditions.map((condition, conditionIndex) => (
                     <div key={condition.id}>
-                      {conditionIndex > 0 && <div className="text-xs font-medium text-gray-400 dark:text-gray-500 pl-1 py-1">AND</div>}
+                      {conditionIndex > 0 && <div className="text-xs font-medium text-muted-foreground pl-1 py-1">AND</div>}
                       <ConditionRow
                         condition={condition}
                         extractorKeys={extractorKeys}
@@ -312,13 +312,13 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
                   <Button
                     type="button" variant="ghost" size="sm"
                     onClick={() => addCondition(ruleIndex)}
-                    className="text-xs h-7 text-gray-500 dark:text-gray-400"
+                    className="text-xs h-7 text-muted-foreground"
                   >
                     <Plus className="w-3 h-3 mr-1" /> Add condition (AND)
                   </Button>
 
                   {ruleSummary(rule) && (
-                    <div className="rounded-md bg-blue-50 dark:bg-blue-950/40 px-3 py-2 text-xs text-blue-700 dark:text-blue-300">
+                    <div className="rounded-md bg-primary/10 px-3 py-2 text-xs text-primary">
                       <span className="font-medium">Flags when</span> {ruleSummary(rule)}
                       <span className="text-blue-400 dark:text-blue-500"> → “{rule.reason.trim() || "reason defaults to the field name"}”</span>
                     </div>
@@ -330,11 +330,11 @@ const FlagRulesDialog: React.FC<FlagRulesDialogProps> = ({
         </div>
 
         <div className="flex-shrink-0 p-6 pt-4 border-t dark:border-gray-700 space-y-2">
-          {error && <p className="text-xs text-red-500">{error}</p>}
+          {error && <p className="text-xs text-destructive">{error}</p>}
           <Button
             type="button" variant="outline"
             onClick={addRule}
-            className="w-full rounded-md border border-dashed border-gray-300 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 bg-transparent"
+            className="w-full rounded-md border border-dashed border-border text-muted-foreground hover:bg-muted/50 bg-transparent"
           >
             <Plus className="w-4 h-4 mr-2" /> Add another flag
           </Button>
@@ -457,17 +457,17 @@ function ConditionRow({
           <SelectTrigger className="h-8 text-xs w-full min-w-0"><SelectValue className="truncate" /></SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              <SelectLabel className="text-[10px] uppercase tracking-wide text-gray-400">From the AI analysis</SelectLabel>
+              <SelectLabel className="text-[10px] text-muted-foreground">From the AI analysis</SelectLabel>
               <SelectItem value="exact">Field extractor value</SelectItem>
               <SelectItem value="metric_score">Metric score</SelectItem>
             </SelectGroup>
             <SelectGroup>
-              <SelectLabel className="text-[10px] uppercase tracking-wide text-gray-400">From the call record</SelectLabel>
+              <SelectLabel className="text-[10px] text-muted-foreground">From the call record</SelectLabel>
               <SelectItem value="call_info">Call info</SelectItem>
               <SelectItem value="call_metadata">Call metadata</SelectItem>
             </SelectGroup>
             <SelectGroup>
-              <SelectLabel className="text-[10px] uppercase tracking-wide text-gray-400">Match many fields by name</SelectLabel>
+              <SelectLabel className="text-[10px] text-muted-foreground">Match many fields by name</SelectLabel>
               <SelectItem value="pattern:starts_with">Field name starts with</SelectItem>
               <SelectItem value="pattern:ends_with">Field name ends with</SelectItem>
               <SelectItem value="pattern:contains">Field name contains</SelectItem>
@@ -514,7 +514,7 @@ function ConditionRow({
           <Button
             variant="ghost" size="icon" onClick={onRemove}
             aria-label="Remove condition"
-            className="h-8 w-8 p-0 rounded-full text-gray-400 hover:bg-gray-100 hover:text-red-500 dark:text-gray-600 dark:hover:bg-gray-800 dark:hover:text-red-400"
+            className="h-8 w-8 p-0 rounded-full text-muted-foreground hover:bg-muted hover:text-destructive"
           >
             <X className="w-4 h-4" />
           </Button>

@@ -1,13 +1,15 @@
 'use client'
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { ArrowUp, Sparkles, X, Loader2, User, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react'
+import { ArrowUp, Sparkles, Loader2, User, RotateCcw } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { Button } from '@/components/ui/button'
 import { useWorkflowStore } from '@/stores/workflowStore'
 import { safeParseWorkflow } from '@/lib/workflow/schema'
+import { extractGlobalRules } from '@/lib/workflow/globalRules'
 import { lintWorkflow, hasErrors } from '@/lib/workflow/linter'
 import { isRetryableApplyError } from '@/lib/workflow/chatRetry'
+import { extractJsonFence, stripJsonFencesForHistory } from '@/lib/jsonFence'
 import toast from 'react-hot-toast'
 
 interface Message {
@@ -22,27 +24,8 @@ interface Message {
 // Past assistant turns embed a full workflow JSON block. Re-sending those on every
 // request balloons context linearly (the current workflow is already sent separately
 // as a system message), causing slow/hanging generations after a few turns.
-// ponytail: walk ``` fences with indexOf instead of a [\s\S]*? regex — same
-// result, no backtracking-vulnerable pattern for Sonar/CodeQL to flag.
 function stripJsonBlocksForHistory(text: string): string {
-  const placeholder = '[workflow JSON omitted — current workflow is provided above]'
-  let result = ''
-  let pos = 0
-  while (pos < text.length) {
-    const start = text.indexOf('```json', pos)
-    if (start === -1) {
-      result += text.slice(pos)
-      break
-    }
-    const end = text.indexOf('```', start + 7)
-    if (end === -1) {
-      result += text.slice(pos)
-      break
-    }
-    result += text.slice(pos, start) + placeholder
-    pos = end + 3
-  }
-  return result
+  return stripJsonFencesForHistory(text, '[workflow JSON omitted — current workflow is provided above]')
 }
 
 type ContextSummary = { nodeCount: number; startLabel: string; langCount: number; varCount: number } | null
@@ -59,17 +42,8 @@ function formatContextSummary(contextSummary: ContextSummary): string {
 }
 
 function extractWorkflowJson(text: string): object | null {
-  const start = text.indexOf('```json')
-  if (start === -1) return null
-  const end = text.indexOf('```', start + 7)
-  if (end === -1) return null
-  const raw = text.slice(start + 7, end).trim()
-  if (!raw) return null
-  try {
-    return JSON.parse(raw)
-  } catch {
-    return null
-  }
+  const parsed = extractJsonFence(text)
+  return typeof parsed === 'object' && parsed !== null ? parsed : null
 }
 
 // The system prompt tells the model to write "__KEEP__" instead of retyping a large
@@ -100,12 +74,11 @@ function restoreKeptFields(next: any, current: any): any {
 
 export function WorkflowChat({
   open,
-  onOpenChange,
   initialMessage,
   onInitialMessageConsumed,
 }: Readonly<{
+  /** The floating Pi box is open. */
   open: boolean
-  onOpenChange: (v: boolean) => void
   // Set by the chat-first landing screen: a prompt typed before any workflow
   // existed. Sent automatically the first time the panel opens with it set,
   // so "describe your agent" -> building starts in one step instead of
@@ -131,10 +104,6 @@ export function WorkflowChat({
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
-  // Collapsed = just header + input, no history — a long conversation
-  // shouldn't force the panel to stay huge; this is how you get canvas space
-  // back without losing the thread or closing the panel outright.
-  const [collapsed, setCollapsed] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -254,7 +223,9 @@ export function WorkflowChat({
         return fail(`AI returned a broken workflow graph: ${applyError}`)
       }
 
-      setWorkflow(parsed.data)
+      // Whatever Pi drew, fold repeated condition edges into global rules so the canvas stays readable.
+      const merged = extractGlobalRules(parsed.data)
+      setWorkflow({ ...parsed.data, edges: merged.edges, globalRules: merged.globalRules })
       toast.success('Workflow updated from chat')
       const warnings = issues.filter((i) => i.severity === 'warning')
       return {
@@ -397,125 +368,79 @@ export function WorkflowChat({
     }
   }
 
-  if (!open) return null
-
   return (
-    <>
-      {/* Status/thread card — floats top-left, clear of the node palette
-          (left-64 = palette's 14rem width + a gap). This is where "thinking"
-          and the running conversation live; the composer below is separate
-          so typing a new message never requires scrolling past history. */}
-      <div className="absolute left-64 top-4 right-4 z-50 flex justify-start pointer-events-none">
-        <div
-          className={`pointer-events-auto w-[min(440px,100%)] ${
-            collapsed ? '' : 'max-h-[60vh]'
-          } bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl flex flex-col overflow-hidden`}
-        >
-          {/* Header — the subtitle IS the "already loaded" answer: what's already
-              built, right where you'd look for it, instead of a separate card
-              repeating the same thing lower down. */}
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
-            <div className="w-7 h-7 rounded-lg bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0">
-              <Sparkles className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">AI Workflow Builder</h3>
-              <p className="text-[10px] text-gray-500 dark:text-gray-400 leading-tight truncate">
-                {formatContextSummary(contextSummary)}
-              </p>
-            </div>
-            {messages.length > 0 && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => setMessages([])}
-                title="Clear chat"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </Button>
-            )}
-            {messages.length > 0 && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => setCollapsed((v) => !v)}
-                title={collapsed ? 'Expand chat' : 'Collapse chat'}
-              >
-                {collapsed ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              </Button>
-            )}
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onOpenChange(false)}>
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
-
-          {/* Messages */}
-          <div ref={scrollRef} className={`flex-1 overflow-y-auto px-5 py-4 space-y-4 ${collapsed ? 'hidden' : ''}`}>
-            {messages.length === 0 && (
-              <div className="flex flex-col gap-2 py-1">
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 px-0.5">
-                  {contextSummary ? 'Try one of these, or describe your own change:' : 'Try one of these, or describe what to build:'}
-                </p>
-                {[
-                  'Create an appointment booking flow',
-                  'Add a logic split after the greeting node',
-                  'Add call transfer to +1234567890 when the user asks for support',
-                ].map((suggestion) => (
-                  <button
-                    key={suggestion}
-                    onClick={() => { setInput(suggestion); setTimeout(() => inputRef.current?.focus(), 0) }}
-                    className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                  >
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {messages.map((msg, i) => (
-              <div key={`${msg.role}-${i}`} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                {msg.role === 'assistant' && (
-                  <div className="w-7 h-7 rounded-md bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0 mt-0.5">
-                    <Sparkles className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
-                  </div>
-                )}
-                <div
-                  className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${
-                    msg.role === 'user'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
-                  }`}
-                >
-                  {msg.role === 'assistant' ? (
-                    <AssistantMessage
-                      content={msg.content}
-                      streaming={isStreaming && i === messages.length - 1}
-                      applyStatus={msg.applyStatus}
-                      applyError={msg.applyError}
-                      applyNodeCount={msg.applyNodeCount}
-                      applyWarnings={msg.applyWarnings}
-                    />
-                  ) : (
-                    <span className="whitespace-pre-wrap">{msg.content}</span>
-                  )}
-                </div>
-                {msg.role === 'user' && (
-                  <div className="w-7 h-7 rounded-md bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0 mt-0.5">
-                    <User className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* The subtitle IS the "already loaded" answer: what's already built, right
+          where you'd look for it. */}
+      <div className="flex shrink-0 items-center gap-2 border-b border-border/60 px-4 py-2">
+        <p className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">{formatContextSummary(contextSummary)}</p>
+        {messages.length > 0 && (
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setMessages([])} title="Clear chat">
+            <RotateCcw className="w-3.5 h-3.5" />
+          </Button>
+        )}
       </div>
 
-      {/* Composer — docked along the bottom, wide, separate from the status
-          card above so it's always reachable without collapsing history. */}
-      <div className="absolute left-64 right-4 bottom-4 z-50 flex justify-center pointer-events-none">
-        <div className="pointer-events-auto w-[min(760px,100%)] relative rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-2xl focus-within:border-violet-400 dark:focus-within:border-violet-500 transition-colors">
+      <div ref={scrollRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-3">
+        {messages.length === 0 && (
+          <div className="flex flex-col gap-2 py-1">
+            <p className="text-[11px] text-muted-foreground px-0.5">
+              {contextSummary ? 'Try one of these, or describe your own change:' : 'Try one of these, or describe what to build:'}
+            </p>
+            {[
+              'Create an appointment booking flow',
+              'Add a logic split after the greeting node',
+              'Add call transfer to +1234567890 when the user asks for support',
+            ].map((suggestion) => (
+              <button
+                key={suggestion}
+                onClick={() => { setInput(suggestion); setTimeout(() => inputRef.current?.focus(), 0) }}
+                className="w-full text-left px-3 py-2 rounded-lg text-xs text-muted-foreground bg-muted/50 hover:bg-muted transition-colors"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {messages.map((msg, i) => (
+          <div key={`${msg.role}-${i}`} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            {msg.role === 'assistant' && (
+              <div className="w-7 h-7 rounded-md bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center shrink-0 mt-0.5">
+                <Sparkles className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
+              </div>
+            )}
+            <div
+              className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed ${
+                msg.role === 'user'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-muted text-foreground'
+              }`}
+            >
+              {msg.role === 'assistant' ? (
+                <AssistantMessage
+                  content={msg.content}
+                  streaming={isStreaming && i === messages.length - 1}
+                  applyStatus={msg.applyStatus}
+                  applyError={msg.applyError}
+                  applyNodeCount={msg.applyNodeCount}
+                  applyWarnings={msg.applyWarnings}
+                />
+              ) : (
+                <span className="whitespace-pre-wrap">{msg.content}</span>
+              )}
+            </div>
+            {msg.role === 'user' && (
+              <div className="w-7 h-7 rounded-md bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
+                <User className="w-3.5 h-3.5 text-primary" />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="shrink-0 border-t border-border/60 p-3">
+        <div className="relative rounded-2xl border border-border bg-card focus-within:border-violet-400 dark:focus-within:border-violet-500 transition-colors">
           <textarea
             ref={inputRef}
             value={input}
@@ -523,12 +448,12 @@ export function WorkflowChat({
             onKeyDown={handleKeyDown}
             placeholder="Describe what to build or change…"
             rows={1}
-            className="w-full bg-transparent text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 resize-none outline-none max-h-[160px] leading-relaxed pl-4 pr-11 pt-3.5 pb-3.5"
+            className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground resize-none outline-none max-h-[160px] leading-relaxed pl-4 pr-11 pt-3.5 pb-3.5"
             style={{ minHeight: '52px' }}
           />
           <Button
             size="icon"
-            className="absolute right-2.5 bottom-2.5 h-8 w-8 rounded-full bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-40 disabled:bg-gray-300 dark:disabled:bg-gray-700"
+            className="absolute right-2.5 bottom-2.5 h-8 w-8 rounded-full bg-violet-600 hover:bg-violet-700 text-white disabled:opacity-40 disabled:bg-muted-foreground/30"
             onClick={() => handleSend()}
             disabled={!input.trim() || isStreaming}
           >
@@ -536,7 +461,7 @@ export function WorkflowChat({
           </Button>
         </div>
       </div>
-    </>
+    </div>
   )
 }
 
@@ -576,9 +501,9 @@ function AssistantMessage({
   if (!content && streaming) {
     return (
       <span className="inline-flex gap-1 py-1">
-        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+        <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+        <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+        <span className="w-1.5 h-1.5 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
       </span>
     )
   }
@@ -620,7 +545,7 @@ function AssistantMessage({
         )
       )}
       {streaming && hasOpenJsonBlock && (
-        <div className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-medium">
+        <div className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-primary/10 text-primary text-[11px] font-medium">
           <Loader2 className="w-3 h-3 animate-spin" />
           Generating workflow...
         </div>
@@ -653,7 +578,7 @@ function AssistantMessageJsonPart({
 }>) {
   if (streaming) {
     return (
-      <div className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-[10px] font-medium">
+      <div className="flex items-center gap-1.5 py-1 px-2 rounded-md bg-primary/10  text-primary  text-[11px] font-medium">
         <Loader2 className="w-3 h-3 animate-spin" />
         Parsing workflow...
       </div>
@@ -661,8 +586,7 @@ function AssistantMessageJsonPart({
   }
   if (applyStatus === 'error') {
     return (
-      <div className="flex items-start gap-1.5 py-1 px-2 rounded-md bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-[10px] font-medium">
-        <span>⚠</span>
+      <div className="flex items-start gap-1.5 py-1 px-2 rounded-md bg-destructive/10  text-destructive  text-[11px] font-medium">
         <span>Failed to apply: {applyError || 'invalid workflow JSON'}</span>
       </div>
     )
@@ -674,10 +598,10 @@ function AssistantMessageJsonPart({
   return (
     <div className="space-y-1">
       <div
-        className={`flex items-center gap-1.5 py-1 px-2 rounded-md text-[10px] font-medium ${
+        className={`flex items-center gap-1.5 py-1 px-2 rounded-md text-[11px] font-medium ${
           isSuspiciouslySmall
-            ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400'
-            : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
+            ? 'bg-warning/10 text-warning'
+            : 'bg-success/10 text-success'
         }`}
       >
         <Sparkles className="w-3 h-3" />
@@ -686,13 +610,13 @@ function AssistantMessageJsonPart({
       </div>
       {/* Same lint the canvas warning badge runs — shown here too since the
           whole point of chat-only building is never opening the canvas. */}
-      {applyWarnings && applyWarnings.length > 0 && (
-        <div className="py-1 px-2 rounded-md bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-[10px]">
+     {applyWarnings && applyWarnings.length > 0 && (
+        <div className="py-1 px-2 rounded-md bg-warning/10 text-warning text-[11px]">
           <p className="font-medium mb-0.5">
-            ⚠ {applyWarnings.length} warning{applyWarnings.length === 1 ? '' : 's'}:
+            {applyWarnings.length} warning{applyWarnings.length === 1 ? '' : 's'}:
           </p>
           <ul className="list-disc pl-3.5 space-y-0.5">
-            {applyWarnings.map((w) => (
+           {applyWarnings.map((w) => (
               <li key={w}>{w}</li>
             ))}
           </ul>

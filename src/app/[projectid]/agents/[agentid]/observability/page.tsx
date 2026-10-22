@@ -1,42 +1,61 @@
 // src/app/agents/[agentId]/observability/page.tsx
 "use client"
 
+import { acefoneCallIdOf, openAcefoneRecording } from '@/lib/acefoneRecording'
 import { ArrowLeft, Badge, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useParams, useRouter } from "next/navigation"
+import { useUser } from "@clerk/nextjs"
 import TracesTable from "@/components/observabilty/TracesTable"
 import { useState, use } from "react"
 import { extractS3Key } from "@/utils/s3"
 import AudioPlayer from "@/components/AudioPlayer"
 import { FilterOperator, useSupabaseQuery } from "@/hooks/useSupabase"
+import { useProjectRole } from "@/hooks/useProjectRole"
+import { isViewerRole } from "@/utils/callLogsUtils"
 import ObservabilityStats from "@/components/observabilty/ObservabilityStats"
 
 interface ObservabilityPageProps {
   params: Promise<{ agentid: string }>
-  searchParams?: Promise<{ session_id?: string }>
+  // `t` is seconds into the recording — QA links here with the moment an
+  // issue happened, so nobody has to scrub for it.
+  searchParams?: Promise<{ session_id?: string; t?: string }>
 }
 
 export default function ObservabilityPage({ params, searchParams }: ObservabilityPageProps) {
   const router = useRouter()
   const resolvedParams = use(params)
-  const resolvedSearchParams = use(searchParams || Promise.resolve({} as { session_id?: string }))
+  const resolvedSearchParams = use(searchParams || Promise.resolve({} as { session_id?: string; t?: string }))
   const sessionId = resolvedSearchParams?.session_id
 
+  // Ignore anything that is not a sane positive number — a bad param should do
+  // nothing, not drop the listener somewhere random in the call.
+  const seekTo = (() => {
+    const raw = Number(resolvedSearchParams?.t)
+    return Number.isFinite(raw) && raw > 0 && raw < 24 * 3600 ? raw : undefined
+  })()
+
   const { projectid } = useParams()
-  
+  const projectId = Array.isArray(projectid) ? projectid[0] : projectid
+
+  const { user } = useUser()
+  const currentUserEmail = user?.emailAddresses?.[0]?.emailAddress ?? null
+  const { role } = useProjectRole(projectId)
+  const canDeleteAnyFlag = role !== null && !isViewerRole(role)
+
   const [filters, setFilters] = useState({
     search: "",
     status: "all",
     timeRange: "24h"
   })
 
-  const queryFilters: Array<{ column: string; operator: FilterOperator; value: string }> = sessionId 
+  const queryFilters: Array<{ column: string; operator: FilterOperator; value: string }> = sessionId
     ? [{ column: "id", operator: "eq", value: sessionId }]
     : [{ column: "agent_id", operator: "eq", value: resolvedParams.agentid }]
 
 
-  const { data: callData, isLoading: callLoading, error: callError } = useSupabaseQuery("pype_voice_call_logs", {
-    select: "id, call_id, agent_id, recording_url, customer_number, call_started_at, call_ended_reason, duration_seconds, metadata",
+  const { data: callData, isLoading: callLoading, error: callError, refetch: refetchCall } = useSupabaseQuery("pype_voice_call_logs", {
+    select: "id, call_id, agent_id, recording_url, customer_number, call_started_at, call_ended_reason, duration_seconds, metadata, transcription_metrics",
     filters: queryFilters,
     orderBy: { column: "created_at", ascending: false },
     limit: 1,
@@ -56,51 +75,27 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
   const recordingUrl = callData && callData.length > 0 ? callData[0].recording_url : null
   const callInfo = callData && callData.length > 0 ? callData[0] : null
 
-  // Telephony (Acefone) recording — shown only when the call metadata carries
-  // an acefone call id. The token is resolved server-side by the proxy route.
-  const callMeta = callInfo?.metadata
-  const acefoneCallId = callMeta?.acefone_call_id
-    || (callMeta?.provider === 'acefone' ? (callMeta?.callId || callMeta?.callid || callMeta?.call_id) : null)
-
-  // The console recording link needs a per-recording token from Acefone's CDR
-  // API — resolved fresh on click via our proxy.
-  const openTelephonyRecording = async () => {
-    // Open the tab synchronously so popup blockers don't eat it, then navigate.
-    const win = window.open('', '_blank')
-    try {
-      const res = await fetch('/api/acefone-recording', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ callId: acefoneCallId, agentId: resolvedParams.agentid }),
-      })
-      const d = res.ok ? await res.json() : null
-      if (d?.recordingUrl && win) {
-        win.location.href = d.recordingUrl
-      } else {
-        win?.close()
-        alert('Telephony recording not found for this call')
-      }
-    } catch {
-      win?.close()
-      alert('Failed to fetch telephony recording')
-    }
+  // Telephony (Acefone) recording — shown only when the call metadata carries an acefone call id.
+  const acefoneCallId = acefoneCallIdOf(callInfo?.metadata)
+  const openTelephonyRecording = () => {
+    if (acefoneCallId) void openAcefoneRecording(acefoneCallId, resolvedParams.agentid)
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex flex-col h-screen bg-muted/50">
       
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+      <div className="px-6 py-4 border-border bg-card border-b shadow-sm">
         <div className="px-4 py-2">
           <div className="flex items-center gap-2">
             <button
               onClick={() => router.back()}
-              className="w-7 h-7 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-all duration-200"
+              className="w-7 h-7 flex items-center justify-center text-muted-foreground hover:text-muted-foreground hover:bg-muted/50 rounded-lg transition-all duration-200"
             >
               <ArrowLeft className="h-4 w-4" />
             </button>
             
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 tracking-tight">
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">
                 Observability
               </h1>
             </div>
@@ -110,22 +105,23 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
 
       {/* Audio Player - show if we have a recording URL */}
       {recordingUrl && !callLoading && (
-        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
-          <h3 className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Call Recording</h3>
+        <div className="px-4 py-2 border-b border-border bg-muted/50">
+          <h3 className="text-xs font-medium text-muted-foreground mb-2">Call Recording</h3>
           <AudioPlayer
             s3Key={extractS3Key(recordingUrl)}
             url={recordingUrl}
             callId={callInfo?.id}
+            segmentStartTime={seekTo}
           />
         </div>
       )}
 
       {/* Telephony (Acefone) recording — opens the Acefone console recording link */}
       {acefoneCallId && !callLoading && (
-        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
+        <div className="px-4 py-2 border-b border-border bg-muted/50">
           <button
             onClick={openTelephonyRecording}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
           >
             <ExternalLink className="h-3.5 w-3.5" />
             Listen to telephony recording
@@ -142,8 +138,8 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
       /> */}
 
       {agentLoading ? (
-        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
-          <div className="animate-pulse text-xs text-gray-600 dark:text-gray-400">Loading agent data...</div>
+        <div className="px-4 py-2 border-b border-border bg-muted/50">
+          <div className="animate-pulse text-xs text-muted-foreground">Loading agent data...</div>
         </div>
       ) : (
         <ObservabilityStats
@@ -151,6 +147,12 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
           agentId={resolvedParams.agentid}
           callData={callData}
           agent={agent}
+          callId={callInfo?.id}
+          initialFlag={callInfo?.transcription_metrics?.flag}
+          currentUserId={user?.id ?? null}
+          currentUserEmail={currentUserEmail}
+          canDeleteAnyFlag={canDeleteAnyFlag}
+          onFlagUpdated={() => refetchCall()}
         />
       )}
 
@@ -158,7 +160,7 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
       <div className="flex-1 min-h-0 overflow-auto">
         <TracesTable
           agentId={resolvedParams.agentid}
-          projectId={Array.isArray(projectid) ? projectid[0] : projectid}
+          projectId={projectId}
           sessionId={sessionId}
           agent={agent}
           filters={filters}

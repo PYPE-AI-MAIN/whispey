@@ -4,7 +4,8 @@ import {
   SignedIn,
   SignedOut,
 } from '@clerk/nextjs'
-import { Geist, Geist_Mono, Poppins } from 'next/font/google'
+import { Geist, Geist_Mono, Plus_Jakarta_Sans } from 'next/font/google'
+import localFont from 'next/font/local'
 import { ThemeProvider } from 'next-themes'
 import Script from 'next/script'
 import { Toaster } from 'react-hot-toast' // ADD THIS LINE
@@ -23,15 +24,23 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 })
 
-const brandFont = Poppins({
-  variable: '--font-brand',
-  weight: ['700', '800'],
+// Pype's brand type: Plus Jakarta Sans for headings, Satoshi for text (the same pair as pypeai.com).
+const jakarta = Plus_Jakarta_Sans({
+  variable: '--font-jakarta',
+  weight: ['500', '600', '700', '800'],
   subsets: ['latin'],
 })
 
+const satoshi = localFont({
+  src: './fonts/Satoshi-Variable.woff2',
+  variable: '--font-satoshi',
+  weight: '300 900',
+  display: 'swap',
+})
+
 export const metadata: Metadata = {
-  title: 'Whispey - OSS LiveKit observability platform',
-  description: 'An observability platform for all your agents built on LiveKit.',
+  title: 'Whispey by Pype AI',
+  description: "Pype AI's workspace for building voice agents and reviewing every patient call.",
   icons: {
     icon: [
       { url: '/favicon.ico' },
@@ -50,13 +59,13 @@ export default function RootLayout({
     <ClerkProvider
       appearance={{
         variables: {
-          colorPrimary: "#2563eb",
+          colorPrimary: "#4b0082",
         }
       }}
     >
       <html lang="en" suppressHydrationWarning>
         <body
-          className={`${geistSans.variable} ${geistMono.variable} ${brandFont.variable} antialiased`}
+          className={`${geistSans.variable} ${geistMono.variable} ${jakarta.variable} ${satoshi.variable} antialiased`}
         >
           {/* Sonic Linker AI Traffic Monitoring - Only loads if org ID is provided */}
           {sonicLinkerOrgId && (
@@ -69,8 +78,8 @@ export default function RootLayout({
 
           <ThemeProvider
             attribute="class"
-            defaultTheme="system"
-            enableSystem
+            defaultTheme="light"
+            enableSystem={false}
             disableTransitionOnChange
           >
             <QueryProvider>

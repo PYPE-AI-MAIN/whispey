@@ -74,12 +74,18 @@ export interface SipCode {
   code: string
   label: string
   description: string
-  // Frontend-only picker gate — does NOT affect what the Yup schema or the
-  // schedule API route accept (VALID_SIP_ERROR_CODE_VALUES is intentionally
-  // left unfiltered). Temporary: while we RCA the retry-count/backoff-order
-  // issues seen with the full 9-code set, the picker only lets a user select
-  // the pre-existing 480/486; the rest render disabled as "Coming soon" so
-  // the groups/UI don't need rebuilding once codes are re-enabled.
+  // Picker gate AND validation gate: a disabled code renders as "Coming soon"
+  // and is stripped from VALID_SIP_ERROR_CODE_VALUES, so the Yup schema and the
+  // schedule API route reject it too — it cannot be sent even by direct API
+  // call. All nine codes are currently enabled; the flag stays so a code can be
+  // pulled quickly if one turns out to be a bad retry candidate.
+  //
+  // History worth keeping: 408 was disabled here pending RCA of
+  // "retry-count/backoff-order" issues. That RCA found two backend bugs — the
+  // scheduler resolved retryConfig by first find() match, so an auto-injected
+  // 408 default shadowed the user's own rule, and the analytics lambda ignored
+  // backoffMinutes entirely. Both are fixed. Disabling 408 had in fact
+  // GUARANTEED the shadowing, since no campaign could ever include 408.
   enabled: boolean
 }
 
@@ -147,8 +153,7 @@ export const VALID_SIP_ERROR_CODES: SipCode[] = SIP_CODE_GROUPS.flatMap(g => g.c
 // Only enabled codes — this is what the Yup schema and schedule/route.ts's
 // backend validator actually accept. Filtered (not the full list above) so a
 // disabled code is rejected even via a direct API call, not just blocked in
-// the picker UI. Temporary, pending RCA on the retry-count/backoff-order
-// issue seen with the full 9-code set (see sip-codes.data.json comments).
+// the picker UI. See SipCode.enabled for why 408 was gated and why it isn't.
 export const VALID_SIP_ERROR_CODE_VALUES = VALID_SIP_ERROR_CODES.filter(c => c.enabled).map(c => c.code)
 
 // Retry Configuration

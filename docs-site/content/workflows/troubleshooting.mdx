@@ -1,0 +1,66 @@
+---
+title: Troubleshooting
+description: Common problems with workflow agents and what to do about each.
+---
+
+## The agent stays on one step and does not move on
+
+Open that step and check how it leaves.
+
+- If it only has a **Next step** connection, the call moves on once the caller has replied. If it does not, make sure the step has a way forward, and that the instructions do not tell the agent to keep chatting.
+- If it has **When the caller says something** connections, the description may not match what people say. Make it simpler and more specific.
+- Make sure your latest changes are deployed. A test call uses the deployed version.
+
+## The agent keeps asking for something
+
+This usually happens on a **Collect Details** step. The step moves on only when every detail marked **Needed** has a value. If a detail may not apply to every caller, untick **Needed** for it.
+
+## The problems button says "to fix"
+
+Click it for a list. Each item says what is wrong and clicking one jumps to the step. Items that say "to fix" must be solved before you can deploy. Items that say "to check" are advice.
+
+| Message | What to do |
+|---|---|
+| Nothing leads to this step | Connect an earlier step to it, or delete it. The step panel has a dropdown that does this. |
+| This step has no way forward | Say where the call goes next, or end the call after it. |
+| A connection has no description | Click it and fill in **Describe when**. |
+| A branch connection has no rule | Open the Branch step and set the rule. |
+| This still has a TODO | Replace the placeholder with a real address, number or key. |
+| The call starts at the wrong step | Use the button in the list to start with the greeting step, or open the greeting step and choose **Make this the first step**. |
+
+## The call starts in the middle of the flow
+
+The first step is wrong. Click **Go to start** to see which step has the green START label. Open the step you want and choose **Make this the first step**.
+
+## Deploy is greyed out
+
+It stays greyed out until you make a change. Edit something and it turns on.
+
+## Test call is greyed out
+
+Deploy the agent once. The test call talks to the deployed version.
+
+## The agent does not use my documents
+
+- Open **Setup**, then **Knowledge base**, and check that **Let the agent use these documents** is on.
+- Check that your documents appear in the list.
+- Deploy after turning the switch on.
+- Try a question that is clearly answered in the documents.
+
+## The webhook is not receiving calls
+
+- Check the URL is correct and the switch is on.
+- Check any headers, such as an authorization key, are right.
+- Make a short test call and look again. The webhook sends finished calls.
+
+## Version history is empty
+
+The first deploy after the feature was added creates the first version. Deploy once and check again.
+
+## A step I added is not connected
+
+New steps added with the plus button are connected automatically. Steps dragged from the left panel are not. Use the yellow box in the step panel, or drag from a step's dot to connect it.
+
+## Still stuck?
+
+Describe the problem to Pi with **Ask Pi**, or contact Pype support from the Help Center in the sidebar.

@@ -7,7 +7,7 @@ import { ChevronDown, ChevronRight, ChevronLeft, RefreshCw, Loader2, Inbox, Down
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import { useTheme } from 'next-themes'
+import { useUser } from '@clerk/nextjs'
 import type { CallLog } from '@/types/logs'
 import { createTableColumns } from './tableColumns'
 import { useCampaignGroupedLogs, CAMPAIGN_PAGE_SIZE } from '@/hooks/useCampaignGroupedLogs'
@@ -15,6 +15,13 @@ import { flattenCallLogForCSV, DownloadProgress, downloadCSV, isRowFlaggedForRol
 import type { FilterOperation } from '@/components/CallFilter'
 import Papa from 'papaparse'
 import type { Campaign } from './CampaignSelector'
+
+
+function headerTone(id: string): string {
+  if (id.startsWith('transcription-')) return "text-muted-foreground bg-muted/50"
+  if (id.startsWith('metrics-')) return "text-primary bg-blue-50/60 dark:bg-blue-900/10"
+  return "text-foreground dark:text-gray-100"
+}
 
 // ── Sub-rows for expanded contact (renders <tr> elements into parent tbody) ─
 interface ContactCallsRowsProps {
@@ -34,16 +41,13 @@ const ContactCallsRows: React.FC<ContactCallsRowsProps> = ({
     getCoreRowModel: getCoreRowModel(),
   })
 
-  const { resolvedTheme } = useTheme()
-  const subBg = resolvedTheme === 'dark' ? '#1e3a5f' : '#dbeafe'
-  const flaggedStyle: React.CSSProperties = {
-    backgroundColor: resolvedTheme === 'dark' ? 'rgba(136, 19, 55, 0.18)' : '#fff1f2',
-  }
+  const subBgClass = 'bg-primary/10'
+  const flaggedClass = 'bg-destructive/10'
 
   if (subRows.length === 0) {
     return (
       <tr>
-        <td colSpan={colCount} style={{ backgroundColor: subBg }} className="py-2 pl-14 text-sm text-muted-foreground italic border-b border-border/30">
+        <td colSpan={colCount} className={cn(subBgClass, 'py-2 pl-14 text-sm text-muted-foreground italic border-b border-border/30')}>
           No previous attempts
         </td>
       </tr>
@@ -55,10 +59,9 @@ const ContactCallsRows: React.FC<ContactCallsRowsProps> = ({
       <tr>
         <td
           colSpan={colCount}
-          style={{ backgroundColor: subBg }}
-          className="py-1 pl-4 pr-4 border-b border-blue-200 dark:border-blue-800 border-l-4 border-l-blue-500"
+          className={cn(subBgClass, 'py-1 pl-4 pr-4 border-b border-primary/30 border-l-4 border-l-blue-500')}
         >
-          <span className="pl-10 text-[11px] font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-300">
+          <span className="pl-10 text-[11px] font-semibold uppercase tracking-wide text-primary">
             {subRows.length} previous attempt{subRows.length !== 1 ? 's' : ''}
           </span>
         </td>
@@ -68,21 +71,19 @@ const ContactCallsRows: React.FC<ContactCallsRowsProps> = ({
         return (
           <tr
             key={row.id}
-            style={isFlagged ? flaggedStyle : undefined}
             className={cn(
-              'cursor-pointer border-b border-border/30 h-16 transition-colors',
-              isFlagged ? 'hover:brightness-95' : 'hover:brightness-95'
+              'cursor-pointer border-b border-border/30 h-16 transition-colors hover:brightness-95',
+              isFlagged && flaggedClass,
             )}
             onClick={() => onNavigate(row.original.id, row.original.agent_id)}
           >
-            <td style={{ backgroundColor: subBg }} className="w-12 pl-4 border-r-0 border-l-4 border-l-blue-500">
+            <td className={cn(subBgClass, 'w-12 pl-4 border-r-0 border-l-4 border-l-blue-500')}>
               <div className="ml-3 w-0.5 h-8 rounded-full bg-blue-400 dark:bg-blue-500" />
             </td>
             {row.getVisibleCells().map(cell => (
               <td
                 key={cell.id}
-                style={{ backgroundColor: subBg }}
-                className="px-4 py-1 text-sm dark:text-gray-200 border-r border-border/20 h-16"
+                className={cn(subBgClass, 'px-4 py-1 text-sm dark:text-gray-200 border-r border-border/20 h-16')}
               >
                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
               </td>
@@ -112,10 +113,8 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
   downloadDialogOpen, onDownloadDialogOpenChange,
 }) => {
   const router = useRouter()
-  const { resolvedTheme } = useTheme()
-  const flaggedRowStyle: React.CSSProperties = {
-    backgroundColor: resolvedTheme === 'dark' ? 'rgba(136, 19, 55, 0.18)' : '#fff1f2',
-  }
+  const { user } = useUser()
+  const flaggedRowClass = 'bg-destructive/10'
 
   const [expandedNumbers, setExpandedNumbers] = useState<Set<string>>(new Set())
   const [navigatingCallId, setNavigatingCallId] = useState<string | null>(null)
@@ -243,8 +242,8 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
   }, [dlRunning, dlType, campaign, agent?.id, project?.id, visibleColumns, setDialogOpen])
 
   const dataCols = useMemo(
-    () => createTableColumns(visibleColumns, { availableTags, role }),
-    [visibleColumns, availableTags, role]
+    () => createTableColumns(visibleColumns, { availableTags, role, currentUserId: user?.id ?? null, currentUserEmail: user?.emailAddresses?.[0]?.emailAddress ?? null }),
+    [visibleColumns, availableTags, role, user?.id, user?.emailAddresses]
   )
 
   const expandCol: ColumnDef<CallLog> = useMemo(() => ({
@@ -256,21 +255,22 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
       const totalAttempts = countsMap[num]
       if (!totalAttempts || totalAttempts <= 1) return null
       return (
-        <div
+        <button
+          type="button"
           onClick={(e) => { e.stopPropagation(); toggleExpand(num) }}
-          className="flex items-center justify-center gap-1 w-full h-full min-h-[80px] cursor-pointer select-none group"
+          className="appearance-none bg-transparent flex items-center justify-center gap-1 w-full h-full min-h-[80px] cursor-pointer select-none group"
         >
           {expanded
-            ? <ChevronDown className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+            ? <ChevronDown className="h-4 w-4 shrink-0 text-primary" />
             : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors" />
           }
           <span className={cn(
             'text-[10px] font-semibold leading-none transition-colors',
-            expanded ? 'text-blue-600 dark:text-blue-400' : 'text-muted-foreground group-hover:text-foreground'
+            expanded ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
           )}>
             ×{totalAttempts}
           </span>
-        </div>
+        </button>
       )
     },
     size: 52,
@@ -305,7 +305,7 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center space-y-3">
-          <p className="text-red-500 text-sm">{error}</p>
+          <p className="text-destructive text-sm">{error}</p>
           <Button variant="outline" size="sm" onClick={() => refetch()}>Retry</Button>
         </div>
       </div>
@@ -354,12 +354,8 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
                     <th
                       key={h.id}
                       className={cn(
-                        "px-4 truncate py-1.5 text-left font-semibold border-b-2 border-gray-200 dark:border-gray-800 text-sm leading-tight",
-                        h.id.startsWith('transcription-')
-                          ? "text-purple-600 dark:text-purple-400 bg-purple-50/60 dark:bg-purple-900/10"
-                          : h.id.startsWith('metrics-')
-                            ? "text-blue-600 dark:text-blue-400 bg-blue-50/60 dark:bg-blue-900/10"
-                            : "text-foreground dark:text-gray-100"
+                        "px-4 truncate py-1.5 text-left font-semibold border-b-2 border-border text-sm leading-tight",
+                        headerTone(h.id)
                       )}
                       style={{ minWidth: h.column.columnDef.minSize || 120, width: h.column.columnDef.size || 'auto' }}
                     >
@@ -386,35 +382,31 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
                   const isFlagged = isRowFlaggedForRole(row.original, role)
                   const isNavigating = navigatingCallId === row.original.id
                   const isExpanded = expandedNumbers.has(row.original.customer_number)
-
-                  const expandedBg = isExpanded
-                    ? (resolvedTheme === 'dark' ? '#1e3a5f' : '#dbeafe')
-                    : undefined
+                  const expandedBgClass = isExpanded ? 'bg-primary/10' : undefined
 
                   return (
                     <React.Fragment key={row.id}>
                       <tr
-                        style={isFlagged ? flaggedRowStyle : undefined}
                         className={cn(
                           'border-b border-border/50 h-20 transition-colors',
                           isNavigating && 'pointer-events-none',
                           'border-t border-t-border/40',
                           isExpanded && 'border-l-4 border-l-blue-500',
                           !isFlagged && !isExpanded && 'hover:bg-muted/30 dark:hover:bg-gray-800/50',
-                          isFlagged && 'hover:brightness-95',
+                          isFlagged && cn(flaggedRowClass, 'hover:brightness-95'),
                         )}
                       >
                         {row.getVisibleCells().map((cell, cellIndex) => (
                           <td
                             key={cell.id}
                             onClick={cellIndex === 0 ? undefined : () => handleNavigate(row.original.id, row.original.agent_id)}
-                            style={expandedBg ? { backgroundColor: expandedBg } : undefined}
                             className={cn(
                               'px-4 py-1 text-sm dark:text-gray-100 leading-tight h-20',
                               cellIndex > 0 && 'cursor-pointer border-l border-border/20',
                               rowIndex === 0 && 'border-t-0',
-                              !expandedBg && cell.column.id.startsWith('transcription-') && 'dark:bg-purple-900/10',
-                              !expandedBg && cell.column.id.startsWith('metrics-') && 'dark:bg-blue-900/10',
+                              expandedBgClass,
+                              !expandedBgClass && cell.column.id.startsWith('transcription-') && 'dark:bg-gray-800/40',
+                              !expandedBgClass && cell.column.id.startsWith('metrics-') && 'dark:bg-blue-900/10',
                             )}
                           >
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -433,7 +425,7 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
                       )}
                       {isExpanded && rowIndex < rows.length - 1 && (
                         <tr>
-                          <td colSpan={colCount} className="h-2 p-0" style={{ backgroundColor: resolvedTheme === 'dark' ? '#111827' : '#ffffff' }} />
+                          <td colSpan={colCount} className="h-2 p-0 bg-background dark:bg-gray-900" />
                         </tr>
                       )}
                     </React.Fragment>
@@ -446,7 +438,7 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
       </div>
 
       {/* Pagination bar */}
-      <div className="flex-none flex items-center justify-between px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-background/95 dark:bg-gray-900/95">
+      <div className="flex-none flex items-center justify-between px-4 py-2 border-t border-border bg-background/95 dark:bg-gray-900/95">
         <span className="text-sm text-muted-foreground min-w-[100px]">
           {rows.length > 0 ? `${pageStart}–${pageEnd}` : '—'}
         </span>
@@ -482,7 +474,7 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
             <button
               onClick={() => setDlType('last')}
               className={cn(
-                'w-full text-left rounded-lg border p-4 transition-colors',
+                'w-full text-left rounded-xl border p-4 transition-colors',
                 dlType === 'last'
                   ? 'border-primary bg-muted'
                   : 'border-border hover:bg-muted/40'
@@ -497,7 +489,7 @@ const CampaignCallLogs: React.FC<CampaignCallLogsProps> = ({
             <button
               onClick={() => setDlType('all')}
               className={cn(
-                'w-full text-left rounded-lg border p-4 transition-colors',
+                'w-full text-left rounded-xl border p-4 transition-colors',
                 dlType === 'all'
                   ? 'border-primary bg-muted'
                   : 'border-border hover:bg-muted/40'

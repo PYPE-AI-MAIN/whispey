@@ -14,50 +14,49 @@ function NodeSelector({ pipelineStages, setSelectedNode, selectedNode }: any) {
             className={cn(
               "w-full p-3 rounded-lg border text-left transition-all hover:shadow-sm",
               selectedNode === stage.id
-                ? "border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 shadow-sm"
-                : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600",
+                ? "border-blue-500 dark:border-blue-400 bg-primary/10 shadow-sm"
+                : "border-border bg-card hover:border-border",
             )}
           >
             <div className="flex items-center gap-3">
-              <div
-                className={cn(
-                  "w-8 h-8 rounded-lg flex items-center justify-center border",
-                  `bg-${stage.color}-50 dark:bg-${stage.color}-900/20 border-${stage.color}-200 dark:border-${stage.color}-800 text-${stage.color}-600 dark:text-${stage.color}-400`,
-                )}
-              >
+              {/* Neutral, not per-stage colored — the icon shape (and this stage's
+                  own name label) already says which stage this is; the old
+                  bg-${stage.color}-50-style classes were also dynamically built,
+                  which Tailwind can't reliably pick up for its production CSS. */}
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center border bg-muted border-border text-muted-foreground">
                 {stage.icon}
               </div>
               <div className="flex-1">
-                <div className="font-medium text-sm flex items-center gap-2 text-gray-900 dark:text-gray-100">
+                <div className="font-medium text-sm flex items-center gap-2 text-foreground">
                   {stage.name}
                   {stage.tools && stage.tools.length > 0 && (
                     <div className="flex items-center gap-1">
-                      <Wrench className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-                      <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">{stage.tools.length}</span>
+                      <Wrench className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground font-medium">{stage.tools.length}</span>
                     </div>
                   )}
                   {stage.llmRequests && stage.llmRequests.length > 0 && (
                     <div className="flex items-center gap-1">
-                      <MessageSquare className="w-3 h-3 text-purple-600 dark:text-purple-400" />
-                      <span className="text-xs text-purple-600 dark:text-purple-400 font-medium">{stage.llmRequests.length}</span>
+                      <MessageSquare className="w-3 h-3 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground font-medium">{stage.llmRequests.length}</span>
                     </div>
                   )}
                   {stage.fallbackFailureCount > 0 && (
                     <div className="flex items-center gap-1">
-                      <AlertTriangle className="w-3 h-3 text-red-600 dark:text-red-400" />
-                      <span className="text-xs text-red-600 dark:text-red-400 font-medium">{stage.fallbackFailureCount}</span>
+                      <AlertTriangle className="w-3 h-3 text-destructive" />
+                      <span className="text-xs text-destructive font-medium">{stage.fallbackFailureCount}</span>
                     </div>
                   )}
                 </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  {stage.status === "success" && <span className="text-green-600 dark:text-green-400">✓ Completed</span>}
-                  {stage.status === "missing" && <span className="text-gray-500 dark:text-gray-400">No data</span>}
-                  {stage.status === "active" && <span className="text-orange-600 dark:text-orange-400">● Active</span>}
+                <div className="text-xs text-muted-foreground">
+                  {stage.status === "success" && <span className="text-success">✓ Completed</span>}
+                  {stage.status === "missing" && <span className="text-muted-foreground">No data</span>}
+                  {stage.status === "active" && <span className="text-warning">● Active</span>}
                 </div>
               </div>
               {stage.metrics && (
                 <div className="text-right">
-                  <div className="text-xs font-mono text-gray-600 dark:text-gray-400">
+                  <div className="text-xs font-mono text-muted-foreground">
                     {stage.id === "eou" && `${stage.metrics.end_of_utterance_delay?.toFixed(2)}s`}
                     {stage.id === "stt" && `${stage.metrics.duration?.toFixed(2)}s`}
                     {stage.id === "llm" && `${stage.metrics.ttft?.toFixed(2)}s`}

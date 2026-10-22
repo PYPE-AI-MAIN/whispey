@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useCallback } from 'react'
-import { diffLines } from 'diff'
+import { PromptDiffViewer } from '@/components/shared/TextDiffViewer'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -112,73 +112,6 @@ async function copyText(text: string): Promise<boolean> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Diff utilities
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface DiffLine {
-  type: 'added' | 'removed' | 'unchanged' | 'separator'
-  content: string
-  lineOld?: number
-  lineNew?: number
-  separatorCount?: number
-}
-
-function buildDiffLines(oldText: string, newText: string, context = 4): DiffLine[] {
-  const changes = diffLines(oldText || '', newText || '')
-
-  const expanded: DiffLine[] = []
-  let lineOld = 1, lineNew = 1
-
-  for (const change of changes) {
-    const raw = change.value
-    const lines = raw.endsWith('\n') ? raw.slice(0, -1).split('\n') : raw.split('\n')
-
-    for (const line of lines) {
-      if (change.removed) {
-        expanded.push({ type: 'removed', content: line, lineOld })
-        lineOld++
-      } else if (change.added) {
-        expanded.push({ type: 'added', content: line, lineNew })
-        lineNew++
-      } else {
-        expanded.push({ type: 'unchanged', content: line, lineOld, lineNew })
-        lineOld++
-        lineNew++
-      }
-    }
-  }
-
-  const show = new Set<number>()
-  expanded.forEach((l, i) => {
-    if (l.type !== 'unchanged') {
-      for (let k = Math.max(0, i - context); k <= Math.min(expanded.length - 1, i + context); k++) {
-        show.add(k)
-      }
-    }
-  })
-
-  if (show.size === 0) return []
-
-  const result: DiffLine[] = []
-  let skipped = 0
-
-  expanded.forEach((line, i) => {
-    if (show.has(i)) {
-      if (skipped > 0) {
-        result.push({ type: 'separator', content: '', separatorCount: skipped })
-        skipped = 0
-      }
-      result.push(line)
-    } else {
-      skipped++
-    }
-  })
-  if (skipped > 0) result.push({ type: 'separator', content: '', separatorCount: skipped })
-
-  return result
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Config diff helper
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -190,88 +123,10 @@ const CONFIG_DIFF_SKIP = new Set([
 function configForDiff(assistant: any): string {
   if (!assistant || typeof assistant !== 'object') return '{}'
   const filtered: Record<string, any> = {}
-  for (const k of Object.keys(assistant).sort()) {
+  for (const k of Object.keys(assistant).sort((a, b) => a.localeCompare(b))) {
     if (!CONFIG_DIFF_SKIP.has(k)) filtered[k] = assistant[k]
   }
   return JSON.stringify(filtered, null, 2)
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Diff viewer
-// ─────────────────────────────────────────────────────────────────────────────
-
-function PromptDiffViewer({
-  oldText,
-  newText,
-  emptyMessage = 'No changes',
-}: {
-  oldText: string
-  newText: string
-  emptyMessage?: string
-}) {
-  const lines = buildDiffLines(oldText, newText)
-
-  if (lines.length === 0) {
-    return (
-      <div className="flex items-center justify-center py-5 rounded-lg border border-dashed text-xs text-muted-foreground">
-        {emptyMessage}
-      </div>
-    )
-  }
-
-  return (
-    <div className="rounded-lg border overflow-hidden font-mono text-xs leading-5">
-      {lines.map((line, i) => {
-        if (line.type === 'separator') {
-          return (
-            <div
-              key={i}
-              className="flex items-center gap-2 px-3 py-1 bg-muted/50 border-y text-muted-foreground select-none text-xs"
-            >
-              <span>···</span>
-              <span>{line.separatorCount} unchanged line{line.separatorCount !== 1 ? 's' : ''}</span>
-            </div>
-          )
-        }
-
-        const isAdded   = line.type === 'added'
-        const isRemoved = line.type === 'removed'
-
-        const rowBg = isAdded
-          ? 'bg-green-500/10'
-          : isRemoved
-            ? 'bg-red-500/10'
-            : ''
-
-        const gutterBg = isAdded
-          ? 'bg-green-500/15'
-          : isRemoved
-            ? 'bg-red-500/15'
-            : 'bg-muted/30'
-
-        return (
-          <div key={i} className={`flex min-h-[20px] ${rowBg}`}>
-            <span className={`w-10 text-right pr-1.5 py-px select-none text-[11px] shrink-0 border-r border-border/50 text-muted-foreground/60 ${gutterBg}`}>
-              {isAdded ? '' : (line.lineOld ?? '')}
-            </span>
-            <span className={`w-10 text-right pr-1.5 py-px select-none text-[11px] shrink-0 border-r border-border/50 text-muted-foreground/60 ${gutterBg}`}>
-              {isRemoved ? '' : (line.lineNew ?? '')}
-            </span>
-            <span className={`w-6 text-center py-px select-none shrink-0 font-semibold text-xs ${
-              isAdded   ? 'text-green-500' :
-              isRemoved ? 'text-red-500'   :
-              'text-transparent'
-            }`}>
-              {isAdded ? '+' : isRemoved ? '−' : ' '}
-            </span>
-            <span className="flex-1 pl-1 pr-3 py-px whitespace-pre-wrap break-all text-foreground">
-              {line.content || '\u00A0'}
-            </span>
-          </div>
-        )
-      })}
-    </div>
-  )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -328,13 +183,13 @@ function DiffDialog({
 
               <div className="flex items-center gap-2 shrink-0">
                 {promptChanged && (
-                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] bg-amber-500/15 text-amber-600 border border-amber-500/30 px-2 py-0.5 rounded-full font-medium">
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] bg-amber-500/15 text-warning border border-amber-500/30 px-2 py-0.5 rounded-full font-medium">
                     <FileText className="w-2.5 h-2.5" />
                     Prompt
                   </span>
                 )}
                 {configChanged && (
-                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] bg-blue-500/15 text-blue-600 border border-blue-500/30 px-2 py-0.5 rounded-full font-medium">
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] bg-blue-500/15 text-primary border border-blue-500/30 px-2 py-0.5 rounded-full font-medium">
                     <Cpu className="w-2.5 h-2.5" />
                     Settings
                   </span>
@@ -397,7 +252,7 @@ function SectionCard({ title, icon: Icon, children }: { title: string; icon: any
     <div className="border rounded-lg overflow-hidden">
       <div className="flex items-center gap-1.5 px-3 py-2 bg-muted/40 border-b">
         <Icon className="w-3 h-3 text-muted-foreground" />
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</span>
+        <span className="text-[10px] font-semibold text-muted-foreground">{title}</span>
       </div>
       <div className="px-3 py-2.5 space-y-2">{children}</div>
     </div>
@@ -452,7 +307,7 @@ function ConfigDetailView({
           <div className="flex items-center gap-2">
             <p className="text-xs font-semibold">Version #{entry.version_number}</p>
             {isPipecat && (
-              <span className="text-[10px] px-1.5 py-0.5 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded font-medium">
+              <span className="text-[10px] px-1.5 py-0.5 bg-warning/15 text-warning rounded font-medium">
                 Pipecat
               </span>
             )}
@@ -460,7 +315,7 @@ function ConfigDetailView({
           <p className="text-[10px] text-muted-foreground">{format(new Date(entry.created_at), 'MMM d, yyyy · h:mm a')}</p>
         </div>
         <Button variant="outline" size="sm" className="h-7 text-xs gap-1 shrink-0" onClick={handleCopy}>
-          {isCopied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+          {isCopied ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
           {isCopied ? 'Copied!' : 'Copy'}
         </Button>
         <Button variant="outline" size="sm" className="h-7 text-xs gap-1 shrink-0" onClick={() => onStartCompare(entry)}>
@@ -559,6 +414,45 @@ function ConfigDetailView({
   )
 }
 
+// The compare-mode button has two mutually exclusive shapes (start comparing vs.
+// pick this entry as the target) and a null case — pulled out of the nested
+// ternary in HistoryEntryRow's JSX into plain if/else for readability.
+function CompareButton({
+  isComparePickMode,
+  isCompareBaseline,
+  entryId,
+  onSelectForCompare,
+}: Readonly<{
+  isComparePickMode: boolean
+  isCompareBaseline: boolean
+  entryId: string
+  onSelectForCompare: (id: string) => void
+}>) {
+  if (isComparePickMode && !isCompareBaseline) {
+    return (
+      <button
+        onClick={e => { e.stopPropagation(); onSelectForCompare(entryId) }}
+        className="flex items-center gap-1 text-xs font-medium px-2 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+      >
+        <ArrowLeftRight className="w-3 h-3" />
+        Compare
+      </button>
+    )
+  }
+  if (!isCompareBaseline && !isComparePickMode) {
+    return (
+      <button
+        onClick={e => { e.stopPropagation(); onSelectForCompare(entryId) }}
+        title="Select to compare"
+        className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+      >
+        <ArrowLeftRight className="w-3.5 h-3.5" />
+      </button>
+    )
+  }
+  return null
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // History entry row
 // ─────────────────────────────────────────────────────────────────────────────
@@ -612,6 +506,9 @@ function HistoryEntryRow({
   return (
     <div
       onClick={handleRowClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleRowClick() } }}
       className={`rounded-lg border transition-all ${
         isCompareBaseline
           ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
@@ -659,9 +556,9 @@ function HistoryEntryRow({
           </div>
         </div>
 
-        <div className="shrink-0 flex items-center gap-1" onClick={e => e.stopPropagation()}>
+        <div className="shrink-0 flex items-center gap-1">
           <button
-            onClick={() => onCopy(entry.id)}
+            onClick={e => { e.stopPropagation(); onCopy(entry.id) }}
             title="Copy config JSON"
             className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors ${
               isCopied ? 'text-green-500' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
@@ -672,7 +569,7 @@ function HistoryEntryRow({
 
           {showMergeButton && entry.prompt_snapshot && (
             <button
-              onClick={() => onMerge(entry.id)}
+              onClick={e => { e.stopPropagation(); onMerge(entry.id) }}
               title="Create PR to merge to prod"
               className="flex items-center gap-1 text-xs font-medium px-2 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
@@ -682,7 +579,7 @@ function HistoryEntryRow({
           )}
           {showMergeButton && (
             <button
-              onClick={() => onRestore(entry.id, entry.version_number, entry.commit_message ?? null)}
+              onClick={e => { e.stopPropagation(); onRestore(entry.id, entry.version_number, entry.commit_message ?? null) }}
               title="Restore this version to dev agent"
               className="flex items-center gap-1 text-xs font-medium px-2 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
@@ -690,23 +587,12 @@ function HistoryEntryRow({
             </button>
           )}
 
-          {isComparePickMode && !isCompareBaseline ? (
-            <button
-              onClick={() => onSelectForCompare(entry.id)}
-              className="flex items-center gap-1 text-xs font-medium px-2 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              <ArrowLeftRight className="w-3 h-3" />
-              Compare
-            </button>
-          ) : !isCompareBaseline && !isComparePickMode ? (
-            <button
-              onClick={() => onSelectForCompare(entry.id)}
-              title="Select to compare"
-              className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <ArrowLeftRight className="w-3.5 h-3.5" />
-            </button>
-          ) : null}
+          <CompareButton
+            isComparePickMode={isComparePickMode}
+            isCompareBaseline={isCompareBaseline}
+            entryId={entry.id}
+            onSelectForCompare={onSelectForCompare}
+          />
         </div>
       </div>
     </div>
@@ -721,13 +607,13 @@ function GitHubBadge({ ok }: { ok: boolean | null }) {
   if (ok === null || ok === undefined) return null
   if (ok) {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-600 border border-green-500/20 font-medium">
+      <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/10 text-success border border-green-500/20 font-medium">
         <CheckCircle2 className="w-2.5 h-2.5" /> GitHub
       </span>
     )
   }
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/10 text-orange-600 border border-orange-500/20 font-medium">
+    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-orange-500/10 text-warning border border-orange-500/20 font-medium">
       <AlertTriangle className="w-2.5 h-2.5" /> Sync failed
     </span>
   )
@@ -1052,8 +938,8 @@ export default function ConfigHistory({ open, onClose, agentId, projectId, agent
           <div className="space-y-3 py-2">
             {restoreSuccess ? (
               <div className="flex items-center gap-2 rounded-lg bg-green-500/10 border border-green-500/20 px-3 py-2">
-                <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
-                <p className="text-xs text-green-700 dark:text-green-400 font-medium">{restoreSuccess}</p>
+                <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+                <p className="text-xs text-success font-medium">{restoreSuccess}</p>
               </div>
             ) : (
               <>
@@ -1098,9 +984,9 @@ export default function ConfigHistory({ open, onClose, agentId, projectId, agent
             {prResult ? (
               <div className="space-y-3">
                 <div className="flex items-start gap-2 rounded-lg bg-green-500/10 border border-green-500/20 px-3 py-2">
-                  <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
+                  <CheckCircle2 className="w-4 h-4 text-success shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-xs text-green-700 dark:text-green-400 font-medium">
+                    <p className="text-xs text-success font-medium">
                       PR #{prResult.number} created!
                     </p>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -1117,7 +1003,7 @@ export default function ConfigHistory({ open, onClose, agentId, projectId, agent
                     title="Copy PR link"
                     onClick={() => { navigator.clipboard.writeText(prResult.url); setCopiedPR(true); setTimeout(() => setCopiedPR(false), 2000) }}
                   >
-                    {copiedPR ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
+                    {copiedPR ? <Check className="w-3 h-3 text-success" /> : <Copy className="w-3 h-3" />}
                   </Button>
                   <Button
                     variant="outline" size="sm" className="h-8 w-8 p-0 shrink-0"

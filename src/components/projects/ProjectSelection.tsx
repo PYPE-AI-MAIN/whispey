@@ -29,6 +29,180 @@ interface ProjectSelectionProps {
   isAuthLoaded?: boolean
 }
 
+const getOrganisationInitials = (name: string) => {
+  return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)
+}
+
+const getEnvironmentColor = (environment: string) => {
+  switch (environment.toLowerCase()) {
+    case 'production':
+    case 'prod':
+      return 'bg-destructive/10 text-destructive border-destructive/30'
+    case 'development':
+    case 'dev':
+      return 'bg-primary/10 text-primary border-primary/30'
+    default:
+      return 'bg-muted/50 text-foreground border-border'
+  }
+}
+
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric', 
+    year: 'numeric' 
+  })
+}
+
+
+const filterProjects = (projects: Project[] | undefined, query: string): Project[] => {
+  const q = query.toLowerCase()
+  return (projects ?? []).filter((project) => `${project.name} ${project.description ?? ''}`.toLowerCase().includes(q))
+}
+
+const errorText = (error: unknown, fallback: string): string => (error instanceof Error ? error.message : fallback)
+
+function TokenDialog({
+  project, token, visible, copied, onToggleVisible, onCopy, onClose,
+}: Readonly<{
+  project: Project | null
+  token: string | null
+  visible: boolean
+  copied: boolean
+  onToggleVisible: () => void
+  onCopy: () => void
+  onClose: () => void
+}>) {
+  return (
+  <Dialog open={project !== null} onOpenChange={onClose}>
+    <DialogContent className="sm:max-w-[500px]">
+      <DialogHeader>
+        <DialogTitle className="text-base font-semibold">API token generated</DialogTitle>
+        <DialogDescription className="text-xs text-muted-foreground">
+          A new API token has been generated for "{project?.name}". Save this securely.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="space-y-3">
+        <div>
+          <label htmlFor="api-token" className="block text-xs font-medium text-foreground mb-1">API Token</label>
+          <div className="relative">
+            <input
+              id="api-token"
+              type={visible ? 'text' : 'password'}
+              value={token ?? ''}
+              readOnly
+              className="w-full h-8 px-2 pr-16 text-xs border border-border rounded bg-muted/50 text-foreground font-mono focus:outline-none"
+            />
+            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-0.5">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={onToggleVisible}
+                className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+              >
+                {visible ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={onCopy}
+                className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+              >
+                <Copy className="w-3 h-3" />
+              </Button>
+            </div>
+          </div>
+          {copied && (
+            <p className="text-xs text-success mt-1">Token copied to clipboard</p>
+          )}
+        </div>
+        <div className="p-3 bg-warning/10 border border-warning/30 rounded">
+          <p className="text-xs text-warning">
+            <strong>Important:</strong> Store this token securely. The previous token has been invalidated.
+          </p>
+        </div>
+        <div className="flex justify-end pt-3">
+          <Button onClick={onClose} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs">
+            Done
+          </Button>
+        </div>
+      </div>
+    </DialogContent>
+  </Dialog>
+  )
+}
+
+function ViewControls({
+  viewMode, onViewMode, density, onDensity,
+}: Readonly<{
+  viewMode: 'grid' | 'list'
+  onViewMode: (mode: 'grid' | 'list') => void
+  density: 'comfortable' | 'compact'
+  onDensity: (density: 'comfortable' | 'compact') => void
+}>) {
+  const otherDensity = density === 'comfortable' ? 'compact' : 'comfortable'
+  return (
+      <div className="flex items-center gap-3">
+        {/* Density Control - Single toggle */}
+        {viewMode === 'grid' && <button
+          onClick={() => onDensity(otherDensity)}
+          title={`Switch to ${otherDensity} view`}
+          className="flex items-center justify-center w-7 h-7 border border-border rounded bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        >
+          <ChevronsUpDown className="w-3 h-3" />
+        </button>}
+
+        {/* View Mode Control */}
+        <div className="flex items-center border border-border rounded p-0.5 bg-muted/50">
+          <Button
+            variant={viewMode === 'grid' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => onViewMode('grid')}
+            className={`w-6 h-6 p-0 text-xs ${viewMode === 'grid' ? 'bg-white dark:bg-gray-700 shadow-sm text-foreground hover:bg-card dark:hover:bg-gray-700' : 'text-gray-500 hover:text-foreground hover:bg-transparent'}`}
+          >
+            <Grid3X3 className="w-3 h-3" />
+          </Button>
+          <Button
+            variant={viewMode === 'list' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => onViewMode('list')}
+            className={`w-6 h-6 p-0 text-xs ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-foreground hover:bg-card dark:hover:bg-gray-700' : 'text-gray-500 hover:text-foreground hover:bg-transparent'}`}
+          >
+            <List className="w-3 h-3" />
+          </Button>
+        </div>
+      </div>
+  )
+}
+
+async function apiJson(url: string, init: RequestInit, failure: string) {
+  const response = await fetch(url, init)
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.error || failure)
+  }
+  return response.json()
+}
+
+async function copyText(text: string | null): Promise<boolean> {
+  if (!text) return false
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch (err) {
+    console.error('Failed to copy token:', err)
+    return false
+  }
+}
+
+function readStored<T extends string>(key: string, fallback: T): T {
+  if (globalThis.window === undefined) return fallback
+  return (localStorage.getItem(key) as T) || fallback
+}
+
 const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = false}) => {
   const [selectedProject, setSelectedProject] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -50,29 +224,17 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
   const { isMobile } = useMobile(768)
   
   // Initialize viewMode from localStorage
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('organisation-view-mode') as 'grid' | 'list') || 'grid'
-    }
-    return 'grid'
-  })
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => readStored('organization-view-mode', 'grid'))
   
   // Initialize density from localStorage
-  const [density, setDensity] = useState<'comfortable' | 'compact'>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('organisation-card-density') as 'comfortable' | 'compact') || 'comfortable'
-    }
-    return 'comfortable'
-  })
+  const [density, setDensity] = useState<'comfortable' | 'compact'>(() => readStored('organization-card-density', 'comfortable'))
   
   const router = useRouter()
 
   // Save preferences to localStorage
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('organisation-view-mode', viewMode)
-      localStorage.setItem('organisation-card-density', density)
-    }
+    localStorage.setItem('organization-view-mode', viewMode)
+    localStorage.setItem('organization-card-density', density)
   }, [viewMode, density])
 
   const fetchProjects = async () => {
@@ -84,7 +246,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
       const data = await res.json()
       setProjects(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error')
+      setError(errorText(err, 'Unknown error'))
     } finally {
       setLoading(false)
     }
@@ -117,22 +279,16 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
   const handleDeleteProject = async (project: Project) => {
     setDeletingProject(project.id)
     try {
-      const response = await fetch(`/api/projects/${project.id}`, {
+      await apiJson(`/api/projects/${project.id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-      })
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to delete organisation')
-      }
-
-      const result = await response.json()
+      }, 'Failed to delete organization')
       refetch()
       setShowDeleteConfirm(null)
     } catch (error: unknown) {
-      console.error('Error deleting organisation:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to delete organisation'
-      alert(`Failed to delete organisation: ${errorMessage}`)
+      console.error('Error deleting organization:', error)
+      const errorMessage = errorText(error, 'Failed to delete organization')
+      alert(`Failed to delete organization: ${errorMessage}`)
     } finally {
       setDeletingProject(null)
     }
@@ -141,23 +297,18 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
   const handleRegenerateToken = async (project: Project) => {
     setRegeneratingToken(project.id)
     try {
-      const response = await fetch(`/api/projects/${project.id}`, {
+      const result = await apiJson(`/api/projects/${project.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'regenerate_token' }),
-      })
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to regenerate token')
-      }
-      const result = await response.json()
+      }, 'Failed to regenerate token')
       setRegeneratedToken(result.api_token)
       setShowTokenDialog(project)
       setShowRegenerateConfirm(null)
       refetch()
     } catch (error: unknown) {
       console.error('Error regenerating token:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to regenerate token'
+      const errorMessage = errorText(error, 'Failed to regenerate token')
       alert(`Failed to regenerate token: ${errorMessage}`)
     } finally {
       setRegeneratingToken(null)
@@ -165,14 +316,9 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
   }
 
   const handleCopyToken = async () => {
-    if (regeneratedToken) {
-      try {
-        await navigator.clipboard.writeText(regeneratedToken)
-        setTokenCopied(true)
-        setTimeout(() => setTokenCopied(false), 2000)
-      } catch (err) {
-        console.error('Failed to copy token:', err)
-      }
+    if (await copyText(regeneratedToken)) {
+      setTokenCopied(true)
+      setTimeout(() => setTokenCopied(false), 2000)
     }
   }
 
@@ -183,41 +329,12 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
     setTokenCopied(false)
   }
 
-  const getOrganisationInitials = (name: string) => {
-    return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)
-  }
-
-  const getEnvironmentColor = (environment: string) => {
-    switch (environment.toLowerCase()) {
-      case 'production':
-      case 'prod':
-        return 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'
-      case 'development':
-      case 'dev':
-        return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800'
-      default:
-        return 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
-    }
-  }
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric' 
-    })
-  }
-
-  const filteredProjects = projects?.filter(project =>
-    project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (project.description && project.description.toLowerCase().includes(searchQuery.toLowerCase()))
-  ) || []
+  const filteredProjects = filterProjects(projects, searchQuery)
 
   // Comfortable Card Component (Original Style)
   const ComfortableCard = ({ project }: { project: Project }) => (
     <Card
-      className={`group bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md dark:hover:shadow-lg transition-all duration-200 cursor-pointer ${
+      className={`group bg-card  border border-border  hover:border-border  hover:shadow-md dark:hover:shadow-lg transition-all duration-200 cursor-pointer ${
         selectedProject === project.id ? 'opacity-50 scale-[0.98]' : ''
       }`}
       onClick={() => handleProjectClick(project)}
@@ -226,12 +343,12 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-xs flex-shrink-0">
+            <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/80 rounded flex items-center justify-center text-primary-foreground font-medium text-xs flex-shrink-0">
               {getOrganisationInitials(project.name)}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate">{project.name}</h3>
+                <h3 className="font-medium text-foreground text-sm truncate">{project.name}</h3>
                 <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${project.is_active ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
               </div>
               <div className="flex items-center gap-1">
@@ -242,13 +359,13 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                   {project.environment}
                 </Badge>
                 {project.token_hash && (
-                  <Badge variant="outline" className="text-xs font-normal bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 px-1.5 py-0">
+                  <Badge variant="outline" className="text-xs font-normal bg-success/10 text-success border-success/30 px-1.5 py-0">
                     <Key className="h-2 w-2 mr-0.5" />
                     API
                   </Badge>
                 )}
                 {project.agent_count !== undefined && (
-                  <Badge variant="outline" className="text-xs font-normal bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 px-1.5 py-0">
+                  <Badge variant="outline" className="text-xs font-normal bg-primary/10 text-primary border-primary/30 px-1.5 py-0">
                     {project.agent_count}
                   </Badge>
                 )}
@@ -261,7 +378,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
               <Button
                 variant="ghost"
                 size="sm"
-                className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 text-muted-foreground hover:text-muted-foreground hover:bg-muted"
                 onClick={(e) => e.stopPropagation()}
               >
                 <MoreHorizontal className="h-3 w-3" />
@@ -299,9 +416,9 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
               <DropdownMenuItem onClick={(e) => {
                 e.stopPropagation()
                 setShowDeleteConfirm(project)
-              }} className="text-xs text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400">
+              }} className="text-xs text-destructive focus:text-destructive">
                 <Trash2 className="h-3 w-3 mr-2" />
-                Delete organisation
+                Delete organization
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -309,18 +426,18 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
 
         {/* Description */}
         {project.description && (
-          <p className="text-xs text-gray-600 dark:text-gray-400 mb-4 line-clamp-2 leading-relaxed">
+          <p className="text-xs text-muted-foreground mb-4 line-clamp-2 leading-relaxed">
             {project.description}
           </p>
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
-          <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+        <div className="flex items-center justify-between pt-3 border-t border-border/60">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <Clock className="w-3 h-3" />
             <span>{formatDate(project.created_at)}</span>
           </div>
-          <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-primary transition-colors">
             <span>Open</span>
             <ChevronRight className="w-3 h-3" />
           </div>
@@ -332,7 +449,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
   // Compact Card Component (New Compact Style)
   const CompactCard = ({ project }: { project: Project }) => (
     <Card
-      className={`group bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md dark:hover:shadow-lg transition-all duration-200 cursor-pointer ${
+      className={`group bg-card  border border-border  hover:border-border  hover:shadow-md dark:hover:shadow-lg transition-all duration-200 cursor-pointer ${
         selectedProject === project.id ? 'opacity-50 scale-[0.98]' : ''
       }`}
       onClick={() => handleProjectClick(project)}
@@ -340,12 +457,12 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
       <CardContent className="p-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-xs flex-shrink-0">
+            <div className="w-7 h-7 bg-gradient-to-br from-primary to-primary/80 rounded flex items-center justify-center text-primary-foreground font-medium text-xs flex-shrink-0">
               {getOrganisationInitials(project.name)}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 mb-1">
-                <h3 className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate">{project.name}</h3>
+                <h3 className="font-medium text-foreground text-sm truncate">{project.name}</h3>
                 <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${project.is_active ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
               </div>
               <div className="flex items-center gap-1.5">
@@ -353,14 +470,14 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                   {project.environment}
                 </Badge>
                 {project.token_hash && (
-                  <Badge variant="outline" className="text-xs font-normal bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 px-1.5 py-0 h-4">
+                  <Badge variant="outline" className="text-xs font-normal bg-success/10 text-success border-success/30 px-1.5 py-0 h-4">
                     <Key className="h-2 w-2 mr-0.5" />
                     API
                   </Badge>
                 )}
-                <span className="text-xs text-gray-500 dark:text-gray-400">{project.agent_count} agents</span>
-                <span className="text-xs text-gray-400 dark:text-gray-500">•</span>
-                <span className="text-xs text-gray-400 dark:text-gray-500">{formatDate(project.created_at)}</span>
+                <span className="text-xs text-muted-foreground">{project.agent_count} agents</span>
+                <span className="text-xs text-muted-foreground">•</span>
+                <span className="text-xs text-muted-foreground">{formatDate(project.created_at)}</span>
               </div>
             </div>
           </div>
@@ -371,7 +488,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 text-muted-foreground hover:text-muted-foreground hover:bg-muted"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <MoreHorizontal className="h-3 w-3" />
@@ -409,13 +526,13 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                 <DropdownMenuItem onClick={(e) => {
                   e.stopPropagation()
                   setShowDeleteConfirm(project)
-                }} className="text-xs text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400">
+                }} className="text-xs text-destructive focus:text-destructive">
                   <Trash2 className="h-3 w-3 mr-2" />
-                  Delete organisation
+                  Delete organization
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <ChevronRight className="w-3 h-3 text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-all" />
+            <ChevronRight className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-primary transition-all" />
           </div>
         </div>
       </CardContent>
@@ -491,15 +608,15 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
 
   if (error) {
     return (
-      <div className="h-full bg-white dark:bg-gray-900 flex flex-col">
+      <div className="h-full bg-card flex flex-col">
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4 max-w-sm">
-            <div className="w-10 h-10 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto">
-              <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+            <div className="w-10 h-10 bg-destructive/10 rounded-full flex items-center justify-center mx-auto">
+              <AlertCircle className="w-5 h-5 text-destructive" />
             </div>
             <div className="space-y-1">
-              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100">Failed to load organisations</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{error}</p>
+              <h3 className="text-sm font-medium text-foreground">Failed to load organizations</h3>
+              <p className="text-xs text-muted-foreground">{error}</p>
             </div>
             <Button 
               onClick={() => window.location.reload()} 
@@ -515,20 +632,20 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
   }
 
   return (
-    <div className="h-full bg-white dark:bg-gray-900 flex flex-col">
+    <div className="h-full bg-card flex flex-col">
       <div className="max-w-7xl mx-auto px-6 py-6 w-full">
         {/* Fixed Header */}
         <div className="mb-6 flex-shrink-0">
           <div className="flex items-center justify-between mb-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Organisations</h1>
-                <Badge variant="outline" className="text-xs text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700">
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground">Organizations</h1>
+                <Badge variant="outline" className="text-xs text-muted-foreground border-border">
                   {projects.length}
                 </Badge>
               </div>
-             {!isMobile && <p className="text-xs text-gray-600 dark:text-gray-400">
-                Organize agents by team. Each organisation provides isolated access and analytics.
+             {!isMobile && <p className="text-xs text-muted-foreground">
+                Organize agents by team. Each organization provides isolated access and analytics.
               </p>}
             </div>
             <Button 
@@ -537,7 +654,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
               className={`bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs h-8 ${isMobile ? 'px-3 py-0' : 'px-3 py-1.5'}`}
             >
               <Plus className={`w-3 h-3 ${isMobile ? '' : 'mr-1.5'}`} />
-              {isMobile ? '' : 'New Organisation'}
+              {isMobile ? '' : 'New Organization'}
             </Button>
           </div>
 
@@ -545,47 +662,23 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+                <Search className="absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="search"
-                  placeholder="Search organisations..."
+                  placeholder="Search organizations..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className={`${isMobile ? 'w-full' : 'w-64'} pl-7 pr-3 py-1.5 text-xs border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 focus:outline-none transition-all focus:bg-white dark:focus:bg-gray-700`}
+                  className={`${isMobile ? 'w-full' : 'w-64'} pl-7 pr-3 py-1.5 text-xs border border-border rounded bg-muted/50 text-foreground placeholder:text-muted-foreground focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 focus:outline-none transition-all focus:bg-card`}
                 />
               </div>
             </div>
             
-            <div className="flex items-center gap-3">
-              {/* Density Control - Single toggle */}
-              {viewMode === 'grid' && <button
-                onClick={() => setDensity(density === 'comfortable' ? 'compact' : 'comfortable')}
-                title={`Switch to ${density === 'comfortable' ? 'compact' : 'comfortable'} view`}
-                className="flex items-center justify-center w-7 h-7 border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              >
-                <ChevronsUpDown className="w-3 h-3" />
-              </button>}
-
-              {/* View Mode Control */}
-              <div className="flex items-center border border-gray-200 dark:border-gray-700 rounded p-0.5 bg-gray-50 dark:bg-gray-800">
-                <Button
-                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('grid')}
-                  className={`w-6 h-6 p-0 text-xs ${viewMode === 'grid' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100 hover:bg-white dark:hover:bg-gray-700' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-transparent'}`}
-                >
-                  <Grid3X3 className="w-3 h-3" />
-                </Button>
-                <Button
-                  variant={viewMode === 'list' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('list')}
-                  className={`w-6 h-6 p-0 text-xs ${viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-gray-900 dark:text-gray-100 hover:bg-white dark:hover:bg-gray-700' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-transparent'}`}
-                >
-                  <List className="w-3 h-3" />
-                </Button>
-              </div>
-            </div>
+            <ViewControls
+              viewMode={viewMode}
+              onViewMode={setViewMode}
+              density={density}
+              onDensity={setDensity}
+            />
           </div>
         </div>
       </div>
@@ -596,11 +689,11 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
           {/* Content Grid/Table */}
           {viewMode === 'list' ? (
             // Table View
-            <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
+            <div className="border border-border rounded-lg overflow-hidden bg-card">
               {/* Table Header */}
-              <div className="px-6 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
-                <div className="grid grid-cols-12 gap-4 text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-                  <div className="col-span-6">Organisation Name</div>
+              <div className="px-6 py-3 bg-muted/50 border-b border-border">
+                <div className="grid grid-cols-12 gap-4 text-xs font-medium text-foreground">
+                  <div className="col-span-6">Organization Name</div>
                   <div className="col-span-2">Environment</div>
                   <div className="col-span-2">Created</div>
                   <div className="col-span-2 text-right">Actions</div>
@@ -610,25 +703,28 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
               {/* Table Body */}
               <div>
                 {filteredProjects.map((project, index) => (
-                  <div
+                  <div /* NOSONAR: row holds nested controls, so it cannot be a <button> */
                     key={project.id}
-                    className={`group px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer ${
-                      index !== filteredProjects.length - 1 ? 'border-b border-gray-200 dark:border-gray-700' : ''
+                    className={`group px-6 py-4 hover:bg-muted/50  transition-colors cursor-pointer ${
+                      index === filteredProjects.length - 1 ? '' : 'border-b border-border'
                     } ${selectedProject === project.id ? 'opacity-50' : ''}`}
                     onClick={() => handleProjectClick(project)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleProjectClick(project) } }}
                   >
                     <div className="grid grid-cols-12 gap-4 items-center">
-                      {/* Organisation */}
+                      {/* Organization */}
                       <div className="col-span-6 flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-blue-600 rounded flex items-center justify-center text-white font-medium text-xs flex-shrink-0">
+                        <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/80 rounded flex items-center justify-center text-primary-foreground font-medium text-xs flex-shrink-0">
                           {getOrganisationInitials(project.name)}
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <h3 className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate">{project.name}</h3>
+                            <h3 className="font-medium text-foreground text-sm truncate">{project.name}</h3>
                             <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${project.is_active ? 'bg-emerald-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
                             {project.token_hash && (
-                              <Badge variant="outline" className="text-xs font-normal bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 px-1.5 py-0 h-4">
+                              <Badge variant="outline" className="text-xs font-normal bg-success/10 text-success border-success/30 px-1.5 py-0 h-4">
                                 <Key className="h-2 w-2 mr-0.5" />
                                 API
                               </Badge>
@@ -647,7 +743,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                       
                       {/* Created */}
                       <div className="col-span-2">
-                        <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Clock className="w-3 h-3" />
                           <span>{formatDate(project.created_at)}</span>
                         </div>
@@ -660,7 +756,7 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 p-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                              className="opacity-0 group-hover:opacity-100 transition-opacity h-7 w-7 p-0 text-muted-foreground hover:text-muted-foreground hover:bg-muted"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <MoreHorizontal className="h-3 w-3" />
@@ -698,13 +794,13 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                             <DropdownMenuItem onClick={(e) => {
                               e.stopPropagation()
                               setShowDeleteConfirm(project)
-                            }} className="text-xs text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400">
+                            }} className="text-xs text-destructive focus:text-destructive">
                               <Trash2 className="h-3 w-3 mr-2" />
-                              Delete organisation
+                              Delete organization
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                        <ChevronRight className="w-3 h-3 text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-all" />
+                        <ChevronRight className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-primary transition-all" />
                       </div>
                     </div>
                   </div>
@@ -727,19 +823,19 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
           {/* Empty States */}
           {filteredProjects.length === 0 && searchQuery && (
             <div className="text-center py-16">
-              <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <Search className="h-6 w-6 text-gray-400 dark:text-gray-500" />
+              <div className="w-12 h-12 bg-muted rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Search className="h-6 w-6 text-muted-foreground" />
               </div>
-              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">No organisations found</h3>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
-                No organisations match "<span className="font-medium text-gray-900 dark:text-gray-100">{searchQuery}</span>". 
+              <h3 className="text-sm font-medium text-foreground mb-1">No organizations found</h3>
+              <p className="text-xs text-muted-foreground mb-6 max-w-md mx-auto">
+                No organizations match "<span className="font-medium text-gray-900 dark:text-gray-100">{searchQuery}</span>". 
                 Try different search terms.
               </p>
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={() => setSearchQuery('')}
-                className="text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 text-xs h-7 hover:bg-gray-50 dark:hover:bg-gray-800"
+                className="text-muted-foreground border-border text-xs h-7 hover:bg-muted/50"
               >
                 Clear search
               </Button>
@@ -748,12 +844,12 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
 
           {projects.length === 0 && !loading && !error && (
             <div className="text-center py-16">
-              <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <Building2 className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center mx-auto mb-4">
+                <Building2 className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">Create your first organisation</h3>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mb-6 max-w-lg mx-auto">
-                Organize agents by team. Each organisation provides isolated access control and analytics.
+              <h3 className="text-sm font-medium text-foreground mb-1">Create your first organization</h3>
+              <p className="text-xs text-muted-foreground mb-6 max-w-lg mx-auto">
+                Organize agents by team. Each organization provides isolated access control and analytics.
               </p>
               <div className="space-y-3">
                 <Button 
@@ -762,9 +858,9 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
                   className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8"
                 >
                   <Plus className="h-3 w-3 mr-1.5" />
-                  Create organisation
+                  Create organization
                 </Button>
-                <div className="text-xs text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
+                <div className="text-xs text-muted-foreground max-w-sm mx-auto">
                   <p><strong>Example:</strong> "Sales Team" to organize sales voice agents with team access.</p>
                 </div>
               </div>
@@ -780,68 +876,21 @@ const ProjectSelection: React.FC<ProjectSelectionProps> = ({ isAuthLoaded = fals
         onProjectCreated={handleProjectCreated}
       />
 
-      <Dialog open={showTokenDialog !== null} onOpenChange={handleCloseTokenDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold">API token generated</DialogTitle>
-            <DialogDescription className="text-xs text-gray-600 dark:text-gray-400">
-              A new API token has been generated for "{showTokenDialog?.name}". Save this securely.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-900 dark:text-gray-100 mb-1">API Token</label>
-              <div className="relative">
-                <input
-                  type={showToken ? 'text' : 'password'}
-                  value={regeneratedToken || ''}
-                  readOnly
-                  className="w-full h-8 px-2 pr-16 text-xs border border-gray-200 dark:border-gray-700 rounded bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-mono focus:outline-none"
-                />
-                <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-0.5">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setShowToken(!showToken)}
-                    className="h-5 w-5 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                  >
-                    {showToken ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleCopyToken}
-                    className="h-5 w-5 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
-                  >
-                    <Copy className="w-3 h-3" />
-                  </Button>
-                </div>
-              </div>
-              {tokenCopied && (
-                <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">Token copied to clipboard</p>
-              )}
-            </div>
-            <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded">
-              <p className="text-xs text-amber-800 dark:text-amber-200">
-                <strong>Important:</strong> Store this token securely. The previous token has been invalidated.
-              </p>
-            </div>
-            <div className="flex justify-end pt-3">
-              <Button onClick={handleCloseTokenDialog} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs">
-                Done
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <TokenDialog
+        project={showTokenDialog}
+        token={regeneratedToken}
+        visible={showToken}
+        copied={tokenCopied}
+        onToggleVisible={() => setShowToken(!showToken)}
+        onCopy={handleCopyToken}
+        onClose={handleCloseTokenDialog}
+      />
 
       <Dialog open={showDeleteConfirm !== null} onOpenChange={() => setShowDeleteConfirm(null)}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold">Delete organisation</DialogTitle>
-            <DialogDescription className="text-xs text-gray-600 dark:text-gray-400">
+            <DialogTitle className="text-base font-semibold">Delete organization</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
               Delete "{showDeleteConfirm?.name}"? This permanently removes all agents, logs, and analytics.
             </DialogDescription>
           </DialogHeader>

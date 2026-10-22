@@ -1,7 +1,4 @@
-import { createMDX } from 'fumadocs-mdx/next';
 import path from 'path';
-
-const withMDX = createMDX();
 
 /** @type {import('next').NextConfig} */
 const config = {
@@ -30,6 +27,11 @@ const config = {
     removeConsole: false
   },
   skipTrailingSlashRedirect: true,
+  // The docs site is built into .docs-build (npm run build:docs) and served by
+  // src/app/docs/[[...path]]/route.ts behind sign-in; ship its files with that route.
+  outputFileTracingIncludes: {
+    '/docs/[[...path]]': ['./.docs-build/**/*'],
+  },
 };
 
-export default withMDX(config);
+export default config;

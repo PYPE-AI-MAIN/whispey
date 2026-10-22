@@ -10,6 +10,10 @@ const EMPTY_FILTERS: FilterOperation[] = []
 
 export { PAGE_SIZE }
 
+/** A filter on the call's date replaces the Period (and any other date range). */
+export const hasDateFilter = (filters: FilterOperation[]) =>
+  filters.some((f) => f.type === 'filter' && f.column === 'call_started_at')
+
 export const useCallLogsData = (
   agent: any,
   userEmail?: string,
@@ -57,10 +61,11 @@ export const useCallLogsData = (
     [activeFilters, agentId]
   )
 
-  // The Period (date range) filter and manually-added filters must act independently:
-  // once the user adds a manual filter, the Period filter is excluded from the query
-  // entirely rather than being ANDed with it.
-  const effectiveDateRange = activeFilters.length > 0 ? undefined : dateRange
+  // The Period (date range) still applies when filters are added — a filter with no
+  // date bound has to scan every call ever made, which times out on JSON filters.
+  // Only a filter on the date itself replaces the Period, since ANDing the two
+  // would usually match nothing.
+  const effectiveDateRange = hasDateFilter(activeFilters) ? undefined : dateRange
 
   useEffect(() => {
     if ((userEmail || userId) && projectId) {
@@ -269,6 +274,8 @@ export const useCallLogsData = (
     roleLoading,
     isLoading,
     isFetchingNextPage: isFetching && !isPlaceholderData,
+    // Another page is loading while the previous page's rows are still shown.
+    isChangingPage: isFetching && isPlaceholderData,
     isRefetching: isFetching && !!pageData,
     error: queryError?.message,
     activeFilters,

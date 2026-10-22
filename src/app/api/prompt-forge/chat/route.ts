@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI, { AzureOpenAI } from 'openai'
+import { lookup } from 'node:dns/promises'
+import { isIP } from 'node:net'
+import type OpenAI from 'openai'
+import { agentInProject, requireForgeUser } from '@/server/promptForge/access'
+import { resolveForgeLlm } from '@/server/promptForge/llm'
+import { samplingFor } from '@/lib/piModels'
+import { builtInToolResult, historyToChatMessages, type HistoryMessage } from '@/lib/promptForgeTools'
 
 export const runtime = 'nodejs'
 
@@ -11,7 +17,7 @@ function sseChunk(data: string) {
 }
 
 function sanitizeFunctionName(name: string): string {
-  return name.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64)
+  return name.replaceAll(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64)
 }
 
 function buildOpenAITools(tools: any[]): OpenAI.Chat.ChatCompletionTool[] {
@@ -36,13 +42,53 @@ function buildOpenAITools(tools: any[]): OpenAI.Chat.ChatCompletionTool[] {
     }))
 }
 
+// Tool calls make real HTTP requests from this server, so the URL a tool names
+// must be a public address — never localhost, the cloud metadata service or a
+// private network this server can reach.
+const PRIVATE_V4 = [/^0\./, /^10\./, /^127\./, /^169\.254\./, /^172\.(1[6-9]|2\d|3[01])\./, /^192\.168\./, /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./]
+function isPrivateAddress(ip: string): boolean {
+  if (isIP(ip) === 4) return PRIVATE_V4.some((r) => r.test(ip))
+  const v6 = ip.toLowerCase()
+  if (v6.startsWith('::ffff:')) return isPrivateAddress(v6.slice(7))
+  return v6 === '::1' || v6 === '::' || v6.startsWith('fc') || v6.startsWith('fd') || v6.startsWith('fe80')
+}
+
+async function publicToolUrl(raw: string): Promise<URL | null> {
+  let url: URL
+  try { url = new URL(raw) } catch { return null }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return null
+  const host = url.hostname.replaceAll(/^\[|\]$/g, '')
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.internal')) return null
+  try {
+    const addresses = isIP(host) ? [{ address: host }] : await lookup(host, { all: true })
+    if (addresses.length === 0 || addresses.some((a) => isPrivateAddress(a.address))) return null
+  } catch {
+    return null
+  }
+  return url
+}
+
+const TOOL_TIMEOUT_MS = 15_000
+
 async function executeTool(tool: any, args: any): Promise<{ result: any; success: boolean }> {
-  // Non-HTTP tools (transfer_call, knowledge_search) can't be executed in forge
-  if (!tool || !tool.endpoint || tool.type === 'transfer_call' || tool.type === 'knowledge_search') {
-    return {
-      result: { _forge_note: `Tool "${tool?.name ?? 'unknown'}" invoked (no HTTP execution for this type in Forge)` },
-      success: true,
-    }
+  // A mock set in the Tools panel: answer with it instead of calling the endpoint,
+  // so a flow ("no slots", an error) can be tested without touching real systems.
+  if (tool?.mock?.enabled) {
+    const raw = String(tool.mock.response ?? '')
+    let result: any = raw
+    try { result = JSON.parse(raw) } catch { /* plain text is fine */ }
+    return { result, success: tool.mock.success !== false }
+  }
+
+  // Built-in tools (end call, transfer, TTS / language switch, knowledge search…)
+  // and tools without an endpoint can't run here: answer as if they did
+  if (!tool?.endpoint || (tool.type && tool.type !== 'custom_function')) {
+    return { result: builtInToolResult(tool?.type ?? '', tool?.name ?? 'unknown'), success: true }
+  }
+
+  const url = await publicToolUrl(String(tool.endpoint))
+  if (!url) {
+    return { result: { error: `Tool "${tool.name}" points at an address Prompt Forge won't call (it must be a public http(s) URL)` }, success: false }
   }
 
   try {
@@ -50,10 +96,13 @@ async function executeTool(tool: any, args: any): Promise<{ result: any; success
     for (const [key, value] of Object.entries(args)) {
       body = body.replace(new RegExp(`__${key}__`, 'g'), String(value))
     }
-    const res = await fetch(tool.endpoint, {
+    const res = await fetch(url, {
       method: tool.method ?? 'POST',
       headers: tool.headers ?? {},
       ...(tool.method !== 'GET' ? { body } : {}),
+      // a redirect could lead to an address the check above would refuse
+      redirect: 'error',
+      signal: AbortSignal.timeout(TOOL_TIMEOUT_MS),
     })
     const text = await res.text()
     let result: any
@@ -66,33 +115,27 @@ async function executeTool(tool: any, args: any): Promise<{ result: any; success
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, systemPrompt, model, temperature, provider, tools } = await request.json()
+    const { messages, systemPrompt, model, temperature, provider, tools, projectId, agentId, generateGreeting } = await request.json()
 
-    let client: OpenAI
-    if (provider === 'azure_openai') {
-      if (!process.env.AZURE_OPENAI_API_KEY) return NextResponse.json({ error: 'AZURE_OPENAI_API_KEY not configured' }, { status: 500 })
-      if (!process.env.AZURE_OPENAI_ENDPOINT) return NextResponse.json({ error: 'AZURE_OPENAI_ENDPOINT not configured' }, { status: 500 })
-      client = new AzureOpenAI({
-        apiKey: process.env.AZURE_OPENAI_API_KEY,
-        endpoint: process.env.AZURE_OPENAI_ENDPOINT,
-        apiVersion: process.env.OPENAI_API_VERSION || '2024-12-01-preview',
-      })
-    } else {
-      if (!process.env.OPENAI_API_KEY) return NextResponse.json({ error: 'OPENAI_API_KEY not configured' }, { status: 500 })
-      client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+    const access = await requireForgeUser(projectId)
+    if ('response' in access) return access.response
+    if (!agentId || !(await agentInProject(agentId, projectId))) {
+      return NextResponse.json({ error: 'No such agent in this project' }, { status: 403 })
     }
 
-    const resolvedModel = model || (provider === 'azure_openai' ? process.env.AZURE_DEPLOYMENT_NAME : undefined) || 'gpt-4o-mini'
+    const llm = resolveForgeLlm(provider, model)
+    if ('error' in llm) return NextResponse.json({ error: llm.error }, { status: 400 })
+    const { client, model: resolvedModel } = llm
     const openaiTools = buildOpenAITools(tools ?? [])
     const hasTools = openaiTools.length > 0
 
     // Build mutable conversation messages for the tool-calling loop
     const conversationMessages: any[] = [
       ...(systemPrompt?.trim() ? [{ role: 'system', content: systemPrompt }] : []),
-      ...(messages ?? []).map((m: { role: string; content: string }) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      })),
+      ...historyToChatMessages((messages ?? []) as HistoryMessage[], hasTools),
+      // Greeting mode "generated": nothing has been said yet, so ask the model
+      // for the opening message its prompt calls for. Text only — this is a chat.
+      ...(generateGreeting ? [{ role: 'user', content: '[The conversation is starting. Send your opening message now.]' }] : []),
     ]
 
     const readable = new ReadableStream({
@@ -108,7 +151,8 @@ export async function POST(request: NextRequest) {
               model: resolvedModel,
               messages: conversationMessages,
               stream: true,
-              temperature: temperature ?? 0.7,
+              // reasoning models (GPT-5, o-series) reject a custom temperature
+              ...samplingFor(resolvedModel, temperature ?? 0.7),
               ...(hasTools ? { tools: openaiTools, tool_choice: 'auto' } : {}),
             })
 

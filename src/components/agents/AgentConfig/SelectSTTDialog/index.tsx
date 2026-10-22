@@ -317,7 +317,7 @@ const STT_PROVIDERS: STTProviders = {
       { id: 'saaras:v4', name: 'Saaras v4', description: 'Supports transcribe, translate, verbatim, translit, codemix' }
     ],
     languages: [
-      { code: 'unknown', name: '🌐 Auto-detect (Saaras only)' },
+      { code: 'unknown', name: 'Auto-detect (Saaras only)' },
       { code: 'hi-IN', name: 'Hindi' },
       { code: 'en-IN', name: 'English' },
       { code: 'bn-IN', name: 'Bengali' },
@@ -337,8 +337,8 @@ const STT_PROVIDERS: STTProviders = {
       { id: 'pulse', name: 'Pulse', description: 'Real-time streaming speech-to-text' }
     ],
     languages: [
-      { code: 'north_indic', name: '🌐 Auto-detect — North Indic (Hindi, Gujarati, Marathi, Bengali, Oriya, English)' },
-      { code: 'multi-south-indic', name: '🌐 Auto-detect — South Indic (Tamil, Telugu, Kannada, Malayalam, English)' },
+      { code: 'north_indic', name: 'Auto-detect — North Indic (Hindi, Gujarati, Marathi, Bengali, Oriya, English)' },
+      { code: 'multi-south-indic', name: 'Auto-detect — South Indic (Tamil, Telugu, Kannada, Malayalam, English)' },
       { code: 'en', name: 'English' },
       { code: 'hi', name: 'Hindi' },
       { code: 'de', name: 'German' },
@@ -394,11 +394,11 @@ const ProviderCard = ({
 
   const getBorderColor = () => {
     switch (providerKey) {
-      case 'openai': return 'border-green-200 dark:border-green-600 bg-green-50 dark:bg-green-900/10'
-      case 'deepgram': return 'border-blue-200 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/10'
-      case 'sarvam': return 'border-orange-200 dark:border-orange-600 bg-orange-50 dark:bg-orange-900/10'
+      case 'openai': return 'border-success/30 bg-success/10'
+      case 'deepgram': return 'border-primary/30 bg-primary/10'
+      case 'sarvam': return 'border-warning/30 bg-warning/10'
       case 'smallestai': return 'border-purple-200 dark:border-purple-600 bg-purple-50 dark:bg-purple-900/10'
-      default: return 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/10'
+      default: return 'border-border bg-muted/50'
     }
   }
 
@@ -414,12 +414,14 @@ const ProviderCard = ({
   }
 
   return (
-    <div
+    <button
+      type="button"
+      disabled={disabled}
       onClick={disabled ? undefined : onSelect}
-      className={`${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} p-3 sm:p-4 rounded-lg border transition-all hover:shadow-sm ${
-        isSelected 
+      className={`w-full appearance-none bg-transparent text-left ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} p-3 sm:p-4 rounded-lg border transition-all hover:shadow-sm ${
+        isSelected
           ? getBorderColor()
-          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+          : 'border-border hover:border-border'
       }`}
     >
       <div className="flex items-center gap-3">
@@ -428,17 +430,17 @@ const ProviderCard = ({
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-sm sm:text-base text-gray-900 dark:text-gray-100">
+            <h3 className="font-semibold text-sm sm:text-base text-foreground">
               {provider.name}
             </h3>
-            {isSelected && <CheckCircle className="w-4 h-4 text-green-600" />}
+            {isSelected && <CheckCircle className="w-4 h-4 text-success" />}
           </div>
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             {provider.models.length} models • {getLanguageCount()} languages
           </p>
         </div>
       </div>
-    </div>
+    </button>
   )
 }
 
@@ -651,21 +653,21 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
           {/* ── Model + Language ── */}
           <div className="grid grid-cols-2 gap-3 min-w-0">
             <div className="space-y-1.5 min-w-0 overflow-hidden">
-              <label className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Model</label>
+              <Label htmlFor="dg-model" className="text-xs font-medium text-muted-foreground">Model</Label>
               <Select
                 value={currentModel}
                 onValueChange={(value) => setDeepgramConfig(prev => ({ ...prev, model: value, language: 'en' }))}
                 disabled={DISABLE_SETTINGS}
               >
-                <SelectTrigger className="h-9 text-sm">
+                <SelectTrigger id="dg-model" className="h-9 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <div className="px-2 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Flux</div>
+                  <div className="px-2 py-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Flux</div>
                   {provider.models.filter(m => isFluxModel(m.id)).map(m => (
                     <SelectItem key={m.id} value={m.id} className="text-sm">{m.name}</SelectItem>
                   ))}
-                  <div className="px-2 pt-2 pb-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Nova</div>
+                  <div className="px-2 pt-2 pb-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Nova</div>
                   {provider.models.filter(m => !isFluxModel(m.id)).map(m => (
                     <SelectItem key={m.id} value={m.id} className="text-sm">{m.name}</SelectItem>
                   ))}
@@ -674,13 +676,13 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
             </div>
 
             <div className="space-y-1.5 min-w-0 overflow-hidden">
-              <label className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Language</label>
+              <Label htmlFor="dg-language" className="text-xs font-medium text-muted-foreground">Language</Label>
               <Select
                 value={currentLanguage}
                 onValueChange={(value) => setDeepgramConfig(prev => ({ ...prev, language: value }))}
                 disabled={DISABLE_SETTINGS}
               >
-                <SelectTrigger className="h-9 text-sm w-full [&>span]:truncate [&>span]:block [&>span]:max-w-[calc(100%-1rem)]">
+                <SelectTrigger id="dg-language" className="h-9 text-sm w-full [&>span]:truncate [&>span]:block [&>span]:max-w-[calc(100%-1rem)]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -695,7 +697,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
           {/* ── Flux: Turn Detection ── */}
           {isFlux && (
             <div className="space-y-2">
-              <label className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Turn Detection</label>
+              <span className="text-xs font-medium text-muted-foreground">Turn Detection</span>
               <div className="space-y-3">
                 {([
                   { key: 'eot_threshold', label: 'EOT Threshold', hint: '0.5 – 0.9', placeholder: '0.7', step: 0.05, min: 0.5, max: 0.9, isInt: false },
@@ -704,8 +706,8 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                 ] as const).map(({ key, label, hint, placeholder, step, min, max, isInt }) => (
                   <div key={key} className="flex items-center gap-3">
                     <div className="flex-1 min-w-0">
-                      <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
-                      <span className="text-xs text-gray-400 dark:text-gray-500 ml-2">{hint}</span>
+                      <span className="text-sm text-foreground">{label}</span>
+                      <span className="text-xs text-muted-foreground ml-2">{hint}</span>
                     </div>
                     <Input
                       type="number"
@@ -729,8 +731,8 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
             <>
               <div className="flex items-center gap-3">
                 <div className="flex-1">
-                  <span className="text-sm text-gray-700 dark:text-gray-300">Silence Timeout</span>
-                  <span className="text-xs text-gray-400 dark:text-gray-500 ml-2">ms before end-of-speech</span>
+                  <span className="text-sm text-foreground">Silence Timeout</span>
+                  <span className="text-xs text-muted-foreground ml-2">ms before end-of-speech</span>
                 </div>
                 <Input
                   type="number" min={0} step={25} placeholder="25"
@@ -741,7 +743,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
               </div>
 
               <div className="space-y-2">
-                <label className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Transcript</label>
+                <span className="text-xs font-medium text-muted-foreground">Transcript</span>
                 <TooltipProvider delayDuration={700}>
                 <div className="flex flex-wrap gap-1.5">
                   {([
@@ -760,8 +762,8 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                             onClick={() => setDeepgramConfig(prev => ({ ...prev, [key]: !active }))}
                             className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
                               active
-                                ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-300'
-                                : 'border-gray-200 text-gray-400 dark:border-gray-700 dark:text-gray-500 hover:border-gray-300 dark:hover:border-gray-600'
+                                ? 'bg-blue-50 border-primary/30 text-primary dark:bg-blue-900/30  dark:text-blue-300'
+                                : 'border-border text-muted-foreground hover:border-border'
                             }`}
                           >
                             {label}
@@ -782,9 +784,10 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
           {/* ── Key Terms ── */}
           {supportsKeyterm && (
             <div className="space-y-2">
-              <label className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Key Terms</label>
+              <Label htmlFor="dg-keyterm" className="text-xs font-medium text-muted-foreground">Key Terms</Label>
               <div className="flex items-center h-9 rounded-md border border-input bg-transparent px-3 text-sm ring-offset-background focus-within:ring-1 focus-within:ring-ring">
                 <input
+                  id="dg-keyterm"
                   ref={keytermInputRef}
                   value={keytermInput}
                   onChange={(e) => setKeytermInput(e.target.value)}
@@ -793,7 +796,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                   className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground text-sm"
                 />
                 {keytermInput.trim() && (
-                  <button type="button" onClick={addKeyterm} className="ml-2 text-blue-500 hover:text-blue-600 transition-colors flex-shrink-0">
+                  <button type="button" onClick={addKeyterm} className="ml-2 text-primary hover:text-primary transition-colors flex-shrink-0">
                     <Plus className="w-4 h-4" />
                   </button>
                 )}
@@ -805,7 +808,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                       {term}
                       <button
                         onClick={() => setDeepgramConfig(prev => ({ ...prev, keyterm: prev.keyterm.filter(t => t !== term) }))}
-                        className="ml-0.5 hover:text-red-500 transition-colors"
+                        className="ml-0.5 hover:text-destructive transition-colors"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -848,7 +851,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                 <SelectItem key={model.id} value={model.id}>
                   <div>
                     <div className="font-medium text-sm">{model.name}</div>
-                    {model.description && <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{model.description}</div>}
+                    {model.description && <div className="text-xs text-muted-foreground mt-0.5">{model.description}</div>}
                   </div>
                 </SelectItem>
               ))}
@@ -897,31 +900,31 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                 <SelectItem value="transcribe">
                   <div>
                     <div className="font-medium text-sm">Transcribe</div>
-                    <div className="text-xs text-gray-500 mt-0.5">Standard transcription in original language</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Standard transcription in original language</div>
                   </div>
                 </SelectItem>
                 <SelectItem value="translate">
                   <div>
                     <div className="font-medium text-sm">Translate</div>
-                    <div className="text-xs text-gray-500 mt-0.5">Translate speech from any Indian language to English</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Translate speech from any Indian language to English</div>
                   </div>
                 </SelectItem>
                 <SelectItem value="verbatim">
                   <div>
                     <div className="font-medium text-sm">Verbatim</div>
-                    <div className="text-xs text-gray-500 mt-0.5">Word-for-word, preserving filler words and spoken numbers</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Word-for-word, preserving filler words and spoken numbers</div>
                   </div>
                 </SelectItem>
                 <SelectItem value="translit">
                   <div>
                     <div className="font-medium text-sm">Transliterate</div>
-                    <div className="text-xs text-gray-500 mt-0.5">Romanization — speech to Latin/Roman script</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">Romanization — speech to Latin/Roman script</div>
                   </div>
                 </SelectItem>
                 <SelectItem value="codemix">
                   <div>
                     <div className="font-medium text-sm">Codemix</div>
-                    <div className="text-xs text-gray-500 mt-0.5">English words in English, Indic words in native script</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">English words in English, Indic words in native script</div>
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -934,7 +937,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
             <div className="flex items-center justify-between gap-3">
               <div>
                 <Label className="text-sm sm:text-base">High VAD Sensitivity</Label>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Faster end-of-speech detection for quicker turn-taking</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Faster end-of-speech detection for quicker turn-taking</p>
               </div>
               <Switch
                 checked={sarvamConfig.high_vad_sensitivity}
@@ -945,7 +948,7 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
 
             <div className="space-y-2">
               <Label className="text-sm sm:text-base">First Turn Min Speech Frames</Label>
-              <p className="text-xs text-gray-500 dark:text-gray-400 -mt-1">Lower catches a quick/soft first reply (e.g. "yes") that the default first-turn threshold can miss</p>
+              <p className="text-xs text-muted-foreground -mt-1">Lower catches a quick/soft first reply (e.g. "yes") that the default first-turn threshold can miss</p>
               <Input
                 type="number"
                 min={1}
@@ -974,12 +977,12 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
 
         {/* Show auto-detect message for Saaras */}
         {activeProvider === 'sarvam' && currentModel === 'saaras:v2.5' && (
-          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+          <div className="p-3 bg-primary/10 rounded-lg border border-primary/30">
             <div className="flex items-start gap-2">
-              <span className="text-lg">🌐</span>
+              
               <div>
                 <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Auto-detects Language</p>
-                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                <p className="text-xs text-primary mt-1">
                   Saaras automatically detects the input language and translates speech to English. No language configuration needed.
                 </p>
               </div>
@@ -999,8 +1002,8 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="w-[calc(100vw-1rem)] sm:min-w-6xl h-[92vh] sm:h-5xl p-0 gap-0 bg-white dark:bg-gray-900 mx-2 sm:mx-auto">
-        <DialogHeader className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
+      <DialogContent className="w-[calc(100vw-1rem)] sm:min-w-6xl h-[92vh] sm:h-5xl p-0 gap-0 bg-card mx-2 sm:mx-auto">
+        <DialogHeader className="p-4 sm:p-6 border-b border-border flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
@@ -1014,13 +1017,13 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
                 )}
-                <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
+                <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                 <span className="text-sm sm:text-base">
                   {showSettings ? `${STT_PROVIDERS[activeProvider as keyof typeof STT_PROVIDERS]?.name} Settings` : 'Configure STT Provider'}
                 </span>
               </DialogTitle>
               {!showSettings && (
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                   Choose speech-to-text provider and configure recognition settings
                 </p>
               )}
@@ -1044,9 +1047,9 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
         </DialogHeader>
         
         <div className="flex-1 flex overflow-hidden">
-          <div className={`${showSettings ? 'hidden sm:block sm:w-1/2' : 'w-full'} transition-all duration-300 ${showSettings ? 'border-r border-gray-200 dark:border-gray-800' : ''} p-4 sm:p-6 overflow-y-auto`}>
+          <div className={`${showSettings ? 'hidden sm:block sm:w-1/2' : 'w-full'} transition-all duration-300 ${showSettings ? 'border-r border-border dark:border-gray-800' : ''} p-4 sm:p-6 overflow-y-auto`}>
             <div className="space-y-3 sm:space-y-4">
-              <h3 className="text-sm sm:text-base font-medium text-gray-900 dark:text-gray-100">
+              <h3 className="text-sm sm:text-base font-medium text-foreground">
                 Choose STT Provider
               </h3>
               
@@ -1065,11 +1068,11 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
           
           {showSettings && activeProvider && (
             <div className="w-full sm:w-1/2 flex flex-col">
-              <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-800 flex-shrink-0 hidden sm:block">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              <div className="p-4 sm:p-6 border-b border-border flex-shrink-0 hidden sm:block">
+                <h3 className="text-lg font-semibold text-foreground">
                   {STT_PROVIDERS[activeProvider as keyof typeof STT_PROVIDERS]?.name} Settings
                 </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   Configure speech recognition parameters
                 </p>
               </div>
@@ -1081,8 +1084,8 @@ const SelectSTT: React.FC<SelectSTTProps> = ({
           )}
         </div>
         
-        <div className="p-4 sm:p-6 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/50 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-0 flex-shrink-0">
-          <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 text-center sm:text-left">
+        <div className="p-4 sm:p-6 border-t border-border bg-muted/50 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-0 flex-shrink-0">
+          <div className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
             {activeProvider && (
               <span>
                 {STT_PROVIDERS[activeProvider as keyof typeof STT_PROVIDERS]?.name} selected

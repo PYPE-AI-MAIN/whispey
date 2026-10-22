@@ -188,12 +188,13 @@ const createValidationSchema = (maxConcurrency: number) => Yup.object({
 
 // Batch-check phone numbers against the DNC list; returns the set of raw inputs
 // that are blocked (empty set on any failure — the preview just won't flag them).
-async function fetchDncBlockedSet(phones: string[], projectId: string): Promise<Set<string>> {
+// With an agent, numbers on that agent's own DNC list count too.
+async function fetchDncBlockedSet(phones: string[], projectId: string, agentId?: string): Promise<Set<string>> {
   try {
     const res = await fetch('/api/dnc/check', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ numbers: phones, project_id: projectId }),
+      body: JSON.stringify({ numbers: phones, project_id: projectId, ...(agentId ? { agent_id: agentId } : {}) }),
     })
     const json = await res.json()
     return new Set<string>(
@@ -423,8 +424,12 @@ function CreateCampaign() {
       // Generate unique campaign ID
       const campaignId = uuidv4()
 
-      // Step 1: Upload CSV to S3 — exclude any numbers on the DNC list.
-      const callableData = csvData.filter(row => !dncBlocked.has(row.phone))
+      // Step 1: Upload CSV to S3 — exclude any numbers on the DNC list, including
+      // the chosen agent's own list (the preview only knew the project's).
+      const agentBlocked = values.agentId
+        ? await fetchDncBlockedSet(csvData.map((r) => r.phone).filter(Boolean), projectId, values.agentId)
+        : new Set<string>()
+      const callableData = csvData.filter(row => !dncBlocked.has(row.phone) && !agentBlocked.has(row.phone))
       if (callableData.length === 0) {
         alert('Every uploaded number is on the DNC list. Nothing to send.')
         setSubmitting(false)
@@ -531,9 +536,9 @@ function CreateCampaign() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
+    <div className="flex flex-col h-screen bg-card">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm">
+      <div className="px-6 py-4 border-border bg-card border-b shadow-sm">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -543,7 +548,7 @@ function CreateCampaign() {
           >
             <ArrowLeft className="h-3.5 w-3.5" />
           </Button>
-          <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Create a batch call
           </h1>
         </div>
@@ -555,14 +560,18 @@ function CreateCampaign() {
         onSubmit={handleSubmit}
       >
         {({ values, setFieldValue, isSubmitting, dirty, isValid, handleSubmit: formikHandleSubmit }) => (
-          <div className="flex-1 overflow-hidden flex">
+          // stacks on phone: the recipients preview is a fixed-width data table
+          // by nature (arbitrary CSV columns), and a flex ROW at 375px with
+          // overflow-hidden was clipping it — and squeezing the form panel —
+          // rather than stacking
+          <div className="flex-1 overflow-hidden flex flex-col sm:flex-row">
             {/* Left Panel - Form */}
             <div className="flex-1 overflow-y-auto">
               <div className="max-w-2xl mx-auto p-4 space-y-4">
                 {loadingConfig ? (
                   <div className="flex items-center justify-center p-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-                    <span className="ml-2 text-sm text-gray-500">Loading configuration...</span>
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-sm text-muted-foreground">Loading configuration...</span>
                   </div>
                 ) : (
                   <>
@@ -589,6 +598,8 @@ function CreateCampaign() {
                     retryConfig: values.retryConfig,
                     agentId: values.agentId,
                     agentRuntime: values.agentRuntime,  // ← ADD
+                    callWindowStart: values.callWindowStart,
+                    callWindowEnd: values.callWindowEnd,
                   }}
                 />
 

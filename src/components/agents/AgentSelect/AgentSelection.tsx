@@ -1,7 +1,7 @@
 // src/components/agents/AgentSelect/AgentSelection.tsx
 'use client'
 
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { AlertCircle, X, ArrowUpDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,6 @@ import AgentToolbar from './AgentToolbar'
 import AgentList from '../AgentList'
 import AgentDeleteDialog from '../AgentDeleteDialog'
 import AdaptiveTutorialEmptyState from './EmptyStates/AdaptiveTutorialEmptyState'
-import Header from '../../shared/Header'
 import AgentCreationDialog from '../AgentCreation/AgentCreationDialog'
 import AgentSelectionSkeleton from './AgentSelectionSkeleton'
 import AgentEmptyStates from './EmptyStates/AgentEmptyStates'
@@ -53,13 +52,6 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
   }, [])
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
-  const [breadcrumb, setBreadcrumb] = useState<{
-    project?: string;
-    item?: string;
-  }>({
-    project: '',
-    item: ''
-  })
   // const router = useRouter()
 
   const invalidatePermissions = useInvalidateUserPermissions()
@@ -67,21 +59,10 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
   const { isMobile } = useMobile(768)
 
   // Fetch project data
-  const { data: projects, isLoading: projectLoading, error: projectError } = useSupabaseQuery('pype_voice_projects', {
+  const { isLoading: projectLoading, error: projectError } = useSupabaseQuery('pype_voice_projects', {
     select: 'id, name, description, environment, created_at, is_active, plans, agent',
     filters: [{ column: 'id', operator: 'eq', value: projectId }]
   })
-
-  const project = projects?.[0]
-
-  useEffect(() => {
-    if (projectId && project) {
-      setBreadcrumb({
-        project: project.name,
-        item: 'Monitoring'
-      })
-    }
-  }, [projectId, project])
 
   // Fetch agents data
   const { data: agents, isLoading: agentsLoading, error: agentsError, refetch } = useSupabaseQuery('pype_voice_agents', {
@@ -185,16 +166,15 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <Header breadcrumb={breadcrumb} />
+      <div className="min-h-screen bg-muted/50">
         <div className="flex items-center justify-center py-32">
           <div className="text-center space-y-5 max-w-sm">
-            <div className="w-14 h-14 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 flex items-center justify-center mx-auto">
+            <div className="w-14 h-14 bg-card rounded-2xl border border-border flex items-center justify-center mx-auto">
               <AlertCircle className="w-7 h-7 text-red-400 dark:text-red-500" />
             </div>
             <div>
-              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Unable to Load Monitoring</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">{error.message}</p>
+              <h3 className="text-lg font-medium text-foreground">Unable to Load Monitoring</h3>
+              <p className="text-sm text-muted-foreground mt-1.5">{error.message}</p>
             </div>
             <Button 
               onClick={() => window.location.reload()} 
@@ -209,44 +189,52 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <main className={`max-w-6xl mx-auto py-6 ${isMobile ? 'px-4' : 'px-8 py-8'}`}>
-        <AgentToolbar
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
-          viewMode={viewMode}
-          onViewModeChange={handleViewModeChange}
-          onCreateAgent={handleCreateAgent}
-          onConnectAgent={handleConnectAgent}
-          onShowHelp={filteredAgents.length > 0 ? handleShowHelp : undefined}
-          sortOrder={sortOrder}
-          onSortToggle={handleSortToggle}
-        />
-
-        {filteredAgents.length > 0 ? (
-          <AgentList
-            agents={filteredAgents}
-            viewMode={viewMode}
-            selectedAgent={selectedAgent}
-            copiedAgentId={copiedAgentId}
-            projectId={projectId}
-            onCopyAgentId={handleCopyAgentId}
-            onDeleteAgent={setShowDeleteConfirm}
-          />
-        ) : (
-          <AgentEmptyStates
+    // Desktop: the page fills the shell's scroll area and only the list scrolls, so the
+    // toolbar never moves (no sticky repositioning). Mobile keeps normal page scroll.
+    <div className="min-h-screen bg-background md:flex md:h-full md:min-h-0 md:flex-col">
+      <div className="wp-enter max-w-6xl mx-auto px-4 py-6 sm:px-8 sm:py-8 md:flex md:min-h-0 md:w-full md:flex-1 md:flex-col">
+        <div className="md:shrink-0">
+          <AgentToolbar
             searchQuery={searchQuery}
-            totalAgents={agents?.length || 0}
-            onClearSearch={() => setSearchQuery('')}
-            onCreateAgent={() => {
-              setInitialFlow('choice')
-              setShowCreateDialog(true)
-            }}
+            onSearchChange={setSearchQuery}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            viewMode={viewMode}
+            onViewModeChange={handleViewModeChange}
+            onCreateAgent={handleCreateAgent}
+            onConnectAgent={handleConnectAgent}
+            onShowHelp={filteredAgents.length > 0 ? handleShowHelp : undefined}
+            agentCount={filteredAgents.length}
+            sortOrder={sortOrder}
+            onSortToggle={handleSortToggle}
           />
-        )}
-      </main>
+        </div>
+
+        {/* -m-1/p-1 leave room for card rings and shadows at the scroll edges */}
+        <div className="agent-list-scroll md:-m-1 md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain md:p-1">
+          {filteredAgents.length > 0 ? (
+            <AgentList
+              agents={filteredAgents}
+              viewMode={viewMode}
+              selectedAgent={selectedAgent}
+              copiedAgentId={copiedAgentId}
+              projectId={projectId}
+              onCopyAgentId={handleCopyAgentId}
+              onDeleteAgent={setShowDeleteConfirm}
+            />
+          ) : (
+            <AgentEmptyStates
+              searchQuery={searchQuery}
+              totalAgents={agents?.length || 0}
+              onClearSearch={() => setSearchQuery('')}
+              onCreateAgent={() => {
+                setInitialFlow('choice')
+                setShowCreateDialog(true)
+              }}
+            />
+          )}
+        </div>
+      </div>
 
       {/* Dialogs */}
       <AgentCreationDialog
@@ -271,13 +259,13 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
           <Sheet open={showHelpDialog} onOpenChange={setShowHelpDialog}>
             <SheetContent 
               side="right" 
-              className="min-w-3/4 p-0 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800"
+              className="min-w-3/4 p-0 bg-card border-l border-border"
             >
-              <SheetHeader className="p-6 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800">
-                <SheetTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+              <SheetHeader className="p-6 border-b border-border bg-muted/50">
+                <SheetTitle className="text-xl font-semibold text-foreground">
                   Integration Guide
                 </SheetTitle>
-                <SheetDescription className="text-sm text-gray-600 dark:text-gray-400">
+                <SheetDescription className="text-sm text-muted-foreground">
                   Add monitoring to your voice agents
                 </SheetDescription>
               </SheetHeader>

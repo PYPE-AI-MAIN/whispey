@@ -100,7 +100,7 @@ export default function CopyConfigDialog({
         <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
           {isGenerating ? (
             <div className="flex-1 flex items-center justify-center">
-              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
             <>
@@ -116,7 +116,7 @@ export default function CopyConfigDialog({
 
               {/* Footer — always visible, never pushed off screen */}
               <div className="shrink-0 flex items-center justify-between pt-2 border-t">
-                <span className="text-xs text-gray-500">
+                <span className="text-[11px] text-muted-foreground">
                   {configJson.length.toLocaleString()} characters
                 </span>
                 

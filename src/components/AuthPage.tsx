@@ -1,166 +1,169 @@
 'use client';
 
-import { SignIn } from '@clerk/nextjs';
+/**
+ * The /sign-in page in Pype's brand (pypeai.com): indigo and coral, Plus Jakarta Sans,
+ * the same headline as the main site, pill-shaped fields and a coral button.
+ *
+ * One page, one column: brand and a link to Pype at the top, the headline, one
+ * line, the form, the access note, a footer. Light and dark (the glow dims in
+ * dark). The only motion is the small waveform; it stops for people who ask
+ * their system to reduce motion. Says nothing it cannot back up.
+ */
+import { ClerkLoaded, ClerkLoading, SignIn } from '@clerk/nextjs';
 import Image from 'next/image';
-import { Mic, Sparkles, Shield, Zap } from 'lucide-react';
+import { Plus_Jakarta_Sans } from 'next/font/google';
+import { useTheme } from 'next-themes';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
+
+const sans = Plus_Jakarta_Sans({ subsets: ['latin'], weight: ['600', '700', '800'], variable: '--font-sw-sans', display: 'swap' });
 
 interface AuthPageProps {
   redirectUrl?: string
 }
 
-export default function AuthPage({ redirectUrl }: AuthPageProps) {
+// Clerk's own CSS outranks Tailwind utilities, so its colours go through its variables.
+const CLERK_VARIABLES = {
+  light: { colorBackground: '#ffffff', colorText: '#1e0a52', colorTextSecondary: '#6b6485', colorInputBackground: '#ffffff', colorInputText: '#1e0a52', colorPrimary: '#4b0082', colorTextOnPrimaryBackground: '#ffffff', colorNeutral: '#1e0a52', borderRadius: '0.75rem', fontFamily: 'var(--font-satoshi), system-ui, sans-serif' },
+  dark: { colorBackground: '#0e0b16', colorText: '#f6f2f2', colorTextSecondary: '#a39cb5', colorInputBackground: '#1a1524', colorInputText: '#f6f2f2', colorPrimary: '#ff6b6b', colorTextOnPrimaryBackground: '#1e0a52', colorNeutral: '#fff5f5', borderRadius: '0.75rem', fontFamily: 'var(--font-satoshi), system-ui, sans-serif' },
+} as const;
+const FIELD = {
+  light: { background: 'rgba(255,255,255,0.88)', border: '1px solid #e3dcee', boxShadow: '0 6px 22px -12px rgba(30,10,82,0.3)' },
+  dark: { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.14)', boxShadow: 'none' },
+} as const;
+
+const PAGE_CSS = `
+  .sw-page { background:
+      radial-gradient(60% 52% at 6% 4%, #f1e6fa 0%, rgba(241,230,250,0) 70%),
+      radial-gradient(46% 46% at 96% 38%, #ffe9e6 0%, rgba(255,233,230,0) 70%),
+      radial-gradient(54% 42% at 50% 104%, #f6eefb 0%, rgba(246,238,251,0) 70%),
+      #fffafa;
+    color: #1e0a52; font-family: var(--font-satoshi), system-ui, sans-serif; }
+  .dark .sw-page { background:
+      radial-gradient(60% 52% at 6% 4%, rgba(124,58,237,0.16) 0%, rgba(124,58,237,0) 70%),
+      radial-gradient(46% 46% at 96% 38%, rgba(255,107,107,0.14) 0%, rgba(255,107,107,0) 70%),
+      radial-gradient(54% 42% at 50% 104%, rgba(75,0,130,0.22) 0%, rgba(75,0,130,0) 70%),
+      #0e0b16;
+    color: #f6f2f2; }
+  .sw-title { font-family: var(--font-sw-sans), system-ui, sans-serif; font-weight: 700; color: #1e0a52;
+    font-size: clamp(2.2rem, 5vw, 3.6rem); line-height: 1.08; letter-spacing: -0.03em; text-wrap: balance; }
+  .dark .sw-title { color: #f6f2f2; }
+  .sw-em { color: #ff6b6b; }
+  .sw-muted { color: #6b6485; } .dark .sw-muted { color: #a39cb5; }
+  .sw-link { color: #1e0a52; text-decoration: none; } .sw-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+  .dark .sw-link { color: #fff5f5; }
+  .sw-bar { width: 3px; border-radius: 2px; background: linear-gradient(to top, #4b0082, #ff6b6b); transform-origin: center; animation: sw-bar 1.5s ease-in-out infinite; }
+  @keyframes sw-bar { 0%, 100% { transform: scaleY(0.4); } 50% { transform: scaleY(1); } }
+  @media (prefers-reduced-motion: reduce) { .sw-bar { animation: none; } }
+`;
+
+function Brand() {
   return (
-    <div className="h-screen bg-white flex overflow-hidden">
-      {/* Left Side - Branding & Value Proposition */}
-      <div className="hidden lg:flex lg:w-1/2 bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-20" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fillRule='evenodd'%3E%3Cg fill='%23ffffff' fillOpacity='0.03'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-        }}></div>
-        
-        <div className="relative z-10 flex flex-col justify-center px-16 py-35">
-          <div className="max-w-lg">
-            {/* Logo */}
-            <div className="flex items-center space-x-3 mb-12">
-              <a href="https://pypeai.com/" target="_blank" rel="noopener noreferrer" className="w-14 h-14 flex items-center justify-center">
-                <Image src="/logo-dark.png" alt="Pype Logo" width={38} height={38} style={{ objectFit: 'contain' }} />
-              </a>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', height: '38px', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '20px', fontWeight: 600, lineHeight: 1, fontFamily: '-apple-system, "Segoe UI", sans-serif', alignSelf: 'flex-start', color: '#F3F4F6' }}>
-                  Whispey
-                </span>
-                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600, fontFamily: '-apple-system, "Segoe UI", sans-serif', color: '#8B7BC9' }}>by</span>
-                  <img src="/pype-wordmark.png" alt="Pype" style={{ height: '11px', width: 'auto', objectFit: 'contain' }} />
-                </div>
-              </div>
-            </div>
-
-            {/* Value Proposition */}
-            <h1 className="text-5xl font-bold text-white mb-6 leading-tight">
-              Monitor your LiveKit Voice AI agents.
-            </h1>
-
-            <p className="text-slate-300 text-xl mb-12 leading-relaxed">
-              Join hundreds of engineers and get complete observability into your Voice AI Applications.
-            </p>
-
-            {/* Features */}
-            <div className="space-y-6">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center">
-                  <Sparkles className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold text-lg">Smart Transcription</h3>
-                  <p className="text-slate-400 text-base">Real-time voice-to-text with context awareness</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center">
-                  <Zap className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold text-lg">Instant Insights</h3>
-                  <p className="text-slate-400 text-base">AI-powered analysis and action items</p>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center">
-                  <Shield className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-white font-semibold text-lg">Completely Private</h3>
-                  <p className="text-slate-400 text-base">Open Source</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div className="flex items-center gap-3">
+      <a href="https://pypeai.com/" target="_blank" rel="noopener noreferrer" aria-label="Pype AI" className="rounded-md">
+        <Image src="/logo-light.png" alt="" width={34} height={34} priority unoptimized className="dark:hidden" style={{ objectFit: 'contain' }} />
+        <Image src="/logo-dark.png" alt="" width={34} height={34} priority unoptimized className="hidden dark:block" style={{ objectFit: 'contain' }} />
+      </a>
+      <div className="flex flex-col gap-1.5">
+        <span className="text-lg font-semibold leading-none">Whispey</span>
+        <span className="sw-muted flex items-center gap-1.5 self-end">
+          <span className="text-[11px] font-semibold">by</span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/pype-wordmark.png" alt="Pype" style={{ height: '9px', width: 'auto' }} />
+        </span>
       </div>
+    </div>
+  );
+}
 
-      {/* Right Side - Authentication */}
-      <div className="flex-1 flex flex-col justify-center px-6 py-16 lg:px-16">
-        <div className="w-full max-w-lg mx-auto space-y-8">
-          {/* Mobile Logo */}
-          <div className="lg:hidden text-center">
-            <div className="inline-flex items-center space-x-3">
-              <a href="https://pypeai.com/" target="_blank" rel="noopener noreferrer" className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center border">
-                <Image src="/logo-light.png" alt="Pype Logo" width={30} height={30} style={{ objectFit: 'contain' }} />
-              </a>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', height: '32px', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '17px', fontWeight: 600, lineHeight: 1, fontFamily: '-apple-system, "Segoe UI", sans-serif', alignSelf: 'flex-start', color: '#111827' }}>
-                  Whispey
-                </span>
-                <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '5px' }}>
-                  <span style={{ fontSize: '10px', fontWeight: 600, fontFamily: '-apple-system, "Segoe UI", sans-serif', color: '#6D28D9' }}>by</span>
-                  <img src="/pype-wordmark.png" alt="Pype" style={{ height: '9px', width: 'auto', objectFit: 'contain' }} />
-                </div>
-              </div>
-            </div>
-          </div>
+/** A short voice waveform: decoration for the headline, it carries no data. */
+const WAVE_BARS = Array.from({ length: 34 }, (_, n) => {
+  const shape = Math.sin((n / 33) * Math.PI) * (0.55 + 0.45 * Math.abs(Math.sin(n * 1.7)));
+  return { id: `bar-${n}`, h: Math.max(6, Math.round(shape * 40)), delay: (n * 0.07) % 1.4 };
+});
 
-          {/* Header */}
-          <div className="text-center lg:text-left">
-            <h2 className="text-4xl font-bold text-slate-900 mb-3">
-              Welcome back
-            </h2>
-            <p className="text-slate-600 text-lg">
-              Sign in to your account to continue
-            </p>
-          </div>
+function Waveform() {
+  return (
+    <span aria-hidden="true" className="inline-flex items-center gap-[3px] align-middle" style={{ height: '1em', marginLeft: '0.3em' }}>
+      {WAVE_BARS.map((bar) => (
+        <span key={bar.id} className="sw-bar" style={{ height: bar.h, animationDelay: `${bar.delay}s` }} />
+      ))}
+    </span>
+  );
+}
 
-          {/* Clerk Sign In Component */}
-          <div className="mt-8">
+const SKELETON_ROWS = ['google', 'email', 'continue'];
+
+function FormSkeleton() {
+  return (
+    <output className="block space-y-4" aria-label="Loading the sign-in form">
+      {SKELETON_ROWS.map((row) => (
+        <div key={row} className="h-[3.25rem] animate-pulse rounded-full bg-card/70" />
+      ))}
+    </output>
+  );
+}
+
+export default function AuthPage({ redirectUrl }: Readonly<AuthPageProps>) {
+  const { resolvedTheme } = useTheme();
+  const mode = resolvedTheme === 'dark' ? 'dark' : 'light';
+  const field = FIELD[mode];
+
+  return (
+    <div className={`${sans.variable} sw-page flex min-h-screen flex-col`}>
+      <style>{PAGE_CSS}</style>
+
+      <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4 sm:px-10">
+        <Brand />
+        <ThemeToggle />
+      </header>
+
+      <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 py-3 text-center">
+        <h1 className="sw-title">
+          AI that answers every patient call <span className="sw-em">reliably.</span>
+          <Waveform />
+        </h1>
+        <p className="sw-muted mt-5 max-w-xl text-base leading-relaxed sm:text-lg">
+          Sign in to Whispey, where Pype&apos;s healthcare voice agents are built and every call is reviewed.
+        </p>
+
+        <div className="mt-7 w-full max-w-md text-left">
+          <ClerkLoading>
+            <FormSkeleton />
+          </ClerkLoading>
+          <ClerkLoaded>
             <SignIn
               routing="hash"
               appearance={{
+                variables: CLERK_VARIABLES[mode],
                 elements: {
-                  card: "shadow-none bg-transparent p-0",
-                  formButtonPrimary: "bg-slate-900 hover:bg-slate-800 text-white font-medium py-3.5 px-4 text-base rounded-lg transition-all duration-200 ease-in-out shadow-sm hover:shadow-md",
-                  headerTitle: "hidden",
-                  headerSubtitle: "hidden",
-                  socialButtonsBlockButton: "border-2 border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 font-medium py-3.5 px-4 text-base rounded-lg transition-all duration-200 ease-in-out",
-                  socialButtonsBlockButtonText: "font-medium",
-                  formFieldInput: "border-2 border-slate-200 focus:ring-2 focus:ring-slate-900 focus:border-slate-900 rounded-lg py-3.5 px-4 text-base transition-all duration-200 ease-in-out",
-                  formFieldLabel: "text-slate-700 font-medium mb-2 text-base",
-                  footerActionLink: "text-slate-900 hover:text-slate-700 font-medium",
-                  dividerLine: "bg-slate-200",
-                  dividerText: "text-slate-500 font-medium",
-                  formFieldInputShowPasswordButton: "text-slate-500 hover:text-slate-700",
-                  identityPreviewText: "text-slate-600",
-                  identityPreviewEditButton: "text-slate-900 hover:text-slate-700"
+                  rootBox: { width: '100%' },
+                  cardBox: { width: '100%', border: 'none', boxShadow: 'none', background: 'transparent' },
+                  card: { width: '100%', padding: 0, border: 'none', boxShadow: 'none', background: 'transparent' },
+                  footer: { background: 'transparent' },
+                  headerTitle: { display: 'none' },
+                  headerSubtitle: { display: 'none' },
+                  socialButtonsBlockButton: { minHeight: '3.25rem', borderRadius: '999px', ...field },
+                  formFieldInput: { minHeight: '3.25rem', borderRadius: '999px', padding: '0 1.25rem', fontSize: '1rem', ...field },
+                  formButtonPrimary: {
+                    minHeight: '3.25rem', borderRadius: '999px', fontSize: '1rem', fontWeight: 600, border: 'none', color: '#1e0a52',
+                    background: '#ff6b6b', boxShadow: '0 12px 28px -10px rgba(255,107,107,0.6)',
+                  },
                 },
-                layout: {
-                  socialButtonsPlacement: "top"
-                }
+                layout: { socialButtonsPlacement: 'top' },
               }}
               redirectUrl={redirectUrl ?? '/projects'}
             />
-          </div>
-
-          {/* Trust Indicators */}
-          <div className="pt-8 border-t border-slate-200">
-            <div className="flex items-center justify-center space-x-6 text-sm text-slate-500">
-              <div className="flex items-center space-x-2">
-                <Shield className="w-4 h-4" />
-                <span>Secure</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                  <div className="w-2 h-2 bg-white rounded-full"></div>
-                </div>
-                <span>Open Source</span>
-              </div>
-            </div>
-            <p className="text-center text-xs text-slate-400 mt-4">
-              Protected by industry-leading security standards
-            </p>
-          </div>
+          </ClerkLoaded>
         </div>
-      </div>
+
+        <p className="sw-muted mt-6 text-sm">Need access? Ask your team admin to invite you.</p>
+      </section>
+
+      <footer className="mx-auto w-full max-w-6xl px-6 pb-4 sm:px-10">
+        <p className="border-t pt-4 text-center text-sm sw-muted" style={{ borderColor: 'rgba(75,0,130,0.14)' }}>
+          © {new Date().getFullYear()} Pype
+        </p>
+      </footer>
     </div>
   );
 }

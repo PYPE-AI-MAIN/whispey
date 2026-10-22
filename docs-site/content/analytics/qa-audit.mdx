@@ -1,0 +1,127 @@
+---
+title: QA Audit
+description: Flag a bad call, follow the QA team's review through its statuses, and ask for a weekly review of a whole week of calls.
+---
+
+**QA Audit** is where problems with calls get fixed. You flag a call that went wrong. The QA team reviews it, may hand it to a prompt engineer, and tells you what was done. You can also ask the QA team to review a whole week of calls.
+
+Open it from the left menu: choose your agent, then **QA Audit** under **Monitor**. Anyone who can see the agent can open the page.
+
+It has two tabs: **Flagged calls** and **Weekly review**.
+
+## Flag a call
+
+You can flag a call from three places:
+
+- The **Flag** button on a row in [Call Logs](./call-logs).
+- The **Flag** control in the top bar of an open call.
+- The **Flag** control on the [call trace page](./traces-and-timeline).
+
+1. Click **Flag**. A box titled **Report an issue** opens.
+2. Describe what went wrong. Be specific. For example: "Response at 2:30 was incorrect". A time in the recording helps the reviewer.
+3. Click **Add flag**, or press Cmd and Enter.
+
+You see **Flagged. Our QA team will review it.** with a link to check the status. The flag becomes a ticket on the **Flagged calls** tab with the status **Pending**, and the QA team is notified.
+
+You can add more than one flag to a call.
+
+### Change or remove a flag
+
+- You can edit the text of your own flag. Open the flag and use the pencil icon.
+- You can remove your own flag. People who can edit can remove anyone's flag.
+- Editing or removing a flag changes its ticket only while the ticket is still **Pending**. Once the QA team has started on it, the ticket stays as it is.
+
+## Flagged calls tab
+
+The tab lists every flag on this agent, newest first, 25 to a page. Above the list are filters with a count for each:
+
+| Filter | Shows |
+|---|---|
+| **All** | Every ticket. |
+| **Pending** | Not started. |
+| **In review** | The QA team is working on it. |
+| **Resolved** | Finished. |
+
+If nothing has been flagged yet, the tab says so and links you to **Call Logs**.
+
+The table has these columns:
+
+| Column | What it shows |
+|---|---|
+| **Flag** | What was reported. |
+| **Flagged by** | The email of the person who flagged it. |
+| **Date** | When it was flagged. |
+| **Status** | **Pending**, **In review** or **Resolved**. |
+| **Assigned to** | The prompt engineer working on it. Pype staff only. |
+
+Click a row to open it. Inside you see:
+
+- **Open call**, which opens the call's trace page.
+- The resolution note, once resolved.
+- The history in order: **Flagged**, every **Status** change and every comment from the QA team. Comments can include images.
+
+### What each status means
+
+| Status | Meaning |
+|---|---|
+| **Pending** | The flag is waiting. Nothing has started. |
+| **In review** | The ticket has been passed on, usually to a prompt engineer, to look at and fix. |
+| **Resolved** | The QA team has written down what was done. |
+
+You are told when a status changes, by a notification in the app and an email. Look for the bell icon.
+
+## Weekly review
+
+The **Weekly review** tab asks the QA team to review every call from one finished week. They share the result as a Google Sheet.
+
+1. Open **Weekly review**.
+2. Read the week named under the heading. It is always the last full week, Monday to Sunday, in India time.
+3. Click **Request last week's review**.
+
+The row appears with the status **Requested**. It moves through these statuses:
+
+| Status | Meaning |
+|---|---|
+| **Requested** | Waiting for the QA team. |
+| **In progress** | The QA team is reviewing the calls. |
+| **Ready** | Done. An **Open sheet** link appears. |
+
+A week can only be requested once. After you ask, the button reads **Requested for last week**. You can only request a week that has finished.
+
+The QA team can add a note for you. It appears under the row.
+
+## Who sees what
+
+| Person | What they can do |
+|---|---|
+| Customers (project members) | See tickets and weekly reviews for agents they can already see. Flag calls. Request weekly reviews. Read comments and the resolution note. They cannot change a ticket's status. |
+| Pype staff | See the same, plus the **Assigned to** column and the internal sheet on a ticket. |
+| QA team | Everything above, for every project. They also reply, change status, hand tickets over and update weekly reviews. |
+
+The internal sheet and the assignee are never shown to customers.
+
+## For the QA team
+
+Members of the QA team see an extra box at the bottom of every open ticket:
+
+1. Write a comment. A comment is shown to the customer. For a resolution, the box asks **What was done? (required, the customer sees this)**.
+2. Optionally click **Attach image** to add up to 5 images (PNG, JPG, WebP or GIF, 5 MB each).
+3. Choose a **Status**: **Pending**, **In review** or **Resolved**.
+4. When the status is **In review**, choose a **Prompt engineer** and, if you have one, paste an **Internal sheet (Pype staff only)** link.
+5. Click **Send**. The button changes to **Send and move to** the new status when the status changes.
+
+What the status choices do:
+
+- **Pending**: not started. The customer sees nothing new until you comment or change the status.
+- **In review**: passes the ticket to the prompt engineer. They are emailed and tagged on Slack.
+- **Resolved**: the customer sees your note and gets an email. A note is required.
+
+For weekly reviews, click **Update** on a row to set the status, paste the **Google Sheet link (required for Ready)** and add an optional **Note for the customer**.
+
+Who is on the QA team, and who can be assigned as a prompt engineer, is managed by Pype admins.
+
+## Related
+
+- [Call logs](./call-logs)
+- [Traces and timeline](./traces-and-timeline)
+- [Prompt Forge](./prompt-forge), for testing a prompt change

@@ -101,8 +101,18 @@ function SelectLabel({
 function SelectItem({
   className,
   children,
+  description,
   ...props
-}: React.ComponentProps<typeof SelectPrimitive.Item>) {
+}: React.ComponentProps<typeof SelectPrimitive.Item> & {
+  /**
+   * A line of explanation under the option, in the list only.
+   *
+   * It has to live outside ItemText: the closed trigger renders a clone of the
+   * selected item's ItemText, so anything put in there with the label is drawn
+   * inside the select box as well.
+   */
+  description?: React.ReactNode
+}) {
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
@@ -117,7 +127,20 @@ function SelectItem({
           <CheckIcon className="size-4" />
         </SelectPrimitive.ItemIndicator>
       </span>
-      <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+      {description ? (
+        // a div, not a span: the item's own className above styles its LAST
+        // span child with `*:[span]:last:flex items-center gap-2` for the
+        // plain icon+label case, and with a description this wrapper would
+        // be that last span — center-aligning what's meant to be a left-
+        // aligned label row over a description line, and fighting its own
+        // gap-0.5 with the inherited gap-2. A div never matches that selector.
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+          <span className="text-muted-foreground text-[11px] leading-snug">{description}</span>
+        </div>
+      ) : (
+        <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+      )}
     </SelectPrimitive.Item>
   )
 }

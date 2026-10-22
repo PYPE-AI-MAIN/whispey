@@ -163,6 +163,68 @@ describe('pypeApiFetch', () => {
     })
   })
 
+  describe('fetchPypeApiWithRetry', () => {
+    const url = 'https://backend.test/agent_config/a'
+    const refused = () => Object.assign(new TypeError('fetch failed'), { cause: { code: 'ECONNREFUSED' } })
+
+    afterEach(() => vi.unstubAllGlobals())
+
+    it('returns the first response when the backend is up', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(new Response('ok'))
+      vi.stubGlobal('fetch', fetchMock)
+      const { fetchPypeApiWithRetry } = await import('@/lib/pypeApiFetch')
+      const res = await fetchPypeApiWithRetry(url, {}, { delayMs: 0 })
+      expect(await res.text()).toBe('ok')
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
+
+    it('retries a refused connection until the backend comes back', async () => {
+      const fetchMock = vi.fn()
+        .mockRejectedValueOnce(refused())
+        .mockRejectedValueOnce(refused())
+        .mockResolvedValue(new Response('back up'))
+      vi.stubGlobal('fetch', fetchMock)
+      const { fetchPypeApiWithRetry } = await import('@/lib/pypeApiFetch')
+      const res = await fetchPypeApiWithRetry(url, {}, { delayMs: 0 })
+      expect(await res.text()).toBe('back up')
+      expect(fetchMock).toHaveBeenCalledTimes(3)
+    })
+
+    it('gives up after the configured retries', async () => {
+      const fetchMock = vi.fn().mockRejectedValue(refused())
+      vi.stubGlobal('fetch', fetchMock)
+      const { fetchPypeApiWithRetry } = await import('@/lib/pypeApiFetch')
+      await expect(fetchPypeApiWithRetry(url, {}, { retries: 1, delayMs: 0 })).rejects.toThrow('fetch failed')
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+    })
+
+    it('does not retry an HTTP error response', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(new Response('boom', { status: 500 }))
+      vi.stubGlobal('fetch', fetchMock)
+      const { fetchPypeApiWithRetry } = await import('@/lib/pypeApiFetch')
+      const res = await fetchPypeApiWithRetry(url, {}, { delayMs: 0 })
+      expect(res.status).toBe(500)
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
+
+    it('does not retry errors that are not connection failures', async () => {
+      const fetchMock = vi.fn().mockRejectedValue(new Error('bad request body'))
+      vi.stubGlobal('fetch', fetchMock)
+      const { fetchPypeApiWithRetry } = await import('@/lib/pypeApiFetch')
+      await expect(fetchPypeApiWithRetry(url, {}, { delayMs: 0 })).rejects.toThrow('bad request body')
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
+
+    it("keeps the caller's own abort signal", async () => {
+      const fetchMock = vi.fn().mockResolvedValue(new Response('ok'))
+      vi.stubGlobal('fetch', fetchMock)
+      const { fetchPypeApiWithRetry } = await import('@/lib/pypeApiFetch')
+      const controller = new AbortController()
+      await fetchPypeApiWithRetry(url, { signal: controller.signal }, { delayMs: 0 })
+      expect(fetchMock.mock.calls[0][1].signal).toBe(controller.signal)
+    })
+  })
+
   describe('pypeAgentControlHeaders', () => {
     it('includes the ngrok bypass and JSON accept/content-type headers', async () => {
       const { pypeAgentControlHeaders } = await import('@/lib/pypeApiFetch')
