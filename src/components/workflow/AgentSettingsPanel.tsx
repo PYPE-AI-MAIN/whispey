@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
+import { clampAwayTimeout, MIN_AWAY_TIMEOUT_SECONDS } from '@/config/agentDefaults'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
@@ -79,6 +81,14 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
   const { agent, transports } = workflow
   const languages = (agent.languages ?? []) as LanguageSwitchConfig[]
   const outbound = (transports.telephony?.outbound ?? {}) as { sip_trunk_id?: string; sms_from?: string }
+  // Same keys the classic agent writes; the worker reads them from agent.advanced.session_behavior.
+  const session = (agent.advanced?.session_behavior ?? {}) as Record<string, any>
+  const setSession = (patch: Record<string, unknown>) => {
+    const next: Record<string, unknown> = { ...session, ...patch }
+    for (const key of Object.keys(next)) if (next[key] === undefined || next[key] === '') delete next[key]
+    updateAgentConfig({ advanced: { ...agent.advanced, session_behavior: next } })
+  }
+  const optionalInt = (value: string) => (value === '' || Number.isNaN(Number(value)) ? undefined : Math.max(1, Math.floor(Number(value))))
   const selectedPhoneId = phoneNumbers.find((p) => p.trunk_id === outbound.sip_trunk_id)?.id
 
   return (
@@ -117,6 +127,68 @@ export function AgentSettingsPanel({ open, onOpenChange }: Readonly<{ open: bool
           {agent.knowledge?.enabled && (
             <p className="-mt-2 text-xs text-muted-foreground">Add or remove documents from Setup, then Knowledge base.</p>
           )}
+
+          <div className="space-y-3 rounded-lg border border-border p-3">
+            <div className="space-y-0.5">
+              <Label className="text-xs">When the caller goes quiet</Label>
+              <p className="text-xs text-muted-foreground">
+                The agent checks in after a pause. Leave the wait empty to turn this off.
+              </p>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Wait before checking in (seconds, minimum {MIN_AWAY_TIMEOUT_SECONDS})</Label>
+              <Input
+                key={`away-timeout-${session.user_away_timeout ?? ''}`}
+                type="number"
+                min={MIN_AWAY_TIMEOUT_SECONDS}
+                step="0.5"
+                className="h-8 text-xs"
+                placeholder="Off"
+                defaultValue={session.user_away_timeout ?? ''}
+                onBlur={(e) => setSession({ user_away_timeout: e.target.value === '' ? undefined : clampAwayTimeout(Number(e.target.value)) })}
+              />
+            </div>
+            {session.user_away_timeout !== undefined && (
+              <>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Check-in message</Label>
+                  <Input
+                    key={`away-msg-${session.user_away_timeout_message ?? ''}`}
+                    className="h-8 text-xs"
+                    placeholder="Are you still on the line?"
+                    defaultValue={session.user_away_timeout_message ?? ''}
+                    onBlur={(e) => setSession({ user_away_timeout_message: e.target.value.trim() })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Check-ins before ending the call</Label>
+                  <Input
+                    key={`away-max-${session.user_away_timeout_max_count ?? ''}`}
+                    type="number"
+                    min={1}
+                    className="h-8 text-xs"
+                    placeholder="Unlimited"
+                    defaultValue={session.user_away_timeout_max_count ?? ''}
+                    onBlur={(e) => setSession({ user_away_timeout_max_count: optionalInt(e.target.value) })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">End message</Label>
+                  <Input
+                    key={`away-end-${session.user_away_timeout_end_message ?? ''}`}
+                    className="h-8 text-xs"
+                    placeholder="Sorry I couldn't hear you. Goodbye."
+                    defaultValue={session.user_away_timeout_end_message ?? ''}
+                    disabled={session.user_away_timeout_max_count === undefined}
+                    onBlur={(e) => setSession({ user_away_timeout_end_message: e.target.value.trim() })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Spoken once, then the call ends. Set a number of check-ins above to use it.
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
 
           {/* LLM */}
           <div className="space-y-1">
