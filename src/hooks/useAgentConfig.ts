@@ -387,6 +387,26 @@ async function pollUpdateStatus(agentName: string): Promise<any> {
   )
 }
 
+// Draft saves only need the update tracker (no pid baseline, 300ms ticks): they finish in well under a second.
+async function pollDraftUpdate(agentName: string): Promise<any> {
+  const deadline = Date.now() + 60_000
+  let untracked = 0
+  while (Date.now() < deadline) {
+    const res = await fetch(updateStatusUrl(agentName)).catch(() => null)
+    const status = res?.ok ? await res.json().catch(() => null) : null
+    if (status) {
+      // "no_update_found" right after the POST can be the task not having started yet
+      if (status.status === "no_update_found" && ++untracked >= 3) return { status: "completed", success: true }
+      if (TERMINAL_UPDATE_STATUSES.has(status.status)) {
+        if (status.status === "completed" && status.success !== false) return status
+        throw new Error(status.error || `Draft save ended with status: ${status.status}`)
+      }
+    }
+    await new Promise((r) => setTimeout(r, 300))
+  }
+  throw new UpdateStillInProgressError("Couldn't confirm the draft was saved.")
+}
+
 function extractAgentName(data: any): string | undefined {
   return data?.agent?.name || data?.metadata?.agentName
 }
@@ -514,7 +534,7 @@ export async function checkUpdateInProgress(
 // picker) that need the same "wait for the redeploy to actually finish, not
 // just for the request to be accepted" behavior without pulling in the whole
 // useAgentMutations/form-state machinery.
-export const saveAndDeployAgent = async (data: any) => {
+export const saveAndDeployAgent = async (data: any, fast = false) => {
   const response = await fetch("/api/agents/save-and-deploy", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -533,7 +553,7 @@ export const saveAndDeployAgent = async (data: any) => {
     if (response.status === 409) {
       const agentName = extractAgentName(data)
       if (agentName) {
-        return pollUpdateStatus(agentName)
+        return (fast ? pollDraftUpdate : pollUpdateStatus)(agentName)
       }
     }
 
@@ -553,7 +573,7 @@ export const saveAndDeployAgent = async (data: any) => {
   // save-and-deploy/route.ts wraps it as { success, message, data: <backend response> }.
   const agentName = result?.data?.agent_name || extractAgentName(data)
   if (result?.data?.status === "update_started" && agentName) {
-    return pollUpdateStatus(agentName)
+    return (fast ? pollDraftUpdate : pollUpdateStatus)(agentName)
   }
 
   return result
@@ -595,7 +615,7 @@ export const useAgentMutations = (agentName: string | null) => {
   })
 
   const saveAndDeployMutation = useMutation({
-    mutationFn: saveAndDeployAgent,
+    mutationFn: (data: any) => saveAndDeployAgent(data),
     onSuccess: () => {
       if (agentName) {
         // Invalidate queries - the component will handle the refetch
