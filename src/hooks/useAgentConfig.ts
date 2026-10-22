@@ -389,7 +389,7 @@ async function pollUpdateStatus(agentName: string): Promise<any> {
 
 // Draft saves only need the update tracker (no pid baseline, 300ms ticks): they finish in well under a second.
 // Returns the final result, null while still running, and throws on a failed save.
-function draftSaveResult(status: any, untracked: number): any | null {
+function draftSaveResult(status: any, untracked: number): any {
   // "no_update_found" right after the POST can be the task not having started yet
   if (status.status === "no_update_found") return untracked >= 3 ? { status: "completed", success: true } : null
   if (!TERMINAL_UPDATE_STATUSES.has(status.status)) return null
