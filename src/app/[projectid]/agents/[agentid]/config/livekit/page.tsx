@@ -66,7 +66,6 @@ import PasteConfigDialog from '@/components/agents/AgentConfig/PasteConfigDialog
 import { DeserializedConfig } from '@/utils/agentConfigSerializer'
 import DynamicTTSSwitch from '@/components/agents/AgentConfig/DynamicTTSSwitch'
 import { useUser } from '@clerk/nextjs'
-import { deserializeConfig } from '@/utils/agentConfigSerializer'
 import ConfigHistory from '@/components/agents/AgentConfig/ConfigHistory'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { canShowAgentSection } from '@/types/visibility'
@@ -447,11 +446,9 @@ export default function AgentConfig() {
   // }, [promptValidation.validVariables])
 
   // Handle the agent config data when it loads
-  useEffect(() => {
-    if (agentConfigData?.agent?.assistant?.[0]) {
-      const assistant = agentConfigData.agent.assistant[0]
-      
-      const formValues = buildFormValuesFromAgent(assistant, agentConfigData?.agent)
+  const applyExternalState = (assistant: any, agent: any) => {
+    {
+      const formValues = buildFormValuesFromAgent(assistant, agent)
       
       setTtsConfig({
         provider: formValues.ttsProvider,
@@ -495,6 +492,12 @@ export default function AgentConfig() {
         }
       }
 
+    }
+  }
+
+  useEffect(() => {
+    if (agentConfigData?.agent?.assistant?.[0]) {
+      applyExternalState(agentConfigData.agent.assistant[0], agentConfigData.agent)
     }
   }, [agentConfigData])
 
@@ -1017,7 +1020,10 @@ const inboundLookupVariables = useMemo(() => {
   }, [formik.values, ttsConfig, sttConfig, azureConfig, fallbackAzureConfig, hasExternalChanges, hasMultiAssistantChanges, canAutosave, draftReady, draftConflict])
 
   const applyDraftConfig = (draft: any) => {
-    handleApplyPastedConfig(deserializeConfig(JSON.stringify(draft)))
+    const assistant = draft.agent.assistant[0]
+    formik.setValues(buildFormValuesFromAgent(assistant, draft.agent), false)
+    applyExternalState(assistant, draft.agent)
+    setHasExternalChanges(true)
     baselineSigPendingRef.current = true
   }
 
@@ -1030,8 +1036,12 @@ const inboundLookupVariables = useMemo(() => {
       const meta = draft?.agent?.draft_meta
       lastDraftStampRef.current = meta?.updated_at ?? null
       if (meta && !meta.discarded && draft.agent.assistant?.length === 1) {
-        applyDraftConfig(draft)
-        setRestoredDraft(meta)
+        try {
+          applyDraftConfig(draft)
+          setRestoredDraft(meta)
+        } catch (err) {
+          console.warn('Could not restore draft:', err)
+        }
       }
       setDraftReady(true)
     })
