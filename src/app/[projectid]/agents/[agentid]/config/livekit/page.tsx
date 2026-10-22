@@ -1298,8 +1298,17 @@ const inboundLookupVariables = useMemo(() => {
               <span className="text-sm text-muted-foreground">
                 {agentNameHeader || 'Loading...'}
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 {getAgentStatusText()}
+                {isFormDirty && draftStatus !== 'idle' && (
+                  <span className={`flex items-center gap-1 ${draftStatus === 'error' || draftStatus === 'conflict' ? 'text-destructive' : ''}`}>
+                    <span aria-hidden>·</span>
+                    {draftStatus === 'saving' && <><Loader2 className="w-3 h-3 animate-spin" />Saving draft</>}
+                    {draftStatus === 'saved' && <><CheckIcon className="w-3 h-3" />Draft saved{draftSavedAt ? ` ${draftSavedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}</>}
+                    {draftStatus === 'error' && <><AlertCircle className="w-3 h-3" />Draft not saved</>}
+                    {draftStatus === 'conflict' && <><AlertCircle className="w-3 h-3" />Draft edited by someone else</>}
+                  </span>
+                )}
               </span>
             </div>
           </div>
@@ -1365,14 +1374,6 @@ const inboundLookupVariables = useMemo(() => {
               </SheetContent>
             </Sheet>
 
-            {isFormDirty && draftStatus !== 'idle' && (
-              <span className={`text-xs ${draftStatus === 'error' || draftStatus === 'conflict' ? 'text-destructive' : 'text-muted-foreground'}`}>
-                {draftStatus === 'saving' && 'Saving draft…'}
-                {draftStatus === 'saved' && `Draft saved${draftSavedAt ? ` · ${draftSavedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}`}
-                {draftStatus === 'error' && 'Draft not saved'}
-                {draftStatus === 'conflict' && 'Draft edited by someone else'}
-              </span>
-            )}
             {isFormDirty && (
               <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleCancel} disabled={isPublishing}>
                 Discard Changes
