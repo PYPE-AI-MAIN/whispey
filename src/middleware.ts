@@ -53,6 +53,10 @@ async function fetchClerkUserEmail(clerkId: string): Promise<string | null> {
 const isApprovalGateExemptRoute = createRouteMatcher([
   '/pending-approval(.*)',
   '/api/me/status(.*)',
+  // LayoutContent's self-heal (check row -> create row) must stay reachable,
+  // otherwise a signup the webhook missed can never get its pending row.
+  '/api/user/users',
+  '/api/user/create',
 ]);
 
 // Define which routes are public (don't require authentication)

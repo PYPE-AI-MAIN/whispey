@@ -62,3 +62,36 @@ export async function sendAccountApprovedEmail({
 export async function sendAccountDeclinedEmail({ email }: { email: string }): Promise<void> {
   await sendLoopsEmail(process.env.LOOPS_ACCOUNT_DECLINED_TEMPLATE_ID, email, {})
 }
+
+// Shared by the Clerk webhook and the /api/user/create fallback so a pending
+// signup always notifies admins, whichever path created the row.
+export async function notifyAdminsOfPendingSignup({
+  rowId,
+  approvalToken,
+  userEmail,
+  userName,
+}: {
+  rowId: string
+  approvalToken: string
+  userEmail: string
+  userName: string
+}): Promise<void> {
+  try {
+    const adminEmails = process.env.APPROVAL_NOTICE_EMAILS?.split(',').map((e) => e.trim()).filter(Boolean) ?? []
+    if (adminEmails.length === 0) {
+      console.warn('APPROVAL_NOTICE_EMAILS not configured — skipping pending-approval notice')
+      return
+    }
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.whispey.xyz').replace(/\/$/, '')
+    const base = `${appUrl}/api/admin/pending-users/${rowId}/action?token=${approvalToken}`
+    await sendPendingApprovalNotice({
+      adminEmails,
+      userEmail,
+      userName: userName || userEmail,
+      approveLink: `${base}&decision=approve`,
+      declineLink: `${base}&decision=decline`,
+    })
+  } catch (err) {
+    console.error('Failed to notify admins of pending signup:', err)
+  }
+}
