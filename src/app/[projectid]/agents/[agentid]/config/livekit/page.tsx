@@ -1034,6 +1034,12 @@ const inboundLookupVariables = useMemo(() => {
     baselineSigPendingRef.current = true
   }
 
+  // Never hold the page on the skeleton for more than a few seconds waiting for the draft check.
+  useEffect(() => {
+    const t = setTimeout(() => setDraftReady(true), 6000)
+    return () => clearTimeout(t)
+  }, [])
+
   // On load: pick up the draft left by a refresh, a closed tab or a teammate.
   useEffect(() => {
     if (!activeAgentName || !agentConfigData?.agent?.assistant || draftLoadedForRef.current === activeAgentName) return
@@ -1076,7 +1082,7 @@ const inboundLookupVariables = useMemo(() => {
   const updateConfigHint = getUpdateConfigHint()
 
   // Loading state
-  if (agentLoading || isConfigLoading) {
+  if (agentLoading || isConfigLoading || (!draftReady && !isConfigError)) {
     return (
       <div className="h-screen bg-muted/50 p-6">
         <div className="max-w-7xl mx-auto space-y-4">
