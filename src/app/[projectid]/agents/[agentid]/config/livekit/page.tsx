@@ -45,7 +45,7 @@ import SelectSTT from '@/components/agents/AgentConfig/SelectSTTDialog'
 import AgentAdvancedSettings from '@/components/agents/AgentConfig/AgentAdvancedSettings'
 import PromptSettingsSheet from '@/components/agents/AgentConfig/PromptSettingsSheet'
 import { usePromptSettings } from '@/hooks/usePromptSettings'
-import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgentMutations, useResumeInProgressUpdate, useUpdateProgressLabel, updateStageDetail, UpdateStillInProgressError } from '@/hooks/useAgentConfig'
+import { buildFormValuesFromAgent, getDefaultFormValues, saveAndDeployAgent, useAgentConfig, useAgentMutations, useResumeInProgressUpdate, useUpdateProgressLabel, updateStageDetail, UpdateStillInProgressError } from '@/hooks/useAgentConfig'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -535,12 +535,7 @@ export default function AgentConfig() {
 
   // Opens commit modal, capturing the current config first.
   // Deploy only happens after the commit message is entered — no skip path.
-  const handleOpenCommitModal = () => {
-    if (!promptValidation.isValid) {
-      console.error('❌ Cannot save: Variable validation errors exist')
-      return
-    }
-
+  const buildPayloadWithVariables = () => {
     const payload = buildSavePayload()
 
     const validVariables = Array.from(promptValidation.validVariables)
@@ -559,6 +554,16 @@ export default function AgentConfig() {
         return acc
       }, {})
     }
+    return payload
+  }
+
+  const handleOpenCommitModal = () => {
+    if (!promptValidation.isValid) {
+      console.error('❌ Cannot save: Variable validation errors exist')
+      return
+    }
+
+    const payload = buildPayloadWithVariables()
 
     const userEmail = user?.primaryEmailAddress?.emailAddress ?? null
     const userId = user?.id ?? null
@@ -901,6 +906,20 @@ const inboundLookupVariables = useMemo(() => {
   const isFormDirty = formik.dirty || hasExternalChanges || hasMultiAssistantChanges 
   const isBackendUnavailable = !!agentConfigData?.backendUnavailable
 
+  // Retell-style: a test call with unpublished edits autosaves them as a draft agent
+  // (`<name>__draft`) and runs that; live calls keep the published config until Publish.
+  const prepareTestSession = async (): Promise<boolean> => {
+    if (!isFormDirty || !promptValidation.isValid || isBackendUnavailable || isProdLocked) return false
+    const payload = buildPayloadWithVariables()
+    const persistedTarget = agentDataResponse?.[0]?.configuration?.deployment_target
+    await saveAndDeployAgent({
+      ...payload,
+      agent: { ...payload.agent, name: `${payload.agent.name}__draft` },
+      deploymentTarget: persistedTarget === 'docker' ? 'docker' : 'classic',
+    })
+    return true
+  }
+
   const getUpdateConfigHint = (): string | undefined => {
     if (isProdLocked) return 'Production agent — read only'
     if (isBackendUnavailable) return 'Voice backend unreachable — cannot save'
@@ -1189,6 +1208,7 @@ const inboundLookupVariables = useMemo(() => {
                   onFlashEndCallDone={() => setFlashEndCall(false)}
                   onSessionActiveChange={(active) => { isTalkToAssistantSessionActiveRef.current = active }}
                   deploymentTarget={deploymentTarget}
+                  prepareSession={prepareTestSession}
                 />
               </SheetContent>
             </Sheet>
@@ -1632,6 +1652,7 @@ const inboundLookupVariables = useMemo(() => {
             onFlashEndCallDone={() => setFlashEndCall(false)}
             onSessionActiveChange={(active) => { isTalkToAssistantSessionActiveRef.current = active }}
             deploymentTarget={deploymentTarget}
+            prepareSession={prepareTestSession}
           />
         </SheetContent>
       </Sheet>
