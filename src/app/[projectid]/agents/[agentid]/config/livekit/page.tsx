@@ -1158,27 +1158,6 @@ const inboundLookupVariables = useMemo(() => {
           </AlertDescription>
         </Alert>
       )}
-      {draftConflict && (
-        <Alert className="mx-4 mt-2 w-auto">
-          <AlertCircle className="text-warning" />
-          <AlertTitle>{draftConflict.updated_by_name ?? 'Someone'} edited this draft</AlertTitle>
-          <AlertDescription className="flex items-center gap-2">
-            Saved {draftConflict.updated_at ? new Date(draftConflict.updated_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'just now'}. Autosave is paused.
-            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={loadTheirDraft}>Load theirs</Button>
-            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={overwriteTheirDraft}>Overwrite</Button>
-          </AlertDescription>
-        </Alert>
-      )}
-      {restoredDraft && !draftConflict && isFormDirty && (
-        <Alert className="mx-4 mt-2 w-auto">
-          <AlertCircle className="text-warning" />
-          <AlertTitle>Unpublished draft restored</AlertTitle>
-          <AlertDescription className="flex items-center gap-2">
-            Last edited by {restoredDraft.updated_by_name ?? 'someone'}{restoredDraft.updated_at ? ` at ${new Date(restoredDraft.updated_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}. Live calls still use the published config.
-            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleCancel}>Discard draft</Button>
-          </AlertDescription>
-        </Alert>
-      )}
       {/* Mobile Header */}
       <div className="lg:hidden bg-card border-b border-border px-4 py-3 flex-shrink-0">
         <div className="flex items-center justify-between">
@@ -1465,6 +1444,24 @@ const inboundLookupVariables = useMemo(() => {
         </div>
       </div>
 
+      {draftConflict && (
+        <div className="flex items-center gap-2 px-6 py-1.5 text-xs bg-destructive/10 border-b border-border flex-shrink-0">
+          <AlertCircle className="w-3.5 h-3.5 text-destructive shrink-0" />
+          <span className="truncate">
+            <b>{draftConflict.updated_by_name ?? 'Someone'}</b> edited this draft{draftConflict.updated_at ? ` at ${new Date(draftConflict.updated_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}. Autosave is paused.
+          </span>
+          <button className="ml-auto underline underline-offset-2 hover:no-underline shrink-0" onClick={loadTheirDraft}>Load theirs</button>
+          <button className="underline underline-offset-2 hover:no-underline shrink-0" onClick={overwriteTheirDraft}>Overwrite</button>
+        </div>
+      )}
+      {restoredDraft && !draftConflict && isFormDirty && (
+        <div className="flex items-center gap-2 px-6 py-1.5 text-xs text-muted-foreground bg-muted/40 border-b border-border flex-shrink-0">
+          <span className="truncate">
+            Unpublished draft restored · edited by {restoredDraft.updated_by_name ?? 'someone'}{restoredDraft.updated_at ? ` at ${new Date(restoredDraft.updated_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''} · live calls still use the published config
+          </span>
+          <button className="ml-auto underline underline-offset-2 hover:text-foreground shrink-0" onClick={handleCancel}>Discard draft</button>
+        </div>
+      )}
       {/* Main Content */}
       <div className="flex-1 min-h-0 max-w-7xl mx-auto w-full p-4">
         <div className="h-full flex gap-4">
