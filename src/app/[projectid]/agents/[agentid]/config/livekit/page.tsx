@@ -66,6 +66,7 @@ import PasteConfigDialog from '@/components/agents/AgentConfig/PasteConfigDialog
 import { DeserializedConfig } from '@/utils/agentConfigSerializer'
 import DynamicTTSSwitch from '@/components/agents/AgentConfig/DynamicTTSSwitch'
 import { useUser } from '@clerk/nextjs'
+import { deserializeConfig } from '@/utils/agentConfigSerializer'
 import ConfigHistory from '@/components/agents/AgentConfig/ConfigHistory'
 import { useMemberVisibility } from '@/hooks/useMemberVisibility'
 import { canShowAgentSection } from '@/types/visibility'
@@ -179,6 +180,16 @@ export default function AgentConfig() {
   const [versionSaveError, setVersionSaveError] = useState<string | null>(null)
   const [showMergePrompt, setShowMergePrompt] = useState(false)
   const [publishedSnapshot, setPublishedSnapshot] = useState<any>(null)
+  const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'error' | 'conflict'>('idle')
+  const [draftSavedAt, setDraftSavedAt] = useState<Date | null>(null)
+  const [draftConflict, setDraftConflict] = useState<any>(null)
+  const [restoredDraft, setRestoredDraft] = useState<any>(null)
+  const [draftReady, setDraftReady] = useState(false)
+  const lastDraftStampRef = useRef<string | null>(null)
+  const lastSavedSigRef = useRef<string | null>(null)
+  const baselineSigPendingRef = useRef(false)
+  const draftChainRef = useRef<Promise<unknown>>(Promise.resolve())
+  const draftLoadedForRef = useRef<string | null>(null)
   const [isDiffLoading, setIsDiffLoading] = useState(false)
   const [diffTab, setDiffTab] = useState<'prompt' | 'settings'>('prompt')
 
@@ -643,6 +654,9 @@ export default function AgentConfig() {
         return
       }
       toast.success('Changes published')
+      setRestoredDraft(null)
+      lastSavedSigRef.current = null
+      writeDraft(pendingCheckpoint.config, { discarded: true }).catch(err => console.warn('Draft clean-up failed:', err))
       setCommitMessage('')
       setPendingCheckpoint(null)
       setShowMergePrompt(true)
@@ -742,6 +756,31 @@ export default function AgentConfig() {
     formik.resetForm()
     setHasExternalChanges(false)
     resetUnsavedChanges()
+    discardDraft()
+  }
+
+  // Mark the draft as clean so a refresh doesn't bring the discarded edits back.
+  const discardDraft = () => {
+    setRestoredDraft(null)
+    setDraftConflict(null)
+    setDraftStatus('idle')
+    lastSavedSigRef.current = null
+    if (agentConfigData?.agent?.assistant?.length === 1) {
+      writeDraft({ agent: agentConfigData.agent }, { discarded: true }).catch(err => console.warn('Draft discard failed:', err))
+    }
+  }
+
+  const loadTheirDraft = async () => {
+    const draft = await fetchDraft()
+    if (draft) { applyDraftConfig(draft); lastDraftStampRef.current = draft.agent?.draft_meta?.updated_at ?? null }
+    setDraftConflict(null)
+    setDraftStatus('idle')
+  }
+
+  const overwriteTheirDraft = () => {
+    lastDraftStampRef.current = draftConflict?.updated_at ?? null
+    setDraftConflict(null)
+    setDraftStatus('idle')
   }
 
   const handleVoiceSelect = (voiceId: string, provider: string, model?: string, config?: any) => {
@@ -908,15 +947,107 @@ const inboundLookupVariables = useMemo(() => {
 
   // Retell-style: a test call with unpublished edits autosaves them as a draft agent
   // (`<name>__draft`) and runs that; live calls keep the published config until Publish.
+  const draftTarget = (): 'classic' | 'docker' =>
+    agentDataResponse?.[0]?.configuration?.deployment_target === 'docker' ? 'docker' : 'classic'
+
+  const draftNameOf = () => `${activeAgentName}__draft`
+
+  const fetchDraft = async (): Promise<any | null> => {
+    const res = await fetch(`/api/agent-config/${draftNameOf()}`).catch(() => null)
+    return res?.ok ? res.json().catch(() => null) : null
+  }
+
+  // Writes the draft agent; calls are chained so autosave and a test call never overlap.
+  const writeDraft = (payload: any, extraMeta: Record<string, any> = {}) => {
+    const run = async () => {
+      const meta = {
+        updated_at: new Date().toISOString(),
+        updated_by: user?.id ?? null,
+        updated_by_name: user?.fullName ?? user?.primaryEmailAddress?.emailAddress ?? 'Someone',
+        ...extraMeta,
+      }
+      await saveAndDeployAgent({
+        ...payload,
+        agent: { ...payload.agent, name: draftNameOf(), draft_meta: meta },
+        deploymentTarget: draftTarget(),
+      })
+      lastDraftStampRef.current = meta.updated_at
+    }
+    const next = draftChainRef.current.then(run, run)
+    draftChainRef.current = next.catch(() => undefined)
+    return next
+  }
+
+  // Someone else saved the draft after we last loaded or wrote it.
+  const findDraftConflict = async () => {
+    const remote = (await fetchDraft())?.agent?.draft_meta
+    if (!remote || remote.updated_at === lastDraftStampRef.current) return null
+    return remote.updated_by && remote.updated_by !== user?.id ? remote : null
+  }
+
+  const canAutosave = isFormDirty && promptValidation.isValid && !isBackendUnavailable && !isProdLocked && !isPublishing
+  const autosaveDraft = async () => {
+    const payload = buildPayloadWithVariables()
+    const sig = JSON.stringify(payload)
+    if (baselineSigPendingRef.current) { // just restored: the draft already holds this
+      baselineSigPendingRef.current = false
+      lastSavedSigRef.current = sig
+      return
+    }
+    if (sig === lastSavedSigRef.current) return
+    const conflict = await findDraftConflict()
+    if (conflict) { setDraftConflict(conflict); setDraftStatus('conflict'); return }
+    setDraftStatus('saving')
+    try {
+      await writeDraft(payload)
+      lastSavedSigRef.current = sig
+      setDraftSavedAt(new Date())
+      setDraftStatus('saved')
+    } catch (err) {
+      console.warn('Draft autosave failed:', err)
+      setDraftStatus('error')
+    }
+  }
+
+  // Debounced background autosave while there are unpublished edits.
+  useEffect(() => {
+    if (!canAutosave || !draftReady || draftConflict) return
+    const t = setTimeout(autosaveDraft, 3000)
+    return () => clearTimeout(t)
+  }, [formik.values, ttsConfig, sttConfig, azureConfig, fallbackAzureConfig, hasExternalChanges, hasMultiAssistantChanges, canAutosave, draftReady, draftConflict])
+
+  const applyDraftConfig = (draft: any) => {
+    handleApplyPastedConfig(deserializeConfig(JSON.stringify(draft)))
+    baselineSigPendingRef.current = true
+  }
+
+  // On load: pick up the draft left by a refresh, a closed tab or a teammate.
+  useEffect(() => {
+    if (!activeAgentName || !agentConfigData?.agent?.assistant || draftLoadedForRef.current === activeAgentName) return
+    draftLoadedForRef.current = activeAgentName
+    if (agentConfigData.agent.assistant.length > 1) { setDraftReady(true); return }
+    fetchDraft().then(draft => {
+      const meta = draft?.agent?.draft_meta
+      lastDraftStampRef.current = meta?.updated_at ?? null
+      if (meta && !meta.discarded && draft.agent.assistant?.length === 1) {
+        applyDraftConfig(draft)
+        setRestoredDraft(meta)
+      }
+      setDraftReady(true)
+    })
+  }, [activeAgentName, agentConfigData])
+
   const prepareTestSession = async (): Promise<boolean> => {
     if (!isFormDirty || !promptValidation.isValid || isBackendUnavailable || isProdLocked) return false
+    if (draftConflict) throw new Error(`${draftConflict.updated_by_name ?? 'Someone'} edited this draft. Choose "Load theirs" or "Overwrite" first.`)
     const payload = buildPayloadWithVariables()
-    const persistedTarget = agentDataResponse?.[0]?.configuration?.deployment_target
-    await saveAndDeployAgent({
-      ...payload,
-      agent: { ...payload.agent, name: `${payload.agent.name}__draft` },
-      deploymentTarget: persistedTarget === 'docker' ? 'docker' : 'classic',
-    })
+    const sig = JSON.stringify(payload)
+    if (sig !== lastSavedSigRef.current) {
+      await writeDraft(payload)
+      lastSavedSigRef.current = sig
+      setDraftSavedAt(new Date())
+      setDraftStatus('saved')
+    }
     return true
   }
 
@@ -1014,6 +1145,27 @@ const inboundLookupVariables = useMemo(() => {
           <AlertDescription>
             {agentConfigData.backendUnavailableMessage ??
               'Set PYPEAI_API_URL to a URL your machine can reach (e.g. http://127.0.0.1:8000 if the API runs locally), or fix NEXT_PUBLIC_PYPEAI_API_URL, restart next dev, and refresh.'}
+          </AlertDescription>
+        </Alert>
+      )}
+      {draftConflict && (
+        <Alert className="mx-4 mt-2 w-auto">
+          <AlertCircle className="text-warning" />
+          <AlertTitle>{draftConflict.updated_by_name ?? 'Someone'} edited this draft</AlertTitle>
+          <AlertDescription className="flex items-center gap-2">
+            Saved {draftConflict.updated_at ? new Date(draftConflict.updated_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : 'just now'}. Autosave is paused.
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={loadTheirDraft}>Load theirs</Button>
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={overwriteTheirDraft}>Overwrite</Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      {restoredDraft && !draftConflict && isFormDirty && (
+        <Alert className="mx-4 mt-2 w-auto">
+          <AlertCircle className="text-warning" />
+          <AlertTitle>Unpublished draft restored</AlertTitle>
+          <AlertDescription className="flex items-center gap-2">
+            Last edited by {restoredDraft.updated_by_name ?? 'someone'}{restoredDraft.updated_at ? ` at ${new Date(restoredDraft.updated_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}. Live calls still use the published config.
+            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleCancel}>Discard draft</Button>
           </AlertDescription>
         </Alert>
       )}
@@ -1213,6 +1365,14 @@ const inboundLookupVariables = useMemo(() => {
               </SheetContent>
             </Sheet>
 
+            {isFormDirty && draftStatus !== 'idle' && (
+              <span className={`text-xs ${draftStatus === 'error' || draftStatus === 'conflict' ? 'text-destructive' : 'text-muted-foreground'}`}>
+                {draftStatus === 'saving' && 'Saving draft…'}
+                {draftStatus === 'saved' && `Draft saved${draftSavedAt ? ` · ${draftSavedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}`}
+                {draftStatus === 'error' && 'Draft not saved'}
+                {draftStatus === 'conflict' && 'Draft edited by someone else'}
+              </span>
+            )}
             {isFormDirty && (
               <Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleCancel} disabled={isPublishing}>
                 Discard Changes
