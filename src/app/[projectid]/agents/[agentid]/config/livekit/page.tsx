@@ -971,6 +971,17 @@ const inboundLookupVariables = useMemo(() => {
 
   const draftNameOf = () => `${activeAgentName}__draft`
 
+  // Fingerprint of the published config a draft was started from. If live changed elsewhere
+  // (Agent Studio, another publish) the old draft is stale and must not come back over it.
+  const publishedBase = (): string => {
+    const sortKeys = (_: string, v: any) =>
+      v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b))) : v
+    const str = JSON.stringify(agentConfigData?.agent ?? {}, sortKeys)
+    let h = 5381
+    for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0
+    return String(h)
+  }
+
   const fetchDraft = async (): Promise<any | null> => {
     const res = await fetch(`/api/agent-config/${draftNameOf()}`).catch(() => null)
     return res?.ok ? res.json().catch(() => null) : null
@@ -983,6 +994,7 @@ const inboundLookupVariables = useMemo(() => {
         updated_at: new Date().toISOString(),
         updated_by: user?.id ?? null,
         updated_by_name: user?.fullName ?? user?.primaryEmailAddress?.emailAddress ?? 'Someone',
+        base: publishedBase(),
         ...extraMeta,
       }
       await saveAndDeployAgent({
@@ -1067,7 +1079,7 @@ const inboundLookupVariables = useMemo(() => {
     fetchDraft().then(draft => {
       const meta = draft?.agent?.draft_meta
       lastDraftStampRef.current = meta?.updated_at ?? null
-      if (meta && !meta.discarded && draft.agent.assistant?.length === 1) {
+      if (meta && !meta.discarded && (!meta.base || meta.base === publishedBase()) && draft.agent.assistant?.length === 1) {
         try {
           applyDraftConfig(draft)
           setRestoredDraft(meta)
@@ -1081,7 +1093,12 @@ const inboundLookupVariables = useMemo(() => {
 
   const prepareTestSession = async (): Promise<boolean> => {
     if (!isFormDirty || !promptValidation.isValid || isBackendUnavailable || isProdLocked) return false
-    if (draftConflict) throw new Error(`${draftConflict.updated_by_name ?? 'Someone'} edited this draft. Choose "Load theirs" or "Overwrite" first.`)
+    const conflict = draftConflict ?? (await findDraftConflict())
+    if (conflict) {
+      setDraftConflict(conflict)
+      setDraftStatus('conflict')
+      throw new Error(`${conflict.updated_by_name ?? 'Someone'} edited this draft. Choose "Load theirs" or "Overwrite" first.`)
+    }
     const payload = buildPayloadWithVariables()
     const sig = JSON.stringify(payload)
     if (sig !== lastSavedSigRef.current) {
