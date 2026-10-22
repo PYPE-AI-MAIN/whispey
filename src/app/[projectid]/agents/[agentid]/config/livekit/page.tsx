@@ -449,51 +449,48 @@ export default function AgentConfig() {
 
   // Handle the agent config data when it loads
   const applyExternalState = (assistant: any, agent: any) => {
-    {
-      const formValues = buildFormValuesFromAgent(assistant, agent)
-      
-      setTtsConfig({
-        provider: formValues.ttsProvider,
-        model: formValues.ttsModel,
-        config: formValues.ttsVoiceConfig
+  const formValues = buildFormValuesFromAgent(assistant, agent)
+    
+    setTtsConfig({
+      provider: formValues.ttsProvider,
+      model: formValues.ttsModel,
+      config: formValues.ttsVoiceConfig
+    })
+    
+    setSTTConfig({
+      provider: assistant.stt?.name || assistant.stt?.provider || 'openai',
+      model: assistant.stt?.model || 'whisper-1',
+      config: formValues.sttConfig || { language: assistant.stt?.language || 'en' }
+    })
+    
+    const llmConfig = assistant.llm || {}
+    const providerValue = llmConfig.provider || llmConfig.name || 'openai'
+    let mappedProvider = providerValue
+    if (providerValue === 'groq') {
+      mappedProvider = 'groq'
+    } else if (providerValue === 'azure') {
+      mappedProvider = 'azure_openai' 
+    } else if (llmConfig.model?.includes('claude')) {
+      mappedProvider = 'anthropic'
+    } else if (llmConfig.model?.includes('cerebras')) {
+      mappedProvider = 'cerebras'
+    }
+    
+    if (mappedProvider === 'azure_openai' && assistant.llm) {
+      setAzureConfig({
+        endpoint: assistant.llm.azure_endpoint || '',
+        apiVersion: assistant.llm.api_version || ''
       })
-      
-      setSTTConfig({
-        provider: assistant.stt?.name || assistant.stt?.provider || 'openai',
-        model: assistant.stt?.model || 'whisper-1',
-        config: formValues.sttConfig || { language: assistant.stt?.language || 'en' }
-      })
-      
-      const llmConfig = assistant.llm || {}
-      const providerValue = llmConfig.provider || llmConfig.name || 'openai'
-      let mappedProvider = providerValue
-      if (providerValue === 'groq') {
-        mappedProvider = 'groq'
-      } else if (providerValue === 'azure') {
-        mappedProvider = 'azure_openai' 
-      } else if (llmConfig.model?.includes('claude')) {
-        mappedProvider = 'anthropic'
-      } else if (llmConfig.model?.includes('cerebras')) {
-        mappedProvider = 'cerebras'
-      }
-      
-      if (mappedProvider === 'azure_openai' && assistant.llm) {
-        setAzureConfig({
-          endpoint: assistant.llm.azure_endpoint || '',
-          apiVersion: assistant.llm.api_version || ''
+    }
+
+    if (assistant.llm?.fallback) {
+      const fbProvider = assistant.llm.fallback.provider || assistant.llm.fallback.name || ''
+      if (fbProvider === 'azure') {
+        setFallbackAzureConfig({
+          endpoint: assistant.llm.fallback.azure_endpoint || '',
+          apiVersion: assistant.llm.fallback.api_version || ''
         })
       }
-
-      if (assistant.llm?.fallback) {
-        const fbProvider = assistant.llm.fallback.provider || assistant.llm.fallback.name || ''
-        if (fbProvider === 'azure') {
-          setFallbackAzureConfig({
-            endpoint: assistant.llm.fallback.azure_endpoint || '',
-            apiVersion: assistant.llm.fallback.api_version || ''
-          })
-        }
-      }
-
     }
   }
 
@@ -978,11 +975,11 @@ const inboundLookupVariables = useMemo(() => {
       v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b))) : v
     const str = JSON.stringify(agentConfigData?.agent ?? {}, sortKeys)
     let h = 5381
-    for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0
+    for (let i = 0; i < str.length; i++) h = Math.imul(h, 33) + (str.codePointAt(i) ?? 0)
     return String(h)
   }
 
-  const fetchDraft = async (): Promise<any | null> => {
+  const fetchDraft = async (): Promise<any> => {
     const res = await fetch(`/api/agent-config/${draftNameOf()}`).catch(() => null)
     return res?.ok ? res.json().catch(() => null) : null
   }

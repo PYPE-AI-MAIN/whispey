@@ -388,6 +388,15 @@ async function pollUpdateStatus(agentName: string): Promise<any> {
 }
 
 // Draft saves only need the update tracker (no pid baseline, 300ms ticks): they finish in well under a second.
+// Returns the final result, null while still running, and throws on a failed save.
+function draftSaveResult(status: any, untracked: number): any | null {
+  // "no_update_found" right after the POST can be the task not having started yet
+  if (status.status === "no_update_found") return untracked >= 3 ? { status: "completed", success: true } : null
+  if (!TERMINAL_UPDATE_STATUSES.has(status.status)) return null
+  if (status.status === "completed" && status.success !== false) return status
+  throw new Error(status.error || `Draft save ended with status: ${status.status}`)
+}
+
 async function pollDraftUpdate(agentName: string): Promise<any> {
   const deadline = Date.now() + 60_000
   let untracked = 0
@@ -395,12 +404,9 @@ async function pollDraftUpdate(agentName: string): Promise<any> {
     const res = await fetch(updateStatusUrl(agentName)).catch(() => null)
     const status = res?.ok ? await res.json().catch(() => null) : null
     if (status) {
-      // "no_update_found" right after the POST can be the task not having started yet
-      if (status.status === "no_update_found" && ++untracked >= 3) return { status: "completed", success: true }
-      if (TERMINAL_UPDATE_STATUSES.has(status.status)) {
-        if (status.status === "completed" && status.success !== false) return status
-        throw new Error(status.error || `Draft save ended with status: ${status.status}`)
-      }
+      if (status.status === "no_update_found") untracked++
+      const result = draftSaveResult(status, untracked)
+      if (result) return result
     }
     await new Promise((r) => setTimeout(r, 300))
   }
