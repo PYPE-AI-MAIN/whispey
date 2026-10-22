@@ -1,11 +1,13 @@
-// Which Call Logs view someone uses. Kept on their account (Clerk user
-// metadata) as well as in the browser, so choosing the new view sticks on every
-// device until they pick the classic view themselves.
+// Which Call Logs view someone uses. The new view is the default; the classic
+// one is only reachable from the More menu. A choice is kept on their account
+// (Clerk user metadata) as well as in the browser, so it sticks on every device.
 import { useCallback, useEffect } from 'react'
 import { useUser } from '@clerk/nextjs'
 import { useCallLogsStore, type CallLogsViewMode } from '@/stores/callLogsStore'
 
-const KEY = 'callLogsViewMode'
+// A new key: choices saved under the old one ('callLogsViewMode') were made while the
+// classic view was the default, so they no longer count.
+const KEY = 'callLogsView'
 
 export function useCallLogsViewMode(): [CallLogsViewMode, (mode: CallLogsViewMode) => void] {
   const { user } = useUser()

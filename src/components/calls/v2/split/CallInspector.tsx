@@ -121,8 +121,7 @@ function CallDataGroups({ call, agentId, role, showEmpty, turns, isVapiAgent }: 
 
   // dynamic_variables is left out of the list query (it can be large), so it is
   // fetched for the open call only — one row, so its count is known up front.
-  const varsOpen = openGroups.includes("vars")
-  const { data: varsRows, isLoading: varsLoading } = useSupabaseQuery<{ dynamic_variables: Record<string, unknown> | null }>(
+  const { data: varsRows } = useSupabaseQuery<{ dynamic_variables: Record<string, unknown> | null }>(
     "pype_voice_call_logs",
     { select: "id, dynamic_variables", filters: [{ column: "id", operator: "eq", value: call.id }], limit: 1, auth: { agentId } }
   )
@@ -144,6 +143,7 @@ function CallDataGroups({ call, agentId, role, showEmpty, turns, isVapiAgent }: 
     <>
       <LatencyGroup turns={turns} isVapiAgent={isVapiAgent} open={openGroups.includes("latency")} onToggle={toggle} />
       <Group id="disp" title="Dispositions" count={keep(dispositions).length} open={openGroups.includes("disp")} onToggle={toggle}>
+        <GroupHint>Extracted from the conversation after the call, by the agent&apos;s field extractor.</GroupHint>
         <KeyValues rows={keep(dispositions)} mask={mask} />
       </Group>
       {checks.length > 0 && (
@@ -151,12 +151,17 @@ function CallDataGroups({ call, agentId, role, showEmpty, turns, isVapiAgent }: 
           id="checks" title="QA checks" open={openGroups.includes("checks")} onToggle={toggle}
           count={<><span>{passed} ✓</span>{failed > 0 && <span className="text-[var(--cl-red-text)]"> · {failed} ✕</span>}</>}
         >
-          <KeyValues rows={keep(checks)} mask={mask} />
+          <GroupHint>Yes / no checks from the field extractor (its <code className="font-mono">is_…</code> fields).</GroupHint>
+          <CheckList rows={keep(checks) as Array<[string, boolean | null]>} />
         </Group>
       )}
-      <Group id="vars" title="Call variables" count={varsLoading ? null : keep(variables).length} open={varsOpen} onToggle={toggle}>
-        {varsLoading ? <p className="py-1 text-[12.5px] text-[var(--cl-text3)]">Loading…</p> : <KeyValues rows={keep(variables)} mask={mask} />}
-      </Group>
+      {/* only Retell and ElevenLabs calls fill dynamic_variables; LiveKit agents keep everything in metadata */}
+      {variables.length > 0 && (
+        <Group id="vars" title="Call variables" count={keep(variables).length} open={openGroups.includes("vars")} onToggle={toggle}>
+          <GroupHint>The values the call was started with, behind the <code className="font-mono">{"{{name}}"}</code>s in the prompt.</GroupHint>
+          <KeyValues rows={keep(variables)} mask={mask} />
+        </Group>
+      )}
       {metrics.length > 0 && (
         <Group id="metrics" title="Metrics" count={metrics.length} open={openGroups.includes("metrics")} onToggle={toggle}>
           {metrics.map(([id, m]) => {
@@ -200,6 +205,7 @@ function CallDataGroups({ call, agentId, role, showEmpty, turns, isVapiAgent }: 
         </Group>
       )}
       <Group id="meta" title="Metadata" count={keep(metadata).length} open={openGroups.includes("meta")} onToggle={toggle}>
+        <GroupHint>Everything stored with the call: the values it was dispatched with (campaign columns), plus what the platform recorded, like how it ended and retries.</GroupHint>
         <KeyValues rows={keep(metadata)} mask={mask} />
       </Group>
       {showCost && (
@@ -273,6 +279,41 @@ function Group({
   )
 }
 
+/** One line under a section's title saying where its values come from. */
+function GroupHint({ children }: Readonly<{ children: React.ReactNode }>) {
+  return <p className="mb-1.5 text-[12px] leading-snug text-[var(--cl-text3)]">{children}</p>
+}
+
+const CHECK_LOOK = {
+  yes: { icon: "✓", text: "Yes", className: "text-emerald-600 dark:text-emerald-400" },
+  no: { icon: "✕", text: "No", className: "text-[var(--cl-red-text)]" },
+  na: { icon: "–", text: "Didn't apply", className: "text-[var(--cl-text3)]" },
+} as const
+
+function checkLook(value: boolean | null) {
+  if (value === true) return CHECK_LOOK.yes
+  if (value === false) return CHECK_LOOK.no
+  return CHECK_LOOK.na
+}
+
+/** QA checks as ✓ / ✕ / didn't apply. */
+function CheckList({ rows }: Readonly<{ rows: Array<[string, boolean | null]> }>) {
+  if (rows.length === 0) return <p className="py-1 text-[12.5px] italic text-[var(--cl-text3)]">Nothing here</p>
+  return (
+    <>
+      {rows.map(([key, value]) => {
+        const look = checkLook(value)
+        return (
+          <div key={key} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2.5 border-t border-dashed border-[var(--cl-border)] py-1.5 text-[13.5px] first:border-t-0">
+            <span className="truncate font-mono text-[12.5px] text-[var(--cl-text3)]" title={key}>{key}</span>
+            <span className={cn("font-medium", look.className)}>{look.icon} {look.text}</span>
+          </div>
+        )
+      })}
+    </>
+  )
+}
+
 const CLAMP_LINES = 4
 
 /** A value cut to a few lines, with "Show more" when it's longer than that. */
@@ -314,16 +355,20 @@ function ClampedText({ text }: Readonly<{ text: string }>) {
   )
 }
 
+const LONG_VALUE_CHARS = 60
+
 function KeyValues({ rows, mask }: Readonly<{ rows: Array<[string, unknown]>; mask: (value: string) => string }>) {
   if (rows.length === 0) return <p className="py-1 text-[12.5px] italic text-[var(--cl-text3)]">Nothing here</p>
   return (
     <>
       {rows.map(([key, value]) => {
         const text = mask(formatValue(value))
+        // long text (notes, summaries) reads better under its key, full width
+        const long = text.length > LONG_VALUE_CHARS
         return (
           // minmax(0, …): a long unbroken value (a phone number, JSON) wraps
           // instead of widening the pane
-          <div key={key} className="group/kv grid grid-cols-[48%_minmax(0,1fr)] gap-2.5 border-t border-dashed border-[var(--cl-border)] py-1.5 text-[13.5px] first:border-t-0">
+          <div key={key} className={cn("group/kv grid gap-x-2.5 gap-y-0.5 border-t border-dashed border-[var(--cl-border)] py-1.5 text-[13.5px] first:border-t-0", long ? "grid-cols-1" : "grid-cols-[48%_minmax(0,1fr)]")}>
             <span className="truncate font-mono text-[12.5px] text-[var(--cl-text3)]" title={key}>{key}</span>
             <span className={cn("relative min-w-0 pr-6", text ? "text-[var(--cl-text)]" : "italic text-[var(--cl-text3)]")}>
               {text ? <ClampedText text={text} /> : "empty"}

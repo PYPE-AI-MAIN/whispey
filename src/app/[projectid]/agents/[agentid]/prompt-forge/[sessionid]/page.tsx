@@ -33,6 +33,8 @@ import CallFilter, { type FilterOperation } from '@/components/CallFilter'
 import { extractFiltersAndDistinct } from '@/utils/callLogsUtils'
 import { extractorKeys } from '@/components/calls/v2/split/callData'
 import { usePiSurface } from '@/contexts/PiDockContext'
+import { formatIstTimestamp } from '@/lib/istTime'
+import { builtInAgentTools } from '@/lib/promptForgeTools'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -264,23 +266,6 @@ function formatRelative(dateStr: string): string {
   return `${Math.floor(h / 24)}d ago`
 }
 
-/** A call's time in IST, e.g. "13 Oct, 10:32 am IST" (with the year when it isn't this year). */
-export function formatIstTimestamp(dateStr: string, now = new Date()): string {
-  const d = new Date(dateStr)
-  if (Number.isNaN(d.getTime())) return ''
-  const year = (x: Date) => new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric' }).format(x)
-  const text = new Intl.DateTimeFormat('en-IN', {
-    timeZone: 'Asia/Kolkata',
-    day: 'numeric',
-    month: 'short',
-    ...(year(d) === year(now) ? {} : { year: 'numeric' as const }),
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  }).format(d)
-  return `${text} IST`
-}
-
 function formatDuration(s: number): string {
   if (!s) return '—'
   const m = Math.floor(s / 60)
@@ -450,7 +435,8 @@ function buildImportPageItems(current: number, maxKnown: number, hasNext: boolea
 function extractToolsFromAssistant(assistant: any): AgentTool[] {
   // assistant is the raw API response: tools live at assistant.tools (not advancedSettings)
   const toolsDef: any[] = assistant?.tools ?? []
-  return toolsDef
+  const builtIn: AgentTool[] = builtInAgentTools(assistant).map(t => ({ id: crypto.randomUUID(), ...t }))
+  const custom: AgentTool[] = toolsDef
     .filter((t: any) => t.type === 'custom_function')
     .map((t: any) => ({
       id: crypto.randomUUID(),
@@ -468,6 +454,7 @@ function extractToolsFromAssistant(assistant: any): AgentTool[] {
         required: p.required ?? false,
       })),
     }))
+  return [...custom, ...builtIn]
 }
 
 // ─── Guard ────────────────────────────────────────────────────────────────────
@@ -912,6 +899,8 @@ const TOOL_TYPE_STYLES: Record<string, string> = {
   custom_function:  'bg-primary/10 text-primary border-primary/30',
   transfer_call:    'bg-warning/10 text-warning border-warning/30',
   knowledge_search: 'bg-success/10 text-success border-success/30',
+  tts_switch:       'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/30',
+  language_switch:  'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/30',
 }
 
 /** The parts of a tool someone can change here — to tell an edited tool from the agent's. */
@@ -1093,7 +1082,7 @@ function ToolsSheet({ open, onClose, tools, onChange, readOnly, agentTools }: Re
           </SheetTitle>
           <SheetDescription className="text-xs text-muted-foreground">
             {readOnly
-              ? 'Read-only. Custom functions call their endpoints (or their mock response); transfer and knowledge tools are mocked.'
+              ? 'Read-only. Custom functions call their endpoints (or their mock response); built-in tools (end call, transfer, TTS and language switch…) are simulated.'
               : 'Edit anything here to test — changes apply to the next message and save with this session, not the agent. Use “Mock response” to test a reply without calling the real API.'}
           </SheetDescription>
         </SheetHeader>
@@ -1878,7 +1867,12 @@ function ForgeUI({
     setMessages([...history, assistantMsg])
     setImportedFrom(null)
     setIsStreaming(true)
-    const historyForApi = history.map(m => ({ role: m.role, content: m.content }))
+    // tool calls go too, so the model sees the tools the conversation used (an imported call's TTS switch…)
+    const historyForApi = history.map(m => ({
+      role: m.role,
+      content: m.content,
+      toolCalls: m.toolCalls?.filter(tc => !tc.pending).map(tc => ({ name: tc.name, arguments: tc.arguments, result: tc.result })),
+    }))
     const effectivePrompt = substituteVariables(systemPrompt, variables)
     try {
       const res = await fetch('/api/prompt-forge/chat', {
@@ -2348,8 +2342,10 @@ function MessageBubble({ message, busy, onReplay, onEdit, displayText }: Readonl
           <div className="w-full space-y-1.5">
             {message.parts!.map((part, i) => {
               if (part.type === 'text') {
+                if (!part.text.trim()) return null
                 const last = i === message.parts!.length - 1
-                return part.text.trim() ? textBubble(message.isFinal ? show(part.text) : part.text, `t${i}`, last && !message.isFinal) : null
+                const text = message.isFinal ? show(part.text) : part.text
+                return textBubble(text, `t${i}`, last && !message.isFinal)
               }
               const tc = message.toolCalls!.find(t => t.id === part.id)
               return tc ? <ToolCallBlock key={`c${part.id}`} tc={tc} /> : null
