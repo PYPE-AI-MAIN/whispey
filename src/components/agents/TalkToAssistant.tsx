@@ -41,6 +41,7 @@ interface TalkToAssistantProps {
   /** Workflow interpreter's live "wf-node" events (node_enter, function_call, ...) — workflow agents only. */
   onWorkflowEvent?: (event: Record<string, any>) => void
   deploymentTarget?: 'classic' | 'docker'  // which voice backend this agent lives on
+  prepareSession?: () => Promise<boolean>  // see useVoiceAgent
 }
 
 const AGENT_STATUS_COLOR: Record<string, string> = {
@@ -265,6 +266,7 @@ export default function TalkToAssistant({
   sessionEndpoint,
   onWorkflowEvent,
   deploymentTarget = 'classic',
+  prepareSession,
 }: Readonly<TalkToAssistantProps>) {
   const [mode, setMode]                   = useState<AgentTestMode>('voice')
   const [textMessage, setTextMessage]     = useState('')
@@ -275,7 +277,7 @@ export default function TalkToAssistant({
   const endCallRef       = useRef<HTMLButtonElement>(null)
   const inputRef         = useRef<HTMLInputElement>(null)
 
-  const [voiceState, voiceActions] = useVoiceAgent({ agentName, mode, sessionEndpoint, onWorkflowEvent, deploymentTarget })
+  const [voiceState, voiceActions] = useVoiceAgent({ agentName, mode, sessionEndpoint, onWorkflowEvent, deploymentTarget, prepareSession })
 
   const sessionActive = voiceState.isConnected || voiceState.isConnecting
 
