@@ -3,7 +3,7 @@
 import { createContext, memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowUp, Bot, ChevronDown, Mic, PhoneIncoming, ShieldAlert, Sparkles, TrendingUp, Trophy, type LucideIcon } from 'lucide-react'
+import { ArrowUp, Bot, Check, ChevronDown, Mic, PhoneIncoming, ShieldAlert, Sparkles, TrendingUp, Trophy, type LucideIcon } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { buildAgentLinkMap, resolvePiHref } from '@/lib/piLinks'
 import { fetchWithBackoff } from '@/lib/piFetch'
@@ -11,6 +11,8 @@ import { DEFAULT_PI_MODEL, PI_MODEL_OPTIONS, isPiModelOption } from '@/lib/piMod
 import { useVoiceAgent } from '@/hooks/useVoiceAgent'
 import PiCustomToolForm, { type ToolDraft } from '@/components/pi/PiCustomToolForm'
 import { closeOpenMarkdown, nextRevealLength, splitBlocks } from '@/lib/piMarkdown'
+import { parsePromptEdit } from '@/lib/promptEdit'
+import { usePiDock } from '@/contexts/PiDockContext'
 import {
   applyEvent, classifyEvent, consumeSse, failAssistant, navigationTarget, parseSseLine, withToolCallResult,
   type Classified, type ContextUsage, type Message, type ToolCall,
@@ -50,6 +52,7 @@ const MARKDOWN_COMPONENTS = {
   ),
   strong: ({ children }: { children?: React.ReactNode }) => <strong className="font-semibold text-foreground">{children}</strong>,
   code: ({ className, children }: { className?: string; children?: React.ReactNode }) => {
+    if (className?.includes('language-prompt-edit')) return <PromptEditCard block={String(children ?? '')} />
     const isBlock = className?.includes('language-')
     if (isBlock) {
       return (
@@ -438,6 +441,46 @@ function ToolCallLine({ tc }: Readonly<{ tc: ToolCall }>) {
 // revealed on requestAnimationFrame at a speed that scales with the backlog
 // (steady when small, fast enough to never lag far behind), never splitting a
 // surrogate pair or a combining mark (Devanagari/Kannada conjuncts).
+/**
+ * A prompt change Pi suggested (a prompt-edit block), with Apply when the page
+ * can take it (Prompt Forge). Elsewhere, or while it's still streaming in, it's
+ * shown as plain text.
+ */
+function PromptEditCard({ block }: Readonly<{ block: string }>) {
+  const apply = usePiDock()?.gettersRef.current.applyPromptEdit
+  const edit = parsePromptEdit(block)
+  const [state, setState] = useState<{ kind: 'idle' | 'applied' | 'failed'; reason?: string }>({ kind: 'idle' })
+  if (!edit) {
+    return <code className="block overflow-x-auto rounded-lg border border-border bg-muted/50 px-3 py-2.5 font-mono text-[13px] leading-relaxed text-foreground">{block}</code>
+  }
+  return (
+    <span className="block overflow-hidden rounded-lg border border-border bg-card text-[13px]">
+      <span className="block border-b border-border bg-red-500/10 px-3 py-2 font-mono leading-relaxed whitespace-pre-wrap text-foreground line-through decoration-red-500/60">
+        {edit.find}
+      </span>
+      <span className="block bg-green-500/10 px-3 py-2 font-mono leading-relaxed whitespace-pre-wrap text-foreground">
+        {edit.replace || <span className="italic text-muted-foreground">(remove it)</span>}
+      </span>
+      {apply && (
+        <span className="flex items-center justify-end gap-2 border-t border-border px-3 py-1.5 font-sans">
+          {state.kind === 'failed' && <span className="mr-auto text-xs text-destructive">{state.reason}</span>}
+          <button
+            type="button"
+            disabled={state.kind === 'applied'}
+            onClick={() => {
+              const result = apply(edit.find, edit.replace)
+              setState(result.ok ? { kind: 'applied' } : { kind: 'failed', reason: result.reason })
+            }}
+            className="inline-flex h-7 items-center gap-1 rounded-md bg-foreground px-2.5 text-xs font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-60"
+          >
+            {state.kind === 'applied' ? <><Check className="h-3 w-3" />Applied</> : 'Apply to prompt'}
+          </button>
+        </span>
+      )}
+    </span>
+  )
+}
+
 const MarkdownBlock = memo(function MarkdownBlock({ text }: Readonly<{ text: string }>) {
   return <ReactMarkdown components={MARKDOWN_COMPONENTS}>{text}</ReactMarkdown>
 })
