@@ -970,7 +970,7 @@ const inboundLookupVariables = useMemo(() => {
         ...payload,
         agent: { ...payload.agent, name: draftNameOf(), draft_meta: meta },
         deploymentTarget: draftTarget(),
-      })
+      }, 500) // drafts skip validation server-side, so poll fast
       lastDraftStampRef.current = meta.updated_at
     }
     const next = draftChainRef.current.then(run, run)
@@ -1394,7 +1394,7 @@ const inboundLookupVariables = useMemo(() => {
                     >
                       {isPublishing
                         ? <><Loader2 className="w-3 h-3 mr-1 shrink-0 animate-spin" /><span key={publishProgressLabel} className="truncate animate-in fade-in duration-300">{updateStageDetail(publishProgressLabel)}</span></>
-                        : 'Update Config'
+                        : 'Publish'
                       }
                     </Button>
                   </span>

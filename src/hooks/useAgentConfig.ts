@@ -342,13 +342,13 @@ async function fetchWorkerPid(agentName: string): Promise<number | null> {
 // The backend's update tracker gets wiped by any backend restart, so instead
 // of trusting it we poll ground truth: has the agent's PID actually changed?
 // update_status is only used for the progress label, not for pass/fail.
-async function pollUpdateStatus(agentName: string): Promise<any> {
+async function pollUpdateStatus(agentName: string, intervalMs = UPDATE_POLL_INTERVAL_MS): Promise<any> {
   const hardDeadline = Date.now() + UPDATE_POLL_HARD_MS
   const baselinePid = await fetchWorkerPid(agentName)
   let untrackedPolls = 0
 
   while (Date.now() < hardDeadline) {
-    await new Promise((r) => setTimeout(r, UPDATE_POLL_INTERVAL_MS))
+    await new Promise((r) => setTimeout(r, intervalMs))
 
     const currentPid = await fetchWorkerPid(agentName)
     if (currentPid && currentPid !== baselinePid) {
@@ -514,7 +514,7 @@ export async function checkUpdateInProgress(
 // picker) that need the same "wait for the redeploy to actually finish, not
 // just for the request to be accepted" behavior without pulling in the whole
 // useAgentMutations/form-state machinery.
-export const saveAndDeployAgent = async (data: any) => {
+export const saveAndDeployAgent = async (data: any, pollIntervalMs?: number) => {
   const response = await fetch("/api/agents/save-and-deploy", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -533,7 +533,7 @@ export const saveAndDeployAgent = async (data: any) => {
     if (response.status === 409) {
       const agentName = extractAgentName(data)
       if (agentName) {
-        return pollUpdateStatus(agentName)
+        return pollUpdateStatus(agentName, pollIntervalMs)
       }
     }
 
@@ -553,7 +553,7 @@ export const saveAndDeployAgent = async (data: any) => {
   // save-and-deploy/route.ts wraps it as { success, message, data: <backend response> }.
   const agentName = result?.data?.agent_name || extractAgentName(data)
   if (result?.data?.status === "update_started" && agentName) {
-    return pollUpdateStatus(agentName)
+    return pollUpdateStatus(agentName, pollIntervalMs)
   }
 
   return result
@@ -595,7 +595,7 @@ export const useAgentMutations = (agentName: string | null) => {
   })
 
   const saveAndDeployMutation = useMutation({
-    mutationFn: saveAndDeployAgent,
+    mutationFn: (data: any) => saveAndDeployAgent(data),
     onSuccess: () => {
       if (agentName) {
         // Invalidate queries - the component will handle the refetch
