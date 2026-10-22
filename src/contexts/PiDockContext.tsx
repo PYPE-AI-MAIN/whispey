@@ -17,9 +17,14 @@ export interface PiSurface {
   getDetails?: () => Record<string, unknown> | null
   /** Replaces the whole page context the server gets (Prompt Forge sends its draft this way); read at send time. */
   getContext?: () => unknown
+  /** Applies a find-and-replace Pi suggested to the page's prompt (Prompt Forge). */
+  applyPromptEdit?: (find: string, replace: string) => PromptEditResult
 }
 
-type Getters = Pick<PiSurface, 'getDetails' | 'getContext'>
+/** What applying a suggested prompt edit did. */
+export type PromptEditResult = { ok: true } | { ok: false; reason: string }
+
+type Getters = Pick<PiSurface, 'getDetails' | 'getContext' | 'applyPromptEdit'>
 
 interface PiDock {
   surface: Pick<PiSurface, 'label' | 'suggestions'> | null
@@ -70,6 +75,9 @@ export function usePiSurface(s: PiSurface | null) {
     dock.gettersRef.current = {
       getDetails: () => latest.current?.getDetails?.() ?? null,
       getContext: latest.current.getContext ? () => latest.current?.getContext?.() : undefined,
+      applyPromptEdit: latest.current.applyPromptEdit
+        ? (find, replace) => latest.current?.applyPromptEdit?.(find, replace) ?? { ok: false, reason: 'Nothing to edit here' }
+        : undefined,
     }
     dock.setSurface({ label: latest.current.label, suggestions: latest.current.suggestions })
     return () => {

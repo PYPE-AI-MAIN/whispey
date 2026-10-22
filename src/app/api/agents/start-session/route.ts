@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
 
     // Which backend this agent actually lives on — resolved from its own
     // persisted record, not trusted from the client.
-    const urlResult = await resolveApiBaseUrlForAgent(body.agent_name)
+    const urlResult = await resolveApiBaseUrlForAgent(body.agent_name.replace(/__draft$/, ''))
     if ('errorResponse' in urlResult) return urlResult.errorResponse
 
     const variables = sanitizeVariables(body.variables)

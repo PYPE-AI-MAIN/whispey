@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { SNAPSHOT_FIELDS, loadForgeSession, pickFields } from '@/server/promptForge/access'
+import { sameSnapshot } from '@/server/promptForge/snapshot'
 
 export const runtime = 'nodejs'
 
@@ -8,7 +9,8 @@ export const runtime = 'nodejs'
 // transcript so far) as the next version, and keep the draft in step. The
 // draft stays editable; versions never change once written. Owner only.
 // Saving an unowned session (from before owners were recorded) makes the
-// saver its owner.
+// saver its owner. Saving with nothing changed since the latest version adds
+// nothing and says so ({ unchanged: true, version }).
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ sessionid: string }> },
@@ -22,6 +24,17 @@ export async function POST(
     const body = await request.json()
     const snapshot = { ...pickFields(session, SNAPSHOT_FIELDS), ...pickFields(body, SNAPSHOT_FIELDS) }
     const supabase = createServiceRoleClient()
+
+    const { data: latest } = await supabase
+      .from('pype_voice_promptforge_session_versions')
+      .select(['version', ...SNAPSHOT_FIELDS].join(', '))
+      .eq('session_id', sessionid)
+      .order('version', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (latest && sameSnapshot(snapshot, latest as unknown as Record<string, unknown>, SNAPSHOT_FIELDS)) {
+      return NextResponse.json({ unchanged: true, version: (latest as unknown as { version: number }).version })
+    }
 
     // Two saves racing for the same number: the unique (session_id, version)
     // index rejects the second, which then takes the next number.

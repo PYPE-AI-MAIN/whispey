@@ -458,6 +458,17 @@ function collectToolNodeIds(wf: Workflow, nodeMap: Map<string, Node>): Set<strin
   return toolNodeIds
 }
 
+function lintLanguageSwitches(wf: Workflow): LintIssue[] {
+  return (wf.agent?.languages ?? []).flatMap((l): LintIssue[] => [
+    ...(l.switch_stt && !l.stt
+      ? [{ severity: 'warning' as const, message: `language '${l.language_code}' switches STT but has no stt block: it keeps the workflow's provider and changes only the language` }]
+      : []),
+    ...(l.switch_tts && !l.tts
+      ? [{ severity: 'warning' as const, message: `language '${l.language_code}' switches TTS but has no tts block: the voice will not change` }]
+      : []),
+  ])
+}
+
 export function lintWorkflow(source: Workflow): LintIssue[] {
   const ruleIssues = lintGlobalRules(source)
   const wf = expandGlobalRules(source)
@@ -484,6 +495,7 @@ export function lintWorkflow(source: Workflow): LintIssue[] {
     ...lintReachability(wf, toolNodeIds, outEdges),
     ...lintUnknownVariables(wf),
     ...lintLogicVariables(wf),
+    ...lintLanguageSwitches(wf),
   ]
 }
 
