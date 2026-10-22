@@ -179,13 +179,14 @@ export default function AgentConfig() {
   const [versionSaveError, setVersionSaveError] = useState<string | null>(null)
   const [showMergePrompt, setShowMergePrompt] = useState(false)
   const [publishedSnapshot, setPublishedSnapshot] = useState<any>(null)
-  const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'error' | 'conflict'>('idle')
+  const [draftStatus, setDraftStatus] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error' | 'conflict'>('idle')
   const [draftSavedAt, setDraftSavedAt] = useState<Date | null>(null)
   const [draftConflict, setDraftConflict] = useState<any>(null)
   const [restoredDraft, setRestoredDraft] = useState<any>(null)
   const [draftReady, setDraftReady] = useState(false)
   const lastDraftStampRef = useRef<string | null>(null)
   const lastSavedSigRef = useRef<string | null>(null)
+  const lastConflictCheckRef = useRef(0)
   const baselineSigPendingRef = useRef(false)
   const draftChainRef = useRef<Promise<unknown>>(Promise.resolve())
   const draftLoadedForRef = useRef<string | null>(null)
@@ -973,7 +974,7 @@ const inboundLookupVariables = useMemo(() => {
         ...payload,
         agent: { ...payload.agent, name: draftNameOf(), draft_meta: meta },
         deploymentTarget: draftTarget(),
-      }, 500) // drafts skip validation server-side, so poll fast
+      }, true) // drafts skip validation server-side, so poll fast
       lastDraftStampRef.current = meta.updated_at
     }
     const next = draftChainRef.current.then(run, run)
@@ -995,12 +996,17 @@ const inboundLookupVariables = useMemo(() => {
     if (baselineSigPendingRef.current) { // just restored: the draft already holds this
       baselineSigPendingRef.current = false
       lastSavedSigRef.current = sig
+      setDraftStatus('idle')
       return
     }
-    if (sig === lastSavedSigRef.current) return
-    const conflict = await findDraftConflict()
-    if (conflict) { setDraftConflict(conflict); setDraftStatus('conflict'); return }
+    if (sig === lastSavedSigRef.current) { setDraftStatus('idle'); return }
     setDraftStatus('saving')
+    // Conflict check is one extra round trip; once every 10s is enough.
+    if (Date.now() - lastConflictCheckRef.current > 10_000) {
+      const conflict = await findDraftConflict()
+      lastConflictCheckRef.current = Date.now()
+      if (conflict) { setDraftConflict(conflict); setDraftStatus('conflict'); return }
+    }
     try {
       await writeDraft(payload)
       lastSavedSigRef.current = sig
@@ -1015,7 +1021,8 @@ const inboundLookupVariables = useMemo(() => {
   // Debounced background autosave while there are unpublished edits.
   useEffect(() => {
     if (!canAutosave || !draftReady || draftConflict) return
-    const t = setTimeout(autosaveDraft, 3000)
+    setDraftStatus(prev => (prev === 'saving' ? prev : 'pending'))
+    const t = setTimeout(autosaveDraft, 1200)
     return () => clearTimeout(t)
   }, [formik.values, ttsConfig, sttConfig, azureConfig, fallbackAzureConfig, hasExternalChanges, hasMultiAssistantChanges, canAutosave, draftReady, draftConflict])
 
@@ -1292,6 +1299,7 @@ const inboundLookupVariables = useMemo(() => {
                 {isFormDirty && draftStatus !== 'idle' && (
                   <span className={`flex items-center gap-1 ${draftStatus === 'error' || draftStatus === 'conflict' ? 'text-destructive' : ''}`}>
                     <span aria-hidden>·</span>
+                    {draftStatus === 'pending' && <>Unsaved edits</>}
                     {draftStatus === 'saving' && <><Loader2 className="w-3 h-3 animate-spin" />Saving draft</>}
                     {draftStatus === 'saved' && <><CheckIcon className="w-3 h-3" />Draft saved{draftSavedAt ? ` ${draftSavedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}</>}
                     {draftStatus === 'error' && <><AlertCircle className="w-3 h-3" />Draft not saved</>}

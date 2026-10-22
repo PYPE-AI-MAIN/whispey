@@ -342,13 +342,13 @@ async function fetchWorkerPid(agentName: string): Promise<number | null> {
 // The backend's update tracker gets wiped by any backend restart, so instead
 // of trusting it we poll ground truth: has the agent's PID actually changed?
 // update_status is only used for the progress label, not for pass/fail.
-async function pollUpdateStatus(agentName: string, intervalMs = UPDATE_POLL_INTERVAL_MS): Promise<any> {
+async function pollUpdateStatus(agentName: string): Promise<any> {
   const hardDeadline = Date.now() + UPDATE_POLL_HARD_MS
   const baselinePid = await fetchWorkerPid(agentName)
   let untrackedPolls = 0
 
   while (Date.now() < hardDeadline) {
-    await new Promise((r) => setTimeout(r, intervalMs))
+    await new Promise((r) => setTimeout(r, UPDATE_POLL_INTERVAL_MS))
 
     const currentPid = await fetchWorkerPid(agentName)
     if (currentPid && currentPid !== baselinePid) {
@@ -385,6 +385,26 @@ async function pollUpdateStatus(agentName: string, intervalMs = UPDATE_POLL_INTE
   throw new UpdateStillInProgressError(
     "Couldn't confirm the update finished. Refresh to check, or test and publish again."
   )
+}
+
+// Draft saves only need the update tracker (no pid baseline, 300ms ticks): they finish in well under a second.
+async function pollDraftUpdate(agentName: string): Promise<any> {
+  const deadline = Date.now() + 60_000
+  let untracked = 0
+  while (Date.now() < deadline) {
+    const res = await fetch(updateStatusUrl(agentName)).catch(() => null)
+    const status = res?.ok ? await res.json().catch(() => null) : null
+    if (status) {
+      // "no_update_found" right after the POST can be the task not having started yet
+      if (status.status === "no_update_found" && ++untracked >= 3) return { status: "completed", success: true }
+      if (TERMINAL_UPDATE_STATUSES.has(status.status)) {
+        if (status.status === "completed" && status.success !== false) return status
+        throw new Error(status.error || `Draft save ended with status: ${status.status}`)
+      }
+    }
+    await new Promise((r) => setTimeout(r, 300))
+  }
+  throw new UpdateStillInProgressError("Couldn't confirm the draft was saved.")
 }
 
 function extractAgentName(data: any): string | undefined {
@@ -514,7 +534,7 @@ export async function checkUpdateInProgress(
 // picker) that need the same "wait for the redeploy to actually finish, not
 // just for the request to be accepted" behavior without pulling in the whole
 // useAgentMutations/form-state machinery.
-export const saveAndDeployAgent = async (data: any, pollIntervalMs?: number) => {
+export const saveAndDeployAgent = async (data: any, fast = false) => {
   const response = await fetch("/api/agents/save-and-deploy", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -533,7 +553,7 @@ export const saveAndDeployAgent = async (data: any, pollIntervalMs?: number) => 
     if (response.status === 409) {
       const agentName = extractAgentName(data)
       if (agentName) {
-        return pollUpdateStatus(agentName, pollIntervalMs)
+        return (fast ? pollDraftUpdate : pollUpdateStatus)(agentName)
       }
     }
 
@@ -553,7 +573,7 @@ export const saveAndDeployAgent = async (data: any, pollIntervalMs?: number) => 
   // save-and-deploy/route.ts wraps it as { success, message, data: <backend response> }.
   const agentName = result?.data?.agent_name || extractAgentName(data)
   if (result?.data?.status === "update_started" && agentName) {
-    return pollUpdateStatus(agentName, pollIntervalMs)
+    return (fast ? pollDraftUpdate : pollUpdateStatus)(agentName)
   }
 
   return result
