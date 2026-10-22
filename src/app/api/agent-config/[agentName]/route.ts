@@ -24,14 +24,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ message: "Agent name is required" }, { status: 400 })
     }
 
-    const projectId = await getProjectIdFromAgentBackendName(agentName)
+    // A "<name>__draft" agent belongs to the same project/backend as "<name>"
+    const baseName = agentName.replace(/__draft$/, '')
+    const projectId = await getProjectIdFromAgentBackendName(baseName)
     if (projectId && (await isViewerForProject(projectId))) {
       return NextResponse.json({ message: "Forbidden: viewers cannot access agent config" }, { status: 403 })
     }
 
     // Config lives on whichever backend this agent was actually created on —
     // classic agents were never registered on the docker backend and vice versa.
-    const deploymentTarget = await getDeploymentTargetFromAgentBackendName(agentName)
+    const deploymentTarget = await getDeploymentTargetFromAgentBackendName(baseName)
     const baseUrl = getPypeApiBaseUrlForServer(deploymentTarget)
     if (!baseUrl) {
       return NextResponse.json(
