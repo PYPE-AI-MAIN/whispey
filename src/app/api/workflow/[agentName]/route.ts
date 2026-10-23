@@ -1,13 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
-import { serviceAuthHeaders } from '@/lib/serviceToken'
-import {
-  getPypeApiBaseUrlForServer,
-  isPypeUpstreamUnreachable,
-  pypeApiAbortSignal,
-  PYPE_API_DEPLOY_TIMEOUT_MS,
-} from '@/lib/pypeApiFetch'
 import { isViewerForProject } from '@/lib/getProjectRoleForApi'
+import { deployWorkflow } from '@/server/workflowDeploy'
 
 // Deploying hot-reloads the running agent worker on the backend (20-30s).
 export const maxDuration = 60
@@ -19,26 +13,6 @@ function agentRowIdFromBackendName(agentName: string): string | null {
   const parts = agentName.trim().split('_')
   if (parts.length < 5) return null
   return parts.slice(-5).join('-')
-}
-
-/** Keep Supabase's copy in sync so the dashboard's own config history/diff UI
- * sees it too. DynamoDB (already updated by the backend deploy call) is what
- * the running worker actually reads at call time, so it's the source of truth
- * for what's LIVE — this is a secondary, display-only copy. A hiccup here
- * must not report the whole deploy as failed (the caller's outer catch would
- * say "Unexpected error deploying workflow" even though the real, functional
- * deploy already succeeded) — the caller surfaces this as its own smaller
- * warning instead. Returns the error message, or undefined on success. */
-async function syncWorkflowToSupabase(agentRow: { id: string; configuration: unknown }, workflow: unknown): Promise<string | undefined> {
-  try {
-    const { error } = await supabase
-      .from('pype_voice_agents')
-      .update({ configuration: { ...(agentRow.configuration as object), workflow } })
-      .eq('id', agentRow.id)
-    return error?.message
-  } catch (err: any) {
-    return err?.message || 'unknown error'
-  }
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ agentName: string }> }) {
@@ -74,54 +48,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ age
       return NextResponse.json({ message: 'Forbidden: you do not have permission to deploy this agent' }, { status: 403 })
     }
 
-    const baseUrl = getPypeApiBaseUrlForServer()
-    if (!baseUrl) {
-      return NextResponse.json({ message: 'Missing PYPEAI_API_URL or NEXT_PUBLIC_PYPEAI_API_URL' }, { status: 500 })
-    }
-
-    let response: Response
-    try {
-      response = await fetch(`${baseUrl}/workflow/${encodeURIComponent(agentName)}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...serviceAuthHeaders() },
-        // Forward the real agent row id so the backend stores it as the config's
-        // agent_id. Without it save_agent_config() mints a uuid5(agent_name) and
-        // every call gets logged to Whispey under that phantom id — invisible in
-        // this agent's call logs. rowId is already resolved above.
-        body: JSON.stringify({ ...body, agent_id: rowId }),
-        signal: pypeApiAbortSignal(PYPE_API_DEPLOY_TIMEOUT_MS),
-      })
-    } catch (err) {
-      if (isPypeUpstreamUnreachable(err)) {
-        return NextResponse.json(
-          { message: 'Voice backend unreachable. The workflow could not be deployed.', unreachable: true },
-          { status: 503 }
-        )
-      }
-      throw err
-    }
-
-    if (!response.ok) {
-      const errorText = await response.text().catch(() => '')
+    const result = await deployWorkflow(supabase, agentRow, agentName, body.workflow)
+    if (!result.ok) {
       return NextResponse.json(
-        { message: `Failed to deploy workflow: ${response.status}`, error: errorText || undefined },
-        { status: response.status }
+        { message: result.message, error: result.error, ...(result.unreachable && { unreachable: true }) },
+        { status: result.status }
       )
-    }
-
-    const data = await response.json().catch(() => ({}))
-
-    const supabaseSyncError = await syncWorkflowToSupabase(agentRow, body.workflow)
-    if (supabaseSyncError) {
-      console.error(`[workflow deploy] backend deploy succeeded but Supabase sync failed for agent ${rowId}: ${supabaseSyncError}`)
     }
 
     return NextResponse.json({
       success: true,
-      data,
-      ...(supabaseSyncError && {
-        warning: `Deployed successfully, but the dashboard's own copy failed to sync (${supabaseSyncError}) — refresh to see the latest.`,
-      }),
+      data: result.data,
+      ...(result.warning && { warning: result.warning }),
     })
   } catch (err: any) {
     return NextResponse.json({ message: 'Unexpected error deploying workflow', error: err?.message }, { status: 500 })

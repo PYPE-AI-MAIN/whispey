@@ -22,20 +22,13 @@ import { MCP_AGENT_DEFAULT_CONFIG } from '@/config/mcpAgentDefaults'
 import { findMcpVoice, buildMcpTtsConfig } from '@/config/mcpAgentVoices'
 import { validateDispositions, dispositionsToAgentColumns } from '@/lib/dispositions'
 import { hasStudioSecret, slugifyAgentName, studioUrl, type VoiceRef } from '@/lib/mcpAgentHelpers'
-import { resolveWhispeyKeyFields } from '@/server/mcpAgentDb'
+import { checkAgentQuota, recordAgentCreated, resolveWhispeyKeyFields } from '@/server/mcpAgentDb'
 
 const supabase = createServiceRoleClient()
 
 // MCP-created agents always deploy classic (subprocess) for now — see
 // project history: explicitly deferred deciding on 'docker' for this path.
 const DEPLOYMENT_TARGET = 'classic' as const
-
-type AgentQuotaState = {
-  limits: { max_agents: number }
-  usage: { active_count: number }
-  agents: Array<{ id: string; created_at: string; status: string }>
-  last_updated: string
-}
 
 interface CreateBody {
   project_id?: string
@@ -63,31 +56,6 @@ type Parsed = { ok: true; input: CreateInput } | { ok: false; response: NextResp
 
 const fail = (error: string, status: number, details?: unknown) =>
   NextResponse.json(details === undefined ? { error } : { error, details }, { status })
-
-async function getOrInitProjectAgentState(projectId: string): Promise<{
-  state: AgentQuotaState
-  error?: string
-}> {
-  const { data: projectRow, error: fetchError } = await supabase
-    .from('pype_voice_projects')
-    .select('id, agent')
-    .eq('id', projectId)
-    .single()
-
-  if (fetchError || !projectRow) {
-    return { state: {} as AgentQuotaState, error: fetchError?.message || 'Project not found' }
-  }
-
-  const defaultState: AgentQuotaState = {
-    limits: { max_agents: 2 },
-    usage: { active_count: 0 },
-    agents: [],
-    last_updated: new Date().toISOString(),
-  }
-
-  const state: AgentQuotaState = (projectRow as any).agent || defaultState
-  return { state }
-}
 
 function parseCreateInput(body: CreateBody): Parsed {
   const { project_id, display_name, prompt, voice } = body
@@ -193,11 +161,8 @@ export async function POST(request: NextRequest) {
   const name = slugifyAgentName(displayName)
 
   // --- Quota check (same shape as create-agent/route.ts, own logic) ---
-  const { state, error: stateError } = await getOrInitProjectAgentState(projectId)
-  if (stateError) return fail('Failed to load project state', 500)
-  const currentActive = state?.usage?.active_count ?? 0
-  const maxAllowed = state?.limits?.max_agents ?? 0
-  if (currentActive >= maxAllowed) return fail('Agent limit reached for this project', 403)
+  const quota = await checkAgentQuota(supabase, projectId)
+  if (!quota.ok) return fail(quota.error, quota.status)
 
   const agentId = randomUUID()
   const backendAgentName = `${name}_${agentId.replaceAll('-', '_')}`
@@ -253,18 +218,7 @@ export async function POST(request: NextRequest) {
   await startWorker(apiBase, backendAgentName)
 
   // --- Increment quota usage now that provisioning succeeded ---
-  const createdAt = new Date().toISOString()
-  await supabase
-    .from('pype_voice_projects')
-    .update({
-      agent: {
-        limits: { max_agents: maxAllowed },
-        usage: { active_count: currentActive + 1 },
-        agents: [...(state?.agents || []), { id: agentId, created_at: createdAt, status: 'active' }],
-        last_updated: createdAt,
-      },
-    })
-    .eq('id', projectId)
+  await recordAgentCreated(supabase, projectId, quota, agentId)
 
   return NextResponse.json({
     agent_id: agentId,

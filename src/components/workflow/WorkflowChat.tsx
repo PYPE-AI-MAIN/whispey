@@ -5,11 +5,9 @@ import { ArrowUp, Sparkles, Loader2, User, RotateCcw } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { Button } from '@/components/ui/button'
 import { useWorkflowStore } from '@/stores/workflowStore'
-import { safeParseWorkflow } from '@/lib/workflow/schema'
-import { extractGlobalRules } from '@/lib/workflow/globalRules'
-import { lintWorkflow, hasErrors } from '@/lib/workflow/linter'
+import { checkBuilderOutput } from '@/lib/workflow/builderOutput'
 import { isRetryableApplyError } from '@/lib/workflow/chatRetry'
-import { extractJsonFence, stripJsonFencesForHistory } from '@/lib/jsonFence'
+import { stripJsonFencesForHistory } from '@/lib/jsonFence'
 import toast from 'react-hot-toast'
 
 interface Message {
@@ -39,37 +37,6 @@ function formatContextSummary(contextSummary: ContextSummary): string {
   if (contextSummary.varCount) text += ` · ${contextSummary.varCount} vars`
   if (contextSummary.langCount) text += ` · ${contextSummary.langCount} languages`
   return text
-}
-
-function extractWorkflowJson(text: string): object | null {
-  const parsed = extractJsonFence(text)
-  return typeof parsed === 'object' && parsed !== null ? parsed : null
-}
-
-// The system prompt tells the model to write "__KEEP__" instead of retyping a large
-// unchanged prompt/persona field — restore the real value from the current workflow
-// here so the model never has to round-trip huge text through its output.
-const KEEP_MARKER = '__KEEP__'
-function restoreKeptFields(next: any, current: any): any {
-  if (!current) return next
-  if (next?.agent?.globalPrompt === KEEP_MARKER) {
-    next.agent.globalPrompt = current.agent?.globalPrompt ?? ''
-  }
-  if (Array.isArray(next?.nodes)) {
-    const currentNodesById = new Map<string, any>((current.nodes || []).map((n: any) => [n.id, n]))
-    next.nodes = next.nodes.map((n: any) => {
-      const orig = currentNodesById.get(n.id)
-      if (!orig) return n
-      // Whole-node keep: the model output only { id, __keep__: true } instead of
-      // retyping a large function/mcp node's headers/tokens/body/params.
-      if (n.__keep__ === true) return orig
-      const patched = { ...n }
-      if (patched.prompt === KEEP_MARKER) patched.prompt = orig.prompt ?? ''
-      if (patched.staticText === KEEP_MARKER) patched.staticText = orig.staticText ?? ''
-      return patched
-    })
-  }
-  return next
 }
 
 export function WorkflowChat({
@@ -188,50 +155,16 @@ export function WorkflowChat({
         return { applyStatus: 'error' as const, applyError }
       }
 
-      const jsonBlockStart = assistantContent.indexOf('```json')
-      const hasJsonBlock = jsonBlockStart !== -1 && assistantContent.slice(jsonBlockStart + 7).includes('```')
-      const json = extractWorkflowJson(assistantContent)
-      if (!json) {
-        if (!hasJsonBlock) return { applyStatus: 'none' }
-        return fail('Response JSON was malformed (likely cut off — try a shorter/simpler request)')
-      }
+      const result = checkBuilderOutput(assistantContent, workflow)
+      if (result.status === 'none') return { applyStatus: 'none' }
+      if (result.status === 'error') return fail(result.error)
 
-      const parsed = safeParseWorkflow(restoreKeptFields(json, workflow))
-      // safeParse passes on an empty/graph-less workflow (only `start` is
-      // required, and it isn't checked against node ids). That renders a blank
-      // canvas but shows a misleading "applied" — reject it and say why.
-      if (!parsed.success) {
-        const applyError = parsed.error.issues.slice(0, 3).map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')
-        return fail(`AI returned invalid workflow JSON: ${applyError}`)
-      }
-      if (parsed.data.nodes.length === 0 || !parsed.data.nodes.some((n) => n.id === parsed.data.start)) {
-        return fail(
-          'The AI returned a workflow with no usable nodes — the config is too large to convert in one shot. Ask it to "build the flow step by step" (greeting, then patient lookup, then symptoms, …), or paste the flow in a few smaller messages.'
-        )
-      }
-
-      // "Chat-only" only works if problems surface HERE — the same lint the
-      // canvas warning badge runs, since a user who never opens the canvas
-      // would otherwise never see a dangling edge or dead-end node at all.
-      const issues = lintWorkflow(parsed.data)
-      if (hasErrors(issues)) {
-        const applyError = issues
-          .filter((i) => i.severity === 'error')
-          .slice(0, 3)
-          .map((i) => i.message)
-          .join('; ')
-        return fail(`AI returned a broken workflow graph: ${applyError}`)
-      }
-
-      // Whatever Pi drew, fold repeated condition edges into global rules so the canvas stays readable.
-      const merged = extractGlobalRules(parsed.data)
-      setWorkflow({ ...parsed.data, edges: merged.edges, globalRules: merged.globalRules })
+      setWorkflow(result.workflow)
       toast.success('Workflow updated from chat')
-      const warnings = issues.filter((i) => i.severity === 'warning')
       return {
         applyStatus: 'success',
-        applyNodeCount: parsed.data.nodes.length,
-        applyWarnings: warnings.length ? warnings.slice(0, 3).map((i) => i.message) : undefined,
+        applyNodeCount: result.workflow.nodes.length,
+        applyWarnings: result.warnings.length ? result.warnings.slice(0, 3) : undefined,
       }
     },
     [workflow, setWorkflow]
