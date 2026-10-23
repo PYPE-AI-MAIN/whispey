@@ -40,7 +40,13 @@ export async function resolveWhispeyKeyFields(supabase: Supabase, projectId: str
   return fields
 }
 
-export type OwnedAgent = { id: string; name: string; project_id: string; configuration: any }
+export type OwnedAgent = {
+  id: string
+  name: string
+  project_id: string
+  configuration: any
+  field_extractor_prompt: string | null
+}
 
 export type OwnershipResult =
   | { ok: true; agent: OwnedAgent }
@@ -59,7 +65,7 @@ export async function loadEditableAgent(
 ): Promise<OwnershipResult> {
   const { data: agent, error } = await supabase
     .from('pype_voice_agents')
-    .select('id, name, project_id, configuration')
+    .select('id, name, project_id, configuration, field_extractor_prompt')
     .eq('id', agentId)
     .maybeSingle()
 
@@ -74,4 +80,57 @@ export async function loadEditableAgent(
     return { ok: false, status: 403, error: 'You can only edit agents you created through the MCP' }
   }
   return { ok: true, agent: agent as OwnedAgent }
+}
+
+type AgentQuotaState = {
+  limits: { max_agents: number }
+  usage: { active_count: number }
+  agents: Array<{ id: string; created_at: string; status: string }>
+  last_updated: string
+}
+
+export type QuotaCheck =
+  | { ok: true; state: AgentQuotaState; active: number; max: number }
+  | { ok: false; status: number; error: string }
+
+/** The project's agent quota (pype_voice_projects.agent), same shape create-agent uses. */
+export async function checkAgentQuota(supabase: Supabase, projectId: string): Promise<QuotaCheck> {
+  const { data: projectRow, error } = await supabase
+    .from('pype_voice_projects')
+    .select('id, agent')
+    .eq('id', projectId)
+    .single()
+  if (error || !projectRow) return { ok: false, status: 500, error: 'Failed to load project state' }
+
+  const state: AgentQuotaState = (projectRow as any).agent || {
+    limits: { max_agents: 2 },
+    usage: { active_count: 0 },
+    agents: [],
+    last_updated: new Date().toISOString(),
+  }
+  const active = state?.usage?.active_count ?? 0
+  const max = state?.limits?.max_agents ?? 0
+  if (active >= max) return { ok: false, status: 403, error: 'Agent limit reached for this project' }
+  return { ok: true, state, active, max }
+}
+
+/** Counts a newly created agent against the project's quota. */
+export async function recordAgentCreated(
+  supabase: Supabase,
+  projectId: string,
+  quota: Extract<QuotaCheck, { ok: true }>,
+  agentId: string
+): Promise<void> {
+  const createdAt = new Date().toISOString()
+  await supabase
+    .from('pype_voice_projects')
+    .update({
+      agent: {
+        limits: { max_agents: quota.max },
+        usage: { active_count: quota.active + 1 },
+        agents: [...(quota.state?.agents || []), { id: agentId, created_at: createdAt, status: 'active' }],
+        last_updated: createdAt,
+      },
+    })
+    .eq('id', projectId)
 }

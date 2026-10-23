@@ -41,6 +41,12 @@ export function studioUrl(projectId: string, agentId: string, appUrl = 'http://l
   return `${trimmed}/${projectId}/agents/${agentId}/studio`
 }
 
+/** Link to a conversation-flow agent's canvas (where its flow can be viewed and edited). */
+export function flowUrl(projectId: string, agentId: string, appUrl = 'http://localhost:3000'): string {
+  const trimmed = appUrl.endsWith('/') ? appUrl.slice(0, -1) : appUrl
+  return `${trimmed}/${projectId}/agents/${agentId}/workflow`
+}
+
 /** Why a supplied voice is unusable, or null when it has both parts. */
 export function voiceRefError(voice: VoiceRef | undefined): string | null {
   if (!voice?.provider || !voice?.voice_id) return 'voice requires provider and voice_id'
