@@ -338,7 +338,9 @@ function StudioWorkspace({ isPreview, onExitPreview }: Readonly<{ isPreview: boo
       <TestAgentPanel
         agentId={agentId}
         agentDisplayName={agent?.name ?? 'Agent'}
-        voiceId={tts?.voice_id ?? ''}
+        // MCP-created Sarvam agents store the voice in `speaker`, not `voice_id`
+        // (backend reads voice_id first, then speaker — mirror that).
+        voiceId={tts?.voice_id || tts?.speaker || ''}
         voiceProvider={tts?.name ?? ''}
         voiceSaving={voiceSaving}
         voiceSavingLabel={voiceUpdateLabel}
