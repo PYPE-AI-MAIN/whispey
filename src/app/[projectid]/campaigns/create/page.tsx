@@ -539,7 +539,9 @@ function CreateCampaign() {
         }).catch(() => null)
         if (!res?.ok) {
           const error = await res?.json().catch(() => null)
-          webhookFailures.push(`${w.url.trim()}${error?.error ? `: ${String(error.error).replace(/\.+$/, '')}` : ''}`)
+          const message = error?.error ? String(error.error) : ''
+          const reason = message.endsWith('.') ? message.slice(0, -1) : message
+          webhookFailures.push(reason ? `${w.url.trim()}: ${reason}` : w.url.trim())
         }
       }
       if (webhookFailures.length) {

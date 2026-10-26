@@ -683,59 +683,57 @@ function ViewCampaign() {
     )
   } else {
     logsSection = (
-      <>
-        <div ref={logsScrollRef} className="flex-1 min-h-0 overflow-auto">
-          <table className="w-full">
-            <thead className="bg-muted/50 sticky top-0 z-10">
-              <tr>
-                {columns.map((column) => {
-                  // Map column names to display labels
-                  const columnLabels: { [key: string]: string } = {
-                    'status': 'Status',
-                    'retryCount': 'Retry Count',
-                    'lastCallAt': 'Last Call',
-                  }
+      <div ref={logsScrollRef} className="flex-1 min-h-0 overflow-auto">
+        <table className="w-full">
+          <thead className="bg-muted/50 sticky top-0 z-10">
+            <tr>
+              {columns.map((column) => {
+                // Map column names to display labels
+                const columnLabels: { [key: string]: string } = {
+                  'status': 'Status',
+                  'retryCount': 'Retry Count',
+                  'lastCallAt': 'Last Call',
+                }
 
-                  const label = columnLabels[column] ||
-                    column.split(/(?=[A-Z])/).map(word =>
-                      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-                    ).join(' ')
+                const label = columnLabels[column] ||
+                  column.split(/(?=[A-Z])/).map(word =>
+                    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+                  ).join(' ')
+
+                return (
+                  <th
+                    key={column}
+                    className="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap"
+                  >
+                    {label}
+                  </th>
+                )
+              })}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {logs.map((log, index) => (
+              <tr
+                key={log.contactId || log.id || index}
+                className="hover:bg-muted/50"
+              >
+                {columns.map((column) => {
+                  const displayValue = formatCell(column, getValue(log, column))
 
                   return (
-                    <th
+                    <td
                       key={column}
-                      className="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap"
+                      className="px-4 py-3 text-xs text-foreground"
                     >
-                      {label}
-                    </th>
+                      {displayValue}
+                    </td>
                   )
                 })}
               </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {logs.map((log, index) => (
-                <tr
-                  key={log.contactId || log.id || index}
-                  className="hover:bg-muted/50"
-                >
-                  {columns.map((column) => {
-                    const displayValue = formatCell(column, getValue(log, column))
-
-                    return (
-                      <td
-                        key={column}
-                        className="px-4 py-3 text-xs text-foreground"
-                      >
-                        {displayValue}
-                      </td>
-                    )
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </>
+            ))}
+          </tbody>
+        </table>
+      </div>
     )
   }
 

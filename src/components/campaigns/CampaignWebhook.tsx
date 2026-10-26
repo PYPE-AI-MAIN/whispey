@@ -131,7 +131,7 @@ export function WebhookCreateSection({ projectId, webhooks, onChange }: Readonly
               </div>
             )
           })}
-          {rows.length < MAX_CAMPAIGN_WEBHOOKS && rows[rows.length - 1].url.trim() && (
+          {rows.length < MAX_CAMPAIGN_WEBHOOKS && rows.at(-1)?.url.trim() && (
             <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => onChange([...rows, { url: '', token: '' }])}>
               <Plus className="w-3 h-3 mr-1" /> Add another webhook
             </Button>
@@ -186,9 +186,9 @@ function actionFor(w: CampaignWebhookEntry, campaignDone: boolean): Action | nul
   const times = deliveredCount(w)
   const mode = w.status === 'sent' || w.status === 'unconfirmed' ? 'force' : 'send'
   if (times > 0 || w.status === 'unconfirmed') {
-    const already = times > 0
-      ? `This webhook was already sent ${times === 1 ? 'once' : `${times} times`}, last on ${formatWhen(w.sentAt)}.`
-      : 'The last send may already have reached your workflow.'
+    const count = times === 1 ? 'once' : `${times} times`
+    let already = 'The last send may already have reached your workflow.'
+    if (times > 0) already = `This webhook was already sent ${count}, last on ${formatWhen(w.sentAt)}.`
     return { label: 'Send again', mode, confirm: `${already} Send it again? Your workflow will run again.` }
   }
   if (w.status === 'failed') return { label: 'Retry', mode }
@@ -198,6 +198,7 @@ function actionFor(w: CampaignWebhookEntry, campaignDone: boolean): Action | nul
 }
 
 const OUTCOME_LABEL = { sent: 'Delivered', failed: 'Not delivered', unconfirmed: 'Unconfirmed' } as const
+const OUTCOME_TONE_KEY = { sent: 'success', failed: 'danger', unconfirmed: 'warning' } as const
 const OUTCOME_TONE = { sent: 'text-success', failed: 'text-destructive', unconfirmed: 'text-warning' } as const
 
 const TRIGGER_LABEL = { completed: 'Automatic · on completion', manual: 'Manual', forced: 'Manual · send again' } as const
@@ -220,12 +221,12 @@ function History({ sends }: Readonly<{ sends: CampaignWebhookSend[] }>) {
         <li key={`${h.at}-${i}`} className="rounded-lg border border-border bg-muted/30 p-3 text-xs space-y-2">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className={`inline-flex items-center gap-1.5 font-medium ${OUTCOME_TONE[h.outcome]}`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${TONE[h.outcome === 'sent' ? 'success' : h.outcome === 'failed' ? 'danger' : 'warning'].dot}`} />
+              <span className={`h-1.5 w-1.5 rounded-full ${TONE[OUTCOME_TONE_KEY[h.outcome]].dot}`} />
               {OUTCOME_LABEL[h.outcome]}{h.httpCode ? ` · HTTP ${h.httpCode}` : ''}
             </span>
             <span className="ml-auto text-muted-foreground tabular-nums">{formatWhen(h.at)}</span>
           </div>
-          <Field label="Trigger">{TRIGGER_LABEL[h.trigger]}{h.trigger !== 'completed' ? ` · ${h.by}` : ''}</Field>
+          <Field label="Trigger">{TRIGGER_LABEL[h.trigger]}{h.trigger === 'completed' ? '' : ` · ${h.by}`}</Field>
           {h.url && <Field label="URL">{h.url}</Field>}
           <Field label="Token">
             {h.token ?? (h.hasToken
@@ -281,7 +282,7 @@ function HistoryDialog({ campaignId, webhook, onClose }: Readonly<{ campaignId: 
   )
 }
 
-type Editing = { id: string | 'new'; url: string; token: string; loadingToken: boolean; tokenFailed: boolean }
+type Editing = { id: string; url: string; token: string; loadingToken: boolean; tokenFailed: boolean }
 
 // className sets padding/grid placement to match the surrounding cards (the details sheet uses roomier ones).
 export function CampaignWebhookCard({ campaignId, className = 'p-4 sm:p-6' }: Readonly<{ campaignId: string; className?: string }>) {

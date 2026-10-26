@@ -25,7 +25,7 @@ function parseAdditional(raw: unknown): Record<string, unknown> {
   return typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
 }
 
-const digitsOnly = (v: string) => v.replace(/\D/g, '')
+const digitsOnly = (v: string) => v.replaceAll(/\D/g, '')
 // Looks like a phone number: digits with optional + spaces - . ( ), at least 3 digits.
 const PHONE_LIKE = /^[\d\s+\-.()]+$/
 
