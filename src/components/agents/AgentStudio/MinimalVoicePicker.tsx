@@ -14,22 +14,28 @@ export interface StudioVoice {
   tags: string[]
   provider: 'elevenlabs' | 'sarvam'
   model?: string
+  /** Other ids a saved config may hold for this voice (e.g. Sarvam's short MCP id). */
+  aliases?: string[]
 }
 
 // Same curated list the MCP validates create_agent/update_agent voice
 // selections against (src/config/mcpAgentVoices.ts) — one source of truth,
 // so a voice set through the MCP always shows up as selected here too.
+// The id is the real Sarvam speaker string — that's what the MCP writes to
+// tts.speaker and what the backend/preview API need. The short MCP id is kept
+// as an alias so configs saved with it still show as selected.
 const SARVAM_VOICES: StudioVoice[] = MCP_SARVAM_VOICES.map((v) => ({
-  id: v.voice_id,
+  id: v.sarvamSpeaker,
+  aliases: [v.voice_id],
   name: v.name,
   tags: ['Indian', 'Multilingual'],
   provider: 'sarvam' as const,
   model: v.model,
 }))
 
-const PROVIDER_LABEL: Record<StudioVoice['provider'], string> = {
-  elevenlabs: 'ElevenLabs',
-  sarvam: 'Sarvam',
+/** Whether a saved (voiceId, provider) pair refers to this voice. */
+export function isSameVoice(voice: StudioVoice, voiceId: string, provider: string): boolean {
+  return voice.provider === provider && (voice.id === voiceId || !!voice.aliases?.includes(voiceId))
 }
 
 const PREVIEW_TEXT = 'Hi there! This is how I sound.'
@@ -52,6 +58,16 @@ function labelsToTags(labels: Record<string, string> | undefined): string[] {
     .slice(0, 3)
 }
 
+// Curated ElevenLabs voices with only our own metadata — used when the live
+// fetch is missing a voice or fails outright, so MCP-set voices still match.
+const CURATED_ELEVEN_VOICES: StudioVoice[] = MCP_ELEVENLABS_VOICES.map((v) => ({
+  id: v.voice_id,
+  name: v.name,
+  tags: [],
+  provider: 'elevenlabs' as const,
+  model: v.model,
+}))
+
 export function useStudioVoices() {
   const [elevenVoices, setElevenVoices] = useState<StudioVoice[]>([])
   const [loading, setLoading] = useState(true)
@@ -69,9 +85,7 @@ export function useStudioVoices() {
         setElevenVoices(
           MCP_ELEVENLABS_VOICES.map((curated) => {
             const live: any = byId.get(curated.voice_id)
-            if (!live) {
-              return { id: curated.voice_id, name: curated.name, tags: [], provider: 'elevenlabs' as const, model: curated.model }
-            }
+            if (!live) return CURATED_ELEVEN_VOICES.find((v) => v.id === curated.voice_id)!
             const { name, subtitle } = splitName(live.name ?? curated.name)
             return {
               id: curated.voice_id,
@@ -84,7 +98,7 @@ export function useStudioVoices() {
           })
         )
       })
-      .catch(() => !cancelled && setElevenVoices([]))
+      .catch(() => !cancelled && setElevenVoices(CURATED_ELEVEN_VOICES))
       .finally(() => !cancelled && setLoading(false))
     return () => {
       cancelled = true
@@ -207,7 +221,7 @@ function PlayOrb({
         transition: 'transform 150ms ease',
       }}
       className={cn(
-        'relative flex shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white',
+        'relative flex shrink-0 cursor-pointer items-center justify-center rounded-full text-sm font-semibold text-white',
         voice.provider === 'sarvam'
           ? 'bg-gradient-to-br from-orange-400 to-rose-500'
           : 'bg-gradient-to-br from-primary to-primary/80'
@@ -235,8 +249,8 @@ function OrbIcon({ loading, playing }: Readonly<{ loading: boolean; playing: boo
 
 function voiceSubtitle(current: StudioVoice | undefined): string {
   if (!current) return 'Current voice isn’t in the curated list'
-  const label = PROVIDER_LABEL[current.provider]
-  return current.tags[0] ? `${label} · ${current.tags.join(' · ')}` : label
+  // Never name the TTS vendor in the UI — describe the voice instead.
+  return current.tags.join(' · ') || current.subtitle || ''
 }
 
 interface MinimalVoicePickerProps {
@@ -258,7 +272,7 @@ export default function MinimalVoicePicker({
 }: Readonly<MinimalVoicePickerProps>) {
   const [open, setOpen] = useState(false)
   const preview = useVoicePreview()
-  const current = voices.find((v) => v.id === selectedVoiceId && v.provider === selectedProvider)
+  const current = voices.find((v) => isSameVoice(v, selectedVoiceId, selectedProvider))
   const groups = (['elevenlabs', 'sarvam'] as const)
     .map((p) => ({ provider: p, items: voices.filter((v) => v.provider === p) }))
     .filter((g) => g.items.length > 0)
@@ -288,7 +302,7 @@ export default function MinimalVoicePicker({
               <button
                 type="button"
                 disabled={disabled}
-                className="flex h-full min-w-0 flex-1 items-center gap-2 text-left disabled:opacity-60"
+                className="flex h-full min-w-0 flex-1 cursor-pointer items-center gap-2 text-left disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[13px] font-medium text-foreground">
@@ -319,13 +333,10 @@ export default function MinimalVoicePicker({
             </p>
           )}
           {groups.map((g) => (
-            <div key={g.provider} className="pb-1">
-              <p className="px-2 pb-1 pt-2 text-[10px] font-medium text-muted-foreground">
-                {PROVIDER_LABEL[g.provider]}
-              </p>
+            <div key={g.provider} className="pb-1 pt-1">
               {g.items.map((v) => {
                 const key = voiceKey(v)
-                const isSelected = v.id === selectedVoiceId && v.provider === selectedProvider
+                const isSelected = current ? voiceKey(v) === voiceKey(current) : false
                 return (
                   // Row selects; the orb previews. A div with role=menuitemradio (not a
                   // button) because the orb inside is itself a button.

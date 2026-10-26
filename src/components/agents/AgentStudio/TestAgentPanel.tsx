@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Transcript } from '@/hooks/useVoiceAgent'
-import MinimalVoicePicker, { VoiceAvatar, useStudioVoices } from './MinimalVoicePicker'
+import MinimalVoicePicker, { VoiceAvatar, isSameVoice, useStudioVoices } from './MinimalVoicePicker'
 import SessionVariablesPanel from './SessionVariablesPanel'
 import LastCallCard, { type LastCallState } from './LastCallCard'
 
@@ -392,7 +392,7 @@ function SetupDrawer({
   onVariablesChange: (vars: Record<string, string>) => void
 }>) {
   const { voices, loading: voicesLoading } = useStudioVoices()
-  const currentVoice = voices.find((v) => v.id === voiceId && v.provider === voiceProvider)
+  const currentVoice = voices.find((v) => isSameVoice(v, voiceId, voiceProvider))
   const varKeys = Object.keys(sessionVariables)
   const varsSet = varKeys.filter((k) => sessionVariables[k]?.trim()).length
 
