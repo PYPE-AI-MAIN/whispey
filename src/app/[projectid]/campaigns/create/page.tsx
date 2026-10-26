@@ -15,6 +15,7 @@ import { CsvUploadSection } from '@/components/campaigns/CsvUploadSection'
 import { ScheduleSelector } from '@/components/campaigns/ScheduleSelector'
 import { RecipientsPreview } from '@/components/campaigns/RecipientsPreview'
 import { RetryConfiguration } from '@/components/campaigns/RetryConfiguration'
+import { WebhookCreateSection, type WebhookDraft } from '@/components/campaigns/CampaignWebhook'
 
 // Per-type retryConfig validators — each returns an error message or null.
 // Extracted so the Yup .test() callback below is a flat dispatcher instead
@@ -114,6 +115,13 @@ const createValidationSchema = (maxConcurrency: number) => Yup.object({
     is: 'schedule',
     then: (schema) => schema.required('Timezone is required'),
   }),
+  webhooks: Yup.array().of(Yup.object({
+    url: Yup.string()
+      .trim()
+      .max(2048, 'URL is too long')
+      .test('https', 'Must be an https:// URL', (value) => !value || /^https:\/\/\S+$/i.test(value)),
+    token: Yup.string().max(1024, 'Token is too long'),
+  })),
   callWindowStart: Yup.string().required('Call window start time is required'),
   callWindowEnd: Yup.string().required('Call window end time is required'),
   reservedConcurrency: Yup.number()
@@ -347,6 +355,7 @@ function CreateCampaign() {
         maxRetries: 2,
       },
     ] as RetryConfig[],
+    webhooks: [] as WebhookDraft[],
   }
 
   // Fetch project configuration to get max_concurrency
@@ -519,6 +528,24 @@ function CreateCampaign() {
         throw new Error(error.error || 'Failed to schedule campaign')
       }
 
+      // Step 5: Completion webhooks (optional). The campaign already exists, so a
+      // failure here must not fail creation: they can be added from the details.
+      const webhookFailures: string[] = []
+      for (const w of values.webhooks.filter((d) => d.url.trim())) {
+        const res = await fetch(`/api/campaigns/${campaignId}/webhook`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'add', url: w.url.trim(), token: w.token.trim() || undefined }),
+        }).catch(() => null)
+        if (!res?.ok) {
+          const error = await res?.json().catch(() => null)
+          webhookFailures.push(`${w.url.trim()}${error?.error ? `: ${String(error.error).replace(/\.+$/, '')}` : ''}`)
+        }
+      }
+      if (webhookFailures.length) {
+        alert(`Campaign created, but ${webhookFailures.length === 1 ? 'a webhook was' : 'some webhooks were'} not saved:\n${webhookFailures.join('\n')}\n\nYou can add them from the campaign details.`)
+      }
+
       // Success!
       alert('Campaign created successfully!')
       router.push(`/${projectId}/campaigns/${campaignId}`)
@@ -614,6 +641,13 @@ function CreateCampaign() {
                     onCallWindowChange={setFieldValue}
                     selectedDays={values.selectedDays}
                     onDaysChange={(days) => setFieldValue('selectedDays', days)}
+                />
+
+                {/* Completion webhooks (optional, collapsed by default) */}
+                <WebhookCreateSection
+                  projectId={projectId}
+                  webhooks={values.webhooks}
+                  onChange={(webhooks) => setFieldValue('webhooks', webhooks)}
                 />
 
                 {/* Action Buttons */}

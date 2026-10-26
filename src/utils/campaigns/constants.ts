@@ -236,6 +236,55 @@ export interface Campaign {
   updatedAt: string
 }
 
+/** One completion webhook of a campaign. The token is never sent to the browser. */
+export interface CampaignWebhookEntry {
+  id: string
+  url: string
+  hasToken: boolean
+  status: 'pending' | 'sending' | 'sent' | 'failed' | 'unconfirmed'
+  trigger: 'completed' | 'manual' | 'forced' | null
+  by: string | null
+  claimId: string | null
+  claimedAt: string | null
+  sentAt: string | null
+  lastCode: number | null
+  lastError: string | null
+  attempts: number
+  createdAt: string | null
+  /** Newest first, last 20 sends. */
+  history: CampaignWebhookSend[]
+  /** Editable / deletable until something was delivered; then the URL is frozen with its history. */
+  editable: boolean
+}
+
+/** One send of a webhook: automatic (on completion) or manual. */
+export interface CampaignWebhookSend {
+  at: string
+  /** The URL actually hit. */
+  url?: string
+  /** Full token used: only in the history dialog's response, never in the page list. */
+  token?: string | null
+  /** In the page list: whether a token was used (the value itself is left out). */
+  hasToken?: boolean
+  trigger: 'completed' | 'manual' | 'forced'
+  by: string
+  outcome: 'sent' | 'failed' | 'unconfirmed'
+  httpCode?: number
+  error?: string
+  response?: string
+  attempts: number
+}
+
+/** A campaign's completion webhooks (up to MAX_CAMPAIGN_WEBHOOKS), as returned by /api/campaigns/[campaignId]/webhook. */
+export interface CampaignWebhooks {
+  campaignId: string
+  projectId: string
+  campaignStatus: string
+  webhooks: CampaignWebhookEntry[]
+}
+
+export const MAX_CAMPAIGN_WEBHOOKS = 3
+
 export interface Contact {
   contactId: string
   campaignId: string

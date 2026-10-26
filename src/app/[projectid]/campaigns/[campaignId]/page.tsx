@@ -1,14 +1,18 @@
 // app/[projectid]/campaigns/[campaignId]/page.tsx
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Loader2, RefreshCw, Phone, Calendar, Clock, Users, Pause, Play, Download, Filter } from 'lucide-react'
+import { ArrowLeft, Loader2, RefreshCw, Phone, Calendar, Clock, Users, Pause, Play, Download, ChevronLeft, ChevronRight, ChevronsLeft, Search, X, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
 import { Contact, RetryConfig } from '@/utils/campaigns/constants'
 import { useProjectAgents } from '@/hooks/useProjectAgents'
 import { resolveStoredAgentName } from '@/lib/agentDisplayName'
+import { CampaignWebhookCard } from '@/components/campaigns/CampaignWebhook'
+import { useCampaignLogs } from '@/hooks/useCampaignLogs'
+import { useQueryClient } from '@tanstack/react-query'
 
 interface CampaignDetails {
   campaignId: string
@@ -230,14 +234,25 @@ function ViewCampaign() {
   const campaignId = params.campaignId as string
 
   const [loading, setLoading] = useState(true)
-  const [loadingLogs, setLoadingLogs] = useState(true)
   const [campaignDetails, setCampaignDetails] = useState<CampaignDetails | null>(null)
-  const [logs, setLogs] = useState<any[]>([])
-  const [hasMoreLogs, setHasMoreLogs] = useState(false)
-  const [nextKey, setNextKey] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
-  const [downloadStatusFilter, setDownloadStatusFilter] = useState('all')
   const [isDownloading, setIsDownloading] = useState(false)
+
+  // Logs: 100 per page with Prev/Next; search covers every page (see useCampaignLogs).
+  const queryClient = useQueryClient()
+  const logsView = useCampaignLogs(campaignId, campaignDetails?.callStats?.total ?? campaignDetails?.totalContacts)
+  const logs = logsView.rows
+  const loadingLogs = logsView.loading
+  // What is typed vs. what is searched: results change only on Enter / Search.
+  const [searchInput, setSearchInput] = useState('')
+  const logsScrollRef = useRef<HTMLDivElement>(null)
+  const runSearch = () => logsView.setQuery(searchInput.trim())
+  const clearSearch = () => { setSearchInput(''); logsView.setQuery('') }
+
+  // A new page starts at the top of the table.
+  useEffect(() => {
+    logsScrollRef.current?.scrollTo({ top: 0 })
+  }, [logsView.page, logsView.query])
 
 
 
@@ -273,50 +288,15 @@ function ViewCampaign() {
     }
   }
 
-  // Fetch contacts
-  const fetchContacts = async (lastKey?: string) => {
-    try {
-      setLoadingLogs(true)
-      let url = `/api/campaigns/contacts?campaignId=${campaignId}&limit=100`
-      
-      if (lastKey) {
-        url += `&lastKey=${lastKey}`
-      }
-
-      const response = await fetch(url)
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch contacts')
-      }
-
-      const data = await response.json()
-      
-      if (lastKey) {
-        // Append to existing contacts for pagination
-        setLogs(prev => [...prev, ...(data.contacts || [])])
-      } else {
-        // Replace contacts for initial load or refresh
-        setLogs(data.contacts || [])
-      }
-      
-      setHasMoreLogs(data.pagination?.hasMore || false)
-      setNextKey(data.pagination?.nextKey || null)
-    } catch (error) {
-      console.error('Error fetching contacts:', error)
-      alert('Failed to load contacts')
-    } finally {
-      setLoadingLogs(false)
-    }
-  }
-
   useEffect(() => {
     fetchCampaignDetails()
-    fetchContacts()
   }, [campaignId, projectId])
 
   const handleRefresh = () => {
     fetchCampaignDetails()
-    fetchContacts()
+    setSearchInput('')
+    logsView.refresh()
+    queryClient.invalidateQueries({ queryKey: ['campaign-webhook', campaignId] })
   }
 
   const handlePauseCampaign = async () => {
@@ -369,12 +349,6 @@ function ViewCampaign() {
     }
   }
 
-  const handleLoadMore = () => {
-    if (nextKey && !loadingLogs) {
-      fetchContacts(nextKey)
-    }
-  }
-
   // Download contacts as CSV based on status filter
   const handleDownloadContacts = async () => {
     try {
@@ -383,15 +357,10 @@ function ViewCampaign() {
       let currentKey: string | null = null
       let hasMore = true
 
-      // Fetch contacts with server-side filtering (paginate through all filtered pages)
+      // Fetch every contact (paginate through all pages)
       while (hasMore) {
         let url = `/api/campaigns/contacts?campaignId=${campaignId}&limit=100`
-        
-        // Add status filter to API call for server-side filtering
-        if (downloadStatusFilter !== 'all') {
-          url += `&status=${encodeURIComponent(downloadStatusFilter)}`
-        }
-        
+
         if (currentKey) {
           url += `&lastKey=${encodeURIComponent(currentKey)}`
         }
@@ -408,11 +377,10 @@ function ViewCampaign() {
         currentKey = data.pagination?.nextKey || null
       }
 
-      // No need for client-side filtering anymore - already filtered by backend
       const filteredContacts = allContacts
 
       if (filteredContacts.length === 0) {
-        alert('No contacts found with the selected status filter')
+        alert('No contacts found')
         return
       }
 
@@ -542,8 +510,7 @@ function ViewCampaign() {
       const url = URL.createObjectURL(blob)
       
       link.setAttribute('href', url)
-      const filterSuffix = downloadStatusFilter === 'all' ? 'all' : downloadStatusFilter
-      link.setAttribute('download', `campaign-${campaignDetails?.campaignName || campaignId}-${filterSuffix}-${new Date().toISOString().split('T')[0]}.csv`)
+      link.setAttribute('download', `campaign-${campaignDetails?.campaignName || campaignId}-all-${new Date().toISOString().split('T')[0]}.csv`)
       link.style.visibility = 'hidden'
       document.body.appendChild(link)
       link.click()
@@ -553,11 +520,7 @@ function ViewCampaign() {
       // Count additionalData columns
       const additionalDataCount = Array.from(additionalDataKeys).length + priorityAdditionalColumns.filter(c => columns.includes(c)).length
       
-      const filterInfo = downloadStatusFilter === 'all' 
-        ? 'All contacts' 
-        : `Filtered by: ${downloadStatusFilter}`
-      
-      alert(`Downloaded ${filteredContacts.length} contacts\n${filterInfo} (server-side filtered)\nTotal columns: ${columns.length}\n Columns from additionalData: ${additionalDataCount}\n\nCheck browser console for full column list.`)
+      alert(`Downloaded ${filteredContacts.length} contacts\nTotal columns: ${columns.length}\n Columns from additionalData: ${additionalDataCount}\n\nCheck browser console for full column list.`)
     } catch (error: any) {
       console.error('Error downloading contacts:', error)
       alert('Failed to download contacts: ' + error.message)
@@ -665,25 +628,11 @@ function ViewCampaign() {
               {actionLoading ? 'Resuming...' : 'Resume'}
             </Button>
           )}
-          {/* Download Section with Status Filter */}
+          {/* Download CSV (all contacts) */}
           <div className="flex items-center gap-2 px-3 py-1 bg-muted/50 rounded-lg border border-border">
-            <Filter className="w-3.5 h-3.5 text-muted-foreground" />
-            <select
-              value={downloadStatusFilter}
-              onChange={(e) => setDownloadStatusFilter(e.target.value)}
-              disabled={isDownloading}
-              className="h-7 px-2 text-xs border-0 focus:ring-0 focus:outline-none bg-transparent text-foreground font-medium cursor-pointer"
-            >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="completed">Completed</option>
-              <option value="failed">Failed</option>
-              <option value="in_progress">In Progress</option>
-            </select>
-            <div className="h-4 w-px bg-muted-foreground/30"></div>
             <button
               onClick={handleDownloadContacts}
-              disabled={isDownloading || logs.length === 0}
+              disabled={isDownloading || !logsView.hasAnyLogs}
               className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-success hover:text-success disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isDownloading ? (
@@ -715,24 +664,27 @@ function ViewCampaign() {
 
   // Campaign logs table body: loading / empty / populated. Extracted from a nested
   // ternary into if/else so each state reads as its own branch.
+  const isSearching = logsView.query.trim().length > 0
   let logsSection: React.ReactNode
   if (loadingLogs && logs.length === 0) {
     logsSection = (
       <div className="p-4 sm:p-8 text-center">
         <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto mb-2" />
-        <p className="text-sm text-muted-foreground">Loading logs...</p>
+        <p className="text-sm text-muted-foreground">{isSearching ? 'Searching all logs...' : 'Loading logs...'}</p>
       </div>
     )
   } else if (logs.length === 0) {
     logsSection = (
       <div className="p-4 sm:p-8 text-center">
-        <p className="text-sm text-muted-foreground">No logs found</p>
+        <p className="text-sm text-muted-foreground">
+          {isSearching ? `No logs match "${logsView.query.trim()}"` : 'No logs found'}
+        </p>
       </div>
     )
   } else {
     logsSection = (
       <>
-        <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+        <div ref={logsScrollRef} className="flex-1 min-h-0 overflow-auto">
           <table className="w-full">
             <thead className="bg-muted/50 sticky top-0 z-10">
               <tr>
@@ -783,30 +735,18 @@ function ViewCampaign() {
             </tbody>
           </table>
         </div>
-
-        {/* Load More Button */}
-        {hasMoreLogs && (
-          <div className="px-4 py-3 border-t border-border text-center">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleLoadMore}
-              disabled={loadingLogs}
-              className="text-xs"
-            >
-              {loadingLogs ? (
-                <>
-                  <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
-                  Loading...
-                </>
-              ) : (
-                'Load More'
-              )}
-            </Button>
-          </div>
-        )}
       </>
     )
+  }
+
+  const showingTypedResults = isSearching && searchInput.trim() === logsView.query.trim()
+  // Paging controls only when there is more than one page to move between.
+  const showPager = logsView.pageCount > 1 || logsView.canNext || logsView.canPrev
+  let logsSummary = logsView.total ? `${logsView.from}–${logsView.to} of ${logsView.total.toLocaleString()}` : ''
+  if (isSearching) {
+    // Matches of all logs, e.g. "70 of 120"; "…" while the search is still reading pages.
+    const of = (campaignDetails?.callStats?.total ?? campaignDetails?.totalContacts ?? logsView.searched)
+    logsSummary = `${logsView.total.toLocaleString()} of ${of.toLocaleString()}${loadingLogs ? '…' : ''}`
   }
 
   return (
@@ -815,8 +755,11 @@ function ViewCampaign() {
       {renderHeader()}
 
       {/* Content */}
+      {/* The page fits the window and does not scroll; the Campaign Logs box takes the
+          remaining height and scrolls inside. Only very short screens (logs box below
+          its minimum height) fall back to scrolling the page. */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-7xl mx-auto p-4 space-y-4">
+        <div className="max-w-7xl mx-auto p-4 flex flex-col gap-4 h-full">
           {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="rounded-xl border border-border bg-card shadow-sm p-4">
@@ -870,132 +813,203 @@ function ViewCampaign() {
             </div>
           </div>
 
-          {/* Campaign Info */}
-          <div className="rounded-xl border border-border bg-card shadow-sm p-4">
-            <h2 className="text-xs font-medium text-muted-foreground mb-3">
-              Campaign Information
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Status</p>
-                <Badge className={getStatusColor(campaignDetails.status)}>
-                  {campaignDetails.status}
-                </Badge>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Agent</p>
-                <p className="text-sm font-medium text-foreground">
-                  {displayCampaignAgentName}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Provider</p>
-                <p className="text-sm font-medium text-foreground">
-                  {campaignDetails.callConfig.provider}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">
-                  <Calendar className="w-3 h-3 inline mr-1" />
-                  Schedule
-                </p>
-                <p className="text-sm font-medium text-foreground">
-                  {campaignDetails.schedule?.days && Array.isArray(campaignDetails.schedule.days) 
-                    ? campaignDetails.schedule.days.join(', ')
-                    : 'Not scheduled'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">
-                  <Clock className="w-3 h-3 inline mr-1" />
-                  Time Window
-                </p>
-                <p className="text-sm font-medium text-foreground">
-                  {campaignDetails.schedule?.startTime && campaignDetails.schedule?.endTime
-                    ? `${campaignDetails.schedule.startTime} - ${campaignDetails.schedule.endTime}`
-                    : 'Not set'}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-1">Timezone</p>
-                <p className="text-sm font-medium text-foreground">
-                  {campaignDetails.schedule?.timezone || 'Not set'}
-                </p>
-              </div>
-            </div>
-
-            {/* Retry Configuration */}
-            {campaignDetails.schedule?.retryConfig && Array.isArray(campaignDetails.schedule.retryConfig) && campaignDetails.schedule.retryConfig.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-border">
-                <h3 className="text-xs font-medium text-muted-foreground mb-3 flex items-center gap-1.5">
-                  <RefreshCw className="w-3 h-3" />
-                  Retry Configuration
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {campaignDetails.schedule.retryConfig.map((config) => {
-                    // Handle different retry types
-                    let displayLabel = ''
-                    if (config.type === 'sipCode' && config.errorCodes && Array.isArray(config.errorCodes) && config.errorCodes.length > 0) {
-                      const errorCode = config.errorCodes[0]
-                      const errorLabels: { [key: string]: string } = {
-                        '480': 'Temporarily Unavailable',
-                        '486': 'Busy Here',
-                      }
-                      displayLabel = errorLabels[String(errorCode)] || String(errorCode)
-                    } else if (config.type === 'metric' && config.metricName) {
-                      displayLabel = `Metric: ${config.metricName} ${config.operator || ''} ${config.threshold ?? ''}`
-                    } else if (config.type === 'fieldExtractor' && config.fieldName) {
-                      displayLabel = `Field: ${config.fieldName} ${config.operator || ''}`
-                    } else if (config.type === 'metadata' && config.fieldName) {
-                      displayLabel = `Metadata: ${config.fieldName} ${config.operator || ''}`
-                    } else {
-                      displayLabel = 'Unknown retry type'
-                    }
-                    
-                    const label = displayLabel
-                    const configKey = `${config.type}-${config.errorCodes?.[0] ?? ''}-${config.metricName ?? config.fieldName ?? ''}-${config.delayMinutes}-${config.maxRetries}`
-
-                    return (
-                      <div
-                        key={configKey}
-                        className="p-3 bg-muted/50 border border-border rounded-md"
-                      >
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-xs font-semibold text-foreground">
-                            {config.type === 'sipCode' && config.errorCodes?.[0] ? config.errorCodes[0] : config.type || 'Retry'}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {label}
-                          </span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div>
-                            <span className="text-muted-foreground">Delay:</span>
-                            <span className="ml-1 font-medium text-foreground">
-                              {config.delayMinutes} min
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Retries:</span>
-                            <span className="ml-1 font-medium text-foreground">
-                              {config.maxRetries}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
+          {/* Campaign Info (under the first 3 stat cards) + Completion Webhook (under the last 2) */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+            <div className="lg:col-span-3 rounded-xl border border-border bg-card shadow-sm p-4">
+              <h2 className="text-xs font-medium text-muted-foreground mb-3">
+                Campaign Information
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Status</p>
+                  <Badge className={getStatusColor(campaignDetails.status)}>
+                    {campaignDetails.status}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Agent</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {displayCampaignAgentName}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Provider</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {campaignDetails.callConfig.provider}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    <Calendar className="w-3 h-3 inline mr-1" />
+                    Schedule
+                  </p>
+                  <p className="text-sm font-medium text-foreground">
+                    {campaignDetails.schedule?.days && Array.isArray(campaignDetails.schedule.days) 
+                      ? campaignDetails.schedule.days.join(', ')
+                      : 'Not scheduled'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    <Clock className="w-3 h-3 inline mr-1" />
+                    Time Window
+                  </p>
+                  <p className="text-sm font-medium text-foreground">
+                    {campaignDetails.schedule?.startTime && campaignDetails.schedule?.endTime
+                      ? `${campaignDetails.schedule.startTime} - ${campaignDetails.schedule.endTime}`
+                      : 'Not set'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Timezone</p>
+                  <p className="text-sm font-medium text-foreground">
+                    {campaignDetails.schedule?.timezone || 'Not set'}
+                  </p>
                 </div>
               </div>
-            )}
+
+              {/* Retry Configuration */}
+              {campaignDetails.schedule?.retryConfig && Array.isArray(campaignDetails.schedule.retryConfig) && campaignDetails.schedule.retryConfig.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-border">
+                  <h3 className="text-xs font-medium text-muted-foreground mb-3 flex items-center gap-1.5">
+                    <RefreshCw className="w-3 h-3" />
+                    Retry Configuration
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {campaignDetails.schedule.retryConfig.map((config) => {
+                      // Handle different retry types
+                      let displayLabel = ''
+                      if (config.type === 'sipCode' && config.errorCodes && Array.isArray(config.errorCodes) && config.errorCodes.length > 0) {
+                        const errorCode = config.errorCodes[0]
+                        const errorLabels: { [key: string]: string } = {
+                          '480': 'Temporarily Unavailable',
+                          '486': 'Busy Here',
+                        }
+                        displayLabel = errorLabels[String(errorCode)] || String(errorCode)
+                      } else if (config.type === 'metric' && config.metricName) {
+                        displayLabel = `Metric: ${config.metricName} ${config.operator || ''} ${config.threshold ?? ''}`
+                      } else if (config.type === 'fieldExtractor' && config.fieldName) {
+                        displayLabel = `Field: ${config.fieldName} ${config.operator || ''}`
+                      } else if (config.type === 'metadata' && config.fieldName) {
+                        displayLabel = `Metadata: ${config.fieldName} ${config.operator || ''}`
+                      } else {
+                        displayLabel = 'Unknown retry type'
+                      }
+                    
+                      const label = displayLabel
+                      const configKey = `${config.type}-${config.errorCodes?.[0] ?? ''}-${config.metricName ?? config.fieldName ?? ''}-${config.delayMinutes}-${config.maxRetries}`
+
+                      return (
+                        <div
+                          key={configKey}
+                          className="p-3 bg-muted/50 border border-border rounded-md"
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xs font-semibold text-foreground">
+                              {config.type === 'sipCode' && config.errorCodes?.[0] ? config.errorCodes[0] : config.type || 'Retry'}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {label}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                              <span className="text-muted-foreground">Delay:</span>
+                              <span className="ml-1 font-medium text-foreground">
+                                {config.delayMinutes} min
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Retries:</span>
+                              <span className="ml-1 font-medium text-foreground">
+                                {config.maxRetries}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <CampaignWebhookCard campaignId={campaignId} className="lg:col-span-2 p-4" />
           </div>
 
           {/* Campaign Logs Table */}
-          <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-            <div className="px-4 py-3 border-b border-border">
-              <h2 className="text-xs font-medium text-muted-foreground">
-                Campaign Logs ({logs.length})
-              </h2>
+          <div className="flex-1 min-h-[320px] flex flex-col rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-border flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <h2 className="text-xs font-medium text-muted-foreground">Campaign Logs</h2>
+                <span className="text-xs text-muted-foreground tabular-nums">{logsSummary}</span>
+                {logsView.error && <span className="text-xs text-destructive">{logsView.error}</span>}
+              </div>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <form
+                  className="flex items-center gap-2"
+                  onSubmit={(e) => { e.preventDefault(); runSearch() }}
+                  role="search"
+                >
+                  <div className="relative flex-1 sm:w-64 sm:flex-none">
+                    <Search className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <Input
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Escape') clearSearch() }}
+                      placeholder="Phone, name, lead ID…"
+                      aria-label="Search all campaign logs"
+                      className="h-8 pl-8 pr-14 text-xs"
+                    />
+                    {/* × is the one way to clear: it removes the text and the active search.
+                        → appears beside it only while the typed text has not been searched yet. */}
+                    <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center">
+                      {searchInput.trim() && !showingTypedResults && (
+                        <button type="submit" aria-label="Search" className="p-1 rounded text-primary hover:bg-muted">
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      {(searchInput || isSearching) && (
+                        <button
+                          type="button"
+                          onClick={clearSearch}
+                          aria-label="Clear search and show all logs"
+                          className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </form>
+                {showPager && (
+                <div className="flex items-center gap-1">
+                  {logsView.pageCount > 2 && (
+                    <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={logsView.first} disabled={!logsView.canPrev} aria-label="First page">
+                      <ChevronsLeft className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" className="h-8 w-8 p-0" onClick={logsView.prev} disabled={!logsView.canPrev} aria-label="Previous page">
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </Button>
+                  <span className="text-xs text-muted-foreground px-2 whitespace-nowrap tabular-nums">
+                    Page {logsView.page + 1} of {logsView.pageCount}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={logsView.next}
+                    disabled={!logsView.canNext || (loadingLogs && !isSearching)}
+                    aria-label="Next page"
+                  >
+                    {loadingLogs && !isSearching && logs.length > 0
+                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      : <ChevronRight className="w-3.5 h-3.5" />}
+                  </Button>
+                </div>
+                )}
+              </div>
             </div>
 
             {logsSection}
