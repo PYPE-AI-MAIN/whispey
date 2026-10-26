@@ -29,6 +29,7 @@ import { useCampaigns } from '@/hooks/useCampaigns'
 import { useQueryClient } from '@tanstack/react-query'
 import { useProjectAgents } from '@/hooks/useProjectAgents'
 import { resolveStoredAgentName } from '@/lib/agentDisplayName'
+import { CampaignWebhookCard } from '@/components/campaigns/CampaignWebhook'
 
 const PAGE_SIZE = 10
 
@@ -634,6 +635,8 @@ function Campaigns() {
                   )
                 })()}
               </div>
+
+              <CampaignWebhookCard key={selectedCampaign.campaignId} campaignId={selectedCampaign.campaignId} />
 
               <Button
                 onClick={() => { setIsSheetOpen(false); router.push(`/${projectId}/campaigns/${selectedCampaign.campaignId}`) }}
