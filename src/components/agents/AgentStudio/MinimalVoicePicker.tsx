@@ -68,6 +68,24 @@ const CURATED_ELEVEN_VOICES: StudioVoice[] = MCP_ELEVENLABS_VOICES.map((v) => ({
   model: v.model,
 }))
 
+// Same curated 4 ids as MCP_ELEVENLABS_VOICES, in that order — not
+// "whichever 4 the API returns first". Falls back to our own name if one
+// isn't present in the live fetch (e.g. account access hiccup).
+function mergeLiveElevenVoices(liveVoices: any[]): StudioVoice[] {
+  const byId = new Map(liveVoices.map((v) => [v.voice_id, v]))
+  return CURATED_ELEVEN_VOICES.map((curated) => {
+    const live = byId.get(curated.id)
+    if (!live) return curated
+    const { name, subtitle } = splitName(live.name ?? curated.name)
+    return {
+      ...curated,
+      name,
+      subtitle: subtitle ?? live.labels?.description ?? live.description,
+      tags: labelsToTags(live.labels),
+    }
+  })
+}
+
 export function useStudioVoices() {
   const [elevenVoices, setElevenVoices] = useState<StudioVoice[]>([])
   const [loading, setLoading] = useState(true)
@@ -78,25 +96,7 @@ export function useStudioVoices() {
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error('failed'))))
       .then((data) => {
         if (cancelled) return
-        const byId = new Map((data?.voices ?? []).map((v: any) => [v.voice_id, v]))
-        // Same curated 4 ids as MCP_ELEVENLABS_VOICES, in that order — not
-        // "whichever 4 the API returns first". Falls back to our own name if
-        // one isn't present in the live fetch (e.g. account access hiccup).
-        setElevenVoices(
-          MCP_ELEVENLABS_VOICES.map((curated) => {
-            const live: any = byId.get(curated.voice_id)
-            if (!live) return CURATED_ELEVEN_VOICES.find((v) => v.id === curated.voice_id)!
-            const { name, subtitle } = splitName(live.name ?? curated.name)
-            return {
-              id: curated.voice_id,
-              name,
-              subtitle: subtitle ?? live.labels?.description ?? live.description,
-              tags: labelsToTags(live.labels),
-              provider: 'elevenlabs' as const,
-              model: curated.model,
-            }
-          })
-        )
+        setElevenVoices(mergeLiveElevenVoices(data?.voices ?? []))
       })
       .catch(() => !cancelled && setElevenVoices(CURATED_ELEVEN_VOICES))
       .finally(() => !cancelled && setLoading(false))
