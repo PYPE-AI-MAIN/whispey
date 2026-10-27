@@ -5,6 +5,7 @@ import {
   studioUrl,
   voiceRefError,
   applyAssistantUpdates,
+  editRefusal,
 } from '@/lib/mcpAgentHelpers'
 
 describe('hasStudioSecret', () => {
@@ -128,5 +129,35 @@ describe('applyAssistantUpdates', () => {
     const next = applyAssistantUpdates(current, { prompt: 'new' })
     expect(next.stt).toEqual(current.stt)
     expect(next.tts).toEqual(current.tts)
+  })
+})
+
+describe('editRefusal', () => {
+  const mcpAgent = { project_id: 'p1', agent_type: 'pype_agent', configuration: { created_via: 'mcp', created_by: 'client-a' } }
+  const dashboardAgent = { project_id: 'p1', agent_type: 'pype_agent', configuration: {} }
+  const externalAgent = { project_id: 'p1', agent_type: 'livekit', configuration: {} }
+
+  it('lets a client key edit an agent it created through the MCP', () => {
+    expect(editRefusal(mcpAgent, { projectId: 'p1', createdBy: 'client-a' })).toBeNull()
+  })
+
+  it("stops a client key editing another key's agent or a dashboard-made agent", () => {
+    expect(editRefusal(mcpAgent, { projectId: 'p1', createdBy: 'client-b' })?.status).toBe(403)
+    expect(editRefusal(mcpAgent, { projectId: 'p1' })?.status).toBe(403)
+    expect(editRefusal(dashboardAgent, { projectId: 'p1', createdBy: 'client-a' })?.error).toContain('not created through the MCP')
+  })
+
+  it('lets an internal key edit any Pype-hosted agent, however it was made', () => {
+    expect(editRefusal(dashboardAgent, { projectId: 'p1', internal: true })).toBeNull()
+    expect(editRefusal(mcpAgent, { projectId: 'p1', createdBy: 'someone-else', internal: true })).toBeNull()
+  })
+
+  it('never lets an internal key edit an agent Pype does not host', () => {
+    expect(editRefusal(externalAgent, { projectId: 'p1', internal: true })?.error).toContain("isn't hosted by Pype")
+  })
+
+  it('always requires the agent to be in the named project', () => {
+    expect(editRefusal(mcpAgent, { projectId: 'p2', createdBy: 'client-a' })?.status).toBe(403)
+    expect(editRefusal(dashboardAgent, { projectId: 'p2', internal: true })?.status).toBe(403)
   })
 })
