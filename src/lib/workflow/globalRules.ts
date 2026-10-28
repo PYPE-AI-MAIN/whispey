@@ -24,14 +24,22 @@ export function expandGlobalRules<T extends Flow>(wf: T): T {
   return { ...wf, edges: [...wf.edges, ...added], globalRules: [] }
 }
 
+// The backend keeps the whole workflow in one DynamoDB item, which is refused above 400 KB (the backend then did
+// not save, and the old workflow kept running). Each rule is copied onto every listening step, so a flow with many
+// long rules grows by hundreds of KB. Stay well under the limit, which also covers the rest of the agent config.
+export const MAX_DEPLOY_BYTES = 300_000
+
 /**
  * What gets sent to the voice backend: the rules AND the plain edges they stand for. A backend that does not know
  * about global rules yet (older deployment) then still follows them; a current one drops the duplicates itself.
+ * When that would be too large to store, send the rules alone: the backend turns each rule into the same edges
+ * when it loads the workflow (Workflow._expand_global_rules), so the call behaves identically.
  */
-export function deployable<T extends Flow>(wf: T): T {
+export function deployable<T extends Flow>(wf: T, maxBytes: number = MAX_DEPLOY_BYTES): T {
   if (!wf.globalRules?.length) return wf
   const expanded = expandGlobalRules(wf)
-  return { ...wf, edges: expanded.edges }
+  const withEdges = { ...wf, edges: expanded.edges }
+  return new TextEncoder().encode(JSON.stringify(withEdges)).length > maxBytes ? wf : withEdges
 }
 
 /** The reverse, for a workflow loaded back from the backend: rule-made edges are shown as the rules they came from. */
