@@ -1,0 +1,59 @@
+name: Deploy US frontend
+
+on:
+  push:
+    branches: [us-main]
+  workflow_dispatch:
+
+concurrency:
+  group: us-deploy
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-2
+  IMAGE: 764762393967.dkr.ecr.us-east-2.amazonaws.com/whispey-frontend
+  INSTANCE_ID: i-089e69fbda30bd599
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::764762393967:role/whispey-us-frontend-gha
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push
+        run: |
+          docker build \
+            --build-arg NEXT_PUBLIC_APP_URL=https://us.whispey.pypeai.com \
+            --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_d29ya2FibGUtYm94ZXItODEuY2xlcmsuYWNjb3VudHMuZGV2JA \
+            --build-arg NEXT_PUBLIC_AGENT_CREATION_WHITELIST='mihirvt@gmail.com, test@pypeai.com,asmin.m@quantana.in,suryadipta@pypeai.com, da76780@gmail.com,deepesh@pypeai.com,adarsh@pypeai.com,ashish@pypeai.com,dhruv@pypeai.com,abhinav@pypeai.com,friends@pypeai.com,agrawaldeepesh546@gmail.com' \
+            --build-arg NEXT_PUBLIC_POSTHOG_BLACKLIST=da76780@gmail.com,deepesh@pypeai.com,adarsh@pypeai.com,ashish@pypeai.com,dhruv@pypeai.com,abhinav@pypeai.com,friends@pypeai.com,agrawaldeepesh546@gmail.com,suryadipta@pypeai.com \
+            --build-arg NEXT_PUBLIC_POSTHOG_KEY=phc_hKFSH33YMiwHUsHsXMrdl57qECtzeu0sGGeDP8TQIMl \
+            --build-arg NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com \
+            --build-arg NEXT_PUBLIC_SONIC_LINKER_ORG_ID=g43AdvEo9D3nPoxTzbz5Nn \
+            --build-arg NEXT_PUBLIC_PYPEAI_API_URL=https://usapi.pypeai.com \
+            --build-arg NEXT_PUBLIC_FEEDBACK_URL=https://script.google.com/a/macros/pypeai.com/s/AKfycbxlzBmKvj4FRHYeI3_WbZJGBLUwFig9c4bhtIXnwwCFTTAnXs-FuFgnFkMabdE6qhlE/exec \
+            --build-arg NEXT_PUBLIC_X_API_KEY=pype-api-v1 \
+            --build-arg NEXT_PUBLIC_API_BASE_URL_CAMPAIGN=https://z1qyy3y340.execute-api.us-east-2.amazonaws.com/prod \
+            --build-arg NEXT_PUBLIC_LIVEKIT_URL=wss://us-project-icv4mo3b.livekit.cloud \
+            --build-arg NEXT_PUBLIC_REPROCESS_API_BASE_URL=https://vvi465tfbi.execute-api.us-east-2.amazonaws.com/prod/ \
+            -t $IMAGE:${{ github.sha }} -t $IMAGE:latest .
+          docker push --all-tags $IMAGE
+
+      - name: Recreate container on the box
+        run: |
+          CMD_ID=$(aws ssm send-command --instance-ids $INSTANCE_ID --document-name AWS-RunShellScript \
+            --parameters 'commands=["set -e","aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 764762393967.dkr.ecr.us-east-2.amazonaws.com >/dev/null 2>&1","docker pull -q ${{ env.IMAGE }}:latest","docker rm -f frontend 2>/dev/null || true","docker run -d --name frontend --restart unless-stopped -p 127.0.0.1:3000:3000 --env-file /opt/frontend/.env -v /var/log/whispey:/var/log/whispey ${{ env.IMAGE }}:latest >/dev/null","for i in $(seq 1 20); do c=$(curl -s -o /dev/null -w %{http_code} -m 4 http://127.0.0.1:3000/ || true); [ \"$c\" = 200 -o \"$c\" = 307 -o \"$c\" = 308 ] && exit 0; sleep 3; done; echo unhealthy; exit 1"]' \
+            --query Command.CommandId --output text)
+          aws ssm wait command-executed --command-id $CMD_ID --instance-id $INSTANCE_ID
+          aws ssm get-command-invocation --command-id $CMD_ID --instance-id $INSTANCE_ID --query '[Status,StandardErrorContent]' --output text
