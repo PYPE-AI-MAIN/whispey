@@ -12,7 +12,6 @@
 import React, { useMemo } from 'react'
 import { ArrowLeft, BarChart3, Hash, LineChart as LineIcon, Percent, PieChart as PieIcon, Table2, Type as TextIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { CatalogField, ChartKind, FormulaContent, TextContent, Widget } from '@/types/analytics'
 import type { ChartWidget } from './ChartCard'

@@ -13,8 +13,8 @@
 'use client'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  ArrowLeft, ArrowUp, BarChart3, Check, Hash, LineChart as LineIcon, Loader2, PieChart as PieIcon,
-  Plus, RotateCcw, Sparkles, Table2,
+  ArrowUp, BarChart3, Check, Hash, LineChart as LineIcon, Loader2, PieChart as PieIcon,
+  Plus, RotateCcw, Table2,
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import toast from 'react-hot-toast'

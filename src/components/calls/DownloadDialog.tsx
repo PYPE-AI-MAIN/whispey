@@ -173,7 +173,7 @@ function DateRangeFields({ datesFromFilter, from, to, onFromChange, onToChange }
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
-          <Calendar mode="single" selected={from} onSelect={onFromChange} initialFocus />
+          <Calendar mode="single" selected={from} onSelect={onFromChange} autoFocus />
         </PopoverContent>
       </Popover>
       <span className="text-xs text-muted-foreground">to</span>
@@ -185,7 +185,7 @@ function DateRangeFields({ datesFromFilter, from, to, onFromChange, onToChange }
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
-          <Calendar mode="single" selected={to} onSelect={onToChange} initialFocus />
+          <Calendar mode="single" selected={to} onSelect={onToChange} autoFocus />
         </PopoverContent>
       </Popover>
     </div>

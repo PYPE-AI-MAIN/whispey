@@ -9,7 +9,7 @@
 'use client'
 import React from 'react'
 import {
-  Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart,
+  Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Pie, PieChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import { cn } from '@/lib/utils'
@@ -147,18 +147,14 @@ export function ChartRenderer({
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
-            data={shaped.points}
+            data={shaped.points.map((p, i) => ({ ...p, fill: seriesColor(p.x, i) }))}
             dataKey="value"
             nameKey="x"
             innerRadius="45%"
             outerRadius="78%"
             paddingAngle={2}
             onClick={(slice: unknown) => onSelect?.(readX(slice))}
-          >
-            {shaped.points.map((p, i) => (
-              <Cell key={p.x} fill={seriesColor(p.x, i)} />
-            ))}
-          </Pie>
+          />
           <Tooltip {...tooltipStyle} formatter={(v: unknown) => formatValue(Number(v), spec)} />
           <Legend formatter={pieLegendLabel} wrapperStyle={{ fontSize: 11 }} />
         </PieChart>

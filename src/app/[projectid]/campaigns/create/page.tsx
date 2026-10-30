@@ -318,6 +318,75 @@ function formatRetryConfigEntry(config: RetryConfig): any {
   return config
 }
 
+// Throws the API's error message (or the fallback) when the response failed.
+async function assertOk(res: Response, fallback: string): Promise<void> {
+  if (res.ok) return
+  const error = await res.json()
+  throw new Error(error.error || fallback)
+}
+
+async function postJson(url: string, body: unknown, fallback: string): Promise<void> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  await assertOk(res, fallback)
+}
+
+function buildCreateBody(values: any, projectId: string, campaignId: string, s3FileKey: string, agentName: string) {
+  return {
+    campaignId,
+    projectId,
+    campaignName: values.campaignName,
+    s3FileKey,
+    agentName,
+    sipTrunkId: values.sipTrunkId,
+    provider: values.provider || 'Unknown',
+    agentRuntime: values.acefoneApiKey ? 'acefone_bridge' : values.agentRuntime,
+    fromNumber: values.fromNumberE164 || undefined,
+    acefoneApiKey: values.acefoneApiKey || undefined,
+  }
+}
+
+function buildScheduleBody(values: any, campaignId: string) {
+  const startDate = values.sendType === 'schedule'
+    ? new Date(values.scheduleDate).toISOString()
+    : new Date().toISOString()
+  return {
+    campaignId,
+    startTime: values.callWindowStart,
+    endTime: values.callWindowEnd,
+    timezone: values.timezone,
+    startDate,
+    frequency: values.reservedConcurrency,
+    enabled: true,
+    days: values.selectedDays.length > 0
+      ? values.selectedDays
+      : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+    // See formatRetryConfigEntry for the per-type field shapes the backend expects.
+    retryConfig: values.retryConfig.map(formatRetryConfigEntry),
+  }
+}
+
+// Adds each webhook; returns one "url: reason" line per failure.
+async function addCampaignWebhooks(campaignId: string, webhooks: { url: string; token: string }[]): Promise<string[]> {
+  const failures: string[] = []
+  for (const w of webhooks.filter((d) => d.url.trim())) {
+    const res = await fetch(`/api/campaigns/${campaignId}/webhook`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'add', url: w.url.trim(), token: w.token.trim() || undefined }),
+    }).catch(() => null)
+    if (res?.ok) continue
+    const error = await res?.json().catch(() => null)
+    const message = error?.error ? String(error.error) : ''
+    const reason = message.endsWith('.') ? message.slice(0, -1) : message
+    failures.push(reason ? `${w.url.trim()}: ${reason}` : w.url.trim())
+  }
+  return failures
+}
+
 function CreateCampaign() {
   const router = useRouter()
   const params = useParams()
@@ -452,17 +521,10 @@ function CreateCampaign() {
 
       const uploadResponse = await fetch(`/api/campaigns/upload-file?campaignId=${campaignId}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'text/csv',
-        },
+        headers: { 'Content-Type': 'text/csv' },
         body: csvContent,
       })
-
-      if (!uploadResponse.ok) {
-        const error = await uploadResponse.json()
-        throw new Error(error.error || 'Failed to upload CSV')
-      }
-
+      await assertOk(uploadResponse, 'Failed to upload CSV')
       const uploadData = await uploadResponse.json()
       const s3FileKey = uploadData.s3FileKey || uploadData.fileKey
 
@@ -470,80 +532,14 @@ function CreateCampaign() {
       const agentName = await resolveCampaignAgentName(values.agentId, values.agentRuntime)
 
       // Step 3: Create campaign
-      const createResponse = await fetch('/api/campaigns/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          campaignId,
-          projectId,
-          campaignName: values.campaignName,
-          s3FileKey,
-          agentName: agentName,
-          sipTrunkId: values.sipTrunkId,
-          provider: values.provider || 'Unknown',
-          agentRuntime: values.acefoneApiKey ? 'acefone_bridge' : values.agentRuntime,
-          fromNumber: values.fromNumberE164 || undefined,
-          acefoneApiKey: values.acefoneApiKey || undefined,
-        }),
-      })
-
-      if (!createResponse.ok) {
-        const error = await createResponse.json()
-        throw new Error(error.error || 'Failed to create campaign')
-      }
+      await postJson('/api/campaigns/create', buildCreateBody(values, projectId, campaignId, s3FileKey, agentName), 'Failed to create campaign')
 
       // Step 4: Schedule campaign
-      const scheduleDate = values.sendType === 'schedule'
-        ? new Date(values.scheduleDate).toISOString()
-        : new Date().toISOString()
-
-      // Format retryConfig according to backend requirements (see
-      // formatRetryConfigEntry for the per-type field shapes).
-      const formattedRetryConfig = values.retryConfig.map(formatRetryConfigEntry)
-
-      const scheduleResponse = await fetch('/api/campaigns/schedule', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          campaignId,
-          startTime: values.callWindowStart,
-          endTime: values.callWindowEnd,
-          timezone: values.timezone,
-          startDate: scheduleDate,
-          frequency: values.reservedConcurrency,
-          enabled: true,
-          days: values.selectedDays.length > 0
-            ? values.selectedDays
-            : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-          retryConfig: formattedRetryConfig,
-        }),
-      })
-
-      if (!scheduleResponse.ok) {
-        const error = await scheduleResponse.json()
-        throw new Error(error.error || 'Failed to schedule campaign')
-      }
+      await postJson('/api/campaigns/schedule', buildScheduleBody(values, campaignId), 'Failed to schedule campaign')
 
       // Step 5: Completion webhooks (optional). The campaign already exists, so a
       // failure here must not fail creation: they can be added from the details.
-      const webhookFailures: string[] = []
-      for (const w of values.webhooks.filter((d) => d.url.trim())) {
-        const res = await fetch(`/api/campaigns/${campaignId}/webhook`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'add', url: w.url.trim(), token: w.token.trim() || undefined }),
-        }).catch(() => null)
-        if (!res?.ok) {
-          const error = await res?.json().catch(() => null)
-          const message = error?.error ? String(error.error) : ''
-          const reason = message.endsWith('.') ? message.slice(0, -1) : message
-          webhookFailures.push(reason ? `${w.url.trim()}: ${reason}` : w.url.trim())
-        }
-      }
+      const webhookFailures = await addCampaignWebhooks(campaignId, values.webhooks)
       if (webhookFailures.length) {
         alert(`Campaign created, but ${webhookFailures.length === 1 ? 'a webhook was' : 'some webhooks were'} not saved:\n${webhookFailures.join('\n')}\n\nYou can add them from the campaign details.`)
       }

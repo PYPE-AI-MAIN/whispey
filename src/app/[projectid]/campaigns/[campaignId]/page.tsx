@@ -227,6 +227,61 @@ function formatCell(column: string, value: any): React.ReactNode {
   }
 }
 
+// Every contact, paging through the API.
+async function fetchAllContacts(campaignId: string): Promise<any[]> {
+  const contacts: any[] = []
+  let nextKey: string | null = null
+  do {
+    const lastKey: string = nextKey ? `&lastKey=${encodeURIComponent(nextKey)}` : ''
+    const response: Response = await fetch(`/api/campaigns/contacts?campaignId=${campaignId}&limit=100${lastKey}`)
+    if (!response.ok) throw new Error('Failed to fetch contacts')
+    const data: any = await response.json()
+    contacts.push(...(data.contacts || []))
+    nextKey = data.pagination?.hasMore ? data.pagination.nextKey || null : null
+  } while (nextKey)
+  return contacts
+}
+
+const EXPORT_SKIP_KEYS = new Set(['contactId', 'campaignId', 'id', 'additionalData'])
+const EXPORT_PRIORITY_COLUMNS = ['phone', 'phoneNumber', 'patient_name', 'doctor_name', 'appointment_date', 'appointment_time', 'name', 'email']
+
+// Status columns, priority additionalData columns, other direct columns, remaining additionalData columns.
+function buildExportColumns(contacts: any[]): { columns: string[]; additionalCount: number } {
+  const directKeys = new Set<string>()
+  const additionalKeys = new Set<string>()
+  contacts.forEach(contact => {
+    Object.keys(contact).filter(key => !EXPORT_SKIP_KEYS.has(key)).forEach(key => directKeys.add(key))
+    const data = contact.additionalData ? parseAdditionalData(contact.additionalData) : null
+    if (data && typeof data === 'object') Object.keys(data).forEach(key => additionalKeys.add(key))
+  })
+  const take = (cols: string[], keys: Set<string>) => cols.filter(col => keys.delete(col))
+  const status = take(STANDARD_COLUMNS, directKeys)
+  const priority = take(EXPORT_PRIORITY_COLUMNS, additionalKeys)
+  return {
+    columns: [...status, ...priority, ...Array.from(directKeys).sort(bySort), ...Array.from(additionalKeys).sort(bySort)],
+    additionalCount: additionalKeys.size + priority.length,
+  }
+}
+
+function toCsvCell(value: unknown): string {
+  if (value === null || value === undefined) return ''
+  const isObject = typeof value === 'object'
+  const text = isObject ? JSON.stringify(value) : String(value)
+  return isObject || /[,"\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text
+}
+
+function saveCsv(csv: string, filename: string) {
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.style.visibility = 'hidden'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
+
 function ViewCampaign() {
   const params = useParams()
   const router = useRouter()
@@ -349,178 +404,22 @@ function ViewCampaign() {
     }
   }
 
-  // Download contacts as CSV based on status filter
+  // Download every contact as CSV
   const handleDownloadContacts = async () => {
     try {
       setIsDownloading(true)
-      let allContacts: any[] = []
-      let currentKey: string | null = null
-      let hasMore = true
-
-      // Fetch every contact (paginate through all pages)
-      while (hasMore) {
-        let url = `/api/campaigns/contacts?campaignId=${campaignId}&limit=100`
-
-        if (currentKey) {
-          url += `&lastKey=${encodeURIComponent(currentKey)}`
-        }
-
-        const response = await fetch(url)
-        if (!response.ok) {
-          throw new Error('Failed to fetch contacts')
-        }
-
-        const data = await response.json()
-        allContacts = [...allContacts, ...(data.contacts || [])]
-        
-        hasMore = data.pagination?.hasMore || false
-        currentKey = data.pagination?.nextKey || null
-      }
-
-      const filteredContacts = allContacts
-
-      if (filteredContacts.length === 0) {
+      const contacts = await fetchAllContacts(campaignId)
+      if (contacts.length === 0) {
         alert('No contacts found')
         return
       }
-
-      // Get all unique keys from contacts to create CSV headers
-      const directKeys = new Set<string>()
-      const additionalDataKeys = new Set<string>()
-      
-      filteredContacts.forEach(contact => {
-        // Add direct properties
-        Object.keys(contact).forEach(key => {
-          if (!['contactId', 'campaignId', 'id', 'additionalData'].includes(key)) {
-            directKeys.add(key)
-          }
-        })
-        
-        // Parse and collect additionalData keys separately
-        if (contact.additionalData) {
-          try {
-            let additionalData: any = {}
-            if (typeof contact.additionalData === 'string') {
-              try {
-                const parsed = JSON.parse(contact.additionalData)
-                additionalData = parseDynamoDBValue(parsed)
-              } catch {
-                additionalData = JSON.parse(contact.additionalData)
-              }
-            } else if (typeof contact.additionalData === 'object') {
-              additionalData = parseDynamoDBValue(contact.additionalData)
-            }
-            
-            if (additionalData && typeof additionalData === 'object') {
-              Object.keys(additionalData).forEach(key => additionalDataKeys.add(key))
-            }
-          } catch (e) {
-            console.warn('Failed to parse additionalData:', e)
-          }
-        }
-      })
-
-      // Create ordered column list with priorities
-      // Priority order: status fields, then important additionalData fields, then other direct fields, then remaining additionalData
-      const statusColumns = ['status', 'retryCount', 'lastCallAt']
-      const priorityAdditionalColumns = ['phone', 'phoneNumber', 'patient_name', 'doctor_name', 'appointment_date', 'appointment_time', 'name', 'email']
-      
-      const columns: string[] = []
-      
-      // 1. Add status columns first
-      statusColumns.forEach(col => {
-        if (directKeys.has(col)) {
-          columns.push(col)
-          directKeys.delete(col)
-        }
-      })
-      
-      // 2. Add priority additionalData columns
-      priorityAdditionalColumns.forEach(col => {
-        if (additionalDataKeys.has(col)) {
-          columns.push(col)
-          additionalDataKeys.delete(col)
-        }
-      })
-      
-      // 3. Add remaining direct columns (sorted)
-      Array.from(directKeys).sort((a, b) => a.localeCompare(b)).forEach(col => columns.push(col))
-
-      // 4. Add remaining additionalData columns (sorted)
-      Array.from(additionalDataKeys).sort((a, b) => a.localeCompare(b)).forEach(col => columns.push(col))
-
-      // Log the columns being exported for debugging
-      console.log('Exporting columns:', columns)
-      console.log('Total columns:', columns.length)
-      console.log('From additionalData:', Array.from(priorityAdditionalColumns.filter(c => columns.includes(c))).concat(Array.from(additionalDataKeys)))
-
-      // Helper function to get value (same as getValue in render)
-      const getValueForExport = (contact: any, column: string) => {
-        if (contact[column] !== undefined) {
-          return contact[column]
-        }
-        
-        if (contact.additionalData) {
-          try {
-            let additionalData: any = {}
-            if (typeof contact.additionalData === 'string') {
-              try {
-                const parsed = JSON.parse(contact.additionalData)
-                additionalData = parseDynamoDBValue(parsed)
-              } catch {
-                additionalData = JSON.parse(contact.additionalData)
-              }
-            } else if (typeof contact.additionalData === 'object') {
-              additionalData = parseDynamoDBValue(contact.additionalData)
-            }
-            return additionalData?.[column]
-          } catch {
-            return null
-          }
-        }
-        return null
-      }
-
-      // Create CSV content
-      const csvRows = [
-        columns.join(','),
-        ...filteredContacts.map(contact => 
-          columns.map(col => {
-            const value = getValueForExport(contact, col)
-            if (value === null || value === undefined) return ''
-            
-            // Handle objects and arrays
-            if (typeof value === 'object') {
-              return `"${JSON.stringify(value).replace(/"/g, '""')}"`
-            }
-            
-            // Escape quotes and wrap in quotes if contains comma or quotes
-            const stringValue = String(value)
-            if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
-              return `"${stringValue.replace(/"/g, '""')}"`
-            }
-            return stringValue
-          }).join(',')
-        )
-      ]
-
-      const csvContent = csvRows.join('\n')
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-      const link = document.createElement('a')
-      const url = URL.createObjectURL(blob)
-      
-      link.setAttribute('href', url)
-      link.setAttribute('download', `campaign-${campaignDetails?.campaignName || campaignId}-all-${new Date().toISOString().split('T')[0]}.csv`)
-      link.style.visibility = 'hidden'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-
-      // Count additionalData columns
-      const additionalDataCount = Array.from(additionalDataKeys).length + priorityAdditionalColumns.filter(c => columns.includes(c)).length
-      
-      alert(`Downloaded ${filteredContacts.length} contacts\nTotal columns: ${columns.length}\n Columns from additionalData: ${additionalDataCount}\n\nCheck browser console for full column list.`)
+      const { columns: exportColumns, additionalCount } = buildExportColumns(contacts)
+      const csv = [
+        exportColumns.join(','),
+        ...contacts.map(contact => exportColumns.map(col => toCsvCell(getValue(contact, col))).join(',')),
+      ].join('\n')
+      saveCsv(csv, `campaign-${campaignDetails?.campaignName || campaignId}-all-${new Date().toISOString().split('T')[0]}.csv`)
+      alert(`Downloaded ${contacts.length} contacts\nTotal columns: ${exportColumns.length}\n Columns from additionalData: ${additionalCount}`)
     } catch (error: any) {
       console.error('Error downloading contacts:', error)
       alert('Failed to download contacts: ' + error.message)

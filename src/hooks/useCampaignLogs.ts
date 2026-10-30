@@ -181,7 +181,7 @@ export function useCampaignLogs(campaignId: string, totalHint?: number) {
 
   const rows = pages[page]?.rows ?? []
   const known = pages.reduce((n, p) => n + p.rows.length, 0)
-  const isLast = pages.length > 0 && !pages[pages.length - 1].nextKey
+  const isLast = pages.length > 0 && !pages.at(-1)?.nextKey
   // Total from the campaign stats, unless every page is loaded and says otherwise.
   const total = isLast ? known : Math.max(totalHint ?? 0, known)
   const from = rows.length ? page * LOGS_PAGE_SIZE + 1 : 0

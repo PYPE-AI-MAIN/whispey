@@ -594,21 +594,19 @@ export default function AgentConfig() {
 
   // Latest published snapshot for the Publish diff. Prefetched once edits start so the dialog opens ready.
   const fetchPublishedSnapshot = (): Promise<any> => {
-    if (!snapshotPromiseRef.current) {
-      snapshotPromiseRef.current = fetch(`/api/agents/${agentid}/history?page=1&limit=1`)
-        .then(res => (res.ok ? res.json() : null))
-        .then(data => {
-          const latest = data?.history?.[0]
-          if (!latest?.id) return null
-          return fetch(`/api/agents/${agentid}/history/${latest.id}`).then(r => (r.ok ? r.json() : null))
-        })
-        .then(detail => detail?.entry?.config_snapshot ?? null)
-        .catch(() => null)
-        .then(snapshot => {
-          if (snapshot == null) snapshotPromiseRef.current = null // don't cache a miss
-          return snapshot
-        })
-    }
+    snapshotPromiseRef.current ??= fetch(`/api/agents/${agentid}/history?page=1&limit=1`)
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        const latest = data?.history?.[0]
+        if (!latest?.id) return null
+        return fetch(`/api/agents/${agentid}/history/${latest.id}`).then(r => (r.ok ? r.json() : null))
+      })
+      .then(detail => detail?.entry?.config_snapshot ?? null)
+      .catch(() => null)
+      .then(snapshot => {
+        if (snapshot == null) snapshotPromiseRef.current = null // don't cache a miss
+        return snapshot
+      })
     return snapshotPromiseRef.current
   }
 

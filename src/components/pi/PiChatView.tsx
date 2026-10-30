@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Children, createContext, memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowUp, Bot, Check, ChevronDown, Mic, PhoneIncoming, ShieldAlert, Sparkles, TrendingUp, Trophy, type LucideIcon } from 'lucide-react'
@@ -52,7 +52,7 @@ const MARKDOWN_COMPONENTS = {
   ),
   strong: ({ children }: { children?: React.ReactNode }) => <strong className="font-semibold text-foreground">{children}</strong>,
   code: ({ className, children }: { className?: string; children?: React.ReactNode }) => {
-    if (className?.includes('language-prompt-edit')) return <PromptEditCard block={String(children ?? '')} />
+    if (className?.includes('language-prompt-edit')) return <PromptEditCard block={Children.toArray(children).filter((c) => typeof c === 'string').join('')} />
     const isBlock = className?.includes('language-')
     if (isBlock) {
       return (

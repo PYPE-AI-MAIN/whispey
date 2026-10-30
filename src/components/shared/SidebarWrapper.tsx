@@ -196,7 +196,7 @@ const sidebarRoutes: SidebarRoute[] = [
     ],
     getSidebarConfig: (params, context) => {
       const { projectId } = params
-      const { userCanViewApiKeys, isOwnerOrAdmin, visibility } = context
+      const { userCanViewApiKeys, visibility } = context
 
       const baseNavigation = [
          {

@@ -5,7 +5,7 @@
 // usePiSurface. A page that has its own kind of chat (Call Logs filters, workflow
 // edits, dashboard charts) renders it inside <PiDockBody>, which puts it in the box.
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type RefObject, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
 export interface PiSurface {
@@ -29,7 +29,7 @@ type Getters = Pick<PiSurface, 'getDetails' | 'getContext' | 'applyPromptEdit'>
 interface PiDock {
   surface: Pick<PiSurface, 'label' | 'suggestions'> | null
   setSurface: (s: Pick<PiSurface, 'label' | 'suggestions'> | null) => void
-  gettersRef: MutableRefObject<Getters>
+  gettersRef: RefObject<Getters>
   slot: HTMLElement | null
   setSlot: (el: HTMLElement | null) => void
   /** How many pages are rendering their own chat into the box. */

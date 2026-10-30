@@ -33,7 +33,7 @@ export default function AwayPromptEditor({ value, onChange }: Readonly<AwayPromp
   const max = defaults?.max_chars ?? AWAY_PROMPT_MAX_CHARS
   const dirty = isAwayPromptDirty(draft, initial)
   const isBlank = text.trim() === ''
-  const isDefaultText = defaults !== undefined && text.trim() === defaults.prompt.trim()
+  const isDefaultText = text.trim() === defaults?.prompt.trim()
   const preview = (value ?? defaults?.prompt ?? '').replaceAll(/\s+/g, ' ').trim()
   const waitingForDefault = value === undefined && query.isLoading
   const defaultFailed = value === undefined && query.isError
