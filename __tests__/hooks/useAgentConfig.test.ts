@@ -77,3 +77,30 @@ describe('buildFormValuesFromAgent — inbound variables (agent-level)', () => {
     expect(values.advancedSettings.inboundVariables.enabled).toBe(false)
   })
 })
+
+describe('buildFormValuesFromAgent — dynamic user-away message', () => {
+  const base = { llm: { model: 'gpt-4.1-mini' }, prompt: 'hi' }
+  const session = (sb: any) =>
+    (buildFormValuesFromAgent({ ...base, session_behavior: sb }, {}) as any).advancedSettings.session
+
+  it('restores dynamic mode', () => {
+    const s = session({ user_away_timeout_mode: 'dynamic' })
+    expect(s.user_away_timeout_mode).toBe('dynamic')
+  })
+
+  it('defaults to static when nothing is saved', () => {
+    const s = session({})
+    expect(s.user_away_timeout_mode).toBe('static')
+  })
+
+  it('restores a saved dynamic message prompt and leaves it undefined when absent or blank', () => {
+    expect(session({ user_away_timeout_mode: 'dynamic', user_away_prompt: 'Be brief.' }).user_away_prompt).toBe('Be brief.')
+    expect(session({}).user_away_prompt).toBeUndefined()
+    expect(session({ user_away_prompt: '' }).user_away_prompt).toBeUndefined()
+    expect(session({ user_away_prompt: '   ' }).user_away_prompt).toBeUndefined()
+  })
+
+  it('treats any unknown mode value as static', () => {
+    expect(session({ user_away_timeout_mode: 'DYNAMIC!' }).user_away_timeout_mode).toBe('static')
+  })
+})

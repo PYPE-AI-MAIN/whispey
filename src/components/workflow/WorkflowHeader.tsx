@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { AlertTriangle, ArrowLeft, History, PanelLeft, Webhook, BookOpen, Braces, ChevronDown, ClipboardPaste, Copy, Globe, Loader2, MoreHorizontal, PhoneIcon, Rocket, Settings2, ShieldCheck, Sparkles } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, History, PanelLeft, Webhook, BookOpen, Braces, ChevronDown, ClipboardPaste, Copy, Globe, Loader2, MoreHorizontal, PhoneIcon, Rocket, Settings2, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -19,8 +19,6 @@ type HeaderProps = Readonly<{
   issuesOpen: boolean
   onIssuesOpenChange: (open: boolean) => void
   isDirty: boolean
-  chatOpen: boolean
-  onToggleChat: () => void
   onOpenAgent: () => void
   onOpenVariables: () => void
   onOpenRules: () => void
@@ -116,16 +114,6 @@ export function WorkflowHeader(p: HeaderProps) {
       <div className="flex-1" />
 
       <Issues open={p.issuesOpen} onOpenChange={p.onIssuesOpenChange} serverIssues={p.serverIssues} />
-
-      <Button
-        variant={p.chatOpen ? 'default' : 'outline'}
-        size="sm"
-        onClick={p.onToggleChat}
-        className={p.chatOpen ? 'bg-violet-500 text-white hover:bg-violet-600' : ''}
-        title="Describe what you want and Pi builds or edits the flow"
-      >
-        <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Ask Pi
-      </Button>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

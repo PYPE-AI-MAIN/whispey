@@ -45,7 +45,7 @@ import SelectSTT from '@/components/agents/AgentConfig/SelectSTTDialog'
 import AgentAdvancedSettings from '@/components/agents/AgentConfig/AgentAdvancedSettings'
 import PromptSettingsSheet from '@/components/agents/AgentConfig/PromptSettingsSheet'
 import { usePromptSettings } from '@/hooks/usePromptSettings'
-import { buildFormValuesFromAgent, getDefaultFormValues, useAgentConfig, useAgentMutations, useResumeInProgressUpdate, useUpdateProgressLabel, updateStageDetail, UpdateStillInProgressError } from '@/hooks/useAgentConfig'
+import { buildFormValuesFromAgent, getDefaultFormValues, saveAndDeployAgent, useAgentConfig, useAgentMutations, useResumeInProgressUpdate, useUpdateProgressLabel, updateStageDetail, UpdateStillInProgressError } from '@/hooks/useAgentConfig'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -179,6 +179,18 @@ export default function AgentConfig() {
   const [versionSaveError, setVersionSaveError] = useState<string | null>(null)
   const [showMergePrompt, setShowMergePrompt] = useState(false)
   const [publishedSnapshot, setPublishedSnapshot] = useState<any>(null)
+  const [draftStatus, setDraftStatus] = useState<'idle' | 'pending' | 'saving' | 'saved' | 'error' | 'conflict'>('idle')
+  const [draftSavedAt, setDraftSavedAt] = useState<Date | null>(null)
+  const [draftConflict, setDraftConflict] = useState<any>(null)
+  const [restoredDraft, setRestoredDraft] = useState<any>(null)
+  const [draftReady, setDraftReady] = useState(false)
+  const lastDraftStampRef = useRef<string | null>(null)
+  const lastSavedSigRef = useRef<string | null>(null)
+  const lastConflictCheckRef = useRef(0)
+  const snapshotPromiseRef = useRef<Promise<any> | null>(null)
+  const baselineSigPendingRef = useRef(false)
+  const draftChainRef = useRef<Promise<unknown>>(Promise.resolve())
+  const draftLoadedForRef = useRef<string | null>(null)
   const [isDiffLoading, setIsDiffLoading] = useState(false)
   const [diffTab, setDiffTab] = useState<'prompt' | 'settings'>('prompt')
 
@@ -436,54 +448,55 @@ export default function AgentConfig() {
   // }, [promptValidation.validVariables])
 
   // Handle the agent config data when it loads
-  useEffect(() => {
-    if (agentConfigData?.agent?.assistant?.[0]) {
-      const assistant = agentConfigData.agent.assistant[0]
-      
-      const formValues = buildFormValuesFromAgent(assistant, agentConfigData?.agent)
-      
-      setTtsConfig({
-        provider: formValues.ttsProvider,
-        model: formValues.ttsModel,
-        config: formValues.ttsVoiceConfig
+  const applyExternalState = (assistant: any, agent: any) => {
+  const formValues = buildFormValuesFromAgent(assistant, agent)
+    
+    setTtsConfig({
+      provider: formValues.ttsProvider,
+      model: formValues.ttsModel,
+      config: formValues.ttsVoiceConfig
+    })
+    
+    setSTTConfig({
+      provider: assistant.stt?.name || assistant.stt?.provider || 'openai',
+      model: assistant.stt?.model || 'whisper-1',
+      config: formValues.sttConfig || { language: assistant.stt?.language || 'en' }
+    })
+    
+    const llmConfig = assistant.llm || {}
+    const providerValue = llmConfig.provider || llmConfig.name || 'openai'
+    let mappedProvider = providerValue
+    if (providerValue === 'groq') {
+      mappedProvider = 'groq'
+    } else if (providerValue === 'azure') {
+      mappedProvider = 'azure_openai' 
+    } else if (llmConfig.model?.includes('claude')) {
+      mappedProvider = 'anthropic'
+    } else if (llmConfig.model?.includes('cerebras')) {
+      mappedProvider = 'cerebras'
+    }
+    
+    if (mappedProvider === 'azure_openai' && assistant.llm) {
+      setAzureConfig({
+        endpoint: assistant.llm.azure_endpoint || '',
+        apiVersion: assistant.llm.api_version || ''
       })
-      
-      setSTTConfig({
-        provider: assistant.stt?.name || assistant.stt?.provider || 'openai',
-        model: assistant.stt?.model || 'whisper-1',
-        config: formValues.sttConfig || { language: assistant.stt?.language || 'en' }
-      })
-      
-      const llmConfig = assistant.llm || {}
-      const providerValue = llmConfig.provider || llmConfig.name || 'openai'
-      let mappedProvider = providerValue
-      if (providerValue === 'groq') {
-        mappedProvider = 'groq'
-      } else if (providerValue === 'azure') {
-        mappedProvider = 'azure_openai' 
-      } else if (llmConfig.model?.includes('claude')) {
-        mappedProvider = 'anthropic'
-      } else if (llmConfig.model?.includes('cerebras')) {
-        mappedProvider = 'cerebras'
-      }
-      
-      if (mappedProvider === 'azure_openai' && assistant.llm) {
-        setAzureConfig({
-          endpoint: assistant.llm.azure_endpoint || '',
-          apiVersion: assistant.llm.api_version || ''
+    }
+
+    if (assistant.llm?.fallback) {
+      const fbProvider = assistant.llm.fallback.provider || assistant.llm.fallback.name || ''
+      if (fbProvider === 'azure') {
+        setFallbackAzureConfig({
+          endpoint: assistant.llm.fallback.azure_endpoint || '',
+          apiVersion: assistant.llm.fallback.api_version || ''
         })
       }
+    }
+  }
 
-      if (assistant.llm?.fallback) {
-        const fbProvider = assistant.llm.fallback.provider || assistant.llm.fallback.name || ''
-        if (fbProvider === 'azure') {
-          setFallbackAzureConfig({
-            endpoint: assistant.llm.fallback.azure_endpoint || '',
-            apiVersion: assistant.llm.fallback.api_version || ''
-          })
-        }
-      }
-
+  useEffect(() => {
+    if (agentConfigData?.agent?.assistant?.[0]) {
+      applyExternalState(agentConfigData.agent.assistant[0], agentConfigData.agent)
     }
   }, [agentConfigData])
 
@@ -535,12 +548,7 @@ export default function AgentConfig() {
 
   // Opens commit modal, capturing the current config first.
   // Deploy only happens after the commit message is entered — no skip path.
-  const handleOpenCommitModal = () => {
-    if (!promptValidation.isValid) {
-      console.error('❌ Cannot save: Variable validation errors exist')
-      return
-    }
-
+  const buildPayloadWithVariables = () => {
     const payload = buildSavePayload()
 
     const validVariables = Array.from(promptValidation.validVariables)
@@ -559,6 +567,16 @@ export default function AgentConfig() {
         return acc
       }, {})
     }
+    return payload
+  }
+
+  const handleOpenCommitModal = () => {
+    if (!promptValidation.isValid) {
+      console.error('❌ Cannot save: Variable validation errors exist')
+      return
+    }
+
+    const payload = buildPayloadWithVariables()
 
     const userEmail = user?.primaryEmailAddress?.emailAddress ?? null
     const userId = user?.id ?? null
@@ -569,16 +587,29 @@ export default function AgentConfig() {
     setIsCommitModalOpen(true)
 
     setIsDiffLoading(true)
-    fetch(`/api/agents/${agentid}/history?page=1&limit=1`)
-      .then(res => (res.ok ? res.json() : null))
-      .then(data => {
-        const latest = data?.history?.[0]
-        if (!latest?.id) return null
-        return fetch(`/api/agents/${agentid}/history/${latest.id}`).then(r => (r.ok ? r.json() : null))
-      })
-      .then(detail => setPublishedSnapshot(detail?.entry?.config_snapshot ?? null))
-      .catch(() => setPublishedSnapshot(null))
+    fetchPublishedSnapshot()
+      .then(setPublishedSnapshot)
       .finally(() => setIsDiffLoading(false))
+  }
+
+  // Latest published snapshot for the Publish diff. Prefetched once edits start so the dialog opens ready.
+  const fetchPublishedSnapshot = (): Promise<any> => {
+    if (!snapshotPromiseRef.current) {
+      snapshotPromiseRef.current = fetch(`/api/agents/${agentid}/history?page=1&limit=1`)
+        .then(res => (res.ok ? res.json() : null))
+        .then(data => {
+          const latest = data?.history?.[0]
+          if (!latest?.id) return null
+          return fetch(`/api/agents/${agentid}/history/${latest.id}`).then(r => (r.ok ? r.json() : null))
+        })
+        .then(detail => detail?.entry?.config_snapshot ?? null)
+        .catch(() => null)
+        .then(snapshot => {
+          if (snapshot == null) snapshotPromiseRef.current = null // don't cache a miss
+          return snapshot
+        })
+    }
+    return snapshotPromiseRef.current
   }
 
   const handleSaveVersion = async () => {
@@ -638,6 +669,10 @@ export default function AgentConfig() {
         return
       }
       toast.success('Changes published')
+      snapshotPromiseRef.current = null
+      setRestoredDraft(null)
+      lastSavedSigRef.current = null
+      writeDraft(pendingCheckpoint.config, { discarded: true }).catch(err => console.warn('Draft clean-up failed:', err))
       setCommitMessage('')
       setPendingCheckpoint(null)
       setShowMergePrompt(true)
@@ -737,6 +772,31 @@ export default function AgentConfig() {
     formik.resetForm()
     setHasExternalChanges(false)
     resetUnsavedChanges()
+    discardDraft()
+  }
+
+  // Mark the draft as clean so a refresh doesn't bring the discarded edits back.
+  const discardDraft = () => {
+    setRestoredDraft(null)
+    setDraftConflict(null)
+    setDraftStatus('idle')
+    lastSavedSigRef.current = null
+    if (agentConfigData?.agent?.assistant?.length === 1) {
+      writeDraft({ agent: agentConfigData.agent }, { discarded: true }).catch(err => console.warn('Draft discard failed:', err))
+    }
+  }
+
+  const loadTheirDraft = async () => {
+    const draft = await fetchDraft()
+    if (draft) { applyDraftConfig(draft); lastDraftStampRef.current = draft.agent?.draft_meta?.updated_at ?? null }
+    setDraftConflict(null)
+    setDraftStatus('idle')
+  }
+
+  const overwriteTheirDraft = () => {
+    lastDraftStampRef.current = draftConflict?.updated_at ?? null
+    setDraftConflict(null)
+    setDraftStatus('idle')
   }
 
   const handleVoiceSelect = (voiceId: string, provider: string, model?: string, config?: any) => {
@@ -894,6 +954,152 @@ const inboundLookupVariables = useMemo(() => {
   const isFormDirty = formik.dirty || hasExternalChanges || hasMultiAssistantChanges 
   const isBackendUnavailable = !!agentConfigData?.backendUnavailable
 
+  // Retell-style: a test call with unpublished edits autosaves them as a draft agent
+  // (`<name>__draft`) and runs that; live calls keep the published config until Publish.
+  const draftTarget = (): 'classic' | 'docker' =>
+    agentDataResponse?.[0]?.configuration?.deployment_target === 'docker' ? 'docker' : 'classic'
+
+  const draftNameOf = () => `${activeAgentName}__draft`
+
+  // Fingerprint of the published config a draft was started from. If live changed elsewhere
+  // (Agent Studio, another publish) the old draft is stale and must not come back over it.
+  const publishedBase = (): string => {
+    const sortKeys = (_: string, v: any) =>
+      v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => a.localeCompare(b))) : v
+    const str = JSON.stringify(agentConfigData?.agent ?? {}, sortKeys)
+    let h = 5381
+    for (let i = 0; i < str.length; i++) h = Math.imul(h, 33) + (str.codePointAt(i) ?? 0)
+    return String(h)
+  }
+
+  const fetchDraft = async (): Promise<any> => {
+    const res = await fetch(`/api/agent-config/${draftNameOf()}`).catch(() => null)
+    return res?.ok ? res.json().catch(() => null) : null
+  }
+
+  // Writes the draft agent; calls are chained so autosave and a test call never overlap.
+  const writeDraft = (payload: any, extraMeta: Record<string, any> = {}) => {
+    const run = async () => {
+      const meta = {
+        updated_at: new Date().toISOString(),
+        updated_by: user?.id ?? null,
+        updated_by_name: user?.fullName ?? user?.primaryEmailAddress?.emailAddress ?? 'Someone',
+        base: publishedBase(),
+        ...extraMeta,
+      }
+      await saveAndDeployAgent({
+        ...payload,
+        agent: { ...payload.agent, name: draftNameOf(), draft_meta: meta },
+        deploymentTarget: draftTarget(),
+      }, true) // drafts skip validation server-side, so poll fast
+      lastDraftStampRef.current = meta.updated_at
+    }
+    const next = draftChainRef.current.then(run, run)
+    draftChainRef.current = next.catch(() => undefined)
+    return next
+  }
+
+  // Someone else saved the draft after we last loaded or wrote it.
+  const findDraftConflict = async () => {
+    const remote = (await fetchDraft())?.agent?.draft_meta
+    if (!remote || remote.updated_at === lastDraftStampRef.current) return null
+    return remote.updated_by && remote.updated_by !== user?.id ? remote : null
+  }
+
+  useEffect(() => {
+    if (isFormDirty && agentid) fetchPublishedSnapshot()
+  }, [isFormDirty, agentid])
+
+  const canAutosave = isFormDirty && promptValidation.isValid && !isBackendUnavailable && !isProdLocked && !isPublishing
+  const autosaveDraft = async () => {
+    const payload = buildPayloadWithVariables()
+    const sig = JSON.stringify(payload)
+    if (baselineSigPendingRef.current) { // just restored: the draft already holds this
+      baselineSigPendingRef.current = false
+      lastSavedSigRef.current = sig
+      setDraftStatus('idle')
+      return
+    }
+    if (sig === lastSavedSigRef.current) { setDraftStatus('idle'); return }
+    setDraftStatus('saving')
+    // Conflict check is one extra round trip; once every 10s is enough.
+    if (Date.now() - lastConflictCheckRef.current > 10_000) {
+      const conflict = await findDraftConflict()
+      lastConflictCheckRef.current = Date.now()
+      if (conflict) { setDraftConflict(conflict); setDraftStatus('conflict'); return }
+    }
+    try {
+      await writeDraft(payload)
+      lastSavedSigRef.current = sig
+      setDraftSavedAt(new Date())
+      setDraftStatus('saved')
+    } catch (err) {
+      console.warn('Draft autosave failed:', err)
+      setDraftStatus('error')
+    }
+  }
+
+  // Debounced background autosave while there are unpublished edits.
+  useEffect(() => {
+    if (!canAutosave || !draftReady || draftConflict) return
+    setDraftStatus(prev => (prev === 'saving' ? prev : 'pending'))
+    const t = setTimeout(autosaveDraft, 1200)
+    return () => clearTimeout(t)
+  }, [formik.values, ttsConfig, sttConfig, azureConfig, fallbackAzureConfig, hasExternalChanges, hasMultiAssistantChanges, canAutosave, draftReady, draftConflict])
+
+  const applyDraftConfig = (draft: any) => {
+    const assistant = draft.agent.assistant[0]
+    formik.setValues(buildFormValuesFromAgent(assistant, draft.agent), false)
+    applyExternalState(assistant, draft.agent)
+    setHasExternalChanges(true)
+    baselineSigPendingRef.current = true
+  }
+
+  // Never hold the page on the skeleton for more than a few seconds waiting for the draft check.
+  useEffect(() => {
+    const t = setTimeout(() => setDraftReady(true), 6000)
+    return () => clearTimeout(t)
+  }, [])
+
+  // On load: pick up the draft left by a refresh, a closed tab or a teammate.
+  useEffect(() => {
+    if (!activeAgentName || !agentConfigData?.agent?.assistant || draftLoadedForRef.current === activeAgentName) return
+    draftLoadedForRef.current = activeAgentName
+    if (agentConfigData.agent.assistant.length > 1) { setDraftReady(true); return }
+    fetchDraft().then(draft => {
+      const meta = draft?.agent?.draft_meta
+      lastDraftStampRef.current = meta?.updated_at ?? null
+      if (meta && !meta.discarded && (!meta.base || meta.base === publishedBase()) && draft.agent.assistant?.length === 1) {
+        try {
+          applyDraftConfig(draft)
+          setRestoredDraft(meta)
+        } catch (err) {
+          console.warn('Could not restore draft:', err)
+        }
+      }
+      setDraftReady(true)
+    })
+  }, [activeAgentName, agentConfigData])
+
+  const prepareTestSession = async (): Promise<boolean> => {
+    if (!isFormDirty || !promptValidation.isValid || isBackendUnavailable || isProdLocked) return false
+    const conflict = draftConflict ?? (await findDraftConflict())
+    if (conflict) {
+      setDraftConflict(conflict)
+      setDraftStatus('conflict')
+      throw new Error(`${conflict.updated_by_name ?? 'Someone'} edited this draft. Choose "Load theirs" or "Overwrite" first.`)
+    }
+    const payload = buildPayloadWithVariables()
+    const sig = JSON.stringify(payload)
+    if (sig !== lastSavedSigRef.current) {
+      await writeDraft(payload)
+      lastSavedSigRef.current = sig
+      setDraftSavedAt(new Date())
+      setDraftStatus('saved')
+    }
+    return true
+  }
+
   const getUpdateConfigHint = (): string | undefined => {
     if (isProdLocked) return 'Production agent — read only'
     if (isBackendUnavailable) return 'Voice backend unreachable — cannot save'
@@ -902,7 +1108,7 @@ const inboundLookupVariables = useMemo(() => {
   const updateConfigHint = getUpdateConfigHint()
 
   // Loading state
-  if (agentLoading || isConfigLoading) {
+  if (agentLoading || isConfigLoading || (!draftReady && !isConfigError)) {
     return (
       <div className="h-screen bg-muted/50 p-6">
         <div className="max-w-7xl mx-auto space-y-4">
@@ -1120,8 +1326,18 @@ const inboundLookupVariables = useMemo(() => {
               <span className="text-sm text-muted-foreground">
                 {agentNameHeader || 'Loading...'}
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 {getAgentStatusText()}
+                {isFormDirty && draftStatus !== 'idle' && (
+                  <span className={`flex items-center gap-1 ${draftStatus === 'error' || draftStatus === 'conflict' ? 'text-destructive' : ''}`}>
+                    <span aria-hidden>·</span>
+                    {draftStatus === 'pending' && <>Unsaved edits</>}
+                    {draftStatus === 'saving' && <><Loader2 className="w-3 h-3 animate-spin" />Saving draft</>}
+                    {draftStatus === 'saved' && <><CheckIcon className="w-3 h-3" />Draft saved{draftSavedAt ? ` ${draftSavedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}</>}
+                    {draftStatus === 'error' && <><AlertCircle className="w-3 h-3" />Draft not saved</>}
+                    {draftStatus === 'conflict' && <><AlertCircle className="w-3 h-3" />Draft edited by someone else</>}
+                  </span>
+                )}
               </span>
             </div>
           </div>
@@ -1182,6 +1398,7 @@ const inboundLookupVariables = useMemo(() => {
                   onFlashEndCallDone={() => setFlashEndCall(false)}
                   onSessionActiveChange={(active) => { isTalkToAssistantSessionActiveRef.current = active }}
                   deploymentTarget={deploymentTarget}
+                  prepareSession={prepareTestSession}
                 />
               </SheetContent>
             </Sheet>
@@ -1206,7 +1423,7 @@ const inboundLookupVariables = useMemo(() => {
                     >
                       {isPublishing
                         ? <><Loader2 className="w-3 h-3 mr-1 shrink-0 animate-spin" /><span key={publishProgressLabel} className="truncate animate-in fade-in duration-300">{updateStageDetail(publishProgressLabel)}</span></>
-                        : 'Update Config'
+                        : 'Publish'
                       }
                     </Button>
                   </span>
@@ -1267,6 +1484,24 @@ const inboundLookupVariables = useMemo(() => {
         </div>
       </div>
 
+      {draftConflict && (
+        <div className="flex items-center gap-2 px-6 py-1.5 text-xs bg-destructive/10 border-b border-border flex-shrink-0">
+          <AlertCircle className="w-3.5 h-3.5 text-destructive shrink-0" />
+          <span className="truncate">
+            <b>{draftConflict.updated_by_name ?? 'Someone'}</b> edited this draft{draftConflict.updated_at ? ` at ${new Date(draftConflict.updated_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}. Autosave is paused.
+          </span>
+          <button className="ml-auto underline underline-offset-2 hover:no-underline shrink-0" onClick={loadTheirDraft}>Load theirs</button>
+          <button className="underline underline-offset-2 hover:no-underline shrink-0" onClick={overwriteTheirDraft}>Overwrite</button>
+        </div>
+      )}
+      {restoredDraft && !draftConflict && isFormDirty && (
+        <div className="flex items-center gap-2 px-6 py-1.5 text-xs text-muted-foreground bg-muted/40 border-b border-border flex-shrink-0">
+          <span className="truncate">
+            Unpublished draft restored · edited by {restoredDraft.updated_by_name ?? 'someone'}{restoredDraft.updated_at ? ` at ${new Date(restoredDraft.updated_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''} · live calls still use the published config
+          </span>
+          <button className="ml-auto underline underline-offset-2 hover:text-foreground shrink-0" onClick={handleCancel}>Discard draft</button>
+        </div>
+      )}
       {/* Main Content */}
       <div className="flex-1 min-h-0 max-w-7xl mx-auto w-full p-4">
         <div className="h-full flex gap-4">
@@ -1372,6 +1607,7 @@ const inboundLookupVariables = useMemo(() => {
                       initialModel={formik.values.ttsModel}
                       initialConfig={formik.values.ttsVoiceConfig}
                       onVoiceSelect={handleVoiceSelect}
+                      allowAudioTags
                     />
                   ) : (
                     <SelectTTS
@@ -1624,6 +1860,7 @@ const inboundLookupVariables = useMemo(() => {
             onFlashEndCallDone={() => setFlashEndCall(false)}
             onSessionActiveChange={(active) => { isTalkToAssistantSessionActiveRef.current = active }}
             deploymentTarget={deploymentTarget}
+            prepareSession={prepareTestSession}
           />
         </SheetContent>
       </Sheet>

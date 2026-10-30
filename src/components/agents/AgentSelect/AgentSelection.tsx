@@ -186,44 +186,51 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="wp-enter max-w-6xl mx-auto px-4 py-6 sm:px-8 sm:py-8">
-        <AgentToolbar
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
-          viewMode={viewMode}
-          onViewModeChange={handleViewModeChange}
-          onCreateAgent={handleCreateAgent}
-          onConnectAgent={handleConnectAgent}
-          onShowHelp={filteredAgents.length > 0 ? handleShowHelp : undefined}
-          agentCount={filteredAgents.length}
-          sortOrder={sortOrder}
-          onSortToggle={handleSortToggle}
-        />
-
-        {filteredAgents.length > 0 ? (
-          <AgentList
-            agents={filteredAgents}
-            viewMode={viewMode}
-            selectedAgent={selectedAgent}
-            copiedAgentId={copiedAgentId}
-            projectId={projectId}
-            onCopyAgentId={handleCopyAgentId}
-            onDeleteAgent={setShowDeleteConfirm}
-          />
-        ) : (
-          <AgentEmptyStates
+    // Desktop: the page fills the shell's scroll area and only the list scrolls, so the
+    // toolbar never moves (no sticky repositioning). Mobile keeps normal page scroll.
+    <div className="min-h-screen bg-background md:flex md:h-full md:min-h-0 md:flex-col">
+      <div className="wp-enter max-w-6xl mx-auto px-4 py-6 sm:px-8 sm:py-8 md:flex md:min-h-0 md:w-full md:flex-1 md:flex-col">
+        <div className="md:shrink-0">
+          <AgentToolbar
             searchQuery={searchQuery}
-            totalAgents={agents?.length || 0}
-            onClearSearch={() => setSearchQuery('')}
-            onCreateAgent={() => {
-              setInitialFlow('choice')
-              setShowCreateDialog(true)
-            }}
+            onSearchChange={setSearchQuery}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            viewMode={viewMode}
+            onViewModeChange={handleViewModeChange}
+            onCreateAgent={handleCreateAgent}
+            onConnectAgent={handleConnectAgent}
+            onShowHelp={filteredAgents.length > 0 ? handleShowHelp : undefined}
+            agentCount={filteredAgents.length}
+            sortOrder={sortOrder}
+            onSortToggle={handleSortToggle}
           />
-        )}
+        </div>
+
+        {/* -m-1/p-1 leave room for card rings and shadows at the scroll edges */}
+        <div className="agent-list-scroll md:-m-1 md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain md:p-1">
+          {filteredAgents.length > 0 ? (
+            <AgentList
+              agents={filteredAgents}
+              viewMode={viewMode}
+              selectedAgent={selectedAgent}
+              copiedAgentId={copiedAgentId}
+              projectId={projectId}
+              onCopyAgentId={handleCopyAgentId}
+              onDeleteAgent={setShowDeleteConfirm}
+            />
+          ) : (
+            <AgentEmptyStates
+              searchQuery={searchQuery}
+              totalAgents={agents?.length || 0}
+              onClearSearch={() => setSearchQuery('')}
+              onCreateAgent={() => {
+                setInitialFlow('choice')
+                setShowCreateDialog(true)
+              }}
+            />
+          )}
+        </div>
       </div>
 
       {/* Dialogs */}

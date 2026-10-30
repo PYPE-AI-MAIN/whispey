@@ -210,13 +210,6 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Agents',
           icon: 'Activity',
           path: `/${projectId}/agents`
-        },
-        {
-          id: 'ask-pi',
-          name: 'Ask Pi',
-          icon: 'Pi',
-          path: `/${projectId}/pi`,
-          ...(isOwnerOrAdmin ? {} : { disabled: true, badge: 'Beta' })
         }
       ]
 

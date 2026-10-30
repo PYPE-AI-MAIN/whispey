@@ -1,7 +1,7 @@
 // hooks/useMultiAssistantState.ts
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { FormikProps } from 'formik'
-import { getFallback } from '@/config/agentDefaults'
+import { clampAwayTimeout, customAwayPrompt, getFallback } from '@/config/agentDefaults'
 import { getModelBaseUrl } from '@/components/agents/AgentConfig/ModelSelector'
 import { RAYA_PROVIDER, rayaConfigFromTts, rayaTtsPayload } from '@/lib/tts/raya'
 
@@ -178,6 +178,17 @@ export function buildFallbackTtsPayload(formValues: any) {
   }
 }
 
+// ElevenLabs v3/v4 audio tags: only written when the option is on, so other voices and old agents save as before.
+function expressiveTtsFields(model: string | undefined, expressive: unknown, tags: unknown, notes?: unknown): {
+  expressive?: true; audio_tags?: string[]; audio_tag_notes?: Record<string, string>
+} {
+  if (!/^eleven_v[34]/.test(model || '') || expressive !== true) return {}
+  const picked = Array.isArray(tags) ? (tags as string[]) : []
+  const given = notes && typeof notes === 'object' ? (notes as Record<string, string>) : {}
+  const kept = Object.fromEntries(picked.filter((t) => given[t]?.trim()).map((t) => [t, given[t].trim()]))
+  return { expressive: true, audio_tags: picked, ...(Object.keys(kept).length ? { audio_tag_notes: kept } : {}) }
+}
+
 function getInterruptionModeFields(formValues: any): { interruption_mode: string | null; adaptive_stt: boolean; real_interruption_guard: boolean } {
   const interruption_mode = formValues.advancedSettings?.session?.interruption_mode ?? null
   return {
@@ -242,6 +253,7 @@ export function buildAssistantSessionBehaviorPayload(formValues: any): any {
     preemptive_generation: formValues.advancedSettings?.session?.preemptiveGeneration || getFallback(null, 'session_behavior.preemptive_generation'),
     turn_detection: formValues.advancedSettings?.session?.turn_detection || getFallback(null, 'session_behavior.turn_detection'),
     unlikely_threshold: formValues.advancedSettings?.session?.unlikely_threshold ?? getFallback(null, 'session_behavior.unlikely_threshold'),
+    cue_threshold: formValues.advancedSettings?.session?.cue_threshold,
     min_endpointing_delay: formValues.advancedSettings?.session?.min_endpointing_delay ?? getFallback(null, 'session_behavior.min_endpointing_delay'),
     max_endpointing_delay: formValues.advancedSettings?.session?.max_endpointing_delay ?? getFallback(null, 'session_behavior.max_endpointing_delay'),
     ...(formValues.advancedSettings?.session?.endpointing_mode && {
@@ -249,8 +261,8 @@ export function buildAssistantSessionBehaviorPayload(formValues: any): any {
     }),
     // interruption_mode is intentionally omitted here — it's sent at the top level
     // above and the backend hoists it into session_behavior on save.
-    ...(formValues.advancedSettings?.session?.user_away_timeout !== undefined && {
-      user_away_timeout: formValues.advancedSettings.session.user_away_timeout
+    ...(clampAwayTimeout(formValues.advancedSettings?.session?.user_away_timeout) !== undefined && {
+      user_away_timeout: clampAwayTimeout(formValues.advancedSettings?.session?.user_away_timeout)
     }),
     ...(formValues.advancedSettings?.session?.user_away_timeout_message !== undefined && formValues.advancedSettings.session.user_away_timeout_message !== null && {
       user_away_timeout_message: formValues.advancedSettings.session.user_away_timeout_message
@@ -260,6 +272,12 @@ export function buildAssistantSessionBehaviorPayload(formValues: any): any {
     }),
     ...(formValues.advancedSettings?.session?.user_away_timeout_end_message !== undefined && formValues.advancedSettings.session.user_away_timeout_end_message !== null && formValues.advancedSettings.session.user_away_timeout_end_message !== '' && {
       user_away_timeout_end_message: formValues.advancedSettings.session.user_away_timeout_end_message
+    }),
+    ...(formValues.advancedSettings?.session?.user_away_timeout_mode !== undefined && formValues.advancedSettings.session.user_away_timeout_mode !== null && {
+      user_away_timeout_mode: formValues.advancedSettings.session.user_away_timeout_mode
+    }),
+    ...(customAwayPrompt(formValues.advancedSettings?.session?.user_away_prompt) !== undefined && {
+      user_away_prompt: customAwayPrompt(formValues.advancedSettings.session.user_away_prompt)
     }),
     ...(formValues.advancedSettings?.session?.eod_silence_seconds !== undefined && formValues.advancedSettings.session.eod_silence_seconds !== null && {
       eod_silence_seconds: formValues.advancedSettings.session.eod_silence_seconds
@@ -537,6 +555,12 @@ export function buildSingleAssistantTtsPayload(formValues: any, currentTtsConfig
       use_speaker_boost: currentTtsConfig?.config?.useSpeakerBoost ?? formValues.ttsVoiceConfig?.useSpeakerBoost ?? getFallback(null, 'tts.voice_settings.use_speaker_boost'),
       speed: currentTtsConfig?.config?.speed ?? formValues.ttsVoiceConfig?.speed ?? getFallback(null, 'tts.voice_settings.speed')
     },
+    ...expressiveTtsFields(
+      currentTtsConfig?.model || formValues.ttsModel,
+      currentTtsConfig?.config?.expressive ?? formValues.ttsVoiceConfig?.expressive,
+      currentTtsConfig?.config?.audioTags ?? formValues.ttsVoiceConfig?.audioTags,
+      currentTtsConfig?.config?.audioTagNotes ?? formValues.ttsVoiceConfig?.audioTagNotes,
+    ),
     ...fallbackTtsPayload,
   }
 }
@@ -904,7 +928,13 @@ export function useMultiAssistantState({
             style: data.ttsConfig?.voice_settings?.style ?? formValues.ttsVoiceConfig?.style ?? getFallback(null, 'tts.voice_settings.style'),
             use_speaker_boost: data.ttsConfig?.voice_settings?.use_speaker_boost ?? formValues.ttsVoiceConfig?.useSpeakerBoost ?? getFallback(null, 'tts.voice_settings.use_speaker_boost'),
             speed: data.ttsConfig?.voice_settings?.speed ?? formValues.ttsVoiceConfig?.speed ?? getFallback(null, 'tts.voice_settings.speed')
-          }
+          },
+          ...expressiveTtsFields(
+            data.ttsConfig?.model || formValues.ttsModel,
+            data.ttsConfig?.expressive ?? formValues.ttsVoiceConfig?.expressive,
+            data.ttsConfig?.audio_tags ?? formValues.ttsVoiceConfig?.audioTags,
+            data.ttsConfig?.audio_tag_notes ?? formValues.ttsVoiceConfig?.audioTagNotes,
+          ),
         },
         tools: formValues.advancedSettings?.tools?.tools?.map(serializeAssistantToolBasic) || getFallback(null, 'tools'),
         useBackgroundAudioFallbacks: false,

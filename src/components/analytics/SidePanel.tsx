@@ -10,7 +10,7 @@
  */
 'use client'
 import React, { useMemo } from 'react'
-import { ArrowLeft, BarChart3, Hash, LineChart as LineIcon, Percent, PieChart as PieIcon, Sparkles, Table2, Type as TextIcon } from 'lucide-react'
+import { ArrowLeft, BarChart3, Hash, LineChart as LineIcon, Percent, PieChart as PieIcon, Table2, Type as TextIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -18,7 +18,6 @@ import type { CatalogField, ChartKind, FormulaContent, TextContent, Widget } fro
 import type { ChartWidget } from './ChartCard'
 import { ChartFilters } from './FilterBar'
 import { CALCULATIONS, explainSpec } from './explain'
-import { AiChartBuilderPanel } from './AiChartBuilderPanel'
 import { FieldPicker, FieldShape } from './FieldPicker'
 import { identityFields, outcomeField } from './suggest'
 import type { OutcomeRanking } from './OutcomeOrderEditor'
@@ -127,13 +126,9 @@ function ChartTypeTile({
 }
 
 function SidePanelContent({
-  selected, agentId, fields, ranking, canEdit, onAddChart, onDragChartType, onChange, onChangeKind, onChangeTitle, onBack, onOpenAi,
+  selected, fields, ranking, canEdit, onAddChart, onDragChartType, onChange, onChangeKind, onChangeTitle, onBack,
 }: Readonly<{
   selected: Widget | null
-  /** For the AI Chart Builder's request only — which agent's fields it's allowed
-   * to reference. Absent on the org-wide canvas, which has no single agent's
-   * fields to hand the model — the builder just doesn't offer there yet. */
-  agentId?: string
   fields: CatalogField[]
   /** The agent's saved outcome order — so a chart built here ranks by the same
    * field the agent's own disposition order means, not a guess (§ once was
@@ -149,22 +144,10 @@ function SidePanelContent({
   onChange: (spec: SpecInput | TextContent | FormulaContent) => void
   onChangeKind: (kind: ChartKind) => void
   onChangeTitle: (title: string) => void
-  onOpenAi: () => void
 }>) {
   if (!selected) {
     return (
       <Panel title="Chart types">
-        {canEdit && agentId && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onOpenAi}
-            className="mb-3 w-full justify-center gap-1.5 border-dashed border-primary/40 text-primary hover:border-blue-400 hover:bg-primary/10"
-          >
-            <Sparkles className="h-3.5 w-3.5" /> Generate with Pi
-          </Button>
-        )}
         <p className="mb-3 text-xs text-muted-foreground">
           {canEdit
             ? 'Drag one onto the dashboard, or click to add it at the end.'
@@ -225,40 +208,9 @@ function SidePanelContent({
   )
 }
 
-/**
- * The panel on the right of the dashboard. "Generate with Pi" turns it into a
- * chat; the chat stays mounted (just hidden) while a chart's settings are open,
- * so going to tweak one chart does not throw the conversation away.
- */
-export function SidePanel({
-  aiOpen, onOpenAi, onCloseAi, onGenerateChart, ...rest
-}: Readonly<
-  Omit<React.ComponentProps<typeof SidePanelContent>, 'onOpenAi'> & {
-    aiOpen: boolean
-    onOpenAi: () => void
-    onCloseAi: () => void
-    /** Puts an AI-built chart on the canvas as a draft without selecting it, so the chat stays on screen. */
-    onGenerateChart: (title: string, kind: ChartKind, spec: SpecInput) => void
-  }
->) {
-  const showAi = aiOpen && !rest.selected
-  return (
-    <>
-      {rest.canEdit && rest.agentId && (
-        <div className={showAi ? 'h-full' : 'hidden'}>
-          <AiChartBuilderPanel
-            agentId={rest.agentId}
-            fields={rest.fields}
-            ranking={rest.ranking}
-            visible={showAi}
-            onBack={onCloseAi}
-            onAdd={onGenerateChart}
-          />
-        </div>
-      )}
-      {!showAi && <SidePanelContent {...rest} onOpenAi={onOpenAi} />}
-    </>
-  )
+/** The panel on the right of the dashboard: chart types, or the selected chart's settings. */
+export function SidePanel(props: Readonly<React.ComponentProps<typeof SidePanelContent>>) {
+  return <SidePanelContent {...props} />
 }
 
 /** A note, not a chart — a title and a body, nothing to query. */
@@ -463,6 +415,11 @@ function ChartSettings({
   onChangeTitle: (title: string) => void
 }>) {
   const spec = widget.spec
+  let dedupeNote = 'Repeat calls collapse to one row, keeping the last call.'
+  if (spec.dedupe?.winner === 'best_outcome') dedupeNote = 'Repeat calls collapse to one row, keeping the best outcome from the agent’s order.'
+  else if (spec.dedupe?.answered_only) dedupeNote = 'Repeat calls collapse to one row, keeping the last answered call.'
+  let dedupePick = 'best_outcome'
+  if (spec.dedupe?.winner === 'most_recent') dedupePick = spec.dedupe.answered_only ? 'last_answered' : 'most_recent'
   const calculation = CALCULATIONS.find((c) => c.fn === spec.agg?.fn) ?? CALCULATIONS[0]
 
   const usable = useMemo(() => {
@@ -719,12 +676,43 @@ function ChartSettings({
         />
         {spec.grain === 'entity' && (
           <p className="mt-1 text-[11px] text-muted-foreground">
-            {spec.dedupe?.winner === 'best_outcome'
-              ? 'Repeat calls collapse to one row, keeping the best outcome from the agent’s order.'
-              : 'Repeat calls collapse to one row, keeping the most recent attempt.'}
+            {dedupeNote}
           </p>
         )}
       </Row>
+
+      {spec.grain === 'entity' && spec.dedupe && (
+        <Row label="Which call counts">
+          <Picker
+            value={dedupePick}
+            disabled={!canEdit}
+            options={[
+              { value: 'best_outcome', label: 'Best outcome', help: 'Keep the call whose outcome ranks highest in the agent’s outcome order' },
+              { value: 'last_answered', label: 'Last answered call', help: 'Keep the last call that was answered (completed or transfer failed), skipping unanswered retries' },
+              { value: 'most_recent', label: 'Last call', help: 'Keep the last call’s outcome, even if it was not answered' },
+            ]}
+            onChange={(winner) => {
+              const d = spec.dedupe!
+              if (winner === 'most_recent') return setSpec({ dedupe: { ...d, winner: 'most_recent', answered_only: false } })
+              if (winner === 'last_answered') return setSpec({ dedupe: { ...d, winner: 'most_recent', answered_only: true } })
+              if (!outcome) return
+              setSpec({
+                dedupe: {
+                  ...d,
+                  winner: 'best_outcome',
+                  answered_only: false,
+                  outcome: { col: outcome.col, ...(outcome.path.length ? { path: outcome.path } : {}) },
+                  ranking_ref: 'agent',
+                  ranking: undefined,
+                },
+              })
+            }}
+          />
+          {!outcome && (
+            <p className="mt-1 text-[11px] text-muted-foreground">Set an outcome order for this agent to rank by best outcome.</p>
+          )}
+        </Row>
+      )}
 
       {/* a count with a filter on it is not "how many calls" — this is where
           "Completed calls" stops being a number with no definition */}

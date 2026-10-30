@@ -206,7 +206,7 @@ export const useCallLogsStore = create<CallLogsState>()(
       resetState: () =>
         set({ filtersByAgent: {}, distinctConfigByAgent: {}, pageByAgent: {}, dateFilterByAgent: {}, selectedCampaignByAgent: {} }),
 
-      viewMode: 'legacy',
+      viewMode: 'new',
       setViewMode: (viewMode) => set({ viewMode }),
 
       columnOrder: [],
@@ -228,7 +228,7 @@ export const useCallLogsStore = create<CallLogsState>()(
     }),
     {
       name: 'call-logs-storage',
-      version: 6, // bumped: columns kept per agent (visibleColumnsByAgent, columnOrderByAgent)
+      version: 7, // bumped: the new view is everyone's default, earlier choices of the classic one reset
       migrate: (old: any, version: number) => ({
         filtersByAgent: old?.filtersByAgent ?? {},
         distinctConfigByAgent: old?.distinctConfigByAgent ?? {},
@@ -237,7 +237,8 @@ export const useCallLogsStore = create<CallLogsState>()(
         visibleColumns: old?.visibleColumns ?? defaultVisibleColumns,
         // v4 already persisted campaigns; only drop them when coming from older shapes
         selectedCampaignByAgent: version >= 4 ? (old?.selectedCampaignByAgent ?? {}) : {},
-        viewMode: old?.viewMode ?? 'legacy',
+        // from v7 the new view is the default for everyone; a classic choice made since then stays
+        viewMode: version >= 7 ? (old?.viewMode ?? 'new') : 'new',
         columnOrder: old?.columnOrder ?? [],
         visibleColumnsByAgent: old?.visibleColumnsByAgent ?? {},
         columnOrderByAgent: old?.columnOrderByAgent ?? {},

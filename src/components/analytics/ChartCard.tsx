@@ -50,7 +50,7 @@ export function ChartCard({
   /** Off on a phone: the canvas is for reading there, not for building. */
   draggable: boolean
   onSelect: () => void
-  onOpenLogs: (dimensionValue?: string | null) => void
+  onOpenLogs: (dimensionValue?: string | null, bucketValue?: string) => void
   onEdit: () => void
   onDuplicate: () => void
   onRemove: () => void
@@ -212,10 +212,6 @@ export function ChartCard({
         <CardBody widget={widget} result={result} isLoading={isLoading} rows={rows} categories={categories} fieldMissing={fieldMissing} short={short} onSelect={onOpenLogs} />
       </div>
 
-            <div className="relative z-10 pointer-events-none flex shrink-0 items-center justify-between gap-2 px-4 pb-3 text-[11px] text-muted-foreground">
-        <span />
-        {result?.meta?.lookbackDays ? <span>Best of 90 days</span> : null}
-      </div>
     </div>
   )
 }
@@ -233,7 +229,7 @@ function CardBody({
   fieldMissing: boolean
   /** Two grid rows tall — the number has to be smaller or it draws over the words. */
   short: boolean
-  onSelect: (value: string | null) => void
+  onSelect: (value?: string | null, bucketValue?: string) => void
 }>) {
   if (isLoading && !result) return <Skeleton className="h-full w-full rounded-lg" />
 

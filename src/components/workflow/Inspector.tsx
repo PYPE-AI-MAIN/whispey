@@ -211,6 +211,7 @@ function NodeFields({
                 initialProvider={node.voice?.name ?? undefined}
                 initialModel={node.voice?.model ?? undefined}
                 initialConfig={node.voice?.voice_settings ?? undefined}
+                allowAudioTags
                 onVoiceSelect={(voiceId, provider, model, config) =>
                   patch({ voice: { name: provider, voice_id: voiceId, model: model ?? node.voice?.model, voice_settings: config } } as any)
                 }
@@ -413,6 +414,7 @@ function NodeFields({
                 initialProvider={node.voice?.name ?? undefined}
                 initialModel={node.voice?.model ?? undefined}
                 initialConfig={node.voice?.voice_settings ?? undefined}
+                allowAudioTags
                 onVoiceSelect={(voiceId, provider, model, config) =>
                   patch({ voice: { name: provider, voice_id: voiceId, model: model ?? node.voice?.model, voice_settings: config } } as any)
                 }

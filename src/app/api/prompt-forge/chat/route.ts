@@ -5,6 +5,7 @@ import type OpenAI from 'openai'
 import { agentInProject, requireForgeUser } from '@/server/promptForge/access'
 import { resolveForgeLlm } from '@/server/promptForge/llm'
 import { samplingFor } from '@/lib/piModels'
+import { builtInToolResult, historyToChatMessages, type HistoryMessage } from '@/lib/promptForgeTools'
 
 export const runtime = 'nodejs'
 
@@ -79,12 +80,10 @@ async function executeTool(tool: any, args: any): Promise<{ result: any; success
     return { result, success: tool.mock.success !== false }
   }
 
-  // Non-HTTP tools (transfer_call, knowledge_search) can't be executed in forge
-  if (!tool || !tool.endpoint || tool.type === 'transfer_call' || tool.type === 'knowledge_search') {
-    return {
-      result: { _forge_note: `Tool "${tool?.name ?? 'unknown'}" invoked (no HTTP execution for this type in Forge)` },
-      success: true,
-    }
+  // Built-in tools (end call, transfer, TTS / language switch, knowledge search…)
+  // and tools without an endpoint can't run here: answer as if they did
+  if (!tool?.endpoint || (tool.type && tool.type !== 'custom_function')) {
+    return { result: builtInToolResult(tool?.type ?? '', tool?.name ?? 'unknown'), success: true }
   }
 
   const url = await publicToolUrl(String(tool.endpoint))
@@ -133,10 +132,7 @@ export async function POST(request: NextRequest) {
     // Build mutable conversation messages for the tool-calling loop
     const conversationMessages: any[] = [
       ...(systemPrompt?.trim() ? [{ role: 'system', content: systemPrompt }] : []),
-      ...(messages ?? []).map((m: { role: string; content: string }) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      })),
+      ...historyToChatMessages((messages ?? []) as HistoryMessage[], hasTools),
       // Greeting mode "generated": nothing has been said yet, so ask the model
       // for the opening message its prompt calls for. Text only — this is a chat.
       ...(generateGreeting ? [{ role: 'user', content: '[The conversation is starting. Send your opening message now.]' }] : []),

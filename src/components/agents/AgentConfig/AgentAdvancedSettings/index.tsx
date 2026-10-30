@@ -50,8 +50,9 @@ interface AgentAdvancedSettingsProps {
       }
       session: {
         preemptiveGeneration: 'enabled' | 'disabled'
-        turn_detection: 'multilingual' | 'english' | 'disabled' | 'v1-mini'
+        turn_detection: 'multilingual' | 'english' | 'disabled' | 'v1-mini' | 'cue'
         unlikely_threshold?: number
+        cue_threshold?: number
         min_endpointing_delay?: number
         max_endpointing_delay?: number
         endpointing_mode?: string | null
@@ -60,6 +61,8 @@ interface AgentAdvancedSettingsProps {
         user_away_timeout_message?: string
         user_away_timeout_max_count?: number
         user_away_timeout_end_message?: string
+        user_away_timeout_mode?: 'static' | 'dynamic'
+        user_away_prompt?: string
         eod_silence_seconds?: number
       }
       tools: {
@@ -300,6 +303,7 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, promptVariable
               preemptiveGeneration={advancedSettings.session.preemptiveGeneration}
               turn_detection={advancedSettings.session.turn_detection}
               unlikely_threshold={advancedSettings.session.unlikely_threshold}
+              cue_threshold={advancedSettings.session.cue_threshold}
               min_endpointing_delay={advancedSettings.session.min_endpointing_delay}
               max_endpointing_delay={advancedSettings.session.max_endpointing_delay}
               endpointing_mode={advancedSettings.session.endpointing_mode}
@@ -307,6 +311,8 @@ function AgentAdvancedSettings({ advancedSettings, onFieldChange, promptVariable
               user_away_timeout_message={advancedSettings.session.user_away_timeout_message}
               user_away_timeout_max_count={advancedSettings.session.user_away_timeout_max_count}
               user_away_timeout_end_message={advancedSettings.session.user_away_timeout_end_message}
+              user_away_timeout_mode={advancedSettings.session.user_away_timeout_mode}
+              user_away_prompt={advancedSettings.session.user_away_prompt}
               eod_silence_seconds={advancedSettings.session.eod_silence_seconds}
               onFieldChange={onFieldChange}
             />

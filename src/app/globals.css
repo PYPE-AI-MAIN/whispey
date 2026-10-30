@@ -163,6 +163,13 @@
   --analytics-series-6: #008300;
   --analytics-series-7: #2a78d6;
   --analytics-series-8: #e34948;
+  /* slots 9-12 and the grey for "(other)": a breakdown can have a dozen values,
+     and wrapping back to slot 1 painted two different values the same colour */
+  --analytics-series-9: #0891b2;
+  --analytics-series-10: #9a6a4f;
+  --analytics-series-11: #9aa80f;
+  --analytics-series-12: #b04fb0;
+  --analytics-series-other: #94a3b8;
   --sidebar: #faf6fc;
   --sidebar-foreground: #1e0a52;
   --sidebar-primary: #4b0082;
@@ -250,9 +257,14 @@
   --analytics-series-3: #199e70;
   --analytics-series-4: #c98500;
   --analytics-series-5: #d55181;
-  --analytics-series-6: #008300;
+  --analytics-series-6: #5fae45;
   --analytics-series-7: #3987e5;
-  --analytics-series-8: #e66767;
+  --analytics-series-8: #a78bfa;
+  --analytics-series-9: #22b8cf;
+  --analytics-series-10: #b9825f;
+  --analytics-series-11: #cfd13a;
+  --analytics-series-12: #d27ad2;
+  --analytics-series-other: #6b7280;
   --sidebar: #0b0912;
   --sidebar-foreground: #f6f2f2;
   --sidebar-primary: #ff6b6b;
@@ -427,6 +439,39 @@
 
 .dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background-color: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Agent list: an always-visible vertical scrollbar, so the page shows how far down you are.
+   Chrome/Safari use the -webkit rules (a standard scrollbar-* property would override them in Chrome).
+   Theme colours are hex values, so they are faded with color-mix() (hsl(var(--x) / a) would be invalid). */
+.agent-list-scroll {
+  scrollbar-gutter: stable;
+}
+
+.agent-list-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.agent-list-scroll::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+.agent-list-scroll::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--muted-foreground) 45%, transparent);
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.agent-list-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--muted-foreground) 75%, transparent);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  .agent-list-scroll {
+    scrollbar-width: auto;
+    scrollbar-color: color-mix(in srgb, var(--muted-foreground) 45%, transparent) transparent;
+  }
 }
 
 @theme inline {

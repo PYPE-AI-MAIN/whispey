@@ -41,6 +41,43 @@ export function studioUrl(projectId: string, agentId: string, appUrl = 'http://l
   return `${trimmed}/${projectId}/agents/${agentId}/studio`
 }
 
+export interface EditableAgentFacts {
+  project_id: string
+  agent_type?: string | null
+  configuration?: { created_via?: string; created_by?: string | null } | null
+}
+
+/**
+ * Why this MCP caller may NOT edit this agent, or null when it may.
+ * - Every caller: the agent must be in the project the caller named.
+ * - Internal Pype keys: any agent Pype hosts (agent_type pype_agent), however it was made.
+ * - Client keys: only agents this same key created through the MCP.
+ */
+export function editRefusal(
+  agent: EditableAgentFacts,
+  caller: { projectId: string; createdBy?: string; internal?: boolean }
+): { status: number; error: string } | null {
+  if (agent.project_id !== caller.projectId) return { status: 403, error: 'Agent does not belong to project_id' }
+  if (caller.internal) {
+    return agent.agent_type === 'pype_agent'
+      ? null
+      : { status: 403, error: "This agent isn't hosted by Pype and can't be edited here" }
+  }
+  if (agent.configuration?.created_via !== 'mcp') {
+    return { status: 403, error: 'This agent was not created through the MCP and cannot be edited here' }
+  }
+  if (!caller.createdBy || agent.configuration?.created_by !== caller.createdBy) {
+    return { status: 403, error: 'You can only edit agents you created through the MCP' }
+  }
+  return null
+}
+
+/** Link to a conversation-flow agent's canvas (where its flow can be viewed and edited). */
+export function flowUrl(projectId: string, agentId: string, appUrl = 'http://localhost:3000'): string {
+  const trimmed = appUrl.endsWith('/') ? appUrl.slice(0, -1) : appUrl
+  return `${trimmed}/${projectId}/agents/${agentId}/workflow`
+}
+
 /** Why a supplied voice is unusable, or null when it has both parts. */
 export function voiceRefError(voice: VoiceRef | undefined): string | null {
   if (!voice?.provider || !voice?.voice_id) return 'voice requires provider and voice_id'

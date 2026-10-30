@@ -16,7 +16,10 @@ import { getPypeApiBaseUrlForServer, fetchPypeApiWithRetry, isPypeUpstreamUnreac
 import { getDeploymentTargetFromAgentBackendName } from '@/lib/getProjectRoleForApi'
 import { deployAgentConfig } from '@/lib/deployAgentConfig'
 import { findMcpVoice, buildMcpTtsConfig } from '@/config/mcpAgentVoices'
-import { validateDispositions, dispositionsToAgentColumns } from '@/lib/dispositions'
+import {
+  validateDispositions, dispositionsToAgentColumns, mergeDispositions, parseStoredDispositions,
+  validateRemoveKeys, type Disposition,
+} from '@/lib/dispositions'
 import {
   applyAssistantUpdates, hasStudioSecret, studioUrl, voiceRefError, type VoiceRef,
 } from '@/lib/mcpAgentHelpers'
@@ -31,7 +34,11 @@ interface UpdateBody {
   voice?: VoiceRef
   variables?: Record<string, string>
   dispositions?: unknown
+  add_dispositions?: unknown
+  remove_dispositions?: unknown
   created_by?: string
+  // Set by the MCP Agent Studio service only for internal Pype keys.
+  internal?: boolean
 }
 
 type McpVoice = NonNullable<ReturnType<typeof findMcpVoice>>
@@ -41,6 +48,8 @@ interface UpdateInput {
   body: UpdateBody
   mcpVoice?: McpVoice
   dispositionColumns?: ReturnType<typeof dispositionsToAgentColumns>
+  // add/remove edit the saved list instead of replacing it
+  dispositionEdit?: { add: Disposition[]; remove: string[] }
 }
 
 type Parsed = { ok: true; input: UpdateInput } | { ok: false; response: NextResponse }
@@ -49,7 +58,10 @@ const fail = (error: string, status: number, details?: unknown) =>
   NextResponse.json(details === undefined ? { error } : { error, details }, { status })
 
 function nothingToUpdate(body: UpdateBody): boolean {
-  return [body.prompt, body.greeting, body.voice, body.variables, body.dispositions].every((v) => v === undefined)
+  return [
+    body.prompt, body.greeting, body.voice, body.variables,
+    body.dispositions, body.add_dispositions, body.remove_dispositions,
+  ].every((v) => v === undefined)
 }
 
 /** Only the assistant-level fields need a redeploy; dispositions are a DB write. */
@@ -73,7 +85,7 @@ function parseUpdateInput(body: UpdateBody): Parsed {
   if (nothingToUpdate(body)) {
     return {
       ok: false,
-      response: fail('Nothing to update — provide prompt, greeting, voice, variables, and/or dispositions', 400),
+      response: fail('Nothing to update — provide prompt, greeting, voice, variables, and/or dispositions (or add_dispositions / remove_dispositions)', 400),
     }
   }
 
@@ -84,10 +96,28 @@ function parseUpdateInput(body: UpdateBody): Parsed {
     dispositionColumns = dispositionsToAgentColumns(checked.dispositions)
   }
 
+  const edit = parseDispositionEdit(body)
+  if ('error' in edit) return { ok: false, response: edit.error }
+
   const voice = resolveVoice(body.voice)
   if ('error' in voice) return { ok: false, response: voice.error }
 
-  return { ok: true, input: { projectId: body.project_id, body, mcpVoice: voice.mcpVoice, dispositionColumns } }
+  return {
+    ok: true,
+    input: { projectId: body.project_id, body, mcpVoice: voice.mcpVoice, dispositionColumns, dispositionEdit: edit.edit },
+  }
+}
+
+function parseDispositionEdit(body: UpdateBody): { edit?: UpdateInput['dispositionEdit'] } | { error: NextResponse } {
+  if (body.add_dispositions === undefined && body.remove_dispositions === undefined) return {}
+  if (body.dispositions !== undefined) {
+    return { error: fail('Use either dispositions (replace the whole list) or add_dispositions / remove_dispositions, not both', 400) }
+  }
+  const add = body.add_dispositions === undefined ? { ok: true as const, dispositions: [] } : validateDispositions(body.add_dispositions)
+  if (!add.ok) return { error: fail(add.error, 400) }
+  const remove = body.remove_dispositions === undefined ? { ok: true as const, keys: [] } : validateRemoveKeys(body.remove_dispositions)
+  if (!remove.ok) return { error: fail(remove.error, 400) }
+  return { edit: { add: add.dispositions, remove: remove.keys } }
 }
 
 /** Dispositions live on the agent row (not in the voice backend's config). */
@@ -121,49 +151,34 @@ async function loadCurrentAssistant(apiBase: string, backendAgentName: string) {
   }
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!hasStudioSecret(request.headers.get('x-agent-studio-secret'), process.env.AGENT_STUDIO_SECRET)) {
-    return fail('Unauthorized', 401)
-  }
+/** The disposition columns to save: the replacement list as given, or the saved list with add/remove applied. */
+function dispositionColumnsFor(
+  input: UpdateInput,
+  saved: string | null
+): { columns?: UpdateInput['dispositionColumns'] } | { error: NextResponse } {
+  if (!input.dispositionEdit) return { columns: input.dispositionColumns }
+  const merged = mergeDispositions(parseStoredDispositions(saved), input.dispositionEdit.add, input.dispositionEdit.remove)
+  return merged.ok ? { columns: dispositionsToAgentColumns(merged.dispositions) } : { error: fail(merged.error, 400) }
+}
 
-  const { id: agentId } = await params
-  const rawBody = await request.json().catch(() => null)
-  if (!rawBody) return fail('Invalid JSON body', 400)
-
-  const parsed = parseUpdateInput(rawBody as UpdateBody)
-  if (!parsed.ok) return parsed.response
-  const { projectId, body, mcpVoice, dispositionColumns } = parsed.input
-
-  const owned = await loadEditableAgent(supabase, agentId, projectId, body.created_by)
-  if (!owned.ok) return fail(owned.error, owned.status)
-
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL
-
-  // When dispositions are the only change there is nothing to redeploy, which
-  // keeps the agent up during the edit.
-  if (dispositionColumns) {
-    const failure = await saveDispositions(agentId, dispositionColumns)
-    if (failure) return failure
-    if (!touchesAssistant(body)) {
-      return NextResponse.json({
-        agent_id: agentId,
-        project_id: projectId,
-        studio_url: studioUrl(projectId, agentId, appUrl),
-        updated: { prompt: false, greeting: false, voice: false, variables: false, dispositions: true },
-      })
-    }
-  }
-
+/** Applies prompt/greeting/voice/variables to the live assistant config and redeploys it. */
+async function deployAssistantUpdate(
+  agentName: string,
+  agentId: string,
+  projectId: string,
+  body: UpdateBody,
+  mcpVoice: McpVoice | undefined
+): Promise<{ backendAgentName: string } | { error: NextResponse }> {
   // agent.name is the SHORT name (matches real agents, e.g. "lslocaltwo") — the
   // backend/LiveKit registration uses the full underscored name.
-  const backendAgentName = `${owned.agent.name}_${agentId.replaceAll('-', '_')}`
+  const backendAgentName = `${agentName}_${agentId.replaceAll('-', '_')}`
 
   const deploymentTarget = await getDeploymentTargetFromAgentBackendName(backendAgentName)
   const apiBase = getPypeApiBaseUrlForServer(deploymentTarget)
-  if (!apiBase) return fail('Voice backend URL is not configured', 500)
+  if (!apiBase) return { error: fail('Voice backend URL is not configured', 500) }
 
   const current = await loadCurrentAssistant(apiBase, backendAgentName)
-  if ('error' in current) return current.error
+  if ('error' in current) return { error: current.error as NextResponse }
 
   const updatedAssistant = applyAssistantUpdates(current.assistant, {
     prompt: body.prompt,
@@ -184,7 +199,56 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     },
     deploymentTarget
   )
-  if (!result.ok) return fail('Failed to deploy updated config', result.status || 502, result.errorText)
+  if (!result.ok) return { error: fail('Failed to deploy updated config', result.status || 502, result.errorText) }
+  return { backendAgentName }
+}
+
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!hasStudioSecret(request.headers.get('x-agent-studio-secret'), process.env.AGENT_STUDIO_SECRET)) {
+    return fail('Unauthorized', 401)
+  }
+
+  const { id: agentId } = await params
+  const rawBody = await request.json().catch(() => null)
+  if (!rawBody) return fail('Invalid JSON body', 400)
+
+  const parsed = parseUpdateInput(rawBody as UpdateBody)
+  if (!parsed.ok) return parsed.response
+  const { projectId, body, mcpVoice } = parsed.input
+
+  const owned = await loadEditableAgent(supabase, agentId, projectId, body.created_by, { internal: body.internal === true })
+  if (!owned.ok) return fail(owned.error, owned.status)
+  // A conversation flow's prompts live in its workflow, not in a single
+  // assistant config — editing them here would deploy a single-prompt config
+  // over the flow. Dispositions are on the agent row, so those are fine.
+  if (owned.agent.configuration?.workflowMode === true && touchesAssistant(body)) {
+    return fail('This agent is a conversation flow — use update_flow_agent to change its prompts, greeting or voice', 400)
+  }
+
+  const disp = dispositionColumnsFor(parsed.input, owned.agent.field_extractor_prompt)
+  if ('error' in disp) return disp.error
+  const dispositionColumns = disp.columns
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+
+  // When dispositions are the only change there is nothing to redeploy, which
+  // keeps the agent up during the edit.
+  if (dispositionColumns) {
+    const failure = await saveDispositions(agentId, dispositionColumns)
+    if (failure) return failure
+    if (!touchesAssistant(body)) {
+      return NextResponse.json({
+        agent_id: agentId,
+        project_id: projectId,
+        studio_url: studioUrl(projectId, agentId, appUrl),
+        updated: { prompt: false, greeting: false, voice: false, variables: false, dispositions: true },
+      })
+    }
+  }
+
+  const deployed = await deployAssistantUpdate(owned.agent.name, agentId, projectId, body, mcpVoice)
+  if ('error' in deployed) return deployed.error
+  const { backendAgentName } = deployed
 
   return NextResponse.json({
     agent_id: agentId,
@@ -196,7 +260,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       greeting: body.greeting !== undefined,
       voice: mcpVoice ? { provider: mcpVoice.provider, voice_id: mcpVoice.voice_id } : false,
       variables: body.variables !== undefined,
-      dispositions: body.dispositions !== undefined,
+      dispositions: dispositionColumns !== undefined,
     },
   })
 }

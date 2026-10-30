@@ -13,12 +13,13 @@ import { cn } from "@/lib/utils"
 import type { FilterOperation } from "@/components/CallFilter"
 import FlagRulesDialog from "@/components/FlagRulesDialog"
 import { useCallLogsData, PAGE_SIZE } from "@/hooks/useCallLogsData"
+import { useCallLogById } from "@/hooks/useCallLogs"
 import { useCallLogsColumns, BASIC_COLUMNS, EXTRA_RESTRICTABLE_COLUMNS } from "@/hooks/useCallLogsColumns"
 import { useMemberVisibility } from "@/hooks/useMemberVisibility"
 import { useGlobalRole } from "@/hooks/useGlobalRole"
 import { canShowOrgSection } from "@/types/visibility"
 import { useCallLogsStore } from "@/stores/callLogsStore"
-import { flattenCallLogForCSV, isViewerRole, triggerCSVFileDownload } from "@/utils/callLogsUtils"
+import { flattenCallLogForCSV, getSelectColumns, isViewerRole, triggerCSVFileDownload } from "@/utils/callLogsUtils"
 import { AskPi, type FilterProposal } from "./AskPi"
 import { useCallLogsViewMode } from "@/hooks/useCallLogsViewMode"
 import type { CallLog } from "@/types/logs"
@@ -38,6 +39,7 @@ import { ColumnsPicker, type ColumnGroup, type PickerColumn } from "./ColumnsPic
 import { CallLogsTable } from "./CallLogsTable"
 import { StatusCell } from "./StatusCell"
 import { PrefetchTranscript, SplitView } from "./split/SplitView"
+import { ReanalyzeSelectedDialog } from "./ReanalyzeSelectedDialog"
 import { callDurationSeconds } from "./split/callData"
 import { CallEventCell, CallIdCell, CustomerNumberCell, DurationCell, FlagCell, StartTimeCell, TagsCell } from "./cells"
 import { V2_BTN, V2_ICON_BTN, V2_THEME } from "./theme"
@@ -50,6 +52,8 @@ interface CallLogsV2Props {
   dateRange?: { from: string; to: string }
   onAgentUpdated?: () => void
   openDownloadSettings?: boolean
+  /** False while another tab of the dashboard is showing; the floating Ask Pi then belongs to that tab. */
+  isActive?: boolean
 }
 
 const columnIdFor = (group: ColumnGroup, key: string) => {
@@ -164,6 +168,7 @@ interface CallLogsKeyContext {
   setOpenCallId: (id: string | null) => void
   setCursor: React.Dispatch<React.SetStateAction<number>>
   openCall: (call: CallLog) => void
+  table: HTMLDivElement | null
 }
 
 const isDownKey = (e: KeyboardEvent) => e.key === "ArrowDown" || e.key === "j"
@@ -188,10 +193,48 @@ function handleSplitKey(e: KeyboardEvent, k: CallLogsKeyContext) {
   }
 }
 
-// On the table: ↓/j and ↑/k move the cursor, Enter opens the call under it.
+// →/← glide the table to the next / previous column's left edge, just past the
+// pinned column(s). A press during a glide aims one column further from where
+// that glide is heading, and the glide carries on from where it is, so held
+// keys keep moving evenly instead of restarting.
+const COLUMN_GLIDE_MS = 180
+let columnGlide: { target: number; frame: number } | null = null
+
+function glideTo(container: HTMLDivElement, target: number) {
+  if (columnGlide) cancelAnimationFrame(columnGlide.frame)
+  const start = container.scrollLeft
+  const startedAt = performance.now()
+  const step = (now: number) => {
+    const t = Math.min(1, (now - startedAt) / COLUMN_GLIDE_MS)
+    container.scrollLeft = start + (target - start) * (1 - (1 - t) ** 3) // ease-out
+    if (t < 1) columnGlide = { target, frame: requestAnimationFrame(step) }
+    else columnGlide = null
+  }
+  columnGlide = { target, frame: requestAnimationFrame(step) }
+}
+
+function scrollTableColumns(container: HTMLDivElement | null, dir: 1 | -1) {
+  if (!container) return
+  const heads = [...container.querySelectorAll<HTMLElement>("thead tr:first-child th")].slice(0, -1) // last is the filler
+  const pinned = heads.filter((th) => th.style.left !== "")
+  const pinnedWidth = pinned.reduce((w, th) => w + th.offsetWidth, 0)
+  const max = container.scrollWidth - container.clientWidth
+  const edges = heads.filter((th) => !pinned.includes(th)).map((th) => Math.min(max, Math.max(0, th.offsetLeft - pinnedWidth)))
+  const from = columnGlide?.target ?? container.scrollLeft
+  const target = dir === 1
+    ? edges.find((x) => x > from + 1) ?? max
+    : edges.findLast((x) => x < from - 1) ?? 0
+  glideTo(container, target)
+}
+
+// On the table: ↓/j and ↑/k move the cursor, →/← move a column sideways,
+// Enter opens the call under it.
 function handleTableKey(e: KeyboardEvent, k: CallLogsKeyContext) {
   const last = k.calls.length - 1
-  if (isDownKey(e)) {
+  if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+    e.preventDefault()
+    scrollTableColumns(k.table, e.key === "ArrowRight" ? 1 : -1)
+  } else if (isDownKey(e)) {
     e.preventDefault()
     k.setCursor((c) => (c < 0 ? 0 : Math.min(last, c + 1)))
   } else if (isUpKey(e)) {
@@ -230,7 +273,7 @@ function handleCallLogsKey(e: KeyboardEvent, k: CallLogsKeyContext) {
 }
 
 const CallLogsV2: React.FC<CallLogsV2Props> = ({
-  project, agent, isLoading: parentLoading, dateRange, onAgentUpdated, openDownloadSettings,
+  project, agent, isLoading: parentLoading, dateRange, onAgentUpdated, openDownloadSettings, isActive = true,
 }) => {
   const router = useRouter()
   const { user } = useUser()
@@ -378,6 +421,7 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
 
   // ── Selection actions (same output as the legacy page) ─────────────────────
   const selectedCalls = useMemo(() => currentPageCalls.filter((c) => selectedIds.has(c.id)), [currentPageCalls, selectedIds])
+  const [reanalyzeOpen, setReanalyzeOpen] = useState(false)
   const [copyFeedback, setCopyFeedback] = useState(false)
   const buildSelectedRecords = useCallback(
     () => selectedCalls.map((row) => flattenCallLogForCSV(row, visibleColumns.basic, visibleColumns.metadata, visibleColumns.transcription_metrics)),
@@ -421,13 +465,24 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
     else globalThis.history.replaceState(null, "", url)
   }, [pathname, searchParams])
   const splitOpen = !!openCallId && !selectedCampaign
-  const openedCall = splitOpen ? findCall(currentPageCalls, openCallId) : null
-  // Whether a call has been open on this visit. Only then may the page move the
-  // split to another call by itself; a link's call that isn't in the list shows
-  // "not found" instead of quietly opening someone else's call.
+  const pageCall = splitOpen ? findCall(currentPageCalls, openCallId) : null
+  // Whether a call has been opened from the list on this visit. Only then may the
+  // page move the split to another call by itself (paging, filters). A shared
+  // link's call that isn't in the loaded page is fetched on its own instead.
   const [browsingCalls, setBrowsingCalls] = useState(false)
-  useEffect(() => { if (openedCall) setBrowsingCalls(true) }, [openedCall])
-  const openCallMissing = splitOpen && !isLoading && !openedCall && (!browsingCalls || currentPageCalls.length === 0)
+  useEffect(() => { if (pageCall) setBrowsingCalls(true) }, [pageCall])
+  const needsLinkedCall = splitOpen && !isLoading && !pageCall && !browsingCalls
+  const linkedCall = useCallLogById({
+    agentId: agent?.id,
+    projectId: project?.id,
+    callId: openCallId,
+    select: getSelectColumns(role),
+    enabled: needsLinkedCall,
+    userId: user?.id,
+    userEmail: userEmail ?? undefined,
+  })
+  const openedCall = pageCall ?? (needsLinkedCall ? linkedCall.data ?? null : null)
+  const openCallMissing = needsLinkedCall && !linkedCall.isFetching && !linkedCall.data
 
   // From the table it's a new history entry; from the split list it's a switch.
   const openCall = useCallback((call: CallLog) => setOpenCallId(call.id, openCallId ? "replace" : "push"), [setOpenCallId, openCallId])
@@ -472,10 +527,11 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
     const onKey = (e: KeyboardEvent) => handleCallLogsKey(e, {
       root: rootRef.current, selectedCampaign, pageLoading, splitOpen, calls: currentPageCalls, cursor, openCallId,
       goToNextPage, goToPrevPage, toggleRightPanel, closeSplit, setOpenCallId, setCursor, openCall,
+      table: scrollContainerRef.current,
     })
     globalThis.addEventListener("keydown", onKey)
     return () => globalThis.removeEventListener("keydown", onKey)
-  }, [currentPageCalls, cursor, openCall, goToNextPage, goToPrevPage, selectedCampaign, splitOpen, openCallId, closeSplit, setOpenCallId, toggleRightPanel, pageLoading])
+  }, [currentPageCalls, cursor, openCall, goToNextPage, goToPrevPage, selectedCampaign, splitOpen, openCallId, closeSplit, setOpenCallId, toggleRightPanel, pageLoading, scrollContainerRef])
 
   // Keep the cursor row in view vertically only — scrollIntoView would also jump
   // the table sideways, losing whatever column the user had scrolled to.
@@ -629,7 +685,17 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
             copyFeedback={copyFeedback}
             onCopy={copySelected}
             onExportCsv={() => triggerCSVFileDownload(buildSelectedRecords())}
+            onReanalyze={canReanalyze ? () => setReanalyzeOpen(true) : undefined}
             onClear={() => setSelectedIds(new Set())}
+          />
+        )}
+        {canReanalyze && agent?.id && (
+          <ReanalyzeSelectedDialog
+            open={reanalyzeOpen}
+            onOpenChange={setReanalyzeOpen}
+            calls={selectedCalls}
+            agentId={agent.id}
+            onQueued={() => setSelectedIds(new Set())}
           />
         )}
 
@@ -643,7 +709,8 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
           }}
           disabled={isLoading || isRefetching || isFetchingNextPage}
         >
-          <RefreshCw className={cn("h-4 w-4", (isLoading || isRefetching) && "animate-spin")} />
+          {/* the refresh glyph draws small in its box: a little larger to match the toolbar's other icons */}
+          <RefreshCw size={16.5} className={cn("shrink-0", (isLoading || isRefetching) && "animate-spin")} />
         </button>
 
         {!splitOpen && (
@@ -711,7 +778,7 @@ const CallLogsV2: React.FC<CallLogsV2Props> = ({
       />
 
       {/* Viewers don't get Ask Pi (the server refuses them too). */}
-      {project?.id && agent?.id && role && !isViewerRole(role) && (
+      {isActive && project?.id && agent?.id && role && !isViewerRole(role) && (
         <AskPi
           projectId={project.id}
           agentId={agent.id}
@@ -745,11 +812,13 @@ function LoadErrorState({ error, hasFilters, onClearFilters }: Readonly<{ error:
   )
 }
 
-function SelectionBar({ count, copyFeedback, onCopy, onExportCsv, onClear }: Readonly<{
+function SelectionBar({ count, copyFeedback, onCopy, onExportCsv, onReanalyze, onClear }: Readonly<{
   count: number
   copyFeedback: boolean
   onCopy: () => void
   onExportCsv: () => void
+  /** Rerun the field extractor / metrics on the selected calls; absent without permission. */
+  onReanalyze?: () => void
   onClear: () => void
 }>) {
   return (
@@ -762,6 +831,11 @@ function SelectionBar({ count, copyFeedback, onCopy, onExportCsv, onClear }: Rea
       <button type="button" className="h-6 rounded-md px-2 text-[var(--cl-text2)] hover:bg-[var(--cl-hover)] hover:text-[var(--cl-text)]" onClick={onExportCsv}>
         Export CSV
       </button>
+      {onReanalyze && (
+        <button type="button" className="h-6 rounded-md px-2 text-[var(--cl-text2)] hover:bg-[var(--cl-hover)] hover:text-[var(--cl-text)]" onClick={onReanalyze}>
+          Reanalyze
+        </button>
+      )}
       <button type="button" className="grid h-6 w-6 place-items-center rounded-md text-[var(--cl-text3)] hover:bg-[var(--cl-hover)]" aria-label="Clear selection" onClick={onClear}>
         <X className="h-3 w-3" />
       </button>
@@ -828,9 +902,9 @@ function MoreMenuItems({
           Download settings
         </Button>
       )}
-      <Button variant="ghost" size="sm" className="justify-start text-[var(--cl-text2)]" onClick={onSwitchToClassic}>
-        <History className="mr-2 h-4 w-4" />
-        Switch to classic view
+      <Button variant="ghost" size="sm" className="mt-1 h-7 justify-start text-[12px] text-[var(--cl-text3)]" onClick={onSwitchToClassic}>
+        <History className="mr-2 h-3.5 w-3.5" />
+        Classic view
       </Button>
     </>
   )

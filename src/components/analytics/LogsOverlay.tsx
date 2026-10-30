@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { ChartWidget } from './ChartCard'
 import { useCsvExport, type DashboardContext } from '@/hooks/useAnalyticsDashboard'
+import { formatBucket } from './chartData'
 
 type Row = {
   id: string
@@ -24,10 +25,12 @@ type Row = {
   duration_seconds: number | null
   call_ended_reason: string | null
   series?: string | null
+  /** One-per-entity charts: how many calls this row stands for in the look-back window. */
+  calls_in_window?: number | string | null
 }
 
 export function LogsOverlay({
-  agentId, projectId, agentIds, agentNames, widget, dimensionValue, open, onClose, downloadDisabled, chartTotal, grainLabel, seriesLabel, dashboard,
+  agentId, projectId, agentIds, agentNames, widget, dimensionValue, bucketValue, bucketUnit, open, onClose, downloadDisabled, chartTotal, grainLabel, seriesLabel, dashboard,
 }: Readonly<{
   /** The single agent this canvas is scoped to — absent for the org-wide
    * Explore canvas, whose rows can each come from a different agent (see
@@ -49,6 +52,10 @@ export function LogsOverlay({
   widget: ChartWidget | null
   /** undefined = every row behind the chart; null = the rows with no value. */
   dimensionValue: string | null | undefined
+  /** The clicked day/hour/month on a chart over time (the chart's own x). */
+  bucketValue?: string
+  /** hour, day, week or month — what that bucket spans. */
+  bucketUnit?: string
   open: boolean
   onClose: () => void
   downloadDisabled: boolean
@@ -85,6 +92,7 @@ export function LogsOverlay({
             ...(agentId ? { agentId } : { projectId, agentIds: agentIds ?? undefined }),
             spec: widget.spec,
             dimensionValue,
+            bucketValue,
             cursor: next,
             filters: dashboard.filters,
             range: dashboard.range,
@@ -104,7 +112,7 @@ export function LogsOverlay({
         setLoading(false)
       }
     },
-    [agentId, projectId, agentIds, widget, dimensionValue, dashboard]
+    [agentId, projectId, agentIds, widget, dimensionValue, bucketValue, dashboard]
   )
 
   useEffect(() => {
@@ -116,9 +124,12 @@ export function LogsOverlay({
   }, [open, load])
 
   const grain = widget?.spec.grain ?? 'interaction'
-  const winnerLabel = widget?.spec.dedupe?.winner === 'most_recent' ? 'most recent attempt' : 'best outcome'
+  const dedupe = widget?.spec.dedupe
+  let winnerLabel = 'best outcome'
+  if (dedupe?.winner === 'most_recent') winnerLabel = dedupe.answered_only ? 'last answered call' : 'most recent attempt'
   // the breakdown column earns its space only when the rows differ in it
-  const showSeries = Boolean(widget?.spec.dimension) && dimensionValue === undefined
+  const showSeries = Boolean(widget?.spec.dimension)
+  const lookback = widget?.spec.dedupe?.lookback_days ?? 90
 
   /**
    * The call itself, in a new tab — the dashboard you were reading is still
@@ -143,6 +154,9 @@ export function LogsOverlay({
         <DialogHeader className="border-b border-border px-5 py-4">
           <DialogTitle className="text-base">
             {widget?.title}
+            {bucketValue !== undefined && (
+              <span className="ml-2 font-normal text-muted-foreground">· {formatBucket(bucketValue, bucketUnit)}</span>
+            )}
             {dimensionValue !== undefined && (
               <span className="ml-2 font-normal text-muted-foreground">
                 · {dimensionValue ?? 'no value'}
@@ -152,10 +166,11 @@ export function LogsOverlay({
 
           {/* explains why the count here can differ from the chart's number */}
           <p className="text-xs text-muted-foreground">
-            {grain === 'entity' ? `${grainLabel}, ${winnerLabel}` : grainLabel}
-            {/* only show this when dedupe actually collapsed something —
-                "54 calls became 54 rows" just looks like a bug */}
-            {grain === 'entity' && chartTotal && chartTotal !== rows.length
+            {grain === 'entity' ? `${grainLabel} — each counted once, keeping its ${winnerLabel}` : grainLabel}
+            {/* only when the whole chart is listed (not one bar), fully loaded, and
+                dedupe actually collapsed something — "54 calls became 54 rows"
+                looks like a bug, and so does comparing one bar to the chart total */}
+            {grain === 'entity' && !loading && !cursor && !error && dimensionValue === undefined && bucketValue === undefined && chartTotal && chartTotal !== rows.length
               ? ` — ${chartTotal.toLocaleString()} calls became ${rows.length.toLocaleString()} rows`
               : ''}
             {rows.length > 0 && grain !== 'entity' ? ` · ${rows.length.toLocaleString()} shown` : ''}
@@ -167,7 +182,7 @@ export function LogsOverlay({
                 variant="outline"
                 size="sm"
                 disabled={csv.busy || !widget}
-                onClick={() => widget && csv.run(widget.spec, dimensionValue, widget.title, dashboard)}
+                onClick={() => widget && csv.run(widget.spec, dimensionValue, widget.title, dashboard, bucketValue)}
               >
                 {csv.busy ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-2 h-3.5 w-3.5" />}
                 Export CSV
@@ -205,10 +220,13 @@ export function LogsOverlay({
                   {!agentId && <th className="py-2 pr-4 font-medium">Agent</th>}
                   <th className="py-2 font-medium">Number</th>
                   <th className="py-2 font-medium">Length</th>
-                  <th className="py-2 font-medium">Ended</th>
+                  <th className="py-2 font-medium">Call ended</th>
                   {/* the value this row landed in — pointless when every row on
                       screen has the same one, because the title already says it */}
                   {showSeries && <th className="py-2 font-medium">{seriesLabel ?? 'Value'}</th>}
+                  {grain === 'entity' && (
+                    <th className="py-2 font-medium" title={`Calls from this number in the last ${lookback} days. Only the one shown is counted.`}>Calls</th>
+                  )}
                   <th className="w-8 py-2" />
                 </tr>
               </thead>
@@ -243,6 +261,11 @@ export function LogsOverlay({
                     {showSeries && (
                       <td className="max-w-[10rem] truncate py-2 pr-4 text-muted-foreground" title={r.series ?? undefined}>
                         {r.series ?? '—'}
+                      </td>
+                    )}
+                    {grain === 'entity' && (
+                      <td className="whitespace-nowrap py-2 pr-4 tabular-nums text-muted-foreground" title={`${r.calls_in_window ?? 1} calls from this number in ${lookback} days`}>
+                        {r.calls_in_window ?? 1}
                       </td>
                     )}
                     <td className="py-2 text-right">

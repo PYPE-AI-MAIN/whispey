@@ -68,6 +68,8 @@ interface VoiceAgentConfig {
    * (node_enter, transition, variables_set, function_call, function_result, error, ended). */
   onWorkflowEvent?: (event: Record<string, any>) => void
   deploymentTarget?: 'classic' | 'docker'  // which voice backend this agent lives on
+  /** Runs before each call; resolves true to test the unpublished draft (`<name>__draft`) instead of the live config. */
+  prepareSession?: () => Promise<boolean>
 }
 
 function getSecureRandomInt(max: number): number {
@@ -88,7 +90,7 @@ function generateSecureId(prefix = 'user') {
 
 const WATCHDOG_MESSAGE =
   "The agent hasn't joined the call after a while — it may still be starting up (e.g. right after " +
-  "an Update Config). You can end the call and try again in a few seconds."
+  "a Publish). You can end the call and try again in a few seconds."
 
 function isAgentParticipant(identity = '', metadata = '') {
   const id = identity.toLowerCase()
@@ -96,7 +98,7 @@ function isAgentParticipant(identity = '', metadata = '') {
   return id.includes('agent') || id.includes('assistant') || m.includes('agent') || m.includes('assistant')
 }
 
-export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/start-session', onWorkflowEvent, deploymentTarget = 'classic' }: VoiceAgentConfig): [VoiceAgentState, VoiceAgentActions] {
+export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/start-session', onWorkflowEvent, deploymentTarget = 'classic', prepareSession }: VoiceAgentConfig): [VoiceAgentState, VoiceAgentActions] {
   const [room, setRoom]                       = useState<Room | null>(null)
   const [isConnected, setIsConnected]         = useState(false)
   const [isConnecting, setIsConnecting]       = useState(false)
@@ -113,9 +115,11 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
   const audioElementsRef       = useRef<Set<HTMLAudioElement>>(new Set())
   const roomRef                = useRef<Room | null>(null)
   const onWorkflowEventRef     = useRef(onWorkflowEvent)
+  const prepareSessionRef      = useRef(prepareSession)
 
   useEffect(() => { roomRef.current = room }, [room])
   useEffect(() => { onWorkflowEventRef.current = onWorkflowEvent }, [onWorkflowEvent])
+  useEffect(() => { prepareSessionRef.current = prepareSession }, [prepareSession])
 
   useEffect(() => {
     if (isConnected) {
@@ -242,11 +246,11 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
 
   }, [mode, volume, upsertTranscript, cleanupAudioElements])
 
-  const startWebSession = async (variables?: Record<string, string>): Promise<WebSession> => {
+  const startWebSession = async (variables?: Record<string, string>, useDraft = false): Promise<WebSession> => {
     const res = await fetch(sessionEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_identity: generateSecureId('user'), user_name: `User ${getSecureRandomInt(10000)}`, agent_name: agentName, deploymentTarget, ...(variables && Object.keys(variables).length ? { variables } : {}) }),
+      body: JSON.stringify({ user_identity: generateSecureId('user'), user_name: `User ${getSecureRandomInt(10000)}`, agent_name: useDraft ? `${agentName}__draft` : agentName, deploymentTarget, ...(variables && Object.keys(variables).length ? { variables } : {}) }),
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Unknown error' }))
@@ -265,7 +269,8 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
     setTranscripts([])
     setIsConnecting(true); setConnectionError(null)
     try {
-      const sessionData = await startWebSession(opts?.variables)
+      const useDraft = (await prepareSessionRef.current?.()) ?? false
+      const sessionData = await startWebSession(opts?.variables, useDraft)
       setWebSession(sessionData)
       const liveKitRoom = new Room({
         audioCaptureDefaults: { autoGainControl: true, echoCancellation: true, noiseSuppression: true },
