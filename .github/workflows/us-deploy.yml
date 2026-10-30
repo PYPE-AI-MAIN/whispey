@@ -56,9 +56,11 @@ jobs:
           set -e
           aws secretsmanager get-secret-value --region us-east-2 --secret-id us/whispey-frontend --query SecretString --output text | jq -r 'to_entries[]|"\(.key)=\(.value)"' > /opt/frontend/.env
           aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 764762393967.dkr.ecr.us-east-2.amazonaws.com >/dev/null 2>&1
+          docker image prune -f >/dev/null
           docker pull -q $IMAGE:latest
           docker rm -f frontend 2>/dev/null || true
           docker run -d --name frontend --restart unless-stopped -p 127.0.0.1:3000:3000 --env-file /opt/frontend/.env -v /var/log/whispey:/var/log/whispey $IMAGE:latest >/dev/null
+          docker image prune -f >/dev/null
           for i in $(seq 1 20); do c=$(curl -s -o /dev/null -w '%{http_code}' -m 4 http://127.0.0.1:3000/ || true); [ "$c" = 200 -o "$c" = 307 -o "$c" = 308 ] && exit 0; sleep 3; done
           echo unhealthy; exit 1
           XEOF
