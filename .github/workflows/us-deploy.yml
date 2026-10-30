@@ -35,7 +35,7 @@ jobs:
         run: |
           docker build \
             --build-arg NEXT_PUBLIC_APP_URL=https://us.whispey.pypeai.com \
-            --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_d29ya2FibGUtYm94ZXItODEuY2xlcmsuYWNjb3VudHMuZGV2JA \
+            --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_Y2xlcmsudXMud2hpc3BleS5weXBlYWkuY29tJA \
             --build-arg NEXT_PUBLIC_AGENT_CREATION_WHITELIST='mihirvt@gmail.com, test@pypeai.com,asmin.m@quantana.in,suryadipta@pypeai.com, da76780@gmail.com,deepesh@pypeai.com,adarsh@pypeai.com,ashish@pypeai.com,dhruv@pypeai.com,abhinav@pypeai.com,friends@pypeai.com,agrawaldeepesh546@gmail.com' \
             --build-arg NEXT_PUBLIC_POSTHOG_BLACKLIST=da76780@gmail.com,deepesh@pypeai.com,adarsh@pypeai.com,ashish@pypeai.com,dhruv@pypeai.com,abhinav@pypeai.com,friends@pypeai.com,agrawaldeepesh546@gmail.com,suryadipta@pypeai.com \
             --build-arg NEXT_PUBLIC_POSTHOG_KEY=phc_hKFSH33YMiwHUsHsXMrdl57qECtzeu0sGGeDP8TQIMl \
@@ -52,8 +52,22 @@ jobs:
 
       - name: Recreate container on the box
         run: |
+          cat > remote.sh <<'XEOF'
+          set -e
+          aws secretsmanager get-secret-value --region us-east-2 --secret-id us/whispey-frontend --query SecretString --output text | jq -r 'to_entries[]|"\(.key)=\(.value)"' > /opt/frontend/.env
+          aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 764762393967.dkr.ecr.us-east-2.amazonaws.com >/dev/null 2>&1
+          docker pull -q $IMAGE:latest
+          docker rm -f frontend 2>/dev/null || true
+          docker run -d --name frontend --restart unless-stopped -p 127.0.0.1:3000:3000 --env-file /opt/frontend/.env -v /var/log/whispey:/var/log/whispey $IMAGE:latest >/dev/null
+          for i in $(seq 1 20); do c=$(curl -s -o /dev/null -w '%{http_code}' -m 4 http://127.0.0.1:3000/ || true); [ "$c" = 200 -o "$c" = 307 -o "$c" = 308 ] && exit 0; sleep 3; done
+          echo unhealthy; exit 1
+          XEOF
+          B64=$(IMAGE=$IMAGE envsubst '$IMAGE' < remote.sh | base64 -w0)
           CMD_ID=$(aws ssm send-command --instance-ids $INSTANCE_ID --document-name AWS-RunShellScript \
-            --parameters 'commands=["set -e","aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 764762393967.dkr.ecr.us-east-2.amazonaws.com >/dev/null 2>&1","docker pull -q ${{ env.IMAGE }}:latest","docker rm -f frontend 2>/dev/null || true","docker run -d --name frontend --restart unless-stopped -p 127.0.0.1:3000:3000 --env-file /opt/frontend/.env -v /var/log/whispey:/var/log/whispey ${{ env.IMAGE }}:latest >/dev/null","for i in $(seq 1 20); do c=$(curl -s -o /dev/null -w %{http_code} -m 4 http://127.0.0.1:3000/ || true); [ \"$c\" = 200 -o \"$c\" = 307 -o \"$c\" = 308 ] && exit 0; sleep 3; done; echo unhealthy; exit 1"]' \
-            --query Command.CommandId --output text)
-          aws ssm wait command-executed --command-id $CMD_ID --instance-id $INSTANCE_ID
-          aws ssm get-command-invocation --command-id $CMD_ID --instance-id $INSTANCE_ID --query '[Status,StandardErrorContent]' --output text
+            --parameters "commands=[\"echo $B64 | base64 -d | bash\"]" --query Command.CommandId --output text)
+          for i in $(seq 1 60); do
+            S=$(aws ssm get-command-invocation --command-id $CMD_ID --instance-id $INSTANCE_ID --query Status --output text 2>/dev/null || echo Pending)
+            case $S in InProgress|Pending|Delayed) sleep 10;; *) break;; esac
+          done
+          echo "status: $S"
+          [ "$S" = Success ]
