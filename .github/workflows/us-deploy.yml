@@ -36,8 +36,8 @@ jobs:
           docker build \
             --build-arg NEXT_PUBLIC_APP_URL=https://us.whispey.pypeai.com \
             --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_Y2xlcmsudXMud2hpc3BleS5weXBlYWkuY29tJA \
-            --build-arg NEXT_PUBLIC_AGENT_CREATION_WHITELIST='mihirvt@gmail.com, test@pypeai.com,asmin.m@quantana.in,suryadipta@pypeai.com, da76780@gmail.com,deepesh@pypeai.com,adarsh@pypeai.com,ashish@pypeai.com,dhruv@pypeai.com,abhinav@pypeai.com,friends@pypeai.com,agrawaldeepesh546@gmail.com' \
-            --build-arg NEXT_PUBLIC_POSTHOG_BLACKLIST=da76780@gmail.com,deepesh@pypeai.com,adarsh@pypeai.com,ashish@pypeai.com,dhruv@pypeai.com,abhinav@pypeai.com,friends@pypeai.com,agrawaldeepesh546@gmail.com,suryadipta@pypeai.com \
+            --build-arg NEXT_PUBLIC_AGENT_CREATION_WHITELIST='mihirvt@gmail.com, test@pypeai.com,asmin.m@quantana.in,suryadipta@pypeai.com, da76780@gmail.com,deepesh@pypeai.com,adarsh@pypeai.com,ashish@pypeai.com,dhruv@pypeai.com,abhinav@pypeai.com,friends@pypeai.com,agrawaldeepesh546@gmail.com,nitin@pypeai.com,tinkal@pypeai.com,amneek@pypeai.com' \
+            --build-arg NEXT_PUBLIC_POSTHOG_BLACKLIST=da76780@gmail.com,deepesh@pypeai.com,adarsh@pypeai.com,ashish@pypeai.com,dhruv@pypeai.com,abhinav@pypeai.com,friends@pypeai.com,agrawaldeepesh546@gmail.com,suryadipta@pypeai.com,nitin@pypeai.com,tinkal@pypeai.com,amneek@pypeai.com \
             --build-arg NEXT_PUBLIC_POSTHOG_KEY=phc_hKFSH33YMiwHUsHsXMrdl57qECtzeu0sGGeDP8TQIMl \
             --build-arg NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com \
             --build-arg NEXT_PUBLIC_SONIC_LINKER_ORG_ID=g43AdvEo9D3nPoxTzbz5Nn \
