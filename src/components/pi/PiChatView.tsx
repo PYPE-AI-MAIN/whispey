@@ -1,7 +1,6 @@
 'use client'
 
 import { createContext, memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowUp, Bot, Check, ChevronDown, Mic, PhoneIncoming, ShieldAlert, Sparkles, TrendingUp, Trophy, type LucideIcon } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
@@ -14,7 +13,7 @@ import { closeOpenMarkdown, nextRevealLength, splitBlocks } from '@/lib/piMarkdo
 import { parsePromptEdit } from '@/lib/promptEdit'
 import { usePiDock } from '@/contexts/PiDockContext'
 import {
-  applyEvent, classifyEvent, consumeSse, failAssistant, navigationTarget, parseSseLine, withToolCallResult,
+  applyEvent, classifyEvent, consumeSse, failAssistant, latestPendingIds, parseSseLine, withToolCallResult,
   type Classified, type ContextUsage, type Message, type ToolCall,
 } from '@/lib/piStream'
 
@@ -517,11 +516,11 @@ const StreamedMarkdown = memo(function StreamedMarkdown({ content, isFinal }: Re
 })
 
 
-type LatestToolIds = { voice: string | null; form: string | null; selector: string | null }
+type LatestToolIds = { voice: string | null; form: string | null; selector: string | null; pending: Map<string, string> }
 
 /** Only the most recent voice call / tool form / agent chooser is shown live; older ones stay as plain history. */
 function latestToolIds(messages: Message[]): LatestToolIds {
-  const latest: LatestToolIds = { voice: null, form: null, selector: null }
+  const latest: LatestToolIds = { voice: null, form: null, selector: null, pending: new Map() }
   for (const msg of messages) {
     for (const tc of msg.toolCalls ?? []) {
       if (voiceTarget(tc)) latest.voice = tc.id
@@ -529,6 +528,7 @@ function latestToolIds(messages: Message[]): LatestToolIds {
       if (agentSelector(tc)) latest.selector = tc.id
     }
   }
+  latest.pending = latestPendingIds(messages, (tc) => CONFIRMED_TOOLS.has(tc.name))
   return latest
 }
 
@@ -558,7 +558,8 @@ function ToolCallBlock({
   const form = tc.id === latest.form ? toolForm(tc) : null
   const page = pageTarget(tc)
   const agents = tc.id === latest.selector ? agentSelector(tc) : null
-  const pending = pendingAction(tc)
+  // several edit_agent calls in one turn must not stack several Update cards
+  const pending = latest.pending.get(tc.name) === tc.id ? pendingAction(tc) : null
   const cancelled = tc.result?.__cancelled === true
   return (
     <div>
@@ -639,7 +640,6 @@ export default function PiChatView({
   /** Floating-box layout: tighter spacing, no footer chips. */
   compact?: boolean
 }>) {
-  const router = useRouter()
   const [messages, setMessages] = useState<Message[]>(initialMessages ?? [])
   const [input, setInput] = useState('')
   // Remembered per browser, not per chat — switching mid-chat is fine, the history is model-agnostic.
@@ -799,16 +799,12 @@ export default function PiChatView({
         onSessionCreated?.(event.sessionId)
         return
       }
-      if (event.kind === 'toolResult') {
-        const href = navigationTarget(event.toolResult, projectId)
-        if (href) router.push(href)
-      }
       if (event.kind === 'error') setRetryable(true)
       setMessages((prev) => applyEvent(prev, assistantId, event))
     } catch {
       // malformed chunk
     }
-  }, [onSessionCreated, projectId, router])
+  }, [onSessionCreated])
 
   const sendMessage = useCallback(async (userContent: string, historyBefore: Message[]) => {
     if (isStreaming || !userContent.trim() || readOnly) return
