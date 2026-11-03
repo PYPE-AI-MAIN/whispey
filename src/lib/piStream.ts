@@ -99,10 +99,11 @@ export function applyEvent(messages: Message[], assistantId: string, event: Clas
   }
 }
 
-/** A page inside this project that a tool result asks the browser to open, or null. Never another project, never an external URL. */
-export function navigationTarget(toolResult: { result?: any; success?: boolean }, projectId: string): string | null {
-  const href = toolResult.result?.href
-  return toolResult.success && typeof href === 'string' && href.startsWith(`/${projectId}/`) ? href : null
+/** Per tool name, the id of the newest call, resolved or not, so an older card never reappears once the newest is confirmed. Older ones must not render a second card. */
+export function latestPendingIds(messages: Message[], isGated: (tc: ToolCall) => boolean): Map<string, string> {
+  const latest = new Map<string, string>()
+  for (const m of messages) for (const tc of m.toolCalls ?? []) if (isGated(tc)) latest.set(tc.name, tc.id)
+  return latest
 }
 
 /** Records the outcome of a Confirm/Cancel click on the tool call it belongs to. */
