@@ -4,6 +4,7 @@ import {
   dispositionsToAgentColumns,
   DISPOSITION_SUGGESTIONS,
   MAX_DISPOSITIONS,
+  MAX_DESCRIPTION,
   mergeDispositions,
   parseStoredDispositions,
   validateRemoveKeys,
@@ -51,7 +52,7 @@ describe('validateDispositions', () => {
   it('rejects a missing, blank or overlong description', () => {
     expect(validateDispositions([{ key: 'a' }]).ok).toBe(false)
     expect(validateDispositions([{ key: 'a', description: '   ' }]).ok).toBe(false)
-    expect(validateDispositions([{ key: 'a', description: 'x'.repeat(501) }]).ok).toBe(false)
+    expect(validateDispositions([{ key: 'a', description: 'x'.repeat(MAX_DESCRIPTION + 1) }]).ok).toBe(false)
   })
 
   it('rejects duplicate keys', () => {
@@ -158,5 +159,13 @@ describe('mergeDispositions', () => {
       ok: true,
       dispositions: [{ key: 'a', description: 'd' }],
     })
+  })
+})
+
+describe('description length', () => {
+  it('allows long descriptions up to the limit, and not beyond', () => {
+    expect(validateDispositions([{ key: 'rules', description: 'x'.repeat(MAX_DESCRIPTION) }]).ok).toBe(true)
+    expect(validateDispositions([{ key: 'rules', description: 'x'.repeat(MAX_DESCRIPTION + 1) }]).ok).toBe(false)
+    expect(MAX_DESCRIPTION).toBeGreaterThanOrEqual(10_000)
   })
 })

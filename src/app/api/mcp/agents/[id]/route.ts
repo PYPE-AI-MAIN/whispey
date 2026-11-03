@@ -37,6 +37,8 @@ interface UpdateBody {
   add_dispositions?: unknown
   remove_dispositions?: unknown
   created_by?: string
+  // Set by the MCP Agent Studio service only for internal Pype keys.
+  internal?: boolean
 }
 
 type McpVoice = NonNullable<ReturnType<typeof findMcpVoice>>
@@ -214,7 +216,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!parsed.ok) return parsed.response
   const { projectId, body, mcpVoice } = parsed.input
 
-  const owned = await loadEditableAgent(supabase, agentId, projectId, body.created_by)
+  const owned = await loadEditableAgent(supabase, agentId, projectId, body.created_by, { internal: body.internal === true })
   if (!owned.ok) return fail(owned.error, owned.status)
   // A conversation flow's prompts live in its workflow, not in a single
   // assistant config — editing them here would deploy a single-prompt config

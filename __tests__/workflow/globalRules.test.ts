@@ -78,7 +78,7 @@ describe('start fix suggestion', () => {
   })
 })
 
-import { deployable, stripExpandedEdges } from '@/lib/workflow/globalRules'
+import { deployable, stripExpandedEdges, MAX_DEPLOY_BYTES } from '@/lib/workflow/globalRules'
 
 describe('deploy compatibility (older backends ignore globalRules)', () => {
   const base = {
@@ -103,6 +103,21 @@ describe('deploy compatibility (older backends ignore globalRules)', () => {
     const plain = { nodes: base.nodes, edges: base.edges, globalRules: [] }
     expect(deployable(plain as any)).toBe(plain)
     expect(stripExpandedEdges(plain as any)).toBe(plain)
+  })
+
+  it('sends the rules alone when the copies would make the flow too large to store', () => {
+    const out = deployable(base as any, 100)
+    expect(out).toBe(base)
+    expect(out.globalRules).toHaveLength(1)
+    expect(out.edges.map((e: any) => e.id)).toEqual(['e1'])
+  })
+
+  it('keeps the copies while the flow is within the limit', () => {
+    expect(deployable(base as any, MAX_DEPLOY_BYTES).edges).toHaveLength(3)
+  })
+
+  it('the limit leaves room under the 400 KB DynamoDB item the backend stores it in', () => {
+    expect(MAX_DEPLOY_BYTES).toBeLessThan(400 * 1024 * 0.8)
   })
 
   it('merging again widens an existing rule instead of duplicating it', () => {

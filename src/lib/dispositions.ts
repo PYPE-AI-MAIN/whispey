@@ -11,7 +11,9 @@ export interface Disposition {
 
 const KEY_RE = /^[a-z][a-z0-9_]{0,39}$/
 export const MAX_DISPOSITIONS = 20
-const MAX_DESCRIPTION = 500
+// Generous on purpose: a description often carries the full extraction rules
+// (allowed values, edge cases, examples). The dashboard editor has no limit.
+export const MAX_DESCRIPTION = 10_000
 
 export type DispositionsResult =
   | { ok: true; dispositions: Disposition[] }

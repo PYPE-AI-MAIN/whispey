@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import {
-  applyEvent, classifyEvent, consumeSse, failAssistant, navigationTarget, parseSseLine, withToolCallResult,
+  applyEvent, classifyEvent, consumeSse, failAssistant, latestPendingIds, parseSseLine, withToolCallResult,
   type Message,
 } from '@/lib/piStream'
 
@@ -84,15 +84,15 @@ describe('applyEvent', () => {
   })
 })
 
-describe('navigationTarget', () => {
-  it('only opens successful results that point inside this project', () => {
-    expect(navigationTarget({ success: true, result: { href: '/p1/agents' } }, 'p1')).toBe('/p1/agents')
-    expect(navigationTarget({ success: false, result: { href: '/p1/agents' } }, 'p1')).toBeNull()
-    expect(navigationTarget({ success: true, result: { href: '/p2/agents' } }, 'p1')).toBeNull()
-    expect(navigationTarget({ success: true, result: { href: 'https://evil.example/p1/x' } }, 'p1')).toBeNull()
-    expect(navigationTarget({ success: true, result: { href: '//evil.example' } }, 'p1')).toBeNull()
-    expect(navigationTarget({ success: true, result: { href: 5 } }, 'p1')).toBeNull()
-    expect(navigationTarget({ success: true }, 'p1')).toBeNull()
+describe('latestPendingIds', () => {
+  it('keeps only the newest pending call per tool so edits do not stack Update cards', () => {
+    const tc = (id: string, name: string, pending: boolean) => ({ id, name, arguments: {}, result: pending ? { __pending: true } : {} })
+    const msgs: Message[] = [user, reply({ toolCalls: [tc('e1', 'edit_agent', true), tc('e2', 'edit_agent', true), tc('c1', 'create_agent', true), tc('e0', 'edit_agent', false)] })]
+    const out = latestPendingIds(msgs, (t) => t.name !== 'other')
+    expect(out.get('edit_agent')).toBe('e0') // newest wins even once resolved, so e1/e2 never come back
+    expect(out.get('create_agent')).toBe('c1')
+    expect(out.size).toBe(2)
+    expect(latestPendingIds([reply({ toolCalls: [tc('o1', 'other', true)] })], (t) => t.name !== 'other').size).toBe(0)
   })
 })
 

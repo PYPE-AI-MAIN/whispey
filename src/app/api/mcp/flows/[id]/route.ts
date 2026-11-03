@@ -32,6 +32,8 @@ interface UpdateFlowBody {
   project_id?: string
   instruction?: string
   created_by?: string
+  // Set by the MCP Agent Studio service only for internal Pype keys.
+  internal?: boolean
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -46,7 +48,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return fail(`instruction is too long (max ${MAX_INSTRUCTION} characters)`, 400)
   }
 
-  const owned = await loadEditableAgent(supabase, agentId, body.project_id, body.created_by)
+  const owned = await loadEditableAgent(supabase, agentId, body.project_id, body.created_by, { internal: body.internal === true })
   if (!owned.ok) return fail(owned.error, owned.status)
   if (owned.agent.configuration?.workflowMode !== true) {
     return fail('This agent is not a conversation flow — use update_agent to change it', 400)
