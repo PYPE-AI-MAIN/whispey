@@ -13,6 +13,7 @@ const state = vi.hoisted(() => ({
   seq: 0,
   createImpl: async (_args: any): Promise<any> => ({}),
   updates: [] as any[],
+  versions: [] as any[],
   deployCalls: [] as any[],
   deployResult: { ok: true } as any,
   assistant: {} as any,
@@ -44,6 +45,7 @@ vi.mock('@/lib/supabase-server', () => ({
       const chain: any = {
         select: () => chain, eq: () => chain, order: () => chain, in: () => chain, limit: () => chain,
         update: (patch: any) => { state.updates.push(patch); return chain },
+        insert: async (row: any) => { state.versions.push(row); return { error: null } },
         maybeSingle: async () => ({ data: state.agents[0] ?? null, error: null }),
         then: (resolve: any) => resolve({ data: state.agents, error: null }),
       }
@@ -91,7 +93,7 @@ async function sse(body: unknown) {
 const stored = (id: string) => state.sessions.get(id)
 
 beforeEach(() => {
-  state.sessions.clear(); state.agents = []; state.llm = []; state.llmCalls = []; state.authUser = 'user-1'; state.role = 'admin'; state.seq = 0; state.createImpl = defaultCreate; state.updates = []; state.deployCalls = []; state.deployResult = { ok: true }; state.assistant = { prompt: 'Hello world', llm: { temperature: 0.5 } }; state.configOk = true
+  state.sessions.clear(); state.agents = []; state.llm = []; state.llmCalls = []; state.authUser = 'user-1'; state.role = 'admin'; state.seq = 0; state.createImpl = defaultCreate; state.updates = []; state.versions = []; state.deployCalls = []; state.deployResult = { ok: true }; state.assistant = { prompt: 'Hello world', llm: { temperature: 0.5 } }; state.configOk = true
   vi.stubEnv('OPENAI_API_KEY', 'test-key')
   vi.stubEnv('AZURE_OPENAI_API_KEY', '')
   vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -448,6 +450,20 @@ describe('edit_agent (confirmed)', () => {
     expect(state.updates[0]).toMatchObject({ field_extractor_variables: { name: 'metadata.name' } })
     expect(state.deployCalls).toHaveLength(0)
     expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('saves the old and the new prompt as versions around a deploy', async () => {
+    await edit({ prompt: 'You are Bot.' })
+    expect(state.versions.map((v) => [v.commit_message, v.prompt_snapshot])).toEqual([
+      ['Pi: before edit', 'Hello world'],
+      ['Pi: edited via Ask Pi', 'You are Bot.'],
+    ])
+  })
+
+  it('does not save a version when the deploy fails after the before-snapshot', async () => {
+    state.deployResult = { ok: false, errorText: 'down' }
+    expect((await edit({ prompt: 'You are Bot.' })).success).toBe(false)
+    expect(state.versions.map((v) => v.commit_message)).toEqual(['Pi: before edit'])
   })
 
   it('validates extractor variables', async () => {

@@ -875,12 +875,29 @@ function sarvamLlm(args: any, assistant: any): { llm: Record<string, unknown> } 
   return { llm: { name: 'sarvam', provider: 'sarvam', model: llmModel, temperature: assistant.llm?.temperature ?? 0.3 } }
 }
 
+// A Pi edit used to overwrite the live config with no restore point. Best effort: never blocks the edit.
+// ponytail: no GitHub push and no 100-version trim here; the config pages' next save does the trim.
+async function saveVersionCheckpoint(supabase: ReturnType<typeof createServiceRoleClient>, agentId: string, projectId: string, assistant: any, name: string, message: string, skipIfSame = false) {
+  try {
+    const { data: latest } = await supabase.from('pype_agent_config_versions').select('version_number, prompt_snapshot').eq('agent_id', agentId).order('version_number', { ascending: false }).limit(1).maybeSingle()
+    if (latest && latest.prompt_snapshot === (assistant.prompt ?? null) && skipIfSame) return
+    await supabase.from('pype_agent_config_versions').insert({
+      agent_id: agentId, project_id: projectId, version_number: (latest?.version_number ?? 0) + 1,
+      config_snapshot: { agent: { name, agent_id: agentId, assistant: [assistant] } },
+      prompt_snapshot: assistant.prompt ?? null, commit_message: message, github_push_ok: false,
+    })
+  } catch (err) {
+    console.error('[pi/chat] version checkpoint failed', agentId, err)
+  }
+}
+
 async function deployEditedAssistant(
   projectId: string, args: any, loaded: LoadedAssistant, updatedAssistant: any,
   mcpVoice: ReturnType<typeof findMcpVoice> | undefined, updated: Record<string, boolean>,
 ) {
   const { backendAgentName, deploymentTarget } = loaded
   const supabase = createServiceRoleClient()
+  await saveVersionCheckpoint(supabase, args.agent_id, projectId, loaded.assistant, backendAgentName, 'Pi: before edit', true)
   const deployed = await deployAgentConfig(
     backendAgentName,
     {
@@ -894,6 +911,7 @@ async function deployEditedAssistant(
     deploymentTarget,
   )
   if (!deployed.ok) return failure(deployed.errorText || 'Failed to deploy updated config')
+  await saveVersionCheckpoint(supabase, args.agent_id, projectId, updatedAssistant, backendAgentName, 'Pi: edited via Ask Pi')
   const { data: named } = await supabase.from('pype_voice_agents').select('display_name').eq('id', args.agent_id).maybeSingle()
   return {
     success: true,
