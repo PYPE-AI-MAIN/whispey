@@ -163,6 +163,8 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
     return matchesSearch && matchesStatus
   })
 
+  // the active tab has no agents, but the other one does (and nothing is being searched)
+  const tabIsEmpty = filteredAgents.length === 0 && !searchQuery && (agents?.length || 0) > 0
   const loading = projectLoading || agentsLoading
   const error = projectError || agentsError
 
@@ -222,7 +224,7 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
             ['dev', 'Development', (agents || []).length - prodCount, 'border-green-600/40 bg-green-500/15 text-green-700 dark:border-green-400/40 dark:bg-green-400/15 dark:text-green-300', 'border-transparent bg-green-500/5 text-muted-foreground hover:bg-green-500/10', 'bg-green-600 dark:bg-green-400'],
           ] as const).map(([k, label, n, on, off, dot]) => (
             <button key={k} role="tab" aria-selected={tab === k} onClick={() => setEnvTab(k)}
-              className={`flex items-center gap-2 rounded-lg border px-3.5 py-1.5 text-sm transition-colors ${tab === k ? `${on} font-medium` : off}`}>
+              className={`flex items-center gap-2 rounded-lg border px-3.5 py-1.5 text-sm transition-colors ${tab === k ? on + ' font-medium' : off}`}>
               <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
               {label}
               <span className="rounded-full bg-background/60 px-1.5 text-xs text-muted-foreground">{n}</span>
@@ -232,7 +234,7 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
 
         {/* -m-1/p-1 leave room for card rings and shadows at the scroll edges */}
         <div className="agent-list-scroll md:-m-1 md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain md:p-1">
-          {filteredAgents.length > 0 ? (
+          {filteredAgents.length > 0 && (
             <AgentList
               agents={filteredAgents}
               viewMode={viewMode}
@@ -242,11 +244,13 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
               onCopyAgentId={handleCopyAgentId}
               onDeleteAgent={setShowDeleteConfirm}
             />
-          ) : !searchQuery && (agents?.length || 0) > 0 ? (
+          )}
+          {tabIsEmpty && (
             <p className="py-16 text-center text-sm text-muted-foreground">
               No {tab === 'prod' ? 'production' : 'development'} agents yet.
             </p>
-          ) : (
+          )}
+          {filteredAgents.length === 0 && !tabIsEmpty && (
             <AgentEmptyStates
               searchQuery={searchQuery}
               totalAgents={agents?.length || 0}
