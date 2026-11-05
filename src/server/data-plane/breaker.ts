@@ -35,14 +35,16 @@ export class CircuitBreaker {
   }
 }
 
+function wrapPort(port: any, breaker: CircuitBreaker) {
+  return new Proxy(port, {
+    get(target, key) {
+      const v = target[key]
+      return typeof v === 'function' ? (...args: unknown[]) => breaker.run(() => v.apply(target, args)) : v
+    },
+  })
+}
+
 /** Wraps every async method of every port so each call goes through the breaker. */
 export function withBreaker<P extends object>(plane: P, breaker: CircuitBreaker): P {
-  const wrapPort = (port: any) =>
-    new Proxy(port, {
-      get: (target, key) => {
-        const v = target[key]
-        return typeof v === 'function' ? (...args: unknown[]) => breaker.run(() => v.apply(target, args)) : v
-      },
-    })
-  return Object.fromEntries(Object.entries(plane).map(([k, port]) => [k, wrapPort(port)])) as P
+  return Object.fromEntries(Object.entries(plane).map(([k, port]) => [k, wrapPort(port, breaker)])) as P
 }

@@ -125,8 +125,8 @@ export class DataPlaneResolver {
     }
     if (!dest.secret_ref) throw new DestinationIncompatible(dest.name, 'Destination has no secret reference')
     const key = await this.d.secrets(dest.secret_ref)
-    let breaker = this.breakers.get(dest.id)
-    if (!breaker) this.breakers.set(dest.id, (breaker = new CircuitBreaker(dest.name, this.d.now)))
+    const breaker = this.breakers.get(dest.id) ?? new CircuitBreaker(dest.name, this.d.now)
+    this.breakers.set(dest.id, breaker)
     return withBreaker(this.d.postgrestPlane({ id: dest.id, name: dest.name, config: dest.config }, key), breaker)
   }
 }

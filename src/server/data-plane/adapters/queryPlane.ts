@@ -28,7 +28,7 @@ const SELECTABLE = new Set([T.callLogs, T.metrics, T.traces, T.spans])
 export const isCallDataTable = (table: string) => SELECTABLE.has(table)
 
 const PAGE = 500
-const SCOPE_VALUES = ['global', 'project', 'agent']
+const SCOPE_VALUES = new Set(['global', 'project', 'agent'])
 
 export function applyFilters(query: any, filters: Filter[]) {
   let q = query
@@ -167,7 +167,7 @@ export function createQueryPlane(db: Db, opts: { typed: boolean; destination?: s
       async findBlocked(phones, projectId, agentId) {
         const res = await db.from(T.dnc).select('phone_e164, scope')
           .eq('is_active', true).in('phone_e164', phones).or(dncScopeFilter(projectId, agentId))
-        return (ok(res).data ?? []).filter((r: Row) => SCOPE_VALUES.includes(r.scope)) as any
+        return (ok(res).data ?? []).filter((r: Row) => SCOPE_VALUES.has(r.scope)) as any
       },
     },
   }

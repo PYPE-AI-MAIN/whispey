@@ -14,7 +14,10 @@ export function createFakePlane(seed: Record<string, Row[]> = {}): FakePlane {
   const rows = new Map(Object.entries(seed))
   const calls: string[] = []
   const t = (name: string) => rows.get(name) ?? rows.set(name, []).get(name)!
-  const log = <T>(name: string, v: T): T => (calls.push(name), v)
+  const log = <T>(name: string, v: T): T => {
+    calls.push(name)
+    return v
+  }
   const CALL_LOGS = 'call_logs'
   const TURNS = 'turns'
   const TICKETS = 'tickets'
