@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -26,6 +26,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Campaign } from '@/utils/campaigns/constants'
 import { useCampaigns } from '@/hooks/useCampaigns'
+import { useCampaignCounts } from '@/hooks/useCampaignExtras'
+import { CampaignDataNote } from '@/components/campaigns/CampaignDataNote'
 import { useQueryClient } from '@tanstack/react-query'
 import { useProjectAgents } from '@/hooks/useProjectAgents'
 import { resolveStoredAgentName } from '@/lib/agentDisplayName'
@@ -193,7 +195,13 @@ function Campaigns() {
     search,
   })
 
-  const campaigns  = data?.campaigns  ?? []
+  const listed = data?.campaigns ?? []
+  // One request for every listed campaign's counts; falls back to the list's own callStats.
+  const { data: counts } = useCampaignCounts(projectId, listed.map(c => c.campaignId))
+  const campaigns = useMemo(
+    () => (counts ? listed.map(c => (counts[c.campaignId] ? { ...c, callStats: counts[c.campaignId] } : c)) : listed),
+    [listed, counts]
+  )
   const pagination = data?.pagination
 
   const invalidateAndRefetch = useCallback(() => {
@@ -410,6 +418,9 @@ function Campaigns() {
                   <Stat label="Success" value={campaign.callStats?.completed ?? campaign.successCalls}   color="text-success" />
                   <Stat label="Failed"  value={campaign.callStats?.failed    ?? campaign.failedCalls}    color="text-destructive" />
                   <Stat label="Pending" value={campaign.callStats?.pending   ?? 0}                       color="text-muted-foreground" />
+                  {!!campaign.callStats?.calling && (
+                    <Stat label="Calling" value={campaign.callStats.calling} color="text-primary" />
+                  )}
                 </div>
               </div>
 
@@ -486,6 +497,7 @@ function Campaigns() {
           <div className="flex items-center gap-3">
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-foreground">Campaigns</h1>
+              <CampaignDataNote projectId={projectId} />
               {pagination && (
                 <p className="mt-1 text-sm text-muted-foreground">
                   {pagination.total} {pagination.total === 1 ? 'campaign' : 'campaigns'}

@@ -87,6 +87,12 @@ export class DataPlaneResolver {
     return plane
   }
 
+  /** Read-only, for the campaign pages' data-location note: where contacts live. */
+  async campaignLocation(projectId: string): Promise<'pype' | 'customer'> {
+    const route = (await this.d.registry(projectId)).find((x) => x.data_type === 'campaigns')
+    return route?.destination && route.destination.kind !== 'pype_supabase' ? 'customer' : 'pype'
+  }
+
   private async build(projectId: string): Promise<DataPlane> {
     // A route with a future effective_from has not switched yet.
     const routes = (await this.d.registry(projectId)).filter(
@@ -131,7 +137,10 @@ export class DataPlaneResolver {
   }
 }
 
-let shared: Pick<DataPlaneResolver, 'forProject'> | null = null
+let shared: Pick<DataPlaneResolver, 'forProject' | 'campaignLocation'> | null = null
 export const getDataPlaneResolver = () => (shared ??= new DataPlaneResolver())
 /** Tests swap in a resolver backed by fake planes; pass null to restore. */
-export const setDataPlaneResolverForTests = (r: Pick<DataPlaneResolver, 'forProject'> | null) => { shared = r }
+export const campaignDataLocation = (projectId: string) => getDataPlaneResolver().campaignLocation(projectId)
+export const setDataPlaneResolverForTests = (r: Partial<Pick<DataPlaneResolver, 'forProject' | 'campaignLocation'>> | null) => {
+  shared = r as typeof shared
+}

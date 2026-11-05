@@ -1,5 +1,6 @@
 // app/api/campaigns/upload-file/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+import { callScheduler, relay } from '@/lib/campaignScheduler'
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,29 +24,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN
-
-    console.log(baseUrl)
-    const apiUrl = `${baseUrl}/api/v1/campaigns/upload-file?campaignId=${campaignId}`
-
-    const response = await fetch(apiUrl, {
+    // The scheduler may answer { accepted, rejected, rejects }; it is passed through for the import view.
+    const out = await callScheduler('campaigns/upload-file', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'text/csv',
-      },
+      query: { campaignId },
+      contentType: 'text/csv',
       body: csvData,
     })
-
-    const data = await response.json()
-
-    if (!response.ok) {
-      return NextResponse.json(
-        { error: data.error || 'Failed to upload CSV' },
-        { status: response.status }
-      )
-    }
-
-    return NextResponse.json(data)
+    if ('error' in out) return out.error
+    return relay(out.res, 'Failed to upload CSV')
   } catch (error) {
     console.error('Upload file error:', error)
     return NextResponse.json(

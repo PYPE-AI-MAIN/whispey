@@ -46,8 +46,9 @@ export function logMatches(log: any, query: string): boolean {
   })
 }
 
-async function fetchPage(campaignId: string, cursor: string | null): Promise<Page> {
+async function fetchPage(campaignId: string, cursor: string | null, status = 'all'): Promise<Page> {
   let url = `/api/campaigns/contacts?campaignId=${encodeURIComponent(campaignId)}&limit=${LOGS_PAGE_SIZE}`
+  if (status !== 'all') url += `&status=${encodeURIComponent(status)}`
   // The scheduler hands the cursor back already URL-encoded; pass it through as-is.
   if (cursor) url += `&lastKey=${cursor}`
   const res = await fetch(url)
@@ -56,7 +57,7 @@ async function fetchPage(campaignId: string, cursor: string | null): Promise<Pag
   return { rows: data.contacts || [], nextKey: data.pagination?.hasMore ? data.pagination?.nextKey || null : null }
 }
 
-export function useCampaignLogs(campaignId: string, totalHint?: number) {
+export function useCampaignLogs(campaignId: string, totalHint?: number, status = 'all') {
   // pages[i] is page i (0-based); its nextKey fetches page i + 1.
   const [pages, setPages] = useState<Page[]>([])
   const [page, setPage] = useState(0)
@@ -76,14 +77,14 @@ export function useCampaignLogs(campaignId: string, totalHint?: number) {
     const gen = ++generation.current
     setPages([]); setPage(0); setAll(null); setQuery(''); setSearchPage(0); setError(null); setLoading(true)
     try {
-      const first = await fetchPage(campaignId, null)
+      const first = await fetchPage(campaignId, null, status)
       if (gen === generation.current) setPages([first])
     } catch (e) {
       if (gen === generation.current) setError(e instanceof Error ? e.message : 'Failed to load logs')
     } finally {
       if (gen === generation.current) setLoading(false)
     }
-  }, [campaignId])
+  }, [campaignId, status])
 
   useEffect(() => { loadFirst() }, [loadFirst])
 
@@ -95,7 +96,7 @@ export function useCampaignLogs(campaignId: string, totalHint?: number) {
     const gen = generation.current
     setLoading(true)
     try {
-      const fetched = await fetchPage(campaignId, cursor)
+      const fetched = await fetchPage(campaignId, cursor, status)
       if (gen !== generation.current) return
       if (fetched.rows.length === 0) {
         // The last page was exactly full: there is nothing after it after all.
@@ -109,7 +110,7 @@ export function useCampaignLogs(campaignId: string, totalHint?: number) {
     } finally {
       if (gen === generation.current) setLoading(false)
     }
-  }, [campaignId, loading, page])
+  }, [campaignId, loading, page, status])
 
   const searching = query.trim().length > 0
 
@@ -124,7 +125,7 @@ export function useCampaignLogs(campaignId: string, totalHint?: number) {
       try {
         for (let i = 0; ; i++) {
           const cached: Page | undefined = pagesRef.current[i]
-          const p: Page = cached ?? (await fetchPage(campaignId, cursor))
+          const p: Page = cached ?? (await fetchPage(campaignId, cursor, status))
           if (gen !== generation.current) return
           rows.push(...p.rows)
           setAll({ rows: [...rows], done: false })
@@ -139,7 +140,7 @@ export function useCampaignLogs(campaignId: string, totalHint?: number) {
         }
       }
     })()
-  }, [searching, all, campaignId])
+  }, [searching, all, campaignId, status])
 
   const matches = useMemo(
     () => (searching && all ? all.rows.filter((log) => logMatches(log, query)) : []),

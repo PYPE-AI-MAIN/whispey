@@ -82,6 +82,7 @@ interface CampaignLogsProps {
 const CALL_STATUS_OPTIONS = [
   { value: 'all', label: 'All Status' },
   { value: 'pending', label: 'Pending' },
+  { value: 'calling', label: 'Calling' },
   { value: 'completed', label: 'Completed' },
   { value: 'failed', label: 'Failed' },
   { value: 'in_progress', label: 'In Progress' }
@@ -713,6 +714,7 @@ const CampaignLogs: React.FC<CampaignLogsProps> = ({ project, agent, onBack, isL
       case 'failed':
         return 'bg-destructive/15 text-destructive border-destructive/30'
       case 'in_progress':
+      case 'calling':
         return 'bg-primary/15 text-primary border-primary/30'
       case 'pending':
         return 'bg-warning/15 text-warning border-warning/30'
