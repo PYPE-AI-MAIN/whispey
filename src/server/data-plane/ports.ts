@@ -23,6 +23,8 @@ export interface SelectQuery {
   orderBy?: { column: string; ascending: boolean }
   limit?: number
   range?: [number, number]
+  /** Tie-breaker after `orderBy`, ascending (keeps offset paging stable). */
+  thenBy?: string
   /** Keyset paging: rows with `cursorColumn` greater than `cursor`. */
   cursor?: { column: string; value: unknown }
 }

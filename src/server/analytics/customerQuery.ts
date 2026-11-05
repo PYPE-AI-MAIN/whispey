@@ -10,6 +10,7 @@ import type { Spec, FilterNode, Ref } from './spec'
 import { NUMERIC_COL_SET, TEXT_COLS } from './spec'
 import { SpecError, resolveRange, pgTimestamp, wallClock, type Ctx, type Built } from './buildQuery'
 import type { DataPlane, Row } from '@/server/data-plane'
+import { ANALYTICS_COLUMNS } from '@/server/data-plane/adapters/queryPlane'
 
 /** Customer rows are read in full and aggregated here, so a range is capped rather than allowed to pull the table. */
 export const MAX_CUSTOMER_ROWS = 50_000
@@ -29,6 +30,9 @@ function walk(nodes: FilterNode[], fn: (r: Ref, op: string) => void): void {
   }
 }
 
+// what the row fetch selects plus the two computed numbers (see numeric()); a field outside it would read as empty and give silent wrong numbers
+export const FETCHED = new Set([...ANALYTICS_COLUMNS.split(','), 'total_cost', 'call_duration_seconds'])
+
 /** Refuses a spec the aggregator cannot answer exactly as Pype's SQL would. */
 export function assertSupported(spec: Spec, ctx: Ctx): void {
   if (spec.grain !== 'interaction' || spec.source !== 'voice') unsupported('This chart')
@@ -37,7 +41,7 @@ export function assertSupported(spec: Spec, ctx: Ctx): void {
   const plain = (r: Ref | undefined, kind: 'num' | 'text' | 'any') => {
     if (!r) return
     if (ctx.deniedFields.has(r.col)) throw new SpecError(`no permission for ${r.col}`)
-    const ok = !r.path?.length && (kind === 'num' ? NUMERIC_COL_SET.has(r.col) : kind === 'text' ? TEXT.has(r.col) : TEXT.has(r.col) || NUMERIC_COL_SET.has(r.col))
+    const ok = FETCHED.has(r.col) && !r.path?.length && (kind === 'num' ? NUMERIC_COL_SET.has(r.col) : kind === 'text' ? TEXT.has(r.col) : TEXT.has(r.col) || NUMERIC_COL_SET.has(r.col))
     if (!ok) unsupported(`The field ${r.col}${r.path?.length ? '.' + r.path.join('.') : ''}`)
   }
   plain(spec.agg.field, spec.agg.fn === 'count' ? 'any' : 'num')
@@ -81,14 +85,17 @@ function matches(node: FilterNode, row: Row, sentinels: Set<string>): boolean {
   }
   const col = node.field.col
   const t = text(row, col, sentinels)
+  const isNumericCol = NUMERIC_COL_SET.has(col)
+  const n = isNumericCol ? numeric(row, col) : null
   const list = (Array.isArray(node.value) ? node.value : [node.value]).map(String)
   switch (node.op) {
     case 'is_empty': return t === null
     case 'is_not_empty': return t !== null
-    case 'eq': return t === String(node.value)
-    case 'neq': return t !== String(node.value)
-    case 'in': return t !== null && list.includes(t)
-    case 'not_in': return t === null || !list.includes(t)
+    // numeric columns compare as numbers (5 equals 5.0, and total_cost is computed, so it has no text form)
+    case 'eq': return isNumericCol ? n !== null && n === Number(node.value) : t === String(node.value)
+    case 'neq': return isNumericCol ? n === null || n !== Number(node.value) : t !== String(node.value)
+    case 'in': return isNumericCol ? n !== null && list.some((v) => Number(v) === n) : t !== null && list.includes(t)
+    case 'not_in': return isNumericCol ? n === null || !list.some((v) => Number(v) === n) : t === null || !list.includes(t)
     case 'contains': return t !== null && t.toLowerCase().includes(String(node.value).toLowerCase())
     case 'starts_with': return t !== null && t.toLowerCase().startsWith(String(node.value).toLowerCase())
     default: {

@@ -45,6 +45,14 @@ describe('customer analytics aggregator', () => {
   it('breaks down by reason, biggest first', () => {
     expect(run('Why calls ended').map((x) => [x.series, x.value])).toEqual([['completed', 2], ['customer-ended', 1]])
   })
+  it('eq and in on a numeric column compare as numbers, including the computed total_cost', () => {
+    const base = Spec.parse(STARTER_CHARTS.find((c) => c.title === 'Total calls')!.spec)
+    const count = (filters: unknown[]) => aggregateCustomerRows(rows, Spec.parse({ ...base, filters }), ctx).rows[0].value
+    expect(count([{ field: { col: 'avg_latency' }, op: 'eq', value: 2 }])).toBe(1)
+    expect(count([{ field: { col: 'avg_latency' }, op: 'in', value: [1, 3] }])).toBe(2)
+    expect(count([{ field: { col: 'total_cost' }, op: 'eq', value: 1.5 }])).toBe(3)
+    expect(count([{ field: { col: 'avg_latency' }, op: 'neq', value: 1 }])).toBe(2)
+  })
   it('p95 interpolates like percentile_cont', () => {
     expect(run('Latency spread')[0].value).toBeCloseTo(2.9)
   })
