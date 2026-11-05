@@ -36,12 +36,18 @@ export function mintToken(dest: PostgrestDestination, privateKeyPem: string, now
 }
 
 function baseUrl(dest: PostgrestDestination): string {
-  const url = dest.config.base_url
+  let url: URL | null = null
+  try {
+    url = new URL(dest.config.base_url ?? '')
+  } catch {
+    // falls through to the error below
+  }
   // http is allowed for localhost only (the docker stand-in); the customer front end is https.
-  if (!url || !/^https:\/\/|^http:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(url)) {
+  const local = url?.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(url.hostname)
+  if (!url || (url.protocol !== 'https:' && !local)) {
     throw new DestinationIncompatible(dest.name, 'Destination has no valid base_url')
   }
-  return url.replace(/\/+$/, '')
+  return url.href.replace(/\/+$/, '')
 }
 
 /** `privateKeyPem` is the already-resolved secret; it is never stored on the plane or logged. */
