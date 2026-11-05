@@ -4,12 +4,12 @@ import { createServiceRoleClient } from '@/lib/supabase-server'
 // Create Supabase client for server-side operations
 const supabase = createServiceRoleClient()
 
-const VALID_RETRY_CODES = ['408', '480', '486', '504', '600']
+const VALID_RETRY_CODES = new Set(['408', '480', '486', '504', '600'])
 
 function validateRetryConfig(retryConfig: Record<string, unknown> | null): string | null {
   if (!retryConfig) return null
   for (const [code, minutes] of Object.entries(retryConfig)) {
-    if (!VALID_RETRY_CODES.includes(code)) return `Invalid SIP code: ${code}`
+    if (!VALID_RETRY_CODES.has(code)) return `Invalid SIP code: ${code}`
     if (typeof minutes !== 'number' || minutes < 1 || minutes > 1440) {
       return `Invalid retry minutes for ${code}: must be between 1 and 1440`
     }
