@@ -73,7 +73,7 @@ const fromEnv = (raw: string) => {
   return decoded.includes('BEGIN') ? decoded.replace(/\\n/g, '\n') : raw
 }
 
-const SECRET_CACHE_MS = 5 * 60_000
+const SECRET_CACHE_MS = 60_000 // short, so a rotated key is picked up within a minute
 const cachedSecrets = new Map<string, { at: number; value: string }>()
 let secretsClient: SecretsManagerClient | undefined
 
@@ -96,7 +96,8 @@ export const resolveSecret: SecretResolver = async (ref) => {
   let value: string | undefined
   try {
     value = ref.startsWith('env:') ? (process.env[ref.slice(4)] ? fromEnv(process.env[ref.slice(4)] as string) : undefined) : await fromSecretsManager(ref)
-  } catch {
+  } catch (e) {
+    console.error('[data-plane] destination secret lookup failed', ref, e instanceof Error ? e.name : 'error') // name only, never a value
     value = undefined
   }
   if (!value) throw new DestinationUnavailable(undefined, 'Destination secret could not be resolved')
