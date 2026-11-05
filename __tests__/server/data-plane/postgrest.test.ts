@@ -53,6 +53,7 @@ describe('postgrest adapter', () => {
     const bodies = fetchMock.mock.calls.map((c) => JSON.parse((c[1] as RequestInit).body as string))
     expect(bodies[0]).toHaveProperty('p_user_clerk_id')
     expect(bodies[1]).not.toHaveProperty('p_user_clerk_id')
+    expect(bodies[1].p_allowed_agent_ids).toEqual(['a1'])
   })
 
   it('refuses a destination without an https base_url', () => {
