@@ -46,6 +46,7 @@ export function applyFilters(query: any, filters: Filter[]) {
       case 'ilike': q = q.ilike(f.column, f.value as string); break
       case 'in': q = q.in(f.column, f.value as unknown[]); break
       case 'not.is': q = q.not(f.column, 'is', f.value); break
+      case 'is': q = q.is(f.column, f.value); break
       default: break
     }
   }
