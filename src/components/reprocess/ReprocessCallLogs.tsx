@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
@@ -119,7 +118,8 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
             const fields = promptConfig
               .filter((p: any) => p.key && typeof p.key === 'string')
               .map((p: any) => p.key)
-            setAvailableTranscriptionFields(fields.sort())
+            const sortedFields = fields.toSorted((a: string, b: string) => a.localeCompare(b))
+            setAvailableTranscriptionFields(sortedFields)
           }
         } catch (e) {
           console.error('Error parsing field_extractor_prompt:', e)
@@ -139,7 +139,8 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
           if (typeof metricsConfig === 'object' && metricsConfig !== null) {
             const metricIds = Object.keys(metricsConfig)
               .filter(key => metricsConfig[key]?.enabled !== false)
-            setAvailableMetricsFields(metricIds.sort())
+            const sortedMetricIds = metricIds.toSorted((a, b) => a.localeCompare(b))
+            setAvailableMetricsFields(sortedMetricIds)
           }
         } catch (e) {
           console.error('Error parsing metrics:', e)
@@ -279,21 +280,10 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
   }
 
   return (
-    <div className="space-y-6">
-      <Card className="border-gray-200 dark:border-gray-800">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            Re-analyze Call Logs
-          </CardTitle>
-          <CardDescription className="text-sm text-gray-600 dark:text-gray-400">
-            Update transcription metrics and analytics for historical call logs.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
+    <div className="space-y-5">
             {/* Date Range Picker */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <Label className="text-sm font-medium text-foreground">
                 Date Range
               </Label>
               <Popover>
@@ -326,7 +316,7 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
 
             {/* Analysis Type */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <Label className="text-sm font-medium text-foreground">
                 Scope
               </Label>
               <Select
@@ -346,7 +336,7 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
 
             {/* Analysis Options */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <Label className="text-sm font-medium text-foreground">
                 Analysis Type
               </Label>
               <Select
@@ -376,19 +366,20 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
             {/* Transcription Fields Selection */}
             {(reprocessOptions === 'transcription' || reprocessOptions === 'both') && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <Label className="text-sm font-medium text-foreground">
                   Transcription Fields (Optional)
                 </Label>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                <div className="text-xs text-muted-foreground mb-2">
                   Select specific fields to reprocess. Leave empty to process all fields.
                 </div>
-                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
-                  {loadingFields ? (
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                <div className="border border-border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
+                  {loadingFields && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       Loading fields...
                     </div>
-                  ) : availableTranscriptionFields.length > 0 ? (
+                  )}
+                  {!loadingFields && availableTranscriptionFields.length > 0 && (
                     availableTranscriptionFields.map((field) => (
                       <div key={field} className="flex items-center space-x-2">
                         <Checkbox
@@ -405,14 +396,15 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
                         />
                         <label
                           htmlFor={`transcription-${field}`}
-                          className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer flex-1"
+                          className="text-sm text-foreground cursor-pointer flex-1"
                         >
                           {field}
                         </label>
                       </div>
                     ))
-                  ) : (
-                    <div className="text-sm text-gray-500 dark:text-gray-400 italic">
+                  )}
+                  {!loadingFields && availableTranscriptionFields.length <= 0 && (
+                    <div className="text-sm text-muted-foreground italic">
                       No transcription fields configured for this agent. Configure field extractor in agent settings.
                     </div>
                   )}
@@ -432,19 +424,20 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
             {/* Metrics Fields Selection */}
             {(reprocessOptions === 'metrics' || reprocessOptions === 'both') && (
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <Label className="text-sm font-medium text-foreground">
                   Metrics Fields (Optional)
                 </Label>
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                <div className="text-xs text-muted-foreground mb-2">
                   Select specific metrics to reprocess. Leave empty to process all metrics.
                 </div>
-                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
-                  {loadingFields ? (
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                <div className="border border-border rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
+                  {loadingFields && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Loader2 className="w-4 h-4 animate-spin" />
                       Loading fields...
                     </div>
-                  ) : availableMetricsFields.length > 0 ? (
+                  )}
+                  {!loadingFields && availableMetricsFields.length > 0 && (
                     availableMetricsFields.map((field) => (
                       <div key={field} className="flex items-center space-x-2">
                         <Checkbox
@@ -461,14 +454,15 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
                         />
                         <label
                           htmlFor={`metrics-${field}`}
-                          className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer flex-1"
+                          className="text-sm text-foreground cursor-pointer flex-1"
                         >
                           {field}
                         </label>
                       </div>
                     ))
-                  ) : (
-                    <div className="text-sm text-gray-500 dark:text-gray-400 italic">
+                  )}
+                  {!loadingFields && availableMetricsFields.length <= 0 && (
+                    <div className="text-sm text-muted-foreground italic">
                       No metrics configured for this agent. Configure metrics in agent settings.
                     </div>
                   )}
@@ -487,15 +481,15 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
 
             {/* Log Count Display */}
             {logCount !== null && !counting && (
-              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+              <div className="bg-primary/10 border border-primary/30 rounded-lg p-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full"></div>
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <span className="text-sm font-medium text-foreground">
                       Call Logs to Process
                     </span>
                   </div>
-                  <span className="text-lg font-semibold text-blue-600 dark:text-blue-400">
+                  <span className="text-lg font-semibold text-primary">
                     {logCount.toLocaleString()}
                   </span>
                 </div>
@@ -503,10 +497,10 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
             )}
 
             {counting && (
-              <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+              <div className="bg-muted/50 border border-border rounded-lg p-3">
                 <div className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
                     Counting call logs...
                   </span>
                 </div>
@@ -535,9 +529,9 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
 
             {/* Success Display */}
             {success && (
-              <Alert className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
-                <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                <AlertDescription className="text-green-800 dark:text-green-200">
+              <Alert className="bg-success/10 border-success/30">
+                <CheckCircle className="h-4 w-4 text-success" />
+                <AlertDescription className="text-success">
                   <div className="font-medium mb-1">Analysis started successfully!</div>
                   <div className="text-sm mb-3">
                     The re-analysis process has been initiated. This may take a few minutes to complete. 
@@ -565,8 +559,6 @@ export default function ReanalyzeCallLogs({ projectId, agentId, isDialogOpen }: 
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-          </CardContent>
-        </Card>
     </div>
   )
 }

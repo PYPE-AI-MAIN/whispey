@@ -96,13 +96,13 @@ function FillerWordsSettings({
 
   return (
     <div className="space-y-3">
-      <div className="text-xs text-gray-600 dark:text-gray-400">
+      <div className="text-xs text-muted-foreground">
         Short phrases played before the agent replies to fill the silence gap
       </div>
 
       {/* ── Master On/Off Toggle ── */}
       <div className="flex items-center justify-between">
-        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+        <Label className="text-xs font-medium text-foreground">
           Enable Filler Words
         </Label>
         <Switch
@@ -118,10 +118,10 @@ function FillerWordsSettings({
         <>
           {/* ── Question ── */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            <Label className="text-xs font-medium text-foreground">
               Question
             </Label>
-            <div className="text-xs text-gray-500 dark:text-gray-400">
+            <div className="text-xs text-muted-foreground">
               Trigger words (comma-separated)
             </div>
             <CommaInput
@@ -130,7 +130,7 @@ function FillerWordsSettings({
               placeholder="what, who, how, why, has, have, was, were"
               onFieldChange={handleQuestionKeywordsChange}
             />
-            <div className="text-xs text-gray-500 dark:text-gray-400">
+            <div className="text-xs text-muted-foreground">
               Filler phrases (comma-separated)
             </div>
             <CommaInput
@@ -141,20 +141,20 @@ function FillerWordsSettings({
               disabled={questionKeywords.length === 0}
             />
             {questionKeywords.length === 0 && (
-              <div className="text-xs text-amber-600 dark:text-amber-400">
+              <div className="text-xs text-warning">
                 Add at least one trigger word to enable question filler phrases
               </div>
             )}
           </div>
 
-          <div className="h-px bg-gray-100 dark:bg-gray-700" />
+          <div className="h-px bg-muted" />
 
           {/* ── Ambiguous ── */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            <Label className="text-xs font-medium text-foreground">
               Ambiguous
             </Label>
-            <div className="text-xs text-gray-500 dark:text-gray-400">
+            <div className="text-xs text-muted-foreground">
               Trigger words (comma-separated)
             </div>
             <CommaInput
@@ -163,7 +163,7 @@ function FillerWordsSettings({
               placeholder="is, are, can, could, do"
               onFieldChange={handleAmbiguousKeywordsChange}
             />
-            <div className="text-xs text-gray-500 dark:text-gray-400">
+            <div className="text-xs text-muted-foreground">
               Filler phrases (comma-separated)
             </div>
             <CommaInput
@@ -174,20 +174,20 @@ function FillerWordsSettings({
               disabled={ambiguousKeywords.length === 0}
             />
             {ambiguousKeywords.length === 0 && (
-              <div className="text-xs text-amber-600 dark:text-amber-400">
+              <div className="text-xs text-warning">
                 Add at least one trigger word to enable ambiguous filler phrases
               </div>
             )}
           </div>
 
-          <div className="h-px bg-gray-100 dark:bg-gray-700" />
+          <div className="h-px bg-muted" />
 
           {/* ── General ── */}
           <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            <Label className="text-xs font-medium text-foreground">
               General
             </Label>
-            <div className="text-xs text-gray-500 dark:text-gray-400">
+            <div className="text-xs text-muted-foreground">
               Fallback filler phrases (comma-separated)
             </div>
             <CommaInput
@@ -198,18 +198,18 @@ function FillerWordsSettings({
             />
           </div>
 
-          <div className="h-px bg-gray-100 dark:bg-gray-700" />
+          <div className="h-px bg-muted" />
 
           {/* ── Cooldown ── */}
           <div className="space-y-1.5">
             <div className="flex items-center gap-1">
-              <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+              <Label className="text-xs font-medium text-foreground">
                 Filler Cooldown (seconds)
               </Label>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <InfoIcon className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 cursor-help" />
+                    <InfoIcon className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent side="right" className="max-w-xs">
                     <p className="text-xs">Prevents back-to-back fillers — if a filler played within this many seconds, the next turn stays silent instead.</p>
@@ -217,7 +217,7 @@ function FillerWordsSettings({
                 </Tooltip>
               </TooltipProvider>
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">
+            <div className="text-xs text-muted-foreground">
               Minimum gap between two fillers (2–8s)
             </div>
             <Input
@@ -239,13 +239,13 @@ function FillerWordsSettings({
           {/* ── Latency Threshold ── */}
           <div className="space-y-1.5">
             <div className="flex items-center gap-1">
-              <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+              <Label className="text-xs font-medium text-foreground">
                 Latency Threshold (seconds)
               </Label>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <InfoIcon className="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 cursor-help" />
+                    <InfoIcon className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent side="right" className="max-w-xs">
                     <p className="text-xs">Filler only plays when estimated LLM reply time exceeds this — below it the agent is fast enough that a filler would add delay, not remove it.</p>
@@ -253,7 +253,7 @@ function FillerWordsSettings({
                 </Tooltip>
               </TooltipProvider>
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">
+            <div className="text-xs text-muted-foreground">
               Only play a filler when estimated LLM latency exceeds this (0.8–2.0s)
             </div>
             <Input

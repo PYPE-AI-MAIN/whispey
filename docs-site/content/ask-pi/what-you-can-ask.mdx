@@ -1,0 +1,128 @@
+---
+title: What you can ask
+description: Example requests for Pi, grouped by task.
+---
+
+Write to Pi the way you would write to a colleague. These examples show the kinds of requests that work. Change the names and numbers to match your own.
+
+## Analytics
+
+Pi runs a real query on your call data and answers with numbers.
+
+- "How is call volume trending over the last 30 days?"
+- "How did tasks complete in the last 7 days for the Sales agent?"
+- "Which agent handled the most calls, and how did they perform?"
+- "How many unique customers called last week?"
+- "Break down call ending reasons for the last month."
+
+Pi usually replies with a short headline, a few bullet points with numbers, and a line on what it suggests. It may add a link to your **Org Overview** so you can look at the same data on screen.
+
+:::note
+Dispositions and custom fields are set up per agent. If you have more than one agent and your question depends on those fields, Pi asks which agent you mean. Once you answer, it keeps using that agent in the chat until you name another.
+:::
+
+Pi also knows the difference between a plain count of calls and unique customers. If you ask for "unique", it counts distinct customers.
+
+## Agents
+
+| You want to | Example request |
+|---|---|
+| See your agents | "List my agents." |
+| Read a setting | "What is the current greeting for the Clinic agent?" |
+| Create an agent | "Create a voice agent called Clinic Reception." |
+| Change the prompt | "In the Clinic agent, tell it to confirm the date before booking." |
+| Change the greeting | "Change the greeting of the Clinic agent to a shorter one." |
+| Change the voice | "Change the voice of the Clinic agent." |
+| Change the language model | "Switch the Clinic agent to Sarvam 105." |
+| Test an agent | "I want to talk to the Clinic agent." |
+
+Pi shows each change as a card. Nothing is saved until you click **Confirm**.
+
+For a small prompt change, Pi edits only the part you asked about. It does not rewrite the whole prompt.
+
+When you ask to talk to an agent, a **Start agent** button appears in the chat. Click it to start a test call. Click **Stop** to hang up.
+
+:::tip
+When Pi names an agent, the name is a link. Click it to open the agent.
+:::
+
+## Dispositions
+
+A disposition is a field that Whispey fills in from each call, such as the outcome of the call.
+
+- "Add a disposition called final_disposition for the Clinic agent."
+- "What dispositions does the Clinic agent have?"
+- "Copy a disposition from the Sales agent to the Clinic agent."
+
+Pi shows you a short table first, then the description for each field. By default it adds or updates only the fields you name and leaves the rest. It replaces all of them only if you clearly ask for that, and it should check with you first.
+
+Rules Pi follows for dispositions:
+
+| Rule | Value |
+|---|---|
+| Key format | Lowercase letters, numbers and underscores, starting with a letter, up to 40 characters |
+| Description length | 1 to 500 characters |
+| Most per agent | 20 |
+
+## Tools
+
+- "Add a custom tool to the Clinic agent that sends the booking to my URL."
+
+Pi opens a form in the chat. It fills in what you already said. The form asks for the type, method, URL, headers, parameters and body. The tool is added only when you submit the form.
+
+## Phone numbers
+
+| You want to | Example request |
+|---|---|
+| See your numbers | "List my phone numbers." |
+| Find numbers to buy | "Search for numbers in India that start with 80." |
+| Buy a number | "Buy the second number." |
+| Receive calls on a number | "Attach this number to the Clinic agent for inbound calls." |
+| Check for spam | "Is this number spam: +91..." |
+
+Searching does not buy anything. Pi shows the monthly price with every option.
+
+When you ask to buy, a card shows the number and the monthly price, and says that it charges your Plivo account. The purchase happens only when you click **Confirm**. Only an owner or admin can buy.
+
+Attaching a number also needs a click on **Confirm**. The card shows the number, the agent, and the name given to the connection.
+
+For the spam check, include the plus sign and country code if you have them. A number with a country code is read as international. One without is read as a local number. Pi reports whether it is flagged, plus the operator and country.
+
+## Open a page
+
+Ask Pi to take you somewhere.
+
+- "Open the call logs for the Clinic agent."
+- "Show me the campaigns."
+- "Take me to phone settings."
+
+Pi can open call logs, overview, agent configuration, phone calls, knowledge, QA, campaign logs, the agent list, analytics, campaigns, settings and phone settings. The link appears as a button in the chat and opens in a new tab.
+
+## Ask Pi on the call logs page
+
+On an agent's call logs page, the **Ask Pi** button opens a smaller chat about that agent's calls. It starts with **Hi, I'm π.**
+
+Try:
+
+- "Summarise what happened in today's connected calls"
+- "Why did today's failed calls fail?"
+- "How many voicemail calls this week?"
+- "Show me flagged calls"
+
+If you open a single call first, Pi has read that call and offers questions such as "Summarise this call" and "Why did the call end this way?".
+
+Pi can suggest filters for the table. They show on a card with **Apply** and **Dismiss**. The table changes only if you click **Apply**.
+
+This button is not shown to viewers.
+
+## Ask Pi inside the prompt editor
+
+1. In an agent's prompt, select the text you want to change.
+2. Click **Ask Pi**.
+3. Type what to change, or click a quick choice: **Shorter**, **More natural**, **Hindi** or **Kannada**.
+
+Pi proposes new text for the selection and keeps the `{{variable}}` placeholders. You choose whether to use it.
+
+## Ask Pi inside the workflow editor
+
+The workflow editor has its own **Ask Pi** button in the top bar. It builds or edits the steps of a workflow from your description. The message box says **Describe what to build or change…**. The workflow guide covers this in full. See [Workflows overview](../workflows/overview).

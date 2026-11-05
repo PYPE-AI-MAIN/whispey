@@ -85,7 +85,7 @@ class VapiDataTransformer {
     // For dashboard calls (webCall), use call ID as identifier
     if (messageData.call?.type === 'webCall') {
       console.log('📱 Dashboard call - using call ID as identifier');
-      return `web-call-${messageData.call?.id}` || 'unknown-webcall';
+      return messageData.call?.id ? `web-call-${messageData.call.id}` : 'unknown-webcall';
     }
     
     // For real phone calls, look for actual phone number

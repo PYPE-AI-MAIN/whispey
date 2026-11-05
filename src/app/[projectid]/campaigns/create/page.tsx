@@ -15,6 +15,7 @@ import { CsvUploadSection } from '@/components/campaigns/CsvUploadSection'
 import { ScheduleSelector } from '@/components/campaigns/ScheduleSelector'
 import { RecipientsPreview } from '@/components/campaigns/RecipientsPreview'
 import { RetryConfiguration } from '@/components/campaigns/RetryConfiguration'
+import { WebhookCreateSection, type WebhookDraft } from '@/components/campaigns/CampaignWebhook'
 
 // Per-type retryConfig validators — each returns an error message or null.
 // Extracted so the Yup .test() callback below is a flat dispatcher instead
@@ -114,6 +115,13 @@ const createValidationSchema = (maxConcurrency: number) => Yup.object({
     is: 'schedule',
     then: (schema) => schema.required('Timezone is required'),
   }),
+  webhooks: Yup.array().of(Yup.object({
+    url: Yup.string()
+      .trim()
+      .max(2048, 'URL is too long')
+      .test('https', 'Must be an https:// URL', (value) => !value || /^https:\/\/\S+$/i.test(value)),
+    token: Yup.string().max(1024, 'Token is too long'),
+  })),
   callWindowStart: Yup.string().required('Call window start time is required'),
   callWindowEnd: Yup.string().required('Call window end time is required'),
   reservedConcurrency: Yup.number()
@@ -188,12 +196,13 @@ const createValidationSchema = (maxConcurrency: number) => Yup.object({
 
 // Batch-check phone numbers against the DNC list; returns the set of raw inputs
 // that are blocked (empty set on any failure — the preview just won't flag them).
-async function fetchDncBlockedSet(phones: string[], projectId: string): Promise<Set<string>> {
+// With an agent, numbers on that agent's own DNC list count too.
+async function fetchDncBlockedSet(phones: string[], projectId: string, agentId?: string): Promise<Set<string>> {
   try {
     const res = await fetch('/api/dnc/check', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ numbers: phones, project_id: projectId }),
+      body: JSON.stringify({ numbers: phones, project_id: projectId, ...(agentId ? { agent_id: agentId } : {}) }),
     })
     const json = await res.json()
     return new Set<string>(
@@ -309,6 +318,75 @@ function formatRetryConfigEntry(config: RetryConfig): any {
   return config
 }
 
+// Throws the API's error message (or the fallback) when the response failed.
+async function assertOk(res: Response, fallback: string): Promise<void> {
+  if (res.ok) return
+  const error = await res.json()
+  throw new Error(error.error || fallback)
+}
+
+async function postJson(url: string, body: unknown, fallback: string): Promise<void> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  await assertOk(res, fallback)
+}
+
+function buildCreateBody(values: any, projectId: string, campaignId: string, s3FileKey: string, agentName: string) {
+  return {
+    campaignId,
+    projectId,
+    campaignName: values.campaignName,
+    s3FileKey,
+    agentName,
+    sipTrunkId: values.sipTrunkId,
+    provider: values.provider || 'Unknown',
+    agentRuntime: values.acefoneApiKey ? 'acefone_bridge' : values.agentRuntime,
+    fromNumber: values.fromNumberE164 || undefined,
+    acefoneApiKey: values.acefoneApiKey || undefined,
+  }
+}
+
+function buildScheduleBody(values: any, campaignId: string) {
+  const startDate = values.sendType === 'schedule'
+    ? new Date(values.scheduleDate).toISOString()
+    : new Date().toISOString()
+  return {
+    campaignId,
+    startTime: values.callWindowStart,
+    endTime: values.callWindowEnd,
+    timezone: values.timezone,
+    startDate,
+    frequency: values.reservedConcurrency,
+    enabled: true,
+    days: values.selectedDays.length > 0
+      ? values.selectedDays
+      : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
+    // See formatRetryConfigEntry for the per-type field shapes the backend expects.
+    retryConfig: values.retryConfig.map(formatRetryConfigEntry),
+  }
+}
+
+// Adds each webhook; returns one "url: reason" line per failure.
+async function addCampaignWebhooks(campaignId: string, webhooks: { url: string; token: string }[]): Promise<string[]> {
+  const failures: string[] = []
+  for (const w of webhooks.filter((d) => d.url.trim())) {
+    const res = await fetch(`/api/campaigns/${campaignId}/webhook`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'add', url: w.url.trim(), token: w.token.trim() || undefined }),
+    }).catch(() => null)
+    if (res?.ok) continue
+    const error = await res?.json().catch(() => null)
+    const message = error?.error ? String(error.error) : ''
+    const reason = message.endsWith('.') ? message.slice(0, -1) : message
+    failures.push(reason ? `${w.url.trim()}: ${reason}` : w.url.trim())
+  }
+  return failures
+}
+
 function CreateCampaign() {
   const router = useRouter()
   const params = useParams()
@@ -346,6 +424,7 @@ function CreateCampaign() {
         maxRetries: 2,
       },
     ] as RetryConfig[],
+    webhooks: [] as WebhookDraft[],
   }
 
   // Fetch project configuration to get max_concurrency
@@ -423,8 +502,12 @@ function CreateCampaign() {
       // Generate unique campaign ID
       const campaignId = uuidv4()
 
-      // Step 1: Upload CSV to S3 — exclude any numbers on the DNC list.
-      const callableData = csvData.filter(row => !dncBlocked.has(row.phone))
+      // Step 1: Upload CSV to S3 — exclude any numbers on the DNC list, including
+      // the chosen agent's own list (the preview only knew the project's).
+      const agentBlocked = values.agentId
+        ? await fetchDncBlockedSet(csvData.map((r) => r.phone).filter(Boolean), projectId, values.agentId)
+        : new Set<string>()
+      const callableData = csvData.filter(row => !dncBlocked.has(row.phone) && !agentBlocked.has(row.phone))
       if (callableData.length === 0) {
         alert('Every uploaded number is on the DNC list. Nothing to send.')
         setSubmitting(false)
@@ -438,17 +521,10 @@ function CreateCampaign() {
 
       const uploadResponse = await fetch(`/api/campaigns/upload-file?campaignId=${campaignId}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'text/csv',
-        },
+        headers: { 'Content-Type': 'text/csv' },
         body: csvContent,
       })
-
-      if (!uploadResponse.ok) {
-        const error = await uploadResponse.json()
-        throw new Error(error.error || 'Failed to upload CSV')
-      }
-
+      await assertOk(uploadResponse, 'Failed to upload CSV')
       const uploadData = await uploadResponse.json()
       const s3FileKey = uploadData.s3FileKey || uploadData.fileKey
 
@@ -456,62 +532,16 @@ function CreateCampaign() {
       const agentName = await resolveCampaignAgentName(values.agentId, values.agentRuntime)
 
       // Step 3: Create campaign
-      const createResponse = await fetch('/api/campaigns/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          campaignId,
-          projectId,
-          campaignName: values.campaignName,
-          s3FileKey,
-          agentName: agentName,
-          sipTrunkId: values.sipTrunkId,
-          provider: values.provider || 'Unknown',
-          agentRuntime: values.acefoneApiKey ? 'acefone_bridge' : values.agentRuntime,
-          fromNumber: values.fromNumberE164 || undefined,
-          acefoneApiKey: values.acefoneApiKey || undefined,
-        }),
-      })
-
-      if (!createResponse.ok) {
-        const error = await createResponse.json()
-        throw new Error(error.error || 'Failed to create campaign')
-      }
+      await postJson('/api/campaigns/create', buildCreateBody(values, projectId, campaignId, s3FileKey, agentName), 'Failed to create campaign')
 
       // Step 4: Schedule campaign
-      const scheduleDate = values.sendType === 'schedule'
-        ? new Date(values.scheduleDate).toISOString()
-        : new Date().toISOString()
+      await postJson('/api/campaigns/schedule', buildScheduleBody(values, campaignId), 'Failed to schedule campaign')
 
-      // Format retryConfig according to backend requirements (see
-      // formatRetryConfigEntry for the per-type field shapes).
-      const formattedRetryConfig = values.retryConfig.map(formatRetryConfigEntry)
-
-      const scheduleResponse = await fetch('/api/campaigns/schedule', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          campaignId,
-          startTime: values.callWindowStart,
-          endTime: values.callWindowEnd,
-          timezone: values.timezone,
-          startDate: scheduleDate,
-          frequency: values.reservedConcurrency,
-          enabled: true,
-          days: values.selectedDays.length > 0
-            ? values.selectedDays
-            : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-          retryConfig: formattedRetryConfig,
-        }),
-      })
-
-      if (!scheduleResponse.ok) {
-        const error = await scheduleResponse.json()
-        throw new Error(error.error || 'Failed to schedule campaign')
+      // Step 5: Completion webhooks (optional). The campaign already exists, so a
+      // failure here must not fail creation: they can be added from the details.
+      const webhookFailures = await addCampaignWebhooks(campaignId, values.webhooks)
+      if (webhookFailures.length) {
+        alert(`Campaign created, but ${webhookFailures.length === 1 ? 'a webhook was' : 'some webhooks were'} not saved:\n${webhookFailures.join('\n')}\n\nYou can add them from the campaign details.`)
       }
 
       // Success!
@@ -531,9 +561,9 @@ function CreateCampaign() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-white dark:bg-gray-900">
+    <div className="flex flex-col h-screen bg-card">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-800 shadow-sm">
+      <div className="px-6 py-4 border-border bg-card border-b shadow-sm">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -543,7 +573,7 @@ function CreateCampaign() {
           >
             <ArrowLeft className="h-3.5 w-3.5" />
           </Button>
-          <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Create a batch call
           </h1>
         </div>
@@ -555,14 +585,18 @@ function CreateCampaign() {
         onSubmit={handleSubmit}
       >
         {({ values, setFieldValue, isSubmitting, dirty, isValid, handleSubmit: formikHandleSubmit }) => (
-          <div className="flex-1 overflow-hidden flex">
+          // stacks on phone: the recipients preview is a fixed-width data table
+          // by nature (arbitrary CSV columns), and a flex ROW at 375px with
+          // overflow-hidden was clipping it — and squeezing the form panel —
+          // rather than stacking
+          <div className="flex-1 overflow-hidden flex flex-col sm:flex-row">
             {/* Left Panel - Form */}
             <div className="flex-1 overflow-y-auto">
               <div className="max-w-2xl mx-auto p-4 space-y-4">
                 {loadingConfig ? (
                   <div className="flex items-center justify-center p-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-                    <span className="ml-2 text-sm text-gray-500">Loading configuration...</span>
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-sm text-muted-foreground">Loading configuration...</span>
                   </div>
                 ) : (
                   <>
@@ -589,6 +623,8 @@ function CreateCampaign() {
                     retryConfig: values.retryConfig,
                     agentId: values.agentId,
                     agentRuntime: values.agentRuntime,  // ← ADD
+                    callWindowStart: values.callWindowStart,
+                    callWindowEnd: values.callWindowEnd,
                   }}
                 />
 
@@ -603,6 +639,13 @@ function CreateCampaign() {
                     onCallWindowChange={setFieldValue}
                     selectedDays={values.selectedDays}
                     onDaysChange={(days) => setFieldValue('selectedDays', days)}
+                />
+
+                {/* Completion webhooks (optional, collapsed by default) */}
+                <WebhookCreateSection
+                  projectId={projectId}
+                  webhooks={values.webhooks}
+                  onChange={(webhooks) => setFieldValue('webhooks', webhooks)}
                 />
 
                 {/* Action Buttons */}

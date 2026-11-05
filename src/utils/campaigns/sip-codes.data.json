@@ -43,7 +43,7 @@
         "code": "408",
         "label": "Request Timeout",
         "description": "Server/network couldn't reach the destination in time. Usually a transient network issue.",
-        "enabled": false
+        "enabled": true
       },
       {
         "code": "504",

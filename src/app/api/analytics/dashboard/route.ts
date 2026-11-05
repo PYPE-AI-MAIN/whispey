@@ -1,0 +1,269 @@
+/**
+ * The dashboard behind an agent's Overview page — Confluence "Analytics Phase 1
+ * and 2 — Build Spec" §6.1, §10.10.
+ *
+ * There is exactly one shared dashboard per agent, and it is created the first
+ * time somebody opens the page, seeded with the starter charts. That is the
+ * answer to "where does a new dashboard come from": nobody creates one, and
+ * nobody ever lands on a blank page.
+ */
+import { NextRequest, NextResponse } from 'next/server'
+import { guarded } from '@/server/analytics/guard'
+import { z } from 'zod'
+import { randomUUID } from 'node:crypto'
+import { createServiceRoleClient } from '@/lib/supabase-server'
+import { Spec } from '@/server/analytics/spec'
+import { STARTER_CHARTS } from '@/server/analytics/starterCharts'
+import { resolveAnalyticsContext, resolveProjectAnalyticsContext, isDenied } from '@/server/analytics/context'
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+const supabase = createServiceRoleClient()
+
+type ScopeFilter = { scope: 'agent'; agent_id: string } | { scope: 'project'; project_id: string }
+
+/**
+ * A dashboard is keyed by (agent_id, scope='agent') or (project_id,
+ * scope='project') — never both — so the lookup/create/seed dance is the same
+ * shape either way; only the filter/insert row differs.
+ */
+async function loadOrCreateDashboard(filter: ScopeFilter, insertRow: Record<string, unknown>, name: string) {
+  const selectDashboard = () => {
+    let q = supabase.from('pype_analytics_dashboards').select('*').eq('scope', filter.scope).eq('visibility', 'shared')
+    q = filter.scope === 'agent' ? q.eq('agent_id', filter.agent_id) : q.eq('project_id', filter.project_id)
+    return q.maybeSingle()
+  }
+
+  let { data: dashboard } = await selectDashboard()
+  if (dashboard) return { dashboard }
+
+  const created = await supabase
+    .from('pype_analytics_dashboards')
+    .insert({ ...insertRow, scope: filter.scope, visibility: 'shared', name })
+    .select('*')
+    .single()
+
+  // two people opening the page at once: the unique index means one insert
+  // loses, and the loser reads what the winner made
+  if (created.error) {
+    const retry = await selectDashboard()
+    if (!retry.data) {
+      console.error('[analytics/dashboard] create failed', created.error)
+      return { error: NextResponse.json({ error: 'Could not open this dashboard' }, { status: 500 }) }
+    }
+    dashboard = retry.data
+  } else {
+    dashboard = created.data
+    await supabase.from('pype_analytics_widgets').insert(
+      STARTER_CHARTS.map((c, i) => ({
+        dashboard_id: dashboard!.id,
+        title: c.title,
+        kind: c.kind,
+        spec: c.spec,
+        layout: c.layout,
+        position: i,
+        is_seeded: true,
+      }))
+    )
+  }
+  return { dashboard }
+}
+
+export const GET = guarded('analytics/dashboard', async (req: NextRequest) => {
+  const agentId = req.nextUrl.searchParams.get('agentId')
+  const projectId = req.nextUrl.searchParams.get('projectId')
+  if (!agentId && !projectId) return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
+
+  let role: string
+  let downloadDisabled: boolean
+  let responseAgent: { id: string; name: string } | null = null
+  let dashboardResult: Awaited<ReturnType<typeof loadOrCreateDashboard>>
+
+  if (projectId) {
+    const resolved = await resolveProjectAnalyticsContext(projectId)
+    if (isDenied(resolved)) return resolved.errorResponse
+    role = resolved.role
+    downloadDisabled = resolved.downloadDisabled
+    dashboardResult = await loadOrCreateDashboard({ scope: 'project', project_id: projectId }, { project_id: projectId }, 'Explore')
+  } else if (agentId) {
+    const resolved = await resolveAnalyticsContext(agentId)
+    if (isDenied(resolved)) return resolved.errorResponse
+    role = resolved.role
+    downloadDisabled = resolved.downloadDisabled
+    responseAgent = { id: resolved.agent.id, name: resolved.agent.name }
+    dashboardResult = await loadOrCreateDashboard(
+      { scope: 'agent', agent_id: agentId },
+      { project_id: resolved.agent.projectId, agent_id: agentId },
+      'Overview'
+    )
+  } else {
+    // unreachable — the guard above requires at least one of agentId/projectId
+    return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
+  }
+
+  if (dashboardResult.error) return dashboardResult.error
+  const dashboard = dashboardResult.dashboard!
+
+  const { data: widgets } = await supabase
+    .from('pype_analytics_widgets')
+    .select('*')
+    .eq('dashboard_id', dashboard.id)
+    .order('position', { ascending: true })
+
+  return NextResponse.json({
+    dashboard,
+    widgets: widgets ?? [],
+    agent: responseAgent,
+    can_edit: role !== 'viewer',
+    // the export route refuses anyway; this stops the button appearing at all
+    download_disabled: downloadDisabled,
+  })
+})
+
+const SaveBody = z.object({
+  agentId: z.string().uuid().optional(),
+  projectId: z.string().uuid().optional(),
+  dashboardId: z.string().uuid(),
+  /** What the browser last read. A save against an older number is refused rather than overwriting. */
+  version: z.number().int().min(1),
+  defaults: z.record(z.unknown()).optional(),
+  widgets: z
+    .array(
+      z.object({
+        id: z.string().uuid().optional(),
+        title: z.string().min(1).max(120),
+        kind: z.enum(['kpi', 'bar', 'line', 'table', 'pie', 'text', 'formula']),
+        spec: z.unknown(),
+        // a rectangle on the twelve-column grid. `width` is the pre-grid shape,
+        // still accepted so an older client cannot fail to save.
+        layout: z.union([
+          z.object({
+            x: z.number().int().min(0).max(11),
+            y: z.number().int().min(0).max(500),
+            w: z.number().int().min(1).max(12),
+            h: z.number().int().min(1).max(40),
+          }),
+          z.object({ width: z.enum(['quarter', 'half', 'full']) }),
+        ]),
+        position: z.number().int().min(0),
+        is_seeded: z.boolean().optional(),
+      })
+    )
+    .max(40),
+})
+
+// every chart is validated before it is stored, so a saved dashboard can never
+// contain something the query builder will refuse later. A text block is not
+// a chart at all — it never reaches buildQuery — so it gets its own, much
+// smaller check instead of the full query Spec. A formula card is two
+// ordinary charts divided, so each side is the same full Spec everything else
+// uses — the compiler never sees the division itself.
+const TextSpec = z.object({ text: z.string().max(4000) })
+const FormulaSpec = z.object({
+  a: Spec,
+  b: Spec,
+  op: z.enum(['percent', 'ratio']),
+  display: z.object({ round: z.number().int().min(0).max(6).optional(), unit: z.string().max(16).optional() }).optional(),
+})
+
+function specSchemaFor(kind: string) {
+  if (kind === 'text') return TextSpec
+  if (kind === 'formula') return FormulaSpec
+  return Spec
+}
+
+/** The first widget whose spec doesn't validate, or null when every one does. */
+function firstInvalidWidget(widgets: z.infer<typeof SaveBody>['widgets']): { title: string; error: z.ZodError } | null {
+  for (const w of widgets) {
+    const check = specSchemaFor(w.kind).safeParse(w.spec)
+    if (!check.success) return { title: w.title, error: check.error }
+  }
+  return null
+}
+
+export const PUT = guarded('analytics/dashboard', async (req: NextRequest) => {
+  const parsed = SaveBody.safeParse(await req.json().catch(() => null))
+  if (!parsed.success) return NextResponse.json({ error: 'Bad request', detail: parsed.error.flatten() }, { status: 400 })
+  const body = parsed.data
+  if (!body.agentId && !body.projectId) return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
+
+  const resolveScope = () => {
+    if (body.projectId) return resolveProjectAnalyticsContext(body.projectId)
+    if (body.agentId) return resolveAnalyticsContext(body.agentId)
+    return null
+  }
+  const resolved = await resolveScope()
+  // unreachable — the guard above requires at least one of agentId/projectId
+  if (!resolved) return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
+  if (isDenied(resolved)) return resolved.errorResponse
+  if (resolved.role === 'viewer') return NextResponse.json({ error: 'You can view this dashboard but not change it' }, { status: 403 })
+
+  const invalid = firstInvalidWidget(body.widgets)
+  if (invalid) {
+    return NextResponse.json({ error: `"${invalid.title}" is not a valid chart`, detail: invalid.error.flatten() }, { status: 400 })
+  }
+
+  let update = supabase
+    .from('pype_analytics_dashboards')
+    .update({ version: body.version + 1, ...(body.defaults ? { defaults: body.defaults } : {}) })
+    .eq('id', body.dashboardId)
+  update = body.projectId ? update.eq('project_id', body.projectId) : update.eq('agent_id', body.agentId)
+  const bumped = await update
+    .eq('version', body.version)
+    .select('id, version')
+    .maybeSingle()
+
+  if (!bumped.data) {
+    return NextResponse.json(
+      { error: 'Somebody else saved this dashboard while you were editing. Reload to see their changes.' },
+      { status: 409 }
+    )
+  }
+
+  // Every row must carry the same keys: PostgREST refuses a batch where some
+  // objects have `id` and some do not, which is what a dashboard with one new
+  // chart on it looks like. Minting the id here keeps one uniform upsert.
+  const rows = body.widgets.map((w) => ({
+    id: w.id ?? randomUUID(),
+    dashboard_id: body.dashboardId,
+    title: w.title,
+    kind: w.kind,
+    spec: w.spec,
+    layout: w.layout,
+    position: w.position,
+    is_seeded: w.is_seeded ?? false,
+  }))
+
+  // Write first, then remove what is no longer on the dashboard. PostgREST has
+  // no transaction across two calls, so the order decides what a half-failure
+  // leaves behind: delete-then-insert can empty a dashboard and then fail to
+  // refill it. This way the worst case is a few stale rows, not a blank page.
+  const { error: upError } = await supabase.from('pype_analytics_widgets').upsert(rows)
+
+  const removal = supabase.from('pype_analytics_widgets').delete().eq('dashboard_id', body.dashboardId)
+  let delError: typeof upError = null
+  if (!upError) {
+    const result = rows.length ? await removal.not('id', 'in', `(${rows.map((r) => r.id).join(',')})`) : await removal
+    delError = result.error
+  }
+
+  if (delError || upError) {
+    const failure = delError ?? upError
+    console.error('[analytics/dashboard] save failed', failure)
+    return NextResponse.json(
+      // the version was already bumped, so the browser has to reload rather
+      // than press Save again against a number the database has moved past
+      { error: 'Could not save this dashboard. Reload the page and try again.', detail: failure?.message },
+      { status: 500 }
+    )
+  }
+
+  const { data: widgets } = await supabase
+    .from('pype_analytics_widgets')
+    .select('*')
+    .eq('dashboard_id', body.dashboardId)
+    .order('position', { ascending: true })
+
+  return NextResponse.json({ version: bumped.data.version, widgets: widgets ?? [] })
+})

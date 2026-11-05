@@ -1,0 +1,72 @@
+---
+title: Connect an agent
+description: Add monitoring to a voice agent that already runs somewhere else, such as LiveKit, Pipecat, Vapi or Retell.
+---
+
+If your voice agent already exists outside Whispey, you can connect it so its calls show up in your dashboard. This is called monitoring. You keep running the agent where it is.
+
+Connecting an outside agent is different from creating one. A connected agent is not configured in **Agent Config**. To build an agent inside Whispey, see [Agent config overview](../agent-config/overview).
+
+## Open the connect flow
+
+1. Open your project and start a new agent. The **Setup Voice Agent** window opens.
+2. Choose **Connect Existing Agent**. The window says "Add monitoring to your existing voice agent".
+3. Pick the **Agent Platform**.
+
+| Platform | Text under the name |
+|---|---|
+| **LiveKit Agent** | Monitor your LiveKit voice agent |
+| **Pipecat Agent** | Monitor your Pipecat voice agent |
+| **Vapi Assistant** | Monitor your Vapi assistant calls |
+| **Retell Agent** | Monitor your Retell voice agent |
+
+4. Type an **Agent Name**. This is only a label in Whispey. The examples are "Support Assistant Monitor" for Vapi, "Retell Agent Monitor" for Retell and "Customer Agent Monitor" for the others.
+5. Fill in the rest for your platform, then click **Start Monitoring**.
+
+## LiveKit and Pipecat
+
+There is nothing else to fill in. For LiveKit you can add **Notes** (optional).
+
+When it finishes, Whispey shows **Monitoring Setup Complete!** with a **Monitoring ID**. Click the copy button to copy the full ID.
+
+Your agent then sends its calls to Whispey using the Whispey SDK and this ID as its agent ID. See [SDK setup](../sdk/setup) and the [Quick start](../quick-start).
+
+## Vapi and Retell
+
+These platforms connect with an API key. Whispey also sets up a webhook for you so calls are reported.
+
+- [Connect a Vapi assistant](./vapi)
+- [Connect a Retell agent](./retell)
+
+While it works, the window shows two steps: **Setting Up Monitoring**, then **Connecting Webhook**.
+
+When it is done, the window says **Monitoring Setup Complete!** and shows a badge such as **Vapi Monitoring** and **Development**. A second box tells you how the webhook went.
+
+| Message | Meaning |
+|---|---|
+| **Monitoring Active** | "Monitoring configured successfully! Your agent is now being observed." |
+| **Manual Setup Required** | "Agent created but webhook setup failed. You can configure it manually from the agent settings." The agent is created, but calls may not be reported until the webhook is set up by hand. |
+
+## After you connect
+
+The success window has two buttons.
+
+- **Monitor Another** starts again.
+- **View Integration** takes you on to the new agent.
+
+Connected agents are added to the project as **Development** agents.
+
+## If something goes wrong
+
+| Message | What to do |
+|---|---|
+| "Agent name is required" | Type a name. |
+| "Vapi API key is required" or "Retell API key is required" | Paste your key and click **Connect**. |
+| "Please select an assistant to monitor" or "Please select an agent to monitor" | Choose one from the list. |
+| "No API key found for this project" | Your project has no Whispey API key yet. Create one in your workspace. |
+| "Cannot use legacy API key. Please regenerate your API key first." | Regenerate the project key, then try again. |
+
+## Related
+
+- [Agent config overview](../agent-config/overview)
+- [Observability](../observability)

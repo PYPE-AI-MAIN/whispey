@@ -1,0 +1,37 @@
+---
+title: Retell
+description: Connect a Retell agent to Whispey and view it from the agent page.
+---
+
+Connect a Retell agent to see its calls in Whispey. Whispey reads the agent from Retell. You keep editing it in Retell.
+
+## Connect an agent
+
+1. Start the connect flow. See [Connect an agent](./connect-an-agent).
+2. Choose **Retell Agent** as the platform and type an **Agent Name**.
+3. Under **Connect Retell Account**, paste your key into **Retell API Key**. The field is marked **Secure**. The help text says to get your key from the Retell Dashboard, under **API Keys**.
+4. Click **Connect**. Whispey lists the agents in that account.
+5. Under **Select Agent**, use **Select Agent to Monitor** to choose one.
+6. Click **Start Monitoring**.
+
+Whispey then sets up the webhook that reports calls. See [Connect an agent](./connect-an-agent) for the possible results.
+
+## The Retell agent page
+
+Open the agent to see a read-only view. Changes are made in Retell, not here.
+
+| Item | What it shows |
+|---|---|
+| Agent name | The name from Retell, or "Unnamed Agent". |
+| **Connected** or **Not Connected** | **Connected** when the agent in Retell has a webhook address set. |
+| **System Prompt** | The prompt, with a **Copy** button. |
+| **Configuration Overview** | The **Voice** and the **LLM**. |
+| **Language** | The agent's language. If Retell gives none, it shows en-US. |
+| **Retell Agent ID** | The ID in Retell, with a copy button. |
+| **Version** | The agent version in Retell, such as v2. |
+| **Open in Retell** | Opens the agent in Retell. |
+
+## Related
+
+- [Connect an agent](./connect-an-agent)
+- [Vapi](./vapi)

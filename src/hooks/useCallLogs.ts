@@ -72,6 +72,8 @@ interface UseCallLogsOptions {
   enabled?: boolean
   refetchOnMount?: boolean
   refetchOnWindowFocus?: boolean
+  /** Re-run the query on this interval (ms) while enabled — e.g. to wait for a fresh row to land. */
+  refetchInterval?: number | false
   staleTime?: number
   gcTime?: number
   userId?: string
@@ -119,6 +121,7 @@ export const useCallLogs = ({
   enabled = true,
   refetchOnMount = false,
   refetchOnWindowFocus = false,
+  refetchInterval = false,
   staleTime = 5 * 60 * 1000,
   gcTime = 10 * 60 * 1000,
   userId,
@@ -185,7 +188,73 @@ export const useCallLogs = ({
     gcTime,
     refetchOnWindowFocus,
     refetchOnMount,
+    refetchInterval,
     // Show current page data while the new page is loading (no blank flash)
     placeholderData: keepPreviousData,
   })
 }
+
+const CALL_LOG_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** Whether a string can be a call log id (a link's ?call= value). */
+export const isCallLogId = (id: string | null | undefined): id is string => !!id && CALL_LOG_ID.test(id)
+
+/**
+ * One call log by id, whatever page, date range or filter the list is on — for
+ * a shared link (?call=<id>) to a call that isn't in the loaded page. Same
+ * endpoint, columns and access checks as the list. null when it doesn't exist
+ * (or isn't this agent's).
+ */
+export const useCallLogById = ({
+  agentId,
+  projectId,
+  callId,
+  select,
+  enabled = true,
+  userId,
+  userEmail,
+}: {
+  agentId: string | undefined
+  projectId?: string
+  callId: string | null
+  select: string
+  enabled?: boolean
+  userId?: string
+  userEmail?: string
+}) =>
+  useQuery<CallLog | null>({
+    queryKey: ['call-log-by-id', agentId, callId, select],
+    queryFn: async ({ signal }) => {
+      const body = {
+        p_agent_id: agentId,
+        p_pre_distinct_filters: [{ column: 'id', operator: 'eq', value: callId }],
+        p_post_distinct_filters: [],
+        p_select: select,
+        p_order_by_column: 'created_at',
+        p_order_ascending: false,
+        p_limit: 1,
+        p_offset: 0,
+        p_distinct_column: null,
+        p_distinct_json_field: null,
+        p_distinct_order: 'asc',
+        p_date_from: null,
+        p_date_to: null,
+        p_user_clerk_id: userId || null,
+        p_user_email: userEmail || null,
+      }
+      const url = projectId ? `/api/projects/${projectId}/call-logs/query` : `/api/agents/${agentId}/call-logs/query`
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal,
+      })
+      const json = (await res.json()) as { data?: CallLog[]; error?: string }
+      if (!res.ok) throw new Error(json.error || res.statusText)
+      const found = (json.data || []).find((c) => c.id === callId)
+      return found ? sanitizeCallLog(found) : null
+    },
+    enabled: enabled && !!agentId && isCallLogId(callId),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  })

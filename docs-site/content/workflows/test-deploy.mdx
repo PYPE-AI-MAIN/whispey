@@ -1,0 +1,50 @@
+---
+title: Test, deploy and version history
+description: Try your agent, make it live, and go back to an earlier version.
+---
+
+## Test call
+
+1. Click **Test call** in the top bar. It is greyed out until the agent has been deployed once.
+2. Allow your microphone and talk to the agent.
+3. Watch the canvas. The step the agent is on is shown in green, and the canvas follows it. A green "Following the call" label shows at the top. If you move the canvas yourself it stops following, and a **Follow the call** button brings it back.
+4. The panel shows the live transcript and a short log of which step the call entered.
+
+:::warning
+A test call uses the last deployed version. If you changed something and did not deploy, the call does not include it. The editor warns you when you have unsaved changes.
+:::
+
+## Deploy
+
+1. Click **Deploy**.
+2. Type what changed, such as "Added a callback path".
+3. Confirm.
+
+If the problems button shows a red "to fix", Deploy asks you to fix those first and opens the list. Orange "to check" items do not block Deploy.
+
+New calls use the deployed version straight away. There is nothing to start.
+
+## Version history
+
+Every deploy saves a numbered version with your message, your email and the time.
+
+1. Open **Setup**, then **Version history**.
+2. Find the version you want.
+3. Click **Restore**. That version is loaded into the editor. It is not live yet.
+4. Click **Deploy** to publish it. This creates a new version, so no earlier version is lost.
+
+Things to know:
+
+- The history starts from the first deploy made with this feature. Earlier deploys are not listed.
+- Versions are kept in Whispey only and are not copied to any other service.
+- Agents marked as production may only save versions from a superadmin account.
+
+## Webhook
+
+A webhook sends each finished call, with its transcript and details, to an address you choose.
+
+1. Open **Setup**, then **Webhook (send calls to your system)**.
+2. Enter the **Webhook URL**, choose the request type, and add any headers your system needs.
+3. Switch it on and click **Save webhook**.
+
+It applies straight away. You do not need to deploy. To try it, put a test address in, make a short test call and check that the call arrives.

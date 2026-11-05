@@ -1,0 +1,45 @@
+---
+title: Global rules
+description: Things that can happen at any point in the call, written once.
+---
+
+Some things can happen at any moment of a call: the caller asks for a person, describes an emergency, or says "stop calling me". Without a shortcut you would need to draw a line from every step to the same ending, and the canvas becomes a tangle.
+
+A **global rule** is that shortcut. You write the rule once, and it applies from many steps.
+
+## When to use one
+
+Use a global rule when the same thing should happen from most steps:
+
+- the caller asks for a human or a real person
+- the caller describes an emergency
+- the caller asks you to stop calling
+- the caller is clearly not interested
+- it is a wrong number
+
+Do not use one for a choice that only belongs to a single step. Draw that as a normal [connection](./connections).
+
+## What it does
+
+On every step it applies to, the agent gets one extra option: "if this happens, go to that step". The agent checks it on every turn of the call.
+
+Each rule is one more thing the agent weighs on every step. Keep the list short. The panel shows a warning when you have more than six.
+
+A rule applies to steps that talk with the caller. It does not apply to a step that speaks and moves on without waiting for a reply, because such a step never listens.
+
+## Adding a rule
+
+1. Open **Setup**, then **Rules for any step**.
+2. Under **Add a rule**, click a starter such as "they ask for a human or a real person", or write your own description.
+3. Choose where the call goes, usually an End Call or Call Transfer step.
+4. Click **Add rule**.
+
+Each rule in the list shows where it sends the call and how many steps it applies to, for example "from all 14 steps that listen". An End Call step that a rule points at shows an "any step" badge on the canvas.
+
+## Merging repeated connections
+
+If your flow already has the same condition drawn from many steps, click **Merge repeated connections**. Any condition repeated from three or more steps to the same place becomes one global rule. The call behaves the same, with far fewer lines.
+
+## Check it
+
+Make a test call and say the thing the rule listens for, for example "can I talk to a person?". The call should go to the step you chose. If it triggers when it should not, make the description more specific.

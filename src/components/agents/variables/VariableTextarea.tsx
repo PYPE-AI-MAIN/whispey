@@ -4,13 +4,14 @@
 import React, { useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { validateVariables, ValidationResult } from '@/utils/variableValidator';
+import { AskPiPopover } from './AskPiPopover';
 
 // Dynamically import Monaco Editor with no SSR
 const Editor = dynamic(() => import('@monaco-editor/react'), { 
   ssr: false,
   loading: () => (
-    <div className="w-full h-full flex items-center justify-center bg-white dark:bg-[#283442] border border-gray-200 dark:border-gray-700 rounded-lg">
-      <p className="text-sm text-gray-500 dark:text-gray-400">Loading editor...</p>
+    <div className="w-full h-full flex items-center justify-center bg-card border border-border rounded-lg">
+      <p className="text-sm text-muted-foreground">Loading editor...</p>
     </div>
   )
 });
@@ -35,6 +36,7 @@ export const VariableTextarea: React.FC<VariableTextareaProps> = ({
   disabled = false
 }) => {
   const editorRef = useRef<any>(null);
+  const [editorInstance, setEditorInstance] = React.useState<any>(null);
   const monacoRef = useRef<any>(null);
   const [validation, setValidation] = React.useState<ValidationResult>({
     isValid: true,
@@ -80,11 +82,13 @@ export const VariableTextarea: React.FC<VariableTextareaProps> = ({
         base: 'vs',
         inherit: true,
         rules: [
-        { token: 'variable.valid', foreground: '0969da', fontStyle: 'italic' },
+        { token: 'variable.valid', foreground: '4b0082', fontStyle: 'italic' },
         { token: 'variable.invalid', foreground: 'd1242f', fontStyle: 'underline' }
         ],
         colors: {
         'editor.background': '#ffffff',
+        'editor.selectionBackground': '#4b008233',
+        'editor.inactiveSelectionBackground': '#4b008222',
         }
     });
 
@@ -92,19 +96,31 @@ export const VariableTextarea: React.FC<VariableTextareaProps> = ({
         base: 'vs-dark',
         inherit: true,
         rules: [
-        { token: 'variable.valid', foreground: '58a6ff', fontStyle: 'italic' },
-        { token: 'variable.invalid', foreground: 'ff7b72', fontStyle: 'underline' }
+        { token: 'variable.valid', foreground: 'ffb4a2', fontStyle: 'italic' },
+        { token: 'variable.invalid', foreground: 'ff4d4f', fontStyle: 'underline' }
         ],
         colors: {
-        'editor.background': '#283442',
+        // matches the wrapper div's own `dark:bg-gray-900` — this app is on
+        // Tailwind v4, whose gray-900 is the brand tint #17121f. This used to be a different hardcoded
+        // slate-blue (#283442), which is exactly what showed as a mismatched
+        // stripe on both sides of the editor, in the padding gutter between
+        // the wrapper and Monaco's own canvas.
+        'editor.background': '#17121f',
+        'editor.selectionBackground': '#ff6b6b4d',
+        'editor.inactiveSelectionBackground': '#ff6b6b2e',
         }
     });
     }, []);
 
     const handleEditorDidMount = useCallback((editor: any, monaco: any) => {
     editorRef.current = editor;
+    setEditorInstance(editor);
     monacoRef.current = monaco;
-    // No onKeyDown needed anymore!
+    // The find widget's button tooltips open on top of the buttons (no room above
+    // the editor) and swallow clicks, so block them for the whole widget.
+    editor.getDomNode()?.addEventListener('mouseover', (e: MouseEvent) => {
+      if ((e.target as HTMLElement).closest?.('.find-widget')) e.stopPropagation();
+    }, true);
     }, []);
 
   // Detect dark mode
@@ -130,11 +146,11 @@ export const VariableTextarea: React.FC<VariableTextareaProps> = ({
 
   return (
     <div 
-      className={`var-editor-monaco border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-[#283442] ${className}`} 
+      className={`var-editor-monaco relative border border-border rounded-lg bg-card ${className}`}
       style={{ ...style, minHeight: style?.minHeight || '200px' }}
     >
       {/* Padding wrapper for left/right spacing */}
-      <div className="px-3 h-full">
+      <div className="px-3 h-full overflow-hidden rounded-lg">
         <Editor
           height="100%"
           defaultLanguage="prompt-with-variables"
@@ -183,6 +199,7 @@ export const VariableTextarea: React.FC<VariableTextareaProps> = ({
           }}
         />
       </div>
+      {!disabled && <AskPiPopover editor={editorInstance} fullPrompt={value} />}
     </div>
   );
 };

@@ -1,0 +1,105 @@
+---
+title: Team and roles
+description: Invite people to an organization, change their role and see what each role can open.
+---
+
+You manage your team on the **Settings** page. Owners and admins can invite people, change roles and remove members.
+
+## Roles
+
+An organization has three roles.
+
+| Role | How someone gets it |
+|---|---|
+| Owner | The person who created the organization |
+| Admin | Chosen when you invite someone, or set later |
+| Viewer | Chosen when you invite someone, or set later |
+
+Older accounts may show the roles **member** or **user**. Whispey treats them as viewers.
+
+You can only pick **Admin** or **Viewer** when you invite or change a role. There is one owner, and the owner's role cannot be changed.
+
+## What each role can open
+
+| Area | Owner and admin | Viewer |
+|---|---|---|
+| Overview and Agents | Yes | Yes |
+| Ask Pi | Yes | No. Turned off, with a **Beta** badge. |
+| API key page | Yes | No |
+| Campaigns | Yes | No |
+| Phone Settings | Yes | No |
+| Settings page | Yes | No |
+| Invite, remove and change roles | Yes | No |
+| Delete the organization | Owner only | No |
+
+Inside an agent, viewers also do not see these by default:
+
+- The agent configuration page
+- Knowledge base
+- Phone calls (call configuration)
+- Field extractor, metrics and the re-analyze option in call logs
+- The total cost card on the agent overview
+
+Owners and admins see all of them.
+
+:::note
+The dashboard has no screen to give one viewer extra access. If a viewer needs a section they cannot see, make them an admin or ask Pype support.
+:::
+
+## Invite someone
+
+1. Open **Settings**.
+2. In **Team Members**, choose **Invite**.
+3. In **Invite Team Member**, enter their **Email Address**, for example `colleague@company.com`.
+4. Pick a **Role**: **Viewer** or **Admin**. Viewer is the default.
+5. Choose **Add User**.
+
+What happens next depends on the person:
+
+| Situation | Result |
+|---|---|
+| They already have a Whispey login | They are added to the organization straight away. |
+| They have no login yet | They appear in the list as **Pending**. They join when they sign up with that email. |
+| They were removed before | They are reactivated. |
+
+Whispey sends an invite email. If the email cannot be sent, you see a message that says so, but the person is still added.
+
+You cannot invite someone who is already a member.
+
+## Read the members table
+
+The **Current Members** table has these columns.
+
+| Column | Meaning |
+|---|---|
+| Member | The email. Your own row says **(You)**. |
+| Role | The role. Owners and admins can change it with the drop-down. |
+| Status | **Joined** with a date, **Pending**, or **Inactive**. |
+| Last column | Remove and reactivate buttons. |
+
+When there are more than five members, a **Search by email** box appears.
+
+You cannot change or remove the owner, and you cannot change or remove yourself.
+
+## Change a role
+
+1. In the **Role** column, open the drop-down on the person's row.
+2. Pick **Viewer** or **Admin**.
+
+You see **Member role updated successfully**.
+
+## Remove a member
+
+There are two kinds of removal.
+
+| Action | What it does |
+|---|---|
+| Remove (the bin button on an active member) | Revokes access. The person stays in the list as **Inactive** and you can reactivate them later. |
+| **Permanently Delete** (the bin button on an inactive member) | Deletes the member and their history. You cannot undo it. |
+
+To bring someone back, choose **Reactivate** on their inactive row.
+
+## Related pages
+
+- [Settings reference](./settings-reference)
+- [Organizations](./organizations)

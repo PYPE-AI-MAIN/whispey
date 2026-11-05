@@ -1,0 +1,56 @@
+---
+title: Variables and the knowledge base
+description: Details the agent remembers, and documents it can look things up in.
+---
+
+## Variables
+
+A variable is a detail the agent knows or collects, such as a customer name or a preferred day.
+
+### Where variables come from
+
+- **Collect Details steps** save what the caller says, using the names you give each detail.
+- **Call an API** and similar steps can save their answer under a name you choose, in the **Remember the result as** field.
+- **You** can add your own under **Setup**, then **Variables**, with a starting value.
+
+### Using a variable
+
+Write its name in double curly brackets in any step, in the instructions or the exact words. For example:
+
+> Say the clinic team will call to confirm `{{preferred_day}}`.
+
+If you use a name that is not set up, the editor warns you. Add it under **Variables** or fix the spelling.
+
+### Add a variable yourself
+
+1. Open **Setup**, then **Variables**.
+2. Click **Add variable**.
+3. Fill in **Name**, **Type**, **Starts as** and **What it is**.
+
+Give each variable a different name. If two steps save into the same name, the later one overwrites the earlier one.
+
+## Knowledge base
+
+The knowledge base is a set of documents, such as a price list, a FAQ or plan details, that the agent can look things up in during a call.
+
+It belongs to the whole agent, not to one step. Once it is on, the agent can use it on any step.
+
+### Set it up
+
+1. Open **Setup**, then **Knowledge base (documents)**.
+2. Under **1. Add content**, upload files or add a website link.
+3. Under **2. Check what is there**, make sure your documents appear.
+4. Turn on **Let the agent use these documents**.
+5. Click **Deploy**, because the on and off switch is part of the flow.
+
+Uploads are saved right away. Only the switch needs a Deploy.
+
+### How the agent uses it
+
+When a caller asks something the step's instructions do not cover, the agent searches the documents and answers from what it finds. If nothing useful comes back, it should say a person can help instead of guessing.
+
+:::tip
+You do not need a Knowledge step for this. Only use the Knowledge step when a search must happen at one fixed point in the call.
+:::
+
+Write your documents the way a caller would ask. Short, clear sections work better than long pages.

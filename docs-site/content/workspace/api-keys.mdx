@@ -1,0 +1,58 @@
+---
+title: API keys
+description: View, copy and regenerate the API key your agents use to send data to Whispey.
+---
+
+An API key lets your code send call data to your organization. Open **API key** in the sidebar to manage it.
+
+Only owners and admins see this item.
+
+## What you see
+
+The page is called **API Keys**. Each key is a card with:
+
+| Item | Meaning |
+|---|---|
+| Name | The key name |
+| **Active** or **Inactive** | Whether the key works |
+| **Legacy** | Shown on keys from the older system |
+| A masked key | Most of the key is hidden |
+| Created | The date the key was made |
+| Last used | When the key was last used. Hidden if the key was never used. |
+
+If there is nothing yet, you see **No API keys yet**. A new organization gets a key when you create it.
+
+The keys are stored encrypted. The page says to use the eye button to decrypt a key when you need it.
+
+## Copy a key
+
+1. Choose the eye button (**View full key**) on the key card.
+2. The full key appears in a box. It is hidden as dots at first. Use the eye icon in the box to show it.
+3. Choose the copy icon. You see **Copied to clipboard**.
+
+Legacy keys cannot be viewed. Their eye button is turned off with the hint **Legacy key - cannot be viewed**.
+
+## Regenerate a key
+
+Regenerate when a key was shared by mistake or you want to replace it.
+
+1. Choose the regenerate button on the key card.
+2. Read the **Regenerate key** warning and choose **Regenerate**.
+3. The **Key regenerated successfully** window shows the new key. Copy it, then choose **Done**.
+
+:::warning
+Regenerating invalidates the current key straight away. Anything that uses the old key loses access until you update it with the new one.
+:::
+
+For a legacy key, the button hint is **Regenerate and migrate to new system**. After you regenerate it, the key can be viewed like any other.
+
+## Use the key in your code
+
+Put the key in an environment variable called `WHISPEY_API_KEY` and pass it to the SDK as `apikey`. The full steps are in the [Quick start](../quick-start) and the [SDK setup](../sdk/setup).
+
+Keep the key secret. Do not put it in code you share or in a public repository.
+
+## Related pages
+
+- [Organizations](./organizations)
+- [Team and roles](./team-and-roles)

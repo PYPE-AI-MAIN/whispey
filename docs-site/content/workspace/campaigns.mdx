@@ -1,0 +1,127 @@
+---
+title: Campaigns
+description: Create a batch of outbound calls, schedule it, set retries and manage it from the Campaigns page.
+---
+
+A campaign calls a list of people with one agent. You upload a CSV of contacts, choose when the calls run, and Whispey dials them.
+
+This page covers the workspace screens. For a worked example, CSV rules, variables and the logs table, see [Campaign logs](../campaign-logs).
+
+Campaigns are in the sidebar under **Calling**. Viewers do not see it by default. See [Team and roles](./team-and-roles).
+
+## The Campaigns page
+
+The page shows how many campaigns you have. You can:
+
+- Search with **Search campaigns by name or ID...**
+- Choose **Refresh** to reload the list
+- Choose **Create Campaign** to start a new one
+
+Each campaign card shows its status, ID, phone provider, agent and created date. Click a card to open its logs. The campaign list also has a **Campaign Details** panel with the campaign information, agent details and performance numbers.
+
+### Statuses
+
+| Status | Meaning |
+|---|---|
+| Draft | Not started |
+| Ready | Ready to run |
+| Scheduled | Waiting for its start time |
+| Running or Active | Calling now |
+| Paused | Stopped by someone |
+| Completed | Finished |
+| Failed | Did not complete |
+
+### Pause, resume and delete
+
+| Button | Shown when status is | Notes |
+|---|---|---|
+| Pause | Scheduled or Running | Asks you to confirm |
+| Resume | Paused | |
+| Delete | Paused, Draft, Completed or Ready | Cannot be undone |
+
+## Create a campaign
+
+Choose **Create Campaign**. The page is called **Create a batch call**.
+
+### 1. Campaign details
+
+| Field | Notes |
+|---|---|
+| Batch Call Name | At least 3 characters |
+| Agent Runtime | **LiveKit** or **Pipecat** |
+| Select Agent | The agent that makes the calls. With Pipecat you pick from your Pipecat agents. |
+| From Number (Outbound) | Shown for LiveKit only. Lists your numbers that are outbound or both. If it says **No outbound phone numbers available**, add one on the [Phone numbers](./phone-numbers) page. |
+| Campaign Concurrency | How many calls run at the same time. From 1 up to your organization's limit. The default limit is 5. |
+
+### 2. Upload recipients
+
+Under **Upload Recipients**, choose a CSV file or drag it in. Choose **Download template** to get an example.
+
+- The file needs a `phone` column.
+- Other columns become variables you can use in the agent's prompt.
+- Column names can use letters, numbers and underscores, and cannot start with a number.
+- Errors are listed by row. You cannot send until they are fixed.
+
+A preview of the rows appears on the right. Numbers on the [do not call list](./do-not-call) are highlighted and left out.
+
+### 3. Retry configuration
+
+Retries call people again when a call did not work. A new campaign starts with one rule: **SIP Code** 480 and 486, a 5 minute delay and 2 retries.
+
+Choose **Add Retry Rule** for more. Each rule has a **Retry Type**.
+
+| Retry Type | Retries when |
+|---|---|
+| SIP Code | The call ended with one of the SIP error codes you pick |
+| Metric | A metric from the agent is below or above a **Threshold** |
+| Field Extractor | An extracted field is missing, equals, does not equal, contains or does not contain a value |
+| Metadata | A call metadata field matches. **AMD Verdict (Answering Machine Detection)** is the only one you can pick. |
+
+The SIP codes you can pick are in five groups.
+
+| Group | Codes |
+|---|---|
+| No Answer | 480 Temporarily Unavailable, 487 Request Terminated |
+| Busy | 486 Busy Here, 600 Busy Everywhere |
+| Timeout | 408 Request Timeout, 504 Server Timeout |
+| Network Error | 500 Server Internal Error, 503 Service Unavailable |
+| Declined | 603 Decline |
+
+A SIP code can be used in only one rule.
+
+Under **Retry Timing** choose one of two modes.
+
+| Mode | Settings |
+|---|---|
+| Fixed delay | **Delay (minutes)** from 0 to 1440, and **Max Retries** from 0 to 10 |
+| Backoff schedule | A list of waits in minutes. Each is 5 to 1440, up to 10 entries. The first wait is used before retry 1, the next before retry 2, and so on. |
+
+### 4. Schedule
+
+| Field | Notes |
+|---|---|
+| When to send the calls | Send now, or schedule. If you schedule, set **Select date** and **Timezone**. The default timezone is Asia/Kolkata. |
+| Days to Run | Monday to Sunday. Weekdays are selected by default. There is a **Quick Select**. At least one day is required. |
+| Call Window | A start and end time. Default 00:00 to 23:59. Calls run only inside this window on the selected days. |
+
+### 5. Send
+
+Choose **Send**. The button stays off until the form is valid and a CSV with no errors is loaded. Whispey uploads the file, creates the campaign and schedules it. You then land on the campaign's page.
+
+## Monitor a campaign
+
+The campaign page shows:
+
+- **Total Contacts**, **Processed**, **Success**, **Failed** and **Pending** counts
+- **Campaign Information**: status, agent, provider, schedule, time window and timezone
+- **Retry Configuration**: the delay and retries for each rule
+- A logs table you can filter by **All Status**, **Pending**, **Completed**, **Failed** or **In Progress**
+- **Refresh** and **Download CSV**
+
+For the meaning of each column and the export, see [Campaign logs](../campaign-logs).
+
+## Related pages
+
+- [Campaign logs](../campaign-logs)
+- [Phone numbers](./phone-numbers)
+- [Do not call list](./do-not-call)

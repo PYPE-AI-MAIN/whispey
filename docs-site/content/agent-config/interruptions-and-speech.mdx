@@ -1,0 +1,77 @@
+---
+title: Interruptions and speech
+description: Control when the caller can cut the agent off, and how the agent hears speech and silence.
+---
+
+Two sections in **Advanced Settings**, under **Voice & Turn-taking**, control how the agent handles talking over each other.
+
+- **Interruption Configuration**: can the caller interrupt, and what counts as an interruption.
+- **Voice Activity Detection (VAD)**: how the agent tells speech from silence.
+
+For how the agent decides a turn has ended, see **Session Behaviour** in [Advanced settings](./advanced-settings).
+
+## Interruption Configuration
+
+The section starts with: "Configure interruption handling settings for your assistant".
+
+| Setting | What it does | Default |
+|---|---|---|
+| **Allow Interruptions** | When on, the caller can speak over the agent and the agent stops. When off, the rest of the options are hidden. | On |
+| **Interruption Mode** | **VAD** or **Adaptive**. See below. | Not set (the screen shows VAD) |
+| **Drop Filler Words** | Silently drops short words such as "hello" or "hmm" said while the agent is thinking or speaking. This avoids wasted model calls and restarts in the middle of a reply. | Off |
+| **Words to Drop** | The list of words to drop. Shown when **Drop Filler Words** is on. Add your own, such as "wait" or "haan". **Restore defaults** brings back the starting list. | Empty |
+
+### VAD mode
+
+The agent treats speech as an interruption based on how long and how many words the caller says.
+
+| Setting | What it does | Range | Default |
+|---|---|---|---|
+| **Min Interruption Duration (seconds)** | The minimum time the caller must speak to count. | 0.1 to 10 | 0.8 |
+| **Min Interruption Words** | The minimum number of words to count. | 0 to 20 | 0 |
+| **Real Interruption Guard (Beta)** | Filters out backchannels and false interruptions before the agent stops speaking. The screen recommends Turn Detection "V1 Mini". | On or off | Off |
+
+A backchannel is a small sound of listening, such as "uh-huh".
+
+### Adaptive mode
+
+The agent uses a model to judge whether the caller really wants to take over.
+
+:::note
+The screen warns that Adaptive works best when **Turn Detection** is set to **Multilingual** in **Session Behaviour**. Other settings may reduce accuracy.
+:::
+
+| Setting | What it does | Default |
+|---|---|---|
+| **Min Interruption Duration** (seconds) | Minimum speech length before it counts as a real interruption. | 0.5 |
+| **Min Interruption Words** | Minimum words to trigger an interruption. 0 lets the model decide. | 0 |
+| **Discard Audio If Uninterruptible** | Drops buffered audio while the agent is speaking and cannot be interrupted. | On |
+| **Resume After False Interruption** | The agent carries on speaking if the interruption turns out to be a backchannel. | On |
+| **False Interruption Timeout** (seconds) | Seconds of silence after an interruption before it is called false. | 2.0 |
+| **Backchannel Boundary Start** (seconds) | Ignores backchannels during the first seconds of each agent turn. | 1.0 |
+| **Backchannel Boundary End** (seconds) | Ignores backchannels during the last seconds of each agent turn. | 3.5 |
+
+The start value must be less than or equal to the end value. If not, the screen says "Boundary Start must be ≤ Boundary End".
+
+## Voice Activity Detection (VAD)
+
+VAD listens to the audio and decides which frames are speech. The section starts with: "Configure voice activity detection settings".
+
+| Setting | What it does | Default |
+|---|---|---|
+| **VAD Provider** | The detector. The list offers **Silero**. | Silero |
+| **Min Silence Duration (seconds)** | Silence to wait after speech to decide the caller has finished. | 0.55 |
+| **Min Speech Duration (seconds)** | The shortest speech that starts a new chunk. | 0.05 |
+| **Prefix Padding Duration (seconds)** | Padding added to the start of each speech chunk. | 0.5 |
+| **Max Buffered Speech (seconds)** | The most speech kept in the buffer. | 60 |
+| **Activation Threshold** | The score a frame needs to count as speech, from 0 to 1. Higher is more cautious. Lower is more sensitive. | 0.5 |
+| **Sample Rate (Hz)** | 8000 or 16000. | 16000 |
+| **Force CPU** | Run detection on the CPU. | On |
+
+:::tip
+If the agent cuts callers off mid-sentence, try raising **Min Silence Duration**. If it feels slow to reply, try lowering it a little. Change one setting at a time and test with [Talk to Assistant](./phone-and-web-calls).
+:::
+
+## Update VAD Options tool
+
+An **Update VAD Options** tool lets the agent change voice-detection settings during a call. See [Tools and actions](./tools-and-actions).

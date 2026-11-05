@@ -1,0 +1,179 @@
+---
+title: Voice and models
+description: Choose the language model, the speech-to-text service and the voice, and set up a fallback.
+---
+
+A voice call uses three services in a loop. Speech-to-text (STT) turns what the caller says into text. The language model (LLM) decides what to reply. Text-to-speech (TTS) turns the reply into a voice.
+
+You choose all three in the row at the top left of **Agent Config**.
+
+## Primary and Fallback
+
+A small switch at the top of the row has two buttons, **Primary** and **Fallback**.
+
+- **Primary** shows your main LLM, STT and TTS.
+- **Fallback** shows a second set. A switch labelled **Enable Fallback** turns the second set on or off. Your choices are kept when you switch it off.
+
+The fallback pickers work the same way as the primary ones. This page does not describe when a fallback is used, because the screen does not say.
+
+## Choose the language model
+
+Click the model button to open the list. Each provider opens a side list of models. A green **New** badge marks recent additions.
+
+| Provider | Notes |
+|---|---|
+| **OpenAI** | GPT 5.6 Luna, GPT 5, GPT 5 Mini, GPT 5 Nano, GPT 4.1, GPT 4.1 Mini, GPT 4.1 Nano, GPT 4o, GPT 4o Mini |
+| **Sarvam** | Sarvam 105B Conversations, Sarvam 105B |
+| **Google** | Gemini models, including Gemini 3 Pro Preview, Gemini 3.6 Flash, Gemini 3.5 Flash, Gemini 2.5 Flash and Gemini 2.0 Flash, plus Flash-lite versions |
+| **Azure OpenAI** | GPT 5.6 Terra, GPT 5.6 Luna, GPT 4.1 Mini |
+| **AWS Bedrock** | Z.ai GLM 5, OpenAI GPT 5.6 Luna, OpenAI GPT 5.6 Terra |
+| **Groq** | Grouped lists, such as Groq Compound, Llama, GPT-OSS, Kimi K2 and Qwen3 |
+| **Cerebras** | Grouped lists, such as Llama, GPT-OSS, Qwen and Z.ai GLM |
+| **LiveKit Inference** | Grouped as **Latency optimized**, **Fast** and **Frontier**. The list says "Gateway-served models, billed via LiveKit Cloud. No API key needed." |
+| **Self-Hosted** | Custom OpenAI-compatible endpoints. One model is listed: Gemma 4 E4B (MTP). |
+
+The lists change over time. What you see in the dashboard is the current list.
+
+### Azure OpenAI settings
+
+Choosing **Azure OpenAI** opens **Configure Azure OpenAI**.
+
+| Setting | What it does | Default |
+|---|---|---|
+| **Model** | Pick one of the listed models. | GPT 4.1 Mini |
+| **Azure Endpoint** | The address of your Azure resource. | `https://pype-azure-openai.cognitiveservices.azure.com/` |
+| **API Version** | The Azure API version. | `2024-12-01-preview` |
+
+Click **Save Configuration** to keep them.
+
+### Temperature
+
+Next to the model button is a settings button with a slider from 0 to 1. The ends are labelled **Focused** and **Creative**, and a word shows the level: **Precise**, **Balanced** or **Creative**.
+
+Lower values give steadier answers. Higher values give more varied answers. New agents start at 0.3.
+
+:::note
+For GPT 5, GPT 5 Mini, GPT 5 Nano, GPT 5.6 Terra and GPT 5.6 Luna the slider is locked at 1. The tooltip says "Selected model only supports temperature of 1".
+:::
+
+### Starting values for a new agent
+
+| Setting | Value |
+|---|---|
+| LLM | Azure OpenAI, GPT 4.1 Mini |
+| Temperature | 0.3 |
+| STT | Deepgram, Nova 3, English |
+| TTS | ElevenLabs, Flash v2.5 |
+
+## Choose the speech-to-text service
+
+Click the STT button to open **Configure STT Provider**. Choose a provider under **Choose STT Provider**, set it up, then click **Apply Settings**.
+
+| Provider | Models |
+|---|---|
+| **OpenAI** | Whisper v1 |
+| **Deepgram** | Flux (English), Flux (Multilingual), Nova 3, Nova 3 Medical (English only), Nova 2 |
+| **Sarvam AI** | Saarika v2.5, Saaras v3, Saaras v4 |
+| **Smallest AI** | Pulse |
+
+Each provider has a **Language** list. The list depends on the model. Deepgram Nova 3 and Nova 2 include a multilingual option. Sarvam has Indian languages and, for Saaras, **Auto-detect (Saaras only)**. Smallest AI includes two auto-detect choices, one for North Indic languages and one for South Indic languages.
+
+### Deepgram settings
+
+**Flux models** show a **Turn Detection** group.
+
+| Setting | What it does |
+|---|---|
+| **EOT Threshold** | How sure Deepgram must be that the caller has finished. Range 0.5 to 0.9. |
+| **Eager EOT** | Starts the reply earlier to cut delay. Range 0.3 to 0.9. Empty means off. |
+| **Silence Timeout** | Milliseconds of silence before the turn ends. Range 500 to 30000. |
+
+**Nova models** show these settings.
+
+| Setting | What it does |
+|---|---|
+| **Silence Timeout** | Milliseconds of silence that mark the end of speech. |
+| **Punctuate** | Adds punctuation and capital letters. On by default. |
+| **Filler Words** | Keeps words such as "um" and "uh". On by default. |
+| **Smart Format** | Formats numbers, dates, money and web addresses. Off by default. |
+| **Numerals** | Turns spoken numbers into digits. Off by default. |
+| **Profanity Filter** | Replaces rude words with asterisks. Off by default. |
+
+**Key Terms** appears for Nova 3 and the Flux models. Type a word or a name, such as a product name, and press Enter. Deepgram then listens harder for it.
+
+### Sarvam Saaras settings
+
+For Saaras v3 and v4, a **Mode** list appears.
+
+| Mode | What it does |
+|---|---|
+| **Transcribe** | Standard transcription in the original language. |
+| **Translate** | Translates speech from any Indian language to English. |
+| **Verbatim** | Word for word, keeping filler words and spoken numbers. |
+| **Transliterate** | Writes speech in Roman letters. |
+| **Codemix** | English words stay in English. Indian words use their own script. |
+
+These models also show **High VAD Sensitivity** (faster end-of-speech detection for quicker turn-taking) and **First Turn Min Speech Frames** (1 to 15). A lower number helps catch a quick, soft first reply such as "yes".
+
+## Choose the voice
+
+Click the voice button to open the TTS window. A rail on the left lists the providers. Pick one, choose a voice, adjust the settings, then click **Apply Settings**.
+
+| Provider | What it offers |
+|---|---|
+| **Sarvam AI** (Bulbul, Indic voices) | A list of voices with a search box and a model list: **bulbul:v4 flash (beta)**, **bulbul:v3 (beta)** and **bulbul:v2** |
+| **ElevenLabs** (your voice library) | A search box that also accepts a voice ID, and a model list |
+| **Google TTS** (cloud voices) | A search box and a **Voice Name** such as `en-IN-Wavenet-A` |
+| **Raya** (Bakbak, Indian languages and English) | Its own voice list and settings |
+
+Hover over a voice and click the play button to hear a preview.
+
+### Sarvam voice settings
+
+| Setting | Range | Notes |
+|---|---|---|
+| **Target Language Code** | List | The language the voice speaks. |
+| **Pace** | 0.5 to 2.0 | Slow (0.5x) to fast (2.0x). |
+| **Loudness** | 0.5 to 2.0 | Only used with bulbul:v2. |
+| **Pitch** | -20 to 20 | Only used with bulbul:v2. |
+| **Enable Preprocessing** | On or off | Tidies numbers, dates and English words in mixed-language text. Only used with bulbul:v2. |
+
+When a setting is not used by the chosen model, the screen shows a "not applied" badge and greys it out.
+
+### ElevenLabs voice settings
+
+| Setting | Range | Default |
+|---|---|---|
+| **Voice ID** | Type or pick | Set per agent |
+| **Language** | List | `en` |
+| **Model** | Multilingual v2, Turbo v2.5, Flash v2.5, Eleven v3 | Flash v2.5 |
+| **Similarity Boost** | 0 to 1 | 1 |
+| **Stability** | 0 to 1 | 0.8 |
+| **Style** | 0 to 1 | 1 |
+| **Speed** | 0.25 to 4.0 | 1.05 |
+| **Use Speaker Boost** | On or off | On |
+
+The last five are under **Advanced Configuration**.
+
+### Raya voice settings
+
+| Setting | What it does |
+|---|---|
+| **Model** | **M1** (an alternative model with its own voice set) or **Standard** (the default synthesis model). |
+| **Language** | Hindi, Indian English, Marathi, Telugu, Kannada, Bengali, Assamese, Gujarati, Nepali, Malayalam, Tamil or US English. It follows the voice you pick. |
+| **Speed** | 0.5 to 1.5. Presets: **Slow & clear** (0.8), **Normal** (1) and **Brisk** (1.2). |
+| **Sample rate** | 8 kHz (telephony), 16 kHz, 22.05 kHz or 24 kHz. 24 kHz is the default. |
+
+The Raya panel also gives writing advice. Write Hindi in Devanagari script, because Romanised Hindi is not supported. Write Indian names in Devanagari even inside English sentences. It offers a prompt snippet you can copy if another language model writes your agent's lines.
+
+## TTS Switcher
+
+**TTS Switcher** (in the Voice Output group of Advanced Settings) lets the agent change its voice during a call. Click **Add** to create a switch.
+
+| Field | What to put |
+|---|---|
+| **Tool Name** | A unique name, for example `switch_to_hindi`. It becomes the tool name the model sees. |
+| **Description** | When the agent should switch, for example "Switch to Hindi voice when user speaks in Hindi or requests Hindi". The model reads this to decide. |
+| TTS provider, voice and settings | The voice to switch to. |
+
+To switch the voice and the speech-to-text together, use the language switcher in [Languages](./languages).

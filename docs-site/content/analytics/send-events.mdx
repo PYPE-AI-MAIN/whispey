@@ -1,0 +1,166 @@
+---
+title: Send events from your own system
+description: Track people through a campaign by sending one small request each time they reach a step.
+---
+
+The **Workflows** tab in project analytics follows people, such as members or leads, through the steps of a campaign. It fills in when your own system tells Whispey what happened. You do that by sending one small web request, called an **event**, each time a person reaches a step.
+
+There is nothing to set up first. The first event creates the campaign, the step and the person.
+
+:::note
+The **Workflows** tab is not the same as a workflow agent. A workflow agent is a voice agent that follows steps during a call. The **Workflows** tab tracks a person's progress across your own messages, calls and other steps over days or weeks, in any system. The two can work together, but you can use either one on its own.
+:::
+
+## The words you will see
+
+| Word | What it means |
+|---|---|
+| **Campaign** | One program you want to track, such as onboarding or add-family-members. You name it with `campaign_key`. |
+| **Person** | One member or lead, identified by your own id in `identity_key`. Each person in a campaign becomes one **workflow**. |
+| **Channel** | How you reached them, such as `whatsapp`, `voice_call` or `sms`. |
+| **Step** | A stage in the campaign that the person reached, such as `welcome_message`. Steps become the rows of the funnel. |
+| **Action** | What happened at that step, such as `message_sent`, `message_read` or `call_completed`. |
+| **Outcome** | How the person ended up, such as `booked` or `not_interested`. Sending one marks the workflow as completed. |
+| **Payload** | Any extra detail you want to keep, as a small JSON object. |
+
+## Quick start
+
+1. **Get your token.** Open **API key** in the left menu and copy the key. Create one if there is none. It is the same key the SDK uses.
+2. **Send your first event.** Use the example below, with your token and your own values.
+3. **Check it arrived.** Open the **Workflows** tab and reload. The campaign appears under its `campaign_key`, and the person appears under **Recent workflows**.
+4. **Send the next step.** When the same person reaches another step, send another event with the same `campaign_key` and `identity_key` and a new `step`.
+
+The **Integration** button at the top of the tab shows these same steps with your campaign name filled in.
+
+## An example request
+
+Send a POST request to `https://whispey.xyz/api/journeys/events` with your token in the `x-pype-token` header and a JSON body.
+
+```bash
+curl -X POST https://whispey.xyz/api/journeys/events \
+  -H "Content-Type: application/json" \
+  -H "x-pype-token: YOUR_TOKEN" \
+  -d '{
+    "campaign_key": "onboarding",
+    "identity_key": "member_42",
+    "channel": "whatsapp",
+    "step": "welcome_message",
+    "action": "message_sent",
+    "payload": { "delivery_status": "delivered" }
+  }'
+```
+
+A successful reply is `200` with the id of the workflow:
+
+```json
+{ "journey_id": "5d0c1c57-0a8e-4a58-9d0e-8a3b1f2f6b11" }
+```
+
+### The same request in other languages
+
+```python
+import requests
+
+response = requests.post(
+    "https://whispey.xyz/api/journeys/events",
+    headers={"x-pype-token": "YOUR_TOKEN"},
+    json={
+        "campaign_key": "onboarding",
+        "identity_key": "member_42",
+        "channel": "whatsapp",
+        "step": "welcome_message",
+        "action": "message_sent",
+        "payload": {"delivery_status": "delivered"},
+    },
+    timeout=10,
+)
+response.raise_for_status()
+```
+
+```javascript
+const response = await fetch("https://whispey.xyz/api/journeys/events", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "x-pype-token": process.env.WHISPEY_API_KEY,
+  },
+  body: JSON.stringify({
+    campaign_key: "onboarding",
+    identity_key: "member_42",
+    channel: "whatsapp",
+    step: "welcome_message",
+    action: "message_sent",
+    payload: { delivery_status: "delivered" },
+  }),
+})
+if (!response.ok) throw new Error(await response.text())
+```
+
+Keep the token in an environment variable or a secret store, never in code you share.
+
+### From a no-code tool
+
+Tools such as n8n, Zapier and Make can send the same request without code. Add an HTTP request step after the thing that happens, such as "message delivered", and set it up like this:
+
+| Setting | Value |
+|---|---|
+| Method | POST |
+| URL | `https://whispey.xyz/api/journeys/events` |
+| Header | `x-pype-token` set to your key |
+| Header | `Content-Type` set to `application/json` |
+| Body | JSON with the five required fields, filled from the data in that step |
+
+## Every field
+
+| Field | Required | Limit | What to send |
+|---|---|---|---|
+| `campaign_key` | Yes | 200 characters | A name you pick for the campaign. Reuse it exactly. |
+| `identity_key` | Yes | 200 characters | Your own id for the person. The same id is always the same person. |
+| `channel` | Yes | 50 characters | How you reached them. |
+| `step` | Yes | 100 characters | The step they just reached. |
+| `action` | Yes | 100 characters | What happened. |
+| `outcome` | No | 100 characters | How it ended. Sending one marks the workflow completed. |
+| `payload` | No | The whole request must be under 8 KB | A JSON object with any extra detail. It is shown on the person's timeline. |
+| `external_ref` | No | 200 characters | Your own reference for this event, such as a message id. |
+| `agent_id` | No | Must be a Whispey agent id | Ties the event to that agent, so you can filter the tab by agent. |
+
+`step`, `channel` and `action` are free text. Reuse the names your system already has so the charts match what your team says.
+
+## How it shows up
+
+- **Funnel:** one row for each step, in the order each step was first seen. The funnel counts how many people reached each step.
+- **Recent workflows:** each person, with their current step and outcome. Open one for a timeline of every event.
+- **Charts:** breakdowns of events or people by step, channel, outcome or time.
+
+See [Project analytics](./project-analytics) for the tabs and charts.
+
+## Good habits
+
+- **Send steps in order the first time.** The funnel lists a step the first time it is seen, so the first event for each step should arrive in the order people move through the campaign.
+- **Keep names stable.** `welcome_message` and `Welcome Message` are two different steps. Pick a style and keep it.
+- **Send an outcome when someone finishes.** Without one, the person stays active.
+- **One event per request.** There is no batch request. Send each event on its own.
+- **Do not retry blindly.** Sending the same event twice records it twice. If a request times out and you are not sure it arrived, check the person's timeline before sending it again.
+- **Keep the payload small.** It is for context, such as a delivery status or a count, not whole messages or transcripts.
+
+## When something goes wrong
+
+| Reply | What it means | What to do |
+|---|---|---|
+| `400` | A field is missing, too long or the wrong type. The reply names the field. | Fix that field. `agent_id`, if sent, must be a valid agent id. |
+| `401` | The token is missing or wrong. | Send your project API key in the `x-pype-token` header. Copy it again from **API key**. |
+| `403` | A `project_id` was sent that does not belong to the token. | Leave `project_id` out. The token already identifies the project. |
+| `413` | The request is over 8 KB. | Send less in `payload`. |
+| `429` | More than 600 requests in one minute on this token. | Slow down and try again after a minute. |
+
+**The request worked but I see nothing.** Reload the **Workflows** tab. Check the date range at the top, because older events may be outside it, and check the **Filters** you have on.
+
+**The step order in the funnel is wrong.** Steps are listed in the order they were first received, and sending an event later does not move a step. Send each step for the first time in the right order.
+
+**I loaded old data and it all shows today.** Each event is recorded with the time Whispey received it. You cannot send your own time, so history loaded in bulk appears as happening now.
+
+## Limits
+
+- 8 KB for each request.
+- 600 requests a minute for each token.
+- One event for each request.

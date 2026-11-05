@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card'
 
 export default function ApiKeysLoading() {
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 p-6">
+    <div className="min-h-screen bg-card p-6">
       {/* Header */}
       <div className="mb-8 space-y-3">
         <Skeleton className="w-48 h-8" />
@@ -11,7 +11,7 @@ export default function ApiKeysLoading() {
       </div>
 
       {/* Security info banner */}
-      <div className="mb-6 p-3 border border-gray-200 dark:border-gray-800 rounded-lg">
+      <div className="mb-6 p-3 border border-border rounded-lg">
         <div className="flex items-start gap-3">
           <Skeleton className="w-4 h-4 mt-0.5 shrink-0" />
           <div className="flex-1 space-y-2">
@@ -24,7 +24,7 @@ export default function ApiKeysLoading() {
       {/* Keys list */}
       <div className="space-y-3">
         {[1, 2].map((i) => (
-          <Card key={i} className="border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+          <Card key={i} className="border-border bg-card">
             <CardContent className="p-4">
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-3 flex-1">

@@ -9,9 +9,6 @@ RUN npm ci --ignore-scripts --legacy-peer-deps
 # Copy application files
 COPY . .
 
-# Run postinstall
-RUN npm run postinstall
-
 ENV NODE_ENV=production
 
 # Build-time-only placeholders so Next's "collect page data" step doesn't crash on

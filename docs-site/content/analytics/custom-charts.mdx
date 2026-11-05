@@ -1,0 +1,231 @@
+---
+title: Custom charts
+description: Add, edit and arrange charts on the Overview, with every option in the chart settings panel.
+---
+
+You can add your own charts next to the starter ones, change the starter ones, or build a dashboard from scratch. You do not need to write queries. You pick a calculation, a field and a few options, and the chart updates as you go.
+
+:::note
+You need edit access to change the dashboard. If you only have view-only access, the chart settings panel is read-only.
+:::
+
+## Open the chart panel
+
+On the agent [Overview](./overview), the chart panel sits on the right edge.
+
+- If it is closed, click the arrow on the right edge (**Show chart settings**).
+- To close it, click the arrow at the top of the panel (**Hide chart settings**).
+
+With nothing selected, the panel is called **Chart types**. When you click a chart, it switches to the settings for that chart. Click **Chart types** at the top to go back.
+
+The panel is only available on a computer. On a phone you can read the dashboard but not change it.
+
+## Add a chart
+
+1. In the **Chart types** panel, pick a type. Either drag it onto the dashboard, or click it to add it at the end.
+2. The new chart opens already filled in. Whispey picks a sensible field for you, so you never start with an empty box.
+3. Change the settings (see below). The chart updates live.
+4. Click **Save** in the toolbar.
+
+| Type | What it draws |
+|---|---|
+| **Number** | One big number. |
+| **Bar** | One bar for each value of a field, or for each period of time. |
+| **Line** | A line over time. |
+| **Table** | Rows and numbers. |
+| **Pie** | One slice for each value of a field. |
+| **Text** | A note you write yourself. |
+| **Percentage** | One number divided by another. |
+
+:::tip
+Under the charts there is a **Suggested** strip with up to four charts worth building for this agent. Each says why. Click the plus to add one, or the **x** to hide it for this visit. Only people who can edit the dashboard see it.
+:::
+
+## Chart settings
+
+Click a chart to open its settings. They appear in this order.
+
+| Setting | What it does |
+|---|---|
+| Description box | A sentence that says what the chart counts, written for you. You can type your own instead (up to 300 characters). **Reset to the automatic description** brings the written one back. |
+| **Name** | The title shown on the chart. |
+| **Shown as** | **Number**, **Bar**, **Line**, **Table** or **Pie**. Change it any time. |
+| **Calculation** | What to work out. See the table below. |
+| **Of which field** | The field to work it out on. Not needed for **Count of calls**. |
+| **Show as** | **Seconds** or **Minutes**. Appears only for a length field such as call length. |
+| **Split by** | Break the result down by a field. The default is **Nothing — one total**. |
+| **Over time** | Break the result down by time. |
+| **Count** | Count every call, or one call per person. |
+| **Only counting** | Rules that decide which calls are included. |
+
+### Calculation
+
+| Option | Needs a field? | Use it for |
+|---|---|---|
+| **Count of calls** | No | How many calls. |
+| **Unique count of** | Any field except a structured one | How many different values, for example different phone numbers. |
+| **Percentage yes** | A yes/no field | The share of calls where the answer is yes. |
+| **Sum of** | A number field | A total, such as cost. |
+| **Average of** | A number field | A typical value. One extreme call moves it a long way. |
+| **Median of** | A number field | The middle value. Extremes do not move it. |
+| **95th percentile of** | A number field | The slow or expensive end. 95 calls in every 100 stay below it. |
+| **Minimum of** | A number field | The smallest value. |
+| **Maximum of** | A number field | The largest value. |
+
+When you change the calculation, the number format resets. This stops an old unit, such as seconds, from sticking to a count.
+
+### Of which field
+
+The field list has a search box (**Search fields…**). Fields are grouped:
+
+| Group | What is in it |
+|---|---|
+| **Call details** | What the platform recorded: phone number, why the call ended, call length, billed length, response time and the three costs. |
+| **Extracted by the agent** | Details the agent pulled out of each call, such as dispositions. |
+| **Quality metrics** | Scores from your metrics. |
+| **Call metadata** | Anything attached to the call when it was made. |
+
+Each field shows how often it is filled in, as a percentage of calls. Pick fields with a high percentage. A field filled in on 3% of calls gives a chart that looks broken.
+
+If a field you expect is missing, click **Field missing? Rescan this agent** at the bottom of the list. Whispey looks at the latest calls again.
+
+### Split by
+
+**Split by** breaks one number into groups. For example, count of calls split by **Why the call ended** gives one bar per reason.
+
+- Only fields with a short list of values are offered here.
+- If you pick a field that is almost different on every call (a phone number, for example), the panel warns you that the chart will have too many categories to read.
+- A split shows up to 50 groups. If you also use **Over time**, groups beyond that are combined into **(other)**.
+- Upper and lower case are treated as one answer when a field holds both, such as `yes` and `Yes`.
+
+### Over time
+
+| Option | Meaning |
+|---|---|
+| **No time breakdown** | One result for the whole Period. |
+| **Automatic** | Whispey picks. Up to 2 days is by hour. Up to 31 days is by day. Up to 120 days is by week. Longer is by month. |
+| **By hour** | One point for each hour. |
+| **By day** | One point for each day. |
+| **By week** | One point for each week. |
+| **By month** | One point for each month. |
+
+Days without calls show as a gap in a line, not as zero.
+
+### Count
+
+**Count** decides what one unit is.
+
+- **Every call.** Each call counts once. This is the default.
+- **One per** a field, such as **One per phone number**. When the same person was called more than once, only one call is kept. The card says **Best of 90 days**, because Whispey looks back 90 days to find the person's other calls.
+
+The **Count** menu is greyed out if the agent has no field that identifies a person.
+
+You can also click the small label under a chart title to flip between **Every call** and the one-per version.
+
+If the agent has no **Outcome order** yet, Whispey asks you to set one first. See [Outcome order](#outcome-order).
+
+### Only counting
+
+Click **Only where…** to add a rule. Each rule has up to three parts:
+
+1. A field, chosen from the same list as above.
+2. A comparison. The choices depend on the field.
+3. A value, when the comparison needs one.
+
+| Comparison | Offered for |
+|---|---|
+| **is**, **is not** | Every field |
+| **contains** | Text and fixed-list fields |
+| **is more than**, **is less than** | Number fields |
+| **is yes**, **is no** | Yes/no fields |
+| **has any value**, **is blank** | Every field |
+
+Click **Add** to add another rule. All rules must be true for a call to count. Rules show as chips. Click the **x** on a chip to remove it.
+
+Page-wide filters from the top of the Overview apply as well. A chart's own rules can only narrow them further.
+
+## Which type fits which question
+
+| Question | Try |
+|---|---|
+| How many calls this week? | **Number**, **Count of calls** |
+| What share of calls were wrong numbers? | **Number**, **Percentage yes**, on a yes/no field |
+| How do calls split by result? | **Bar** or **Pie**, **Count of calls**, **Split by** a result field |
+| Is volume going up? | **Line**, **Count of calls**, **Over time** set to **By day** |
+| Is the slow end getting worse? | **Line**, **95th percentile of**, **Response time (seconds)**, **By day** |
+| Which numbers called the most? | **Table**, **Count of calls**, **Split by** a field |
+
+### What each type needs
+
+- **Number** shows one total. Split and time settings are cleared when you switch to it.
+- **Line** needs **Over time**. If it has none, Whispey sets **By day**.
+- **Bar**, **Table** and **Pie** need either **Split by** or **Over time**. Without either, the chart tells you to choose something to split by, or a time breakdown, to draw it.
+- **Pie** cannot show a time breakdown. It shows at most 8 slices. With more, the chart suggests a bar instead.
+- A **Table** with nothing to split by shows just the number.
+
+## Percentage charts
+
+A **Percentage** chart divides one number by another. Use it when the two sides are different counts, for example unique phone numbers picked up divided by unique phone numbers called.
+
+1. Set **Value A**: its **Calculation**, **Of which field** and **Only counting** rules.
+2. Under **Compared as**, choose **A ÷ B, as %** or **A ÷ B**.
+3. Set **Value B** the same way.
+
+The card shows both sides in words, joined by a division sign.
+
+## Text blocks
+
+A **Text** block is a note on the dashboard. Give it a **Name** and **Content**. A line starting with `#` is a heading, and `##` a smaller heading. Everything else is plain text. The block resizes to fit what you write.
+
+## Move, resize, copy and remove
+
+| To do this | Do this |
+|---|---|
+| Move a chart | Drag the grip icon to the left of its title. |
+| Resize a chart | Drag its bottom-right corner. |
+| Edit a chart | Click it, or open its three-dot menu and choose **Edit**. |
+| Copy a chart | Three-dot menu, **Duplicate**. The copy is named with "copy" at the end. |
+| Remove a chart | Three-dot menu, **Remove**. |
+| See the calls behind it | Three-dot menu, **View calls**. |
+| Download the calls behind it | Three-dot menu, **Export CSV**. See [Exporting data](./exporting-data). |
+
+The dashboard has twelve columns. A number tile is usually three columns wide and a chart is six, so two charts fit in a row.
+
+## Save your changes
+
+Changes stay a draft until you save. **Save** and **Discard** appear in the toolbar as soon as you change anything. **Discard** throws all draft changes away.
+
+Saved changes are kept for the agent's dashboard, so everyone who opens it sees the same charts.
+
+If you never edit a starter chart, Whispey can keep improving it. Once you edit one, it becomes yours and stays as you left it.
+
+## Outcome order
+
+Open **Outcome order** in the toolbar to set which result wins when a person was called more than once. It is a single list for the agent. Every chart that counts **One per** person uses it.
+
+1. Click **Outcome order**. A window titled **When we called more than once, which result wins?** opens.
+2. Under **Which field holds the result**, pick the field that records the result.
+3. Drag the results into order. The top one is the best.
+4. Click **Save order**.
+
+:::warning
+Changing the order changes past numbers too. Every chart that counts one per person is recalculated. If you save the list without dragging anything, it is only in alphabetical order. That is not a ranking until you make it one.
+:::
+
+If the agent has no field with a short list of results, the window says there is nothing to rank.
+
+## Generate a chart with Pi
+
+Click **Generate with Pi** at the top of the **Chart types** panel (on an agent's Overview). Describe the chart you want in your own words, for example "Pie chart of outcomes this week" or "Total calls as a number card". Pi proposes charts. Add the ones you want, and they land on the dashboard as drafts. **Save** keeps them. Use the back arrow to leave, or **Start over** to clear the conversation.
+
+## Common problems
+
+| What you see | What to do |
+|---|---|
+| A chart is empty | Check the Period and filters. Then check the field is filled in on enough calls. |
+| **No fields of this kind yet** | The calculation needs a number or yes/no field, and the agent has none. Pick a different calculation. |
+| **This chart took too long** | Shorten the Period. |
+| A one-per-person chart is slow | It reads 90 days whatever the Period. Switch it to **Every call** to read only the Period. |
+| **This agent has no outcome order set yet** | Set one under **Outcome order**. |
+
+Next: [Reading your numbers](./reading-your-numbers) and [Exporting data](./exporting-data).

@@ -1,0 +1,76 @@
+---
+title: Getting started with your workspace
+description: Sign in, create your first organization and find your way around the sidebar.
+---
+
+Whispey groups everything you build into an **organization**. Your agents, call logs, phone numbers, campaigns and team all live inside one. This page shows you how to sign in, create your first organization and use the sidebar.
+
+## Sign in
+
+1. Open the Whispey sign-in page.
+2. Sign in or create a login with the form on the page.
+3. After you sign in, Whispey sends you to an organization.
+
+Where you land depends on your account:
+
+| Your account | Where you go |
+|---|---|
+| You have no organization yet | The onboarding page, to create one |
+| You have one or more organizations | The last organization you opened, or the first one in your list |
+
+The page you land on is the **Agents** page of that organization.
+
+## Create your first organization
+
+The onboarding page is titled **Welcome to Whispey!**. Fill in the card called **Create Your Organization**.
+
+| Field | Required | Notes |
+|---|---|---|
+| Organization Name | Yes | Up to 100 characters. Use the name of your team or project. |
+| Description (Optional) | No | Up to 500 characters. |
+| Environment | No | **Production** or **Development**. |
+
+Choose **Create Organization**. Whispey creates the organization, makes you its **owner**, and opens its Agents page.
+
+Whispey also creates an API key for the organization at the same time. You can see it later on the [API keys](./api-keys) page.
+
+## Join an organization someone invited you to
+
+If a teammate invites you, you get an email with a link. Open it.
+
+- If you are not signed in, Whispey asks you to sign in first, then opens the organization.
+- If you are signed in, Whispey opens the organization straight away.
+- If the link is old or wrong, you see **Invalid Invite Link**. Ask your admin to send a new invite.
+
+See [Team and roles](./team-and-roles) for how invites work.
+
+## The sidebar
+
+The sidebar is on the left. These are the items you may see.
+
+| Sidebar item | Group | What it opens |
+|---|---|---|
+| Overview | Top | Organization-wide analytics |
+| Agents | Top | The list of your agents. Create and open agents here. |
+| Ask Pi | Top | Pi, the built-in assistant. Shows a **Beta** badge and is turned off for people who are not owners or admins. |
+| Campaigns | Calling | Batch outbound calls. See [Campaigns](./campaigns). |
+| Phone Settings | Calling | Phone numbers assigned to your agents. See [Phone numbers](./phone-numbers). |
+| API key | Settings | Your organization API keys. See [API keys](./api-keys). |
+| Settings | Settings | Team members and organization settings. See [Settings reference](./settings-reference). |
+
+:::note
+You may not see every item. **API key** shows only for owners and admins. **Campaigns**, **Phone Settings** and **Settings** are hidden from viewers by default. See [Team and roles](./team-and-roles).
+:::
+
+At the top of the sidebar are links to **Docs** and **Help Center**, and a light and dark theme switch. At the bottom is your user menu, where you can sign out.
+
+The sidebar also has the organization switcher. It shows the name of your current organization. See [Organizations](./organizations).
+
+To make the sidebar smaller, use the collapse button or press Cmd+B. On a phone the sidebar opens as a drawer.
+
+## Where to go next
+
+- [Organizations](./organizations)
+- [Team and roles](./team-and-roles)
+- [API keys](./api-keys)
+- [Quick start for the SDK](../quick-start)

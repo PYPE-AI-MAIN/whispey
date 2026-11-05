@@ -1,0 +1,54 @@
+name: Deploy docs
+
+# Rebuilds docs-site and uploads it to the docs server (docs.whispey.pypeai.com) whenever it changes on main.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs-site/**'
+      - '.github/workflows/docs-deploy.yml'
+      - '.github/scripts/deploy-docs.py'
+  workflow_dispatch:
+
+# one deploy at a time; a second push waits instead of racing the first
+concurrency:
+  group: docs-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # lets the job ask AWS for short-lived credentials, no stored keys
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: docs-site/package-lock.json
+
+      - name: Build the site
+        working-directory: docs-site
+        run: |
+          npm ci
+          npm run build
+
+      # The role only trusts this repository's main branch and may only run commands on the docs server.
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::764762393967:role/whispey-docs-deploy
+          aws-region: ap-south-1
+
+      - name: Upload and swap in
+        run: python3 .github/scripts/deploy-docs.py docs-site/build
+
+      - name: Check the live site
+        run: |
+          for path in / /workflows/overview/ /sdk/setup/; do
+            curl -fsSL -o /dev/null -w "$path %{http_code}\n" "https://docs.whispey.pypeai.com$path"
+          done

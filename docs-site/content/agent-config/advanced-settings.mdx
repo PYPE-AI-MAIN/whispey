@@ -1,0 +1,107 @@
+---
+title: Advanced settings
+description: Session behaviour, end-of-call hang-up, filler words, background audio, context memory and bug reports.
+---
+
+This page covers the sections of **Advanced Settings** not described elsewhere. All of them are folded by default. Click a title to open it. Remember to publish with **Update Config**.
+
+## Session Behaviour
+
+| Setting | What it does | Default |
+|---|---|---|
+| **Preemptive Generation** | The agent starts working out its reply before the caller finishes, which cuts delay. Options: **Enabled**, **Disabled**. | Disabled |
+| **Turn Detection** | How the agent decides the caller has finished speaking. Options: **Multilingual**, **English**, **V1 Mini (Real Interruption Classifier)**, **Disabled**. | Disabled |
+| Unlikely threshold | Confidence for spotting an unfinished sentence, 0 to 1. Lower is more sensitive. | 0.6 |
+| **Min Endpointing Delay (seconds)** | Minimum silence before the agent decides the turn has ended. 0 means instant. | 0.7 |
+| **Max Endpointing Delay (seconds)** | The longest silence before the turn is forced to end. | 0.7 |
+| Endpointing mode | **Auto (default)**, **Fixed** or **Dynamic**. Auto lets the system decide. Fixed always waits the minimum delay. Dynamic adjusts the delay from context and needs a turn detection model. | Auto |
+| **User Away Timeout (seconds)** | Time before the agent decides the caller has gone quiet. Leave empty to turn it off. 0 means use the config default. | Empty (off) |
+| **User Away Timeout Message** | What the agent says each time the caller goes away, for example "Are you still on the line?". Empty uses a default message. | Empty |
+| **User Away Timeout Max Count** | How many times to say the away message before ending the call. With a 7 second timeout and a count of 3, messages go out at 7, 14 and 21 seconds, then the call ends. Empty means no limit. | Empty |
+| **User Away End Message** | Said before ending the call once the max count is reached. Needs **Max Count** set. | Empty |
+| **End-of-call wait (seconds)** | After the agent says goodbye, how long it waits for the caller to speak before hanging up. See **EOD Auto-Hangup**. 0 to 30. | Empty (3 seconds) |
+
+:::warning
+With **Turn Detection** set to **Disabled**, the screen warns that the agent falls back to silence-only detection and users may be interrupted mid-thought.
+:::
+
+## EOD Auto-Hangup
+
+EOD means end of dialogue. It lets the agent end the call by itself.
+
+1. Add this line to your system prompt. The section has a copy button for it.
+
+   `When the conversation is fully resolved and you have said your goodbye, append <eod/> at the very end of your response.`
+
+2. When the agent adds `<eod/>` to its reply, Whispey ends the call after the goodbye.
+3. The tag is removed before speech, so the caller never hears it.
+4. After the goodbye there is a short silence window. If the caller speaks, the hang-up is cancelled. Otherwise the call ends.
+
+Set the length of the window with **End-of-call wait (seconds)** in **Session Behaviour**.
+
+## Fillers Words
+
+Filler words are short phrases the agent says before a reply to fill the gap, such as "One moment". The section says "Short phrases played before the agent replies to fill the silence gap".
+
+| Setting | What it does | Default |
+|---|---|---|
+| **Enable Filler Words** | Turns the feature on or off. | On |
+| **Question** trigger words and phrases | When a trigger word matches, the agent may say one of the phrases. Example triggers: what, who, how, why. Example phrases: "Let me check.", "One moment.". | Empty |
+| **Ambiguous** trigger words and phrases | Same idea, for other cases. Example triggers: is, are, can, could, do. | Empty |
+| **General** fallback phrases | Used when no trigger word matches. | Empty |
+| **Filler Cooldown (seconds)** | Minimum gap between two fillers, 2 to 8. If a filler played within this time, the next turn stays quiet. | 4.0 |
+| **Latency Threshold (seconds)** | A filler only plays when the expected model delay is longer than this, 0.8 to 2.0. | 1.2 |
+
+Type trigger words and phrases separated by commas. You must add at least one trigger word before you can add phrases for **Question** or **Ambiguous**.
+
+For fillers spoken while a custom tool runs, see **Tool Call Filler Words** in [Tools and actions](./tools-and-actions).
+
+## Background Audio
+
+Soft sound under the voice makes the call feel less empty. Pick a **Background Audio Mode**.
+
+| Mode | What it does |
+|---|---|
+| **Disabled** | No background sound. |
+| **Single Audio (Legacy)** | One sound. Choose its **Audio Type**, **Volume (0-100)** and **Play Timing**: **During thinking only** or always. |
+| **Dual Audio (Ambient + Thinking)** | Two sounds: one for the whole call and one while the agent thinks. This is the default. |
+
+Sound types: **Keyboard Typing** and **Office Ambience**.
+
+In **Dual Audio**:
+
+| Group | Setting | Default |
+|---|---|---|
+| **Ambient Audio** | **Type** | Office |
+| | **Volume** | 5 |
+| **Thinking Audio** | **Type** | Keyboard |
+| | **Volume** | 0.5 |
+| | **Play Probability (0–100%)** | Not listed |
+| **Tool Call Typing Sound** | On or off, plus **Volume (0–100)**. Plays a typing sound whenever the agent runs a tool. | On, volume 0.80 |
+
+## Context Memory
+
+Turn on **Enable Context Memory** to make the agent remember what the caller has already said. It builds a rolling summary of confirmed details and adds it to every model call. The agent then does not ask again for details the caller already gave.
+
+When it is on, the screen notes that a background model call runs after each agent reply to store the facts. It adds no delay to the voice, and each call keeps its own memory. New agents have it off.
+
+## Bug Report System
+
+Lets callers report a bug by voice. Turn on **Enable Bug Report System** and fill in:
+
+| Setting | What it does |
+|---|---|
+| **Bug Start Commands** | Phrases that start a report, for example "report bug". |
+| **Bug End Commands** | Phrases that end a report, for example "end bug report". |
+| **Initial Response** | What the assistant says when reporting starts. |
+| **Collection Prompt** | A follow-up message to collect more details. |
+
+It is off by default.
+
+## Other sections
+
+- **RAG Settings**: see [Knowledge base](./knowledge-base).
+- **Webhook Configuration**: see [Webhook](./webhook).
+- **Drop-off Call Configuration** and **Callback Scheduling**: see [Drop-off and callbacks](./drop-off-and-callbacks).
+- **TTS Switcher**: see [Voice and models](./voice-and-models).
+- **Inbound Variables**: see the pre-call context page.

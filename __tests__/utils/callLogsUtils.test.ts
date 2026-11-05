@@ -378,9 +378,26 @@ describe('callLogsUtils', () => {
       expect(result.tags).toBe('')
     })
 
-    it('extracts flag text from transcription_metrics', () => {
+    it('extracts flags as a JSON array of {flag, email} from transcription_metrics', () => {
       const result = flattenCallLogForCSV(baseRow, ['flag'], [], [])
-      expect(result.flag).toBe('needs review')
+      expect(JSON.parse(result.flag)).toEqual([{ flag: 'needs review', email: null }])
+    })
+
+    it('includes each flag author email when present', () => {
+      const row = {
+        ...baseRow,
+        transcription_metrics: {
+          flag: [
+            { id: '1', text: 'needs review', flagged_at: '2024-01-01T00:00:00Z', flagged_by: { userId: 'u1', email: 'a@x.com' } },
+            { id: '2', text: 'double check', flagged_at: '2024-01-02T00:00:00Z' },
+          ],
+        },
+      }
+      const result = flattenCallLogForCSV(row, ['flag'], [], [])
+      expect(JSON.parse(result.flag)).toEqual([
+        { flag: 'needs review', email: 'a@x.com' },
+        { flag: 'double check', email: null },
+      ])
     })
 
     it('returns empty string for flag when absent', () => {
@@ -486,34 +503,28 @@ describe('callLogsUtils', () => {
   })
 })
 
-describe('viewers never see flag state', () => {
+describe('viewers can see flag state (only Tags stays viewer-restricted)', () => {
   const flagged = { transcription_metrics: { flag: { text: 'emergency' } } }
   const plain = { transcription_metrics: { flag: null } }
 
-  // 'user' and 'member' normalize to 'viewer' — all three must be blocked
+  // 'user' and 'member' normalize to 'viewer'
   const viewerRoles = ['viewer', 'user', 'member']
   const privilegedRoles = ['owner', 'admin']
 
-  it('hides the Flag column from every viewer-equivalent role', () => {
-    for (const role of viewerRoles) {
-      expect(isColumnVisibleForRole('flag', role), role).toBe(false)
-    }
-  })
-
-  it('keeps the Flag column for owner/admin', () => {
-    for (const role of privilegedRoles) {
+  it('keeps the Flag column visible for every role, including viewer-equivalent ones', () => {
+    for (const role of [...viewerRoles, ...privilegedRoles]) {
       expect(isColumnVisibleForRole('flag', role), role).toBe(true)
     }
   })
 
-  it('suppresses flagged row styling for viewers even when the call is flagged', () => {
+  it('still hides the Tags column from viewer-equivalent roles', () => {
     for (const role of viewerRoles) {
-      expect(isRowFlaggedForRole(flagged, role), role).toBe(false)
+      expect(isColumnVisibleForRole('tags', role), role).toBe(false)
     }
   })
 
-  it('still styles flagged rows for owner/admin', () => {
-    for (const role of privilegedRoles) {
+  it('styles flagged rows the same way for every role', () => {
+    for (const role of [...viewerRoles, ...privilegedRoles]) {
       expect(isRowFlaggedForRole(flagged, role), role).toBe(true)
       expect(isRowFlaggedForRole(plain, role), role).toBe(false)
     }
@@ -524,9 +535,10 @@ describe('viewers never see flag state', () => {
     expect(isRowFlaggedForRole(undefined, 'admin')).toBe(false)
     expect(isRowFlaggedForRole({}, 'admin')).toBe(false)
     expect(isRowFlaggedForRole({ transcription_metrics: {} }, 'admin')).toBe(false)
-    // empty flag text is not a flag
+    // empty/whitespace-only flag text is not a real flag
     expect(isRowFlaggedForRole({ transcription_metrics: { flag: { text: '' } } }, 'admin')).toBe(false)
-    // unknown role is not a viewer, so styling applies (matches isColumnVisibleForRole)
+    expect(isRowFlaggedForRole({ transcription_metrics: { flag: { text: '   ' } } }, 'admin')).toBe(false)
+    // unknown role behaves like any non-viewer role
     expect(isRowFlaggedForRole(flagged, 'somethingelse')).toBe(true)
   })
 })

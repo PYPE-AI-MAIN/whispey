@@ -1,0 +1,99 @@
+---
+title: Exporting data
+description: Download calls as a CSV file from Call Logs, from a selection of rows, or from any chart.
+---
+
+You can download call data as a CSV file. CSV opens in Excel, Google Sheets and Numbers.
+
+There are three ways to export:
+
+| From | What you get |
+|---|---|
+| **Export** button in [Call Logs](./call-logs) | Many calls, with the columns you pick. |
+| A selection of rows in Call Logs | Only the rows you ticked. |
+| A chart on the [Overview](./overview) | The list of calls behind that chart. |
+
+## Download call logs
+
+1. Open **Call Logs** and set up any filters you want. The export respects them.
+2. Click **Export**. A window called **Download call logs** opens.
+3. Under **Date range**, choose a **From** and **To** date. They start from your current Period.
+4. Choose **Timestamp timezone**: **IST (default)** or **UTC**.
+5. Check **Estimated rows**. It counts calls in the date range. Your filters may make the file smaller.
+6. Open **Columns** and tick what you want. The count shows how many are selected, such as 12/20 selected.
+7. Click **Download CSV**. A counter shows the rows fetched so far.
+
+:::warning
+If the estimate is over 20,000 rows, the box turns amber and says the export may take a while or fail in the browser. Narrow the date range and download in parts.
+:::
+
+### Columns you can pick
+
+| Group | Examples |
+|---|---|
+| Call columns | **Customer Number**, **Call ID**, **Call Status**, **Duration**, **Tags**, **Flag**, **Billing Duration**, **Total Cost (₹)**, **Start Time**, **Call Event** |
+| Metadata | One column per detail, named `metadata_` followed by the detail name |
+| Dispositions | One column per detail, named `transcription_` followed by the detail name |
+| **Transcript** | The conversation as lines of text, one cell per call |
+
+Your column choice is remembered for this agent in this browser, so the next export starts the same way.
+
+Some columns may be missing from the list. A superadmin can hide columns from downloads. See [Who can download](#who-can-download).
+
+## Download only some calls
+
+1. In Call Logs, tick the boxes at the start of the rows you want. Tick the header box to select the whole page.
+2. In the bar that appears (**N selected**), click **Export CSV**.
+
+**Copy JSON** puts the same calls on your clipboard instead.
+
+## Download the calls behind a chart
+
+Every chart has an **Export CSV** option in its three-dot menu. The calls window that opens when you click a bar, slice or row has an **Export CSV** button too.
+
+:::note
+A chart export is a list of calls, not the numbers drawn on the chart. For example, exporting **Daily call volume** gives one row for each call that was counted.
+:::
+
+The file has these columns:
+
+| Column | What it holds |
+|---|---|
+| `id` | Whispey's id for the call. |
+| `call_id` | The call's own id. |
+| `customer_number` | Who was on the call. |
+| `started_at` | When the call started. |
+| `call_ended_at` | When it ended. |
+| `duration_seconds` | How long it lasted. |
+| `call_ended_reason` | Why it ended. |
+| `series` | The group the call fell in, when the chart is split by a field. |
+
+The export follows exactly what the chart counted: the same Period, **Filter** and **When** settings, and the same rules. That way the list and the number agree. If you opened the window by clicking a bar, only that bar's calls are in the file.
+
+A big export is fetched in pages and put together in your browser. Keep the tab open until the file downloads.
+
+## What the file looks like
+
+- It opens correctly in Excel, including Hindi, Kannada and other scripts.
+- If a value starts with `=`, `+`, `-` or `@`, Whispey adds an apostrophe in front. This stops spreadsheet programs from running it as a formula. If you see an apostrophe at the start of a cell, this is why.
+
+## Who can download
+
+- The **Export** button only shows when downloads are on for you.
+- A superadmin controls this in **Download settings**, from the three-dot menu in Call Logs. There they can:
+  - turn downloads off for everyone who is not a superadmin, and
+  - mark columns as superadmin only, which hides them on screen and in downloads.
+- If downloads are off for you, the chart **Export CSV** option does not produce a file.
+
+## Campaign calls
+
+When a campaign is selected in Call Logs, **Export** opens that campaign's download instead. See [Campaign logs](../campaign-logs).
+
+## Problems
+
+| What you see | What to do |
+|---|---|
+| **Select at least one column to download** | Tick at least one column. |
+| The export is very slow | Shorten the date range. |
+| Nothing downloads | Check the **Estimated rows** number. If it is zero, change the dates or filters. |
+| **Downloads are turned off for your account** | Ask a superadmin to switch downloads on. |

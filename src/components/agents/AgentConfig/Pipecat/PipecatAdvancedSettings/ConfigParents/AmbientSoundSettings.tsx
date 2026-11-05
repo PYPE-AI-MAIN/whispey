@@ -21,16 +21,16 @@ export default function AmbientSoundSettings({
 }: AmbientSoundSettingsProps) {
   return (
     <div className="space-y-4">
-      <p className="text-xs text-gray-500 dark:text-gray-400">
+      <p className="text-xs text-muted-foreground">
         Plays a continuous office ambient sound in the background during calls to make the bot sound more natural.
       </p>
 
       <div className="flex items-center justify-between py-1">
         <div>
-          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+          <Label className="text-xs font-medium text-foreground">
             Ambient Sound
           </Label>
-          <p className="text-xs text-gray-400 mt-0.5">
+          <p className="text-xs text-muted-foreground mt-0.5">
             {ambientSoundEnabled ? 'Office ambient sound is active' : 'Ambient sound is disabled'}
           </p>
         </div>
@@ -44,10 +44,10 @@ export default function AmbientSoundSettings({
       {ambientSoundEnabled && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            <Label className="text-xs font-medium text-foreground">
               Volume
             </Label>
-            <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+            <span className="text-xs text-muted-foreground font-mono">
               {Math.round(ambientSoundVolume * 100)}%
             </span>
           </div>
@@ -59,7 +59,7 @@ export default function AmbientSoundSettings({
             onValueChange={([v]) => onAmbientSoundVolumeChange(v)}
             className="w-full"
           />
-          <div className="flex justify-between text-[10px] text-gray-400">
+          <div className="flex justify-between text-[10px] text-muted-foreground">
             <span>0%</span>
             <span>100%</span>
           </div>

@@ -1,0 +1,101 @@
+---
+title: Agent config overview
+description: What a single-prompt agent is, how to create one, and a map of every setting on the Agent Config screen.
+---
+
+A single-prompt agent is a voice agent that follows one set of instructions for the whole call. You write the instructions once, pick a voice and a language model, and the agent handles the conversation.
+
+This section explains every part of the **Agent Config** screen. If your call must follow an order of steps, read [Workflows overview](../workflows/overview) instead.
+
+## Single-prompt agent or workflow agent?
+
+| | Single-prompt agent | Workflow agent |
+|---|---|---|
+| How it works | One prompt for the whole call | A path of steps, each with its own instructions |
+| Best for | Short, open conversations | Calls that follow a script or collect specific details |
+| Where you set it up | **Agent Config** | The workflow editor |
+
+## Create an agent
+
+1. Open your project and go to the agents list.
+2. Start a new agent. A window called **Setup Voice Agent** asks how you want to get started.
+3. Choose **Create New Agent with Pype**. To bring an agent you already run somewhere else, choose **Connect Existing Agent** instead. See [Connect an agent](../integrations/connect-an-agent).
+4. Under **What are you building?**, pick one:
+   - **Single Agent**: one prompt, one persona.
+   - **Conversation Flow**: a multi-step canvas with branches, tools and transfers. This builds a workflow agent.
+5. Pick the **Agent Platform**. The list offers **LiveKit Agent** and **Pipecat Agent**.
+6. Type an **Agent Name**. This is the name shown everywhere in the dashboard, and you can change it later. The name must contain at least one letter.
+7. Add a **Description** if you like. It is optional.
+8. Click **Create Agent** (or **Create Flow** for a conversation flow).
+
+Whispey shows its progress, then **Agent Created Successfully!** with the agent ID. You can copy the ID, or click **Create Another**.
+
+:::note
+Whispey also makes a permanent internal name from the name you type. It stays the same even if you rename the agent later.
+:::
+
+:::note
+Creating agents may be limited for your workspace. The create card can show a **Beta** badge, and a **Limit Reached** badge with the text "Agent limit reached. Delete an existing agent to create a new one." If you do not have access, a form asks why you want to create agents.
+:::
+
+## Open the Agent Config screen
+
+Open your agent and click **Agent Config** in the left menu, under **Build**. The menu also has **Knowledge Base** and, under **Calls**, **Phone Calls**.
+
+For LiveKit agents this opens the screen described in these pages. Pipecat agents open a similar screen, described in [Pipecat agents](./pipecat-agents).
+
+## A tour of the screen
+
+**The top bar**
+
+| Item | What it does |
+|---|---|
+| Agent name and status dot | Shows the name and whether the agent is running. The text reads **Live**, **Agent not found**, **Status unavailable** or **Unknown**. |
+| **Talk to Assistant** | Test the agent from your browser. See [Phone and web calls](./phone-and-web-calls). |
+| **Discard Changes** | Appears when you have unsaved edits. Puts everything back to the last saved state. |
+| **Update Config** | Turns on once you have edits. Opens the review window to publish. See [Publish and history](./publish-and-history). |
+| **History** | Opens the version list. |
+| Three-dots menu | **Copy Configuration** and **Paste Configuration**. |
+
+**The left side**
+
+| Area | What it holds | Page |
+|---|---|---|
+| **Primary** / **Fallback** switch, then three pickers | The language model (LLM), speech-to-text (STT) and text-to-speech (TTS) | [Voice and models](./voice-and-models) |
+| **Conversation Start** | Who speaks first, and the first message | [Prompt and greeting](./prompt-and-greeting) |
+| **System Prompt** | The instructions, variables and the **Settings** button | [Prompt and greeting](./prompt-and-greeting) |
+
+**The right side: Advanced Settings.** It is a list of folding sections, grouped under four labels. On a small screen, open it from the three-dots menu.
+
+| Group | Section | Page |
+|---|---|---|
+| Voice & Turn-taking | **Interruption Configuration** | [Interruptions and speech](./interruptions-and-speech) |
+| | **Voice Activity Detection (VAD)** | [Interruptions and speech](./interruptions-and-speech) |
+| | **Fillers Words** | [Advanced settings](./advanced-settings) |
+| Conversation Behaviour | **Session Behaviour** | [Advanced settings](./advanced-settings) |
+| | **EOD Auto-Hangup** | [Advanced settings](./advanced-settings) |
+| | **Drop-off Call Configuration** | [Drop-off and callbacks](./drop-off-and-callbacks) |
+| | **Callback Scheduling** | [Drop-off and callbacks](./drop-off-and-callbacks) |
+| Capabilities | **Tools & Actions** | [Tools and actions](./tools-and-actions) |
+| | **RAG Settings** | [Knowledge base](./knowledge-base) |
+| | **Context Memory** | [Advanced settings](./advanced-settings) |
+| Voice Output | **TTS Switcher** | [Voice and models](./voice-and-models) |
+| | **Background Audio** | [Advanced settings](./advanced-settings) |
+| Integrations & Diagnostics | **Webhook Configuration** | [Webhook](./webhook) |
+| | **Inbound Variables** | Covered on the pre-call context page |
+| | **Bug Report System** | [Advanced settings](./advanced-settings) |
+
+Other pages in this section: [Languages](./languages) for switching language during a call, and [Built-in variables](./built-in-variables).
+
+## How changes are saved
+
+Nothing is live until you publish. Edit anything, then click **Update Config**, write a commit message and click **Publish**. See [Publish and history](./publish-and-history).
+
+Two things work a little differently. **Callback Scheduling** has its own **Save Configuration** button. The **Knowledge Base** page saves each upload as you add it.
+
+## Where to go next
+
+1. [Prompt and greeting](./prompt-and-greeting)
+2. [Voice and models](./voice-and-models)
+3. [Tools and actions](./tools-and-actions)
+4. [Publish and history](./publish-and-history)

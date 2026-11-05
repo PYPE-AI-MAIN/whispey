@@ -47,7 +47,7 @@ export async function processFPOTranscript({
   }
 }
 
-function parseFieldExtractorPrompt(promptStr: string): FieldExtractorConfig[] {
+export function parseFieldExtractorPrompt(promptStr: string): FieldExtractorConfig[] {
   try {
     const parsed = JSON.parse(promptStr);
     if (!Array.isArray(parsed)) throw new Error("Prompt is not an array");
@@ -87,7 +87,7 @@ function replaceVariablesInText(text: string, variables: Record<string, any>): s
   return result;
 }
 
-function buildSystemPrompt(fields: FieldExtractorConfig[], variables: Record<string, any> = {}): string {
+export function buildSystemPrompt(fields: FieldExtractorConfig[], variables: Record<string, any> = {}): string {
   // Replace variables in field descriptions
   const fieldLines = fields.map(f => {
     const description = replaceVariablesInText(f.description, variables);
@@ -99,7 +99,7 @@ function buildSystemPrompt(fields: FieldExtractorConfig[], variables: Record<str
   return prompt;
 }
 
-function buildUserPrompt(fields: FieldExtractorConfig[], transcript: string, variables: Record<string, any> = {}): string {
+export function buildUserPrompt(fields: FieldExtractorConfig[], transcript: string, variables: Record<string, any> = {}): string {
   const sampleJson = Object.fromEntries(fields.map(f => [f.key, "..."]));
   
   const prompt = `Conversation:\n${transcript}\n\nNow extract the following fields in JSON:\n${JSON.stringify(sampleJson, null, 2)}`;

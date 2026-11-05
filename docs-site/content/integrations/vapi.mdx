@@ -1,0 +1,47 @@
+---
+title: Vapi
+description: Connect a Vapi assistant to Whispey and view it from the agent page.
+---
+
+Connect a Vapi assistant to see its calls in Whispey. Whispey reads the assistant from Vapi. You keep editing it in Vapi.
+
+## Connect an assistant
+
+1. Start the connect flow. See [Connect an agent](./connect-an-agent).
+2. Choose **Vapi Assistant** as the platform and type an **Agent Name**.
+3. Under **Connect Vapi Account**, paste your key into **Vapi Private Key**. The field is marked **Secure**. The help text says to get your key from the Vapi Dashboard at `dashboard.vapi.ai`.
+4. Click **Connect**. Whispey lists the assistants in that account.
+5. Under **Select Assistant**, use **Select Assistant to Monitor** to choose one.
+6. Click **Start Monitoring**.
+
+Whispey then sets up the webhook that reports calls. See [Connect an agent](./connect-an-agent) for the possible results.
+
+## The Vapi agent page
+
+Open the agent to see a read-only view of the assistant. Changes to the assistant are made in Vapi, not here.
+
+| Item | What it shows |
+|---|---|
+| Assistant name and agent ID | The name from Vapi, and the first part of the Whispey ID. |
+| **Connected** or **Not Connected** | **Connected** when the assistant in Vapi has a server URL set. |
+| Updated date | When the assistant last changed in Vapi. |
+| **System Prompt** | The prompt, with its character count and an estimated token count. A **Copy** button copies it. |
+| **Configuration Overview** | The assistant's **Model** and **Voice**, each with its provider. |
+| **Open in Vapi Dashboard** | Opens the assistant in Vapi. |
+| **Back to Agents** | Returns to the agents list. |
+
+The page also has a **Call** button.
+
+## Make a test call
+
+Click **Call**. The **Initiate Call** window says "Start an outbound call using" the assistant, and shows the Vapi ID. It has two tabs.
+
+- **Phone Call**: choose one of the phone numbers connected to the assistant, pick a country, type the number and start. If none is connected, it says "No phone numbers connected to this assistant." A box lets you override the greeting.
+- **Web Call**: "Start a browser-based voice conversation" with the assistant.
+
+There is also a standalone web call page for the agent. It needs a Vapi assistant ID. If there is none, it says "This agent is not configured for Vapi web calls". The page keeps a list of your recent web calls.
+
+## Related
+
+- [Connect an agent](./connect-an-agent)
+- [Retell](./retell)

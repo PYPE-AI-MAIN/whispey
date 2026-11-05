@@ -1,0 +1,113 @@
+---
+title: Reading your numbers
+description: Plain definitions for completed and incomplete calls, response time, cost, minutes, why calls ended and latency spread.
+---
+
+This page explains how each number on the [Overview](./overview) is worked out. If a number surprises you, check it here first.
+
+## Which calls are counted
+
+- **Finished calls only.** A call that is still going is not counted. The one exception is the **Live calls** tile, which counts calls that have started and not yet ended.
+- **Test calls are counted.** A test call is treated like any other call. To leave them out, add a **Filter** on the **Environment** field. See [Overview](./overview).
+- **The Period decides the dates.** Whatever you choose in **Period** (1D, 7D, 30D or Custom) replaces the range each chart was saved with.
+- **Dates use India time.** Days start and end in the Asia/Kolkata time zone.
+- **No chart reads more than 400 days.** For longer history, download the calls instead. See [Exporting data](./exporting-data).
+
+## Completed and incomplete calls
+
+Every call ends with a reason. It is shown as **Why the call ended** in charts and as **Call Status** in [Call Logs](./call-logs).
+
+| Number | How it is worked out |
+|---|---|
+| **Completed calls** | Calls where the reason is `completed`. |
+| **Incomplete calls** | Calls where the reason is anything other than `completed`. |
+
+Whispey does not decide what counts as a good call. "Completed" only means the call ended with the reason `completed`. A call can be completed and still go badly, and the reverse can also happen. To judge quality, open the call, or use [QA Audit](./qa-audit).
+
+## Why calls ended
+
+The **Why calls ended** chart counts calls for each reason. The reasons you see are whatever values your agent and telephony setup record. They are not a fixed list in Whispey.
+
+The chart shows the 12 most common reasons.
+
+## Call length and usage minutes
+
+- **Call length** is the time from when the call started to when it ended.
+- If a call has no valid end time, or the end time is not after the start time, it has no length. It is left out of length totals rather than counted as zero.
+- **Usage minutes** adds up call length for each day and shows it in minutes.
+
+## Billed length
+
+**Billed length (seconds)** is a separate field from call length. It is the time recorded for billing.
+
+On the project [Overview](./project-analytics), **Billing Minutes** rounds each call up to the next full minute before adding them. A 61 second call counts as 2 minutes, not 1.02.
+
+## Cost
+
+**Total cost** adds three costs for each call:
+
+| Part | Field name in the chart editor |
+|---|---|
+| Language model | **Model cost** |
+| Voice | **Voice cost** |
+| Speech to text | **Transcription cost** |
+
+The amounts are in rupees. If a call has none of the three costs recorded, its cost is blank, not zero. Blank costs are left out of totals.
+
+Some members cannot see cost. See [Overview](./overview).
+
+## Response time and latency spread
+
+- **Response time** is the per-call figure called **Response time (seconds)**. The **Response time** tile shows the average across the calls in your Period. In Call Logs the same per-call figure is the **Avg Latency** column.
+- **Latency spread** is the 95th percentile of response time, worked out for each day. In plain words: 95 calls in every 100 were faster than this number. It shows the slow end, which an average hides.
+
+Which one should you watch? The average is easy to read, but one very slow call moves it a long way. The 95th percentile tells you how bad it gets on a bad day.
+
+### Averages, medians and percentiles
+
+These are the calculations you can pick in the chart editor. The descriptions are the ones the editor shows.
+
+| Calculation | Meaning |
+|---|---|
+| **Count of calls** | Every call that matches, counted once. |
+| **Unique count of** | Each value counted once. Ten calls from four numbers is four. |
+| **Percentage yes** | Out of the calls where this field has an answer, not out of every call. |
+| **Sum of** | Every value added together. |
+| **Average of** | The mean. One extreme call moves it a long way. |
+| **Median of** | Half the calls are below this and half above. Extremes do not move it. |
+| **95th percentile of** | 95 calls in every 100 stay below this. The bad tail, not the average. |
+| **Minimum of** | The smallest value recorded. |
+| **Maximum of** | The largest value recorded. |
+
+## Yes and no fields
+
+Fields that hold yes or no are written in different ways in call data: `1` and `0`, `true` and `false`, `yes` and `no`, `y` and `n`. Whispey reads all four.
+
+**Percentage yes** is worked out only over calls where the field has an answer. If the field is filled in on 185 of 400 calls, the percentage is out of 185.
+
+## Blank values
+
+These values are treated as "nothing here", whatever the capital letters: an empty value, `-`, `null` and `n/a`.
+
+## Counting people instead of calls
+
+Some charts have **Count** set to **One per** something, such as **One per phone number**. When the same person was called more than once, only one call is kept: the one with the best result. Which result is best comes from the **Outcome order** you set. See [Custom charts](./custom-charts).
+
+These charts look back 90 days to find a person's other calls, whatever date range is showing. The card says **Best of 90 days**.
+
+## Project overview numbers
+
+The [project Overview](./project-analytics) uses its own four tiles:
+
+| Tile | Meaning |
+|---|---|
+| **Total Calls** | Calls across the selected agents. |
+| **Pickup %** | The share of unique phone numbers that completed a call. |
+| **Avg Latency** | The average response time per call. |
+| **Billing Minutes** | Billed length, with each call rounded up to a full minute. |
+
+## Not sure about a number?
+
+1. Read the sentence under the chart title. It says what is counted.
+2. Open the three-dot menu and choose **View calls** to see the calls behind it.
+3. Check the **Filter** and **When** controls and the **Period**. Anything switched on narrows every chart.

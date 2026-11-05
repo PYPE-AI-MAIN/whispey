@@ -1,0 +1,76 @@
+---
+title: Project analytics
+description: Compare all agents in a project on one page, build charts across agents and follow campaign members through their steps.
+---
+
+The agent [Overview](./overview) shows one agent. The project **Overview** shows all of them together.
+
+To open it, choose **Overview** in the left menu when you are on the project (not inside an agent). It has three tabs: **Overview**, **Explore** and **Workflows**.
+
+## Choose which agents to include
+
+At the top right, the **Agents** button controls which agents every tab includes.
+
+- **Agents: All** is the default. A new agent is included automatically.
+- Click the button to tick or untick agents. **Select all** goes back to all of them.
+
+The choice applies to all three tabs.
+
+## Overview tab
+
+The first tab shows four tiles and a table, added up across the agents you selected.
+
+| Tile | What it means |
+|---|---|
+| **Total Calls** | Calls across the selected agents. |
+| **Pickup %** | The share of unique phone numbers that completed a call. |
+| **Avg Latency** | The average response time per call. |
+| **Billing Minutes** | Billed time, with each call rounded up to a full minute. |
+
+Under the tiles, the **Agent breakdown** table has one row for each agent:
+
+| Column | What it shows |
+|---|---|
+| **Agent** | The agent's name. |
+| **Calls** | Calls in the period. |
+| **Pickup %** | The pickup share for that agent. |
+| **Latency** | Average response time for that agent. |
+| **Status** | **Inactive**, or the agent's environment (or **Live** if none is set). |
+
+Click a row to open that agent.
+
+Pick the period with **7 days**, **30 days**, **90 days** or **Custom range**. The default is 30 days. Custom opens a calendar: pick a start date and an end date.
+
+For exact definitions, see [Reading your numbers](./reading-your-numbers).
+
+## Explore tab
+
+**Explore** is the same chart canvas as the agent Overview, but it covers every selected agent at once. You build charts the same way. See [Custom charts](./custom-charts).
+
+Differences from the agent Overview:
+
+- It starts with the period set to 30 days. Use the period control at the top to change it.
+- **Outcome order** and **Generate with Pi** are not offered here, because both belong to a single agent.
+- A one-per-person chart cannot ask for an outcome order here. It keeps the most recent call for each person instead.
+- When you open the calls behind a chart, the list has an extra **Agent** column.
+- Each call opens in its own agent.
+
+## Workflows tab
+
+The **Workflows** tab follows people (members or leads) through the steps of a campaign. It fills in when your own systems send events about what happened to each person. Until then it shows **No workflows yet** and the steps to send a first event.
+
+Once events arrive, choose a campaign at the top. Three views are available:
+
+| View | What it shows |
+|---|---|
+| **Overview** | Headline numbers, a **Funnel** (how many people reached each step, and how many were lost since the previous one) and **Active workflows per day**. |
+| **Charts** | Your own breakdowns of events or distinct workflows, by step, channel, outcome or time. |
+| **Workflows** | Every member, one by one. Open one to see a timeline of everything that happened to them. |
+
+Use the period control and **Filter** at the top to narrow all three views. The **Integration** button shows how to send events.
+
+## Next steps
+
+- [Agent overview](./overview)
+- [Custom charts](./custom-charts)
+- [Exporting data](./exporting-data)

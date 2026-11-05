@@ -4,7 +4,7 @@ import { getPipecatBaseUrl } from '@/lib/utils'
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { agent_name, user_name } = body
+    const { agent_name, user_name, variables } = body
 
     if (!agent_name) {
       return NextResponse.json({ error: 'agent_name is required' }, { status: 400 })
@@ -13,7 +13,14 @@ export async function POST(req: NextRequest) {
     const res = await fetch(`${getPipecatBaseUrl()}/start_web_session`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ agent_name, user_name: user_name || 'Web User' }),
+      body: JSON.stringify({
+        agent_name,
+        user_name: user_name || 'Web User',
+        // Per-session variable overrides from Agent Studio's test panel, if any.
+        // Forwarded as-is; whether the pipecat backend applies them depends on
+        // its own support for this field.
+        ...(variables && Object.keys(variables).length > 0 ? { variables } : {}),
+      }),
     })
 
     const data = await res.json()

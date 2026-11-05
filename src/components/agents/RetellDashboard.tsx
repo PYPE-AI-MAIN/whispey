@@ -88,10 +88,10 @@ const RetellDashboard: React.FC<RetellDashboardProps> = ({ agentId }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-muted/50 flex items-center justify-center">
         <div className="text-center space-y-4">
-          <div className="w-8 h-8 border-2 border-gray-300 dark:border-gray-600 rounded-full animate-spin mx-auto" style={{ borderTopColor: '#328c81' }} />
-          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Loading agent details...</p>
+          <div className="w-8 h-8 border-2 border-border border-t-blue-500 rounded-full animate-spin mx-auto" />
+          <p className="text-sm font-medium text-muted-foreground">Loading agent details...</p>
         </div>
       </div>
     )
@@ -99,14 +99,14 @@ const RetellDashboard: React.FC<RetellDashboardProps> = ({ agentId }) => {
 
   if (error || !retellAgent) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-muted/50 flex items-center justify-center">
         <div className="text-center space-y-6 max-w-md">
-          <div className="w-16 h-16 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 flex items-center justify-center mx-auto">
+          <div className="w-16 h-16 bg-card rounded-2xl border border-border flex items-center justify-center mx-auto">
             <AlertCircle className="w-8 h-8 text-red-400" />
           </div>
           <div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Agent Error</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">{error}</p>
+            <h3 className="text-lg font-medium text-foreground">Agent Error</h3>
+            <p className="text-sm text-muted-foreground mt-2">{error}</p>
           </div>
           <div className="flex gap-3">
             <Button onClick={handleBack} variant="outline">
@@ -115,8 +115,7 @@ const RetellDashboard: React.FC<RetellDashboardProps> = ({ agentId }) => {
             </Button>
             <Button
               onClick={() => window.open(`https://dashboard.retellai.com/agent/${retellAgent?.agent_id || ''}`, '_blank')}
-              style={{ backgroundColor: '#328c81' }}
-              className="text-white"
+              className="text-white bg-blue-600 hover:bg-blue-700"
             >
               <ExternalLink className="w-4 h-4 mr-2" />
               Open in Retell
@@ -130,35 +129,35 @@ const RetellDashboard: React.FC<RetellDashboardProps> = ({ agentId }) => {
   const prompt = getSystemPrompt()
 
   return (
-    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden">
+    <div className="h-screen bg-muted/50 flex flex-col overflow-hidden">
 
       {/* Header */}
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
+      <div className="bg-card border-b border-border flex-shrink-0">
         <div className="w-full px-8 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Button onClick={handleBack} variant="ghost" size="sm" className="p-1">
-                <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                <ChevronLeft className="w-5 h-5 text-muted-foreground" />
               </Button>
 
               <div>
                 <div className="flex items-center gap-3">
-                  <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  <h1 className="text-2xl font-semibold tracking-tight text-foreground">
                     {retellAgent.agent_name || 'Unnamed Agent'}
                   </h1>
                   {isConnected ? (
-                    <Badge className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 text-xs">
+                    <Badge className="bg-success/15 text-success border-success/30 text-xs">
                       <CheckCircle className="w-2 h-2 mr-1" />
                       Connected
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
+                    <Badge variant="outline" className="bg-warning/10 text-warning border-warning/30 text-xs">
                       <AlertCircle className="w-2 h-2 mr-1" />
                       Not Connected
                     </Badge>
                   )}
                 </div>
-                <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Hash className="w-3 h-3" />
                     {agentId.slice(0, 8)}...
@@ -190,16 +189,16 @@ const RetellDashboard: React.FC<RetellDashboardProps> = ({ agentId }) => {
 
         {/* Left — System Prompt */}
         <div className="w-2/3 flex-1 min-w-0">
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg flex flex-col h-full">
-            <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
+          <div className="bg-card border border-border rounded-lg flex flex-col h-full">
+            <div className="p-4 border-b border-border flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
-                    <Bot className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                  <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center">
+                    <Bot className="w-4 h-4 text-muted-foreground" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100">System Prompt</h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <h3 className="font-semibold text-foreground">System Prompt</h3>
+                    <p className="text-xs text-muted-foreground">
                       {retellAgent.response_engine?.type === 'custom-llm'
                         ? 'Custom LLM'
                         : `${prompt.length.toLocaleString()} characters • ~${Math.ceil(prompt.length / 4)} tokens`}
@@ -211,7 +210,7 @@ const RetellDashboard: React.FC<RetellDashboardProps> = ({ agentId }) => {
                     size="sm"
                     variant="outline"
                     onClick={() => copyToClipboard(prompt, 'prompt')}
-                    className="text-xs border-gray-300 dark:border-gray-600"
+                    className="text-xs border-border"
                   >
                     {copied === 'prompt' ? (
                       <><CheckCircle className="w-3 h-3 mr-1" />Copied</>
@@ -226,7 +225,7 @@ const RetellDashboard: React.FC<RetellDashboardProps> = ({ agentId }) => {
               <Textarea
                 value={prompt}
                 disabled
-                className="w-full h-full border-0 resize-none font-mono text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus-visible:ring-0"
+                className="w-full h-full border-0 resize-none font-mono text-sm bg-card text-foreground focus-visible:ring-0"
                 style={{ fontSize: '13px', lineHeight: '1.5' }}
               />
             </div>
@@ -234,12 +233,12 @@ const RetellDashboard: React.FC<RetellDashboardProps> = ({ agentId }) => {
         </div>
 
         {/* Right — Config Sidebar */}
-        <div className="w-1/3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-800 rounded-lg flex flex-col overflow-hidden">
+        <div className="w-1/3 bg-muted/50 border border-border rounded-lg flex flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto p-6 space-y-8">
 
             {/* Connection Status */}
             <div>
-              <h3 className="text-xs font-semibold text-gray-900 dark:text-gray-100 uppercase tracking-wider mb-4">
+              <h3 className="text-xs font-medium text-muted-foreground mb-4">
                 Configuration Overview
               </h3>
               <div className="flex items-center gap-2 mb-4">
@@ -254,12 +253,12 @@ const RetellDashboard: React.FC<RetellDashboardProps> = ({ agentId }) => {
             <div className="space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1">
+                  <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                     <Mic className="w-3 h-3" /> Voice
                   </span>
-                  <span className="text-xs text-gray-400">{retellAgent.voice_model || '—'}</span>
+                  <span className="text-xs text-muted-foreground">{retellAgent.voice_model || '—'}</span>
                 </div>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <p className="text-sm font-medium text-foreground">
                   {retellAgent.voice_id || '—'}
                 </p>
               </div>
@@ -267,29 +266,29 @@ const RetellDashboard: React.FC<RetellDashboardProps> = ({ agentId }) => {
               {/* LLM */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1">
+                  <span className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                     <Brain className="w-3 h-3" /> LLM
                   </span>
-                  <span className="text-xs text-gray-400">{retellAgent.response_engine?.type}</span>
+                  <span className="text-xs text-muted-foreground">{retellAgent.response_engine?.type}</span>
                 </div>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <p className="text-sm font-medium text-foreground">
                   {retellLlm?.model || retellAgent.response_engine?.llm_id || 'Custom LLM'}
                 </p>
               </div>
 
               {/* Language */}
               <div>
-                <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide block mb-1">Language</span>
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <span className="text-xs font-medium text-muted-foreground block mb-1">Language</span>
+                <p className="text-sm font-medium text-foreground">
                   {retellAgent.language || 'en-US'}
                 </p>
               </div>
 
               {/* Retell Agent ID */}
               <div>
-                <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide block mb-1">Retell Agent ID</span>
+                <span className="text-xs font-medium text-muted-foreground block mb-1">Retell Agent ID</span>
                 <div className="flex items-center gap-2">
-                  <p className="text-xs font-mono text-gray-700 dark:text-gray-300 truncate">
+                  <p className="text-xs font-mono text-foreground truncate">
                     {retellAgent.agent_id}
                   </p>
                   <Button
@@ -299,8 +298,8 @@ const RetellDashboard: React.FC<RetellDashboardProps> = ({ agentId }) => {
                     onClick={() => copyToClipboard(retellAgent.agent_id, 'agentId')}
                   >
                     {copied === 'agentId'
-                      ? <CheckCircle className="w-3 h-3 text-green-500" />
-                      : <Copy className="w-3 h-3 text-gray-400" />}
+                      ? <CheckCircle className="w-3 h-3 text-success" />
+                      : <Copy className="w-3 h-3 text-muted-foreground" />}
                   </Button>
                 </div>
               </div>
@@ -308,8 +307,8 @@ const RetellDashboard: React.FC<RetellDashboardProps> = ({ agentId }) => {
               {/* Version */}
               {retellAgent.version !== undefined && (
                 <div>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide block mb-1">Version</span>
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">v{retellAgent.version}</p>
+                  <span className="text-xs font-medium text-muted-foreground block mb-1">Version</span>
+                  <p className="text-sm font-medium text-foreground">v{retellAgent.version}</p>
                 </div>
               )}
             </div>

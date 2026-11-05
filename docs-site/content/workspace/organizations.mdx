@@ -1,0 +1,64 @@
+---
+title: Organizations
+description: Create, switch between and delete organizations, and what the environment label means.
+---
+
+An organization is your workspace. You can belong to many. Each one has its own agents, call logs, phone numbers, campaigns, team and API keys.
+
+## Create another organization
+
+1. Open the organization switcher at the top of the sidebar.
+2. Choose **Create new organization**.
+3. Fill in the **Create New Organization** form.
+
+| Field | Required |
+|---|---|
+| Organization Name | Yes |
+| Description | No |
+
+4. Choose **Create Organization**.
+
+The next screen says **Organization Created Successfully!** and shows the organization **ID** and **Environment**. Choose **Continue to Organization** to open it.
+
+The dialog says it sets up the organization "with automatic API token generation". That means the organization gets its first API key straight away. See [API keys](./api-keys).
+
+You become the **owner** of every organization you create.
+
+## Switch organizations
+
+1. Choose the organization name at the top of the sidebar.
+2. In the **Switch Organization** window, search by name or description, or pick one from the list.
+
+The list has two groups: **Current Organization** and **Other Organizations**. Each row shows the organization name, an environment badge and the number of agents, for example "3 agents".
+
+Whispey remembers the last organization you opened in your browser and takes you back to it next time.
+
+## Environments
+
+Each organization has an **environment** label. You see it as a small badge in the switcher.
+
+| Label | Badge colour |
+|---|---|
+| production or prod | Red |
+| development or dev | Blue |
+| anything else | Grey |
+
+The onboarding form lets you choose **Production** or **Development**. Use separate organizations for testing and for real calls, so test agents never mix with live ones. Each organization has its own API key, so keep the keys apart too.
+
+## Delete an organization
+
+Only the **owner** can do this.
+
+1. Open **Settings** in the sidebar.
+2. Scroll to **Danger Zone**.
+3. Choose **Delete Organization**.
+4. Type the organization name exactly as shown, then confirm.
+
+:::warning
+Deleting an organization permanently removes all its agents, call logs, configurations and team access. You cannot undo it. You cannot delete your only organization. Create another one first.
+:::
+
+## Related pages
+
+- [Team and roles](./team-and-roles)
+- [Settings reference](./settings-reference)

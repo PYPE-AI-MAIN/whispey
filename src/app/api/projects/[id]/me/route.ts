@@ -34,12 +34,12 @@ export async function GET(
         .from('pype_voice_email_project_mapping')
         .select('role, permissions, is_active')
         .eq('project_id', projectId)
+        // .limit(1) before .maybeSingle(): without it, a legitimate multi-row
+        // match (e.g. the same email tied to two different accounts/domains)
+        // makes Supabase error out instead of returning a row, surfacing as
+        // a 500 here rather than "yes, a member."
         .or(projectMembershipMatch(userId, userEmail, isPlatformAdmin(userEmail)))
         .or('is_active.is.null,is_active.eq.true')
-        // An admin's broad email match can legitimately hit more than one
-        // row (multiple clerk_ids over time) — cap to 1 before .maybeSingle()
-        // so that's treated as "yes, a member," not a 500 (mirrors the same
-        // fix in getProjectRoleForApi.ts).
         .limit(1)
         .maybeSingle(),
       supabase

@@ -1,0 +1,117 @@
+// Pure helpers shared by the MCP agent routes (/api/mcp/agents and
+// /api/mcp/agents/[id]). Kept free of I/O so the rules — who may call, how a
+// name is derived, what an update is allowed to touch — can be unit-tested.
+
+import { timingSafeEqual } from 'node:crypto'
+
+export interface VoiceRef {
+  provider?: string
+  voice_id?: string
+}
+
+/** True only when the caller sent exactly the configured shared secret. */
+export function hasStudioSecret(header: string | null, expected: string | undefined): boolean {
+  if (!header || !expected) return false
+  const given = Buffer.from(header)
+  const wanted = Buffer.from(expected)
+  // timingSafeEqual throws on different lengths, and a length mismatch is
+  // itself an answer — so reject before comparing.
+  return given.length === wanted.length && timingSafeEqual(given, wanted)
+}
+
+/**
+ * Backend-safe agent name from a freeform display name. The backend writes it
+ * into a Python import statement when validating config updates, so it must be
+ * lowercase alphanumeric/underscore only — a hyphen or space there is a
+ * SyntaxError, not just a display issue.
+ */
+export function slugifyAgentName(displayName: string): string {
+  const slug = displayName
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean)
+    .join('_')
+    .slice(0, 40)
+  return slug || 'agent'
+}
+
+/** Public URL of the Studio page for an agent. */
+export function studioUrl(projectId: string, agentId: string, appUrl = 'http://localhost:3000'): string {
+  const trimmed = appUrl.endsWith('/') ? appUrl.slice(0, -1) : appUrl
+  return `${trimmed}/${projectId}/agents/${agentId}/studio`
+}
+
+export interface EditableAgentFacts {
+  project_id: string
+  agent_type?: string | null
+  configuration?: { created_via?: string; created_by?: string | null } | null
+}
+
+/**
+ * Why this MCP caller may NOT edit this agent, or null when it may.
+ * - Every caller: the agent must be in the project the caller named.
+ * - Internal Pype keys: any agent Pype hosts (agent_type pype_agent), however it was made.
+ * - Client keys: only agents this same key created through the MCP.
+ */
+export function editRefusal(
+  agent: EditableAgentFacts,
+  caller: { projectId: string; createdBy?: string; internal?: boolean }
+): { status: number; error: string } | null {
+  if (agent.project_id !== caller.projectId) return { status: 403, error: 'Agent does not belong to project_id' }
+  if (caller.internal) {
+    return agent.agent_type === 'pype_agent'
+      ? null
+      : { status: 403, error: "This agent isn't hosted by Pype and can't be edited here" }
+  }
+  if (agent.configuration?.created_via !== 'mcp') {
+    return { status: 403, error: 'This agent was not created through the MCP and cannot be edited here' }
+  }
+  if (!caller.createdBy || agent.configuration?.created_by !== caller.createdBy) {
+    return { status: 403, error: 'You can only edit agents you created through the MCP' }
+  }
+  return null
+}
+
+/** Link to a conversation-flow agent's canvas (where its flow can be viewed and edited). */
+export function flowUrl(projectId: string, agentId: string, appUrl = 'http://localhost:3000'): string {
+  const trimmed = appUrl.endsWith('/') ? appUrl.slice(0, -1) : appUrl
+  return `${trimmed}/${projectId}/agents/${agentId}/workflow`
+}
+
+/** Why a supplied voice is unusable, or null when it has both parts. */
+export function voiceRefError(voice: VoiceRef | undefined): string | null {
+  if (!voice?.provider || !voice?.voice_id) return 'voice requires provider and voice_id'
+  return null
+}
+
+export interface AssistantUpdates {
+  prompt?: string
+  greeting?: string
+  /** A complete tts config, already built for the chosen voice. */
+  tts?: unknown
+  variables?: Record<string, string>
+}
+
+/**
+ * Applies ONLY prompt / greeting / voice / variables to an assistant; every
+ * other field is carried over exactly as it was.
+ */
+export function applyAssistantUpdates(current: Record<string, any>, updates: AssistantUpdates): Record<string, any> {
+  const next = { ...current }
+  if (updates.prompt !== undefined) next.prompt = updates.prompt
+  if (updates.greeting !== undefined) {
+    next.first_message_mode = {
+      ...current.first_message_mode,
+      mode: 'assistant_speaks_first',
+      first_message: updates.greeting,
+    }
+  }
+  // Full replace, not a merge: Sarvam and ElevenLabs use different field
+  // shapes, so carrying any old field over risks a stale value surviving a
+  // provider switch.
+  if (updates.tts !== undefined) next.tts = updates.tts
+  // Merge, not replace: updating one value shouldn't require resending every
+  // other variable the agent already has.
+  if (updates.variables !== undefined) next.variables = { ...current.variables, ...updates.variables }
+  return next
+}

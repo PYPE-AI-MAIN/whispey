@@ -95,20 +95,18 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
   // Playground routes are completely public - bypass all auth checks
   if (isPlayground) {
     return (
-      <main>
-        <div className="min-h-screen">
-          {children}
-        </div>
+      <main className="min-h-screen">
+        {children}
       </main>
     )
   }
 
   return (
-    <main>
+    <div>
       <SignedOut>
-        <div className="min-h-screen">
+        <main className="min-h-screen">
           {children}
-        </div>
+        </main>
       </SignedOut>
       <SignedIn>
         <SignOutHandler>
@@ -117,13 +115,13 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
               {children}
             </SidebarWrapper>
           ) : (
-            <div className="min-h-screen">
+            <main className="min-h-screen">
               {children}
-            </div>
+            </main>
           )}
           <FeedbackWidget />
         </SignOutHandler>
       </SignedIn>
-    </main>
+    </div>
   )
 }

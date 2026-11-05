@@ -71,6 +71,29 @@ export function pypeAgentControlHeaders(): Record<string, string> {
   }
 }
 
+/**
+ * fetch() with quick retries on connection-level failures (refused, DNS, reset),
+ * e.g. while the backend restarts. HTTP error responses are returned as-is.
+ */
+export async function fetchPypeApiWithRetry(
+  url: string,
+  init: RequestInit,
+  { retries = 2, delayMs = 400, timeoutMs = PYPE_API_FETCH_TIMEOUT_MS }: { retries?: number; delayMs?: number; timeoutMs?: number } = {},
+): Promise<Response> {
+  let lastErr: unknown
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fetch(url, { ...init, signal: init.signal ?? pypeApiAbortSignal(timeoutMs) })
+    } catch (err) {
+      lastErr = err
+      if (!isPypeUpstreamUnreachable(err) || attempt === retries) throw err
+      await new Promise((r) => setTimeout(r, delayMs))
+    }
+  }
+  // Unreachable in practice (loop always returns or throws), but keeps TS happy.
+  throw lastErr
+}
+
 /** True when fetch failed due to timeout, DNS, or refused connection (not HTTP 4xx/5xx). */
 export function isPypeUpstreamUnreachable(err: unknown): boolean {
   if (err == null || typeof err !== "object") return false

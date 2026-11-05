@@ -1,0 +1,162 @@
+'use client'
+
+import { Loader2, Settings2 } from 'lucide-react'
+import FieldExtractorDialog from '@/components/FieldExtractorLogs'
+import { modelChange } from '@/config/fieldExtractorModels'
+import { dncCheckerChange } from '@/config/dncChecker'
+
+interface FieldExtractorItem {
+  key: string
+  description: string
+}
+
+function DispositionsBody({
+  fields, configured, inProgress, loading, latestValues,
+}: Readonly<{
+  fields: FieldExtractorItem[]
+  configured: boolean
+  inProgress: boolean
+  loading: boolean
+  latestValues: Record<string, string> | null | undefined
+}>) {
+  if (!configured) {
+    return (
+      <div className="flex flex-col items-center gap-1.5 rounded-xl border border-dashed border-border px-4 py-5 text-center">
+        <Settings2 className="h-4 w-4 text-gray-300 dark:text-gray-600" />
+        <p className="text-xs font-medium text-muted-foreground">Nothing extracted yet</p>
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          Define the dispositions to pull out of each call and they&apos;ll be computed
+          automatically right after the call ends.
+        </p>
+      </div>
+    )
+  }
+
+  if (inProgress) {
+    return (
+      <div className="flex flex-col items-center gap-1.5 rounded-xl border border-dashed border-border px-4 py-5 text-center">
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          Call in progress — values from this call will show up once it ends.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-1.5 rounded-xl border border-border bg-card p-3">
+      {fields.map((f) => (
+        <div key={f.key} className="flex items-baseline justify-between gap-3 text-[12px]">
+          <span className="shrink-0 font-medium text-muted-foreground">{f.key}</span>
+          <span className="truncate text-right text-foreground">
+            <DispositionValue loading={loading} value={latestValues?.[f.key]} />
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function DispositionValue({ loading, value }: Readonly<{ loading: boolean; value: string | undefined }>) {
+  if (loading) return <Loader2 className="ml-auto h-3 w-3 animate-spin text-gray-300 dark:text-gray-600" />
+  return value ?? <span className="text-gray-300 dark:text-gray-600">—</span>
+}
+
+export default function OutputVariablesPanel({
+  agentId,
+  fieldExtractorPrompt,
+  fieldExtractorVariables,
+  fieldExtractorEnabled,
+  fieldExtractorModel = null,
+  dncCheckerEnabled = false,
+  latestValues,
+  loading,
+  inProgress,
+  canEdit = true,
+  onSaved,
+}: Readonly<{
+  agentId: string
+  /** Raw JSON string, as stored on the agent row (may be empty/invalid). */
+  fieldExtractorPrompt: string | null | undefined
+  fieldExtractorVariables: Record<string, string> | null | undefined
+  fieldExtractorEnabled: boolean
+  /** The agent's field_extractor_model (empty = default). */
+  fieldExtractorModel?: string | null
+  /** The agent's dnc_checker_enabled. */
+  dncCheckerEnabled?: boolean
+  /** transcription_metrics from the most recent completed call, if any. */
+  latestValues: Record<string, string> | null | undefined
+  /** Still resolving the last call (initial mount, or a call just ended and hasn't landed yet). */
+  loading?: boolean
+  /** A test call is live right now — values shown would be from a call before this one. */
+  inProgress?: boolean
+  /** Whether this member may edit the extractor (mirrors the API's visibility gate). */
+  canEdit?: boolean
+  onSaved: () => void
+}>) {
+  let fields: FieldExtractorItem[] = []
+  try {
+    const parsed = JSON.parse(fieldExtractorPrompt || '[]')
+    if (Array.isArray(parsed)) fields = parsed.filter((f) => f?.key)
+  } catch {
+    // malformed config — treat as unset, dialog starts fresh
+  }
+
+  const configured = fieldExtractorEnabled && fields.length > 0
+
+  // Nothing to show and nothing they're allowed to change — leave it out.
+  if (!canEdit && !configured) return null
+
+  const handleSave = async (data: FieldExtractorItem[], enabled: boolean, variables: Record<string, string>, model: string, dncEnabled: boolean) => {
+    const res = await fetch(`/api/agents/${agentId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        field_extractor_prompt: JSON.stringify(data),
+        field_extractor: enabled,
+        field_extractor_variables: variables,
+        ...modelChange(fieldExtractorModel, model),
+        ...dncCheckerChange(dncCheckerEnabled, dncEnabled),
+      }),
+    })
+    if (res.ok) {
+      onSaved()
+    } else {
+      const j = await res.json().catch(() => ({}))
+      console.error('[Studio] saving dispositions failed:', j.error || res.statusText)
+      alert("We couldn't save your dispositions. Please try again, or refresh the page.")
+    }
+  }
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between px-0.5">
+        <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          Dispositions
+          {configured && loading && <Loader2 className="h-3 w-3 animate-spin text-gray-300 dark:text-gray-600" />}
+        </span>
+        {/* Same trigger the full config page uses for this exact dialog — left
+            as-is rather than re-skinned, so it stays visually consistent with
+            the rest of the app instead of risking a mismatched override. */}
+        {canEdit && (
+        <FieldExtractorDialog
+          initialData={fields}
+          initialVariables={fieldExtractorVariables || {}}
+          isEnabled={fieldExtractorEnabled}
+          initialModel={fieldExtractorModel}
+          initialDncEnabled={dncCheckerEnabled}
+          terminology="dispositions"
+          onSave={handleSave}
+        />
+        )}
+      </div>
+
+      <DispositionsBody
+        fields={fields}
+        configured={configured}
+        inProgress={!!inProgress}
+        loading={!!loading}
+        latestValues={latestValues}
+      />
+    </div>
+  )
+}

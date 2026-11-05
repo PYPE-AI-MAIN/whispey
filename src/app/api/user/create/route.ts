@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { isPlatformAdmin } from '@/lib/isPlatformAdmin'
+import { notifyAdminsOfPendingSignup } from '@/lib/sendApprovalEmail'
 
 const supabase = createServiceRoleClient()
 
@@ -92,6 +93,17 @@ export async function POST(request: NextRequest) {
     await linkPendingInvites(userId, email)
 
     const newUser = upsertedRows?.[0]
+    // Only a genuine insert (not a no-op on an existing row) notifies admins,
+    // so webhook + fallback can't double-send for the same signup.
+    if (newUser && !isAdmin && newUser.approval_token) {
+      await notifyAdminsOfPendingSignup({
+        rowId: newUser.id,
+        approvalToken: newUser.approval_token,
+        userEmail: email,
+        userName: `${clerkUser.firstName ?? ''} ${clerkUser.lastName ?? ''}`.trim(),
+      })
+    }
+
     if (!newUser) {
       // Row already existed (upsert was a no-op) — look it up for the response.
       const { data: existingUser } = await supabase

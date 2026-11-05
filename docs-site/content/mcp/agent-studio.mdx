@@ -1,0 +1,77 @@
+---
+title: Agent Studio
+description: Where agents built with AI live. Call your agent in the browser, set its voice and test values, and see what it pulled out of the last call.
+---
+
+**Agent Studio** is the home of an agent you built with your AI assistant. It is a place to try the agent and watch it work: start a call, hear it, and see the result. Changes to the prompt and behaviour are made by asking your assistant. See [Build an agent with AI](./build-an-agent).
+
+Open it from the left menu: choose your agent, then **Agent Studio** under **Build**.
+
+![Agent Studio: the test call panel on the left, results on the right](/img/studio/workspace.jpg)
+
+## Who sees it
+
+**Agent Studio** appears for agents built through MCP or with [Ask Pi](../ask-pi/overview). Owners and admins also see it for other agents made with Pype.
+
+If the agent was not built through MCP, Studio shows how to do it instead.
+
+![The Studio page for an agent not built through MCP](/img/studio/empty-state.jpg)
+
+Click **See what Studio looks like with sample data** to look around anyway.
+
+## Call your agent
+
+1. Click **Setup** at the bottom to check the voice and test values. See [Before you call](#before-you-call).
+2. Click **Start call**. Allow your browser to use the microphone.
+3. Talk. The status shows **Listening**, **Thinking** or **Speaking**, and the conversation appears as you go.
+4. Click **End call** when you are done. **Mute microphone** mutes you without ending the call.
+
+Only **Voice** works today. **Phone** and **Chat** are marked **Soon**.
+
+## Before you call
+
+**Setup** has two parts.
+
+![Setup open, with the voice and the test values for each variable](/img/studio/setup.jpg)
+
+| Part | What it does |
+|---|---|
+| **Voice** | Pick a voice. Click play to hear it first. Choosing a voice changes the live agent and restarts it, which takes a few seconds. |
+| **Variables** | Test values for the agent's variables, such as the customer's name. Empty ones say **Not set**. |
+
+When you change variables, the button reads **Update and start**. Clicking it saves the values to the agent, then starts the call.
+
+:::note
+Choosing a voice or pressing **Update and start** changes the real agent, not just your test. Real calls use the new voice and values from then on.
+:::
+
+While the agent restarts, the button shows the progress. If someone is changing the agent elsewhere, for example through your AI assistant, Studio waits: **An update is currently in progress — try again in a moment.**
+
+## After the call
+
+**Last call** shows the conversation. When the page opens, it shows the agent's most recent call, which may be a real one. Click the arrow icon (**View full details**) to open the full trace.
+
+Right after you hang up, it says **Saving call…** while the call is stored. If it takes longer than about a minute and a half, it says the call will appear in [Call Logs](../analytics/call-logs) shortly. Click **Check again**.
+
+## What the agent pulled out
+
+The **Dispositions** panel on the right shows the values from the last call, such as the outcome or a callback time.
+
+- Values appear as soon as you hang up. They are worked out from the conversation on the spot, then replaced by the saved values once the call is processed.
+- While a call is on, it says **Call in progress — values from this call will show up once it ends.**
+- Click **Dispositions** to change which details are pulled out. See [Dispositions](../analytics/dispositions).
+
+**Overall** shows how many calls the agent has had, including test calls.
+
+## Rename the agent
+
+Click the pencil next to the agent's name at the top. Press Enter to save or Esc to cancel. Your AI assistant cannot rename agents, so do it here.
+
+## If something goes wrong
+
+| Message | What to do |
+|---|---|
+| We couldn't access your microphone… | Allow microphone access for this site in your browser, then try again. |
+| The agent didn't join the call… | It may still be starting. Wait a few seconds and try again. |
+| Connection dropped — reconnecting… | Wait. It reconnects by itself. |
+| We couldn't apply that voice… | Try again. If it keeps failing, pick another voice. |

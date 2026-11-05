@@ -1,0 +1,41 @@
+---
+title: Webhook
+description: Send your call logs to a web address you own.
+---
+
+A webhook sends call data to a web address you own. Use it to feed call logs into your CRM, a spreadsheet or another system.
+
+The section is in **Advanced Settings**, under **Integrations & Diagnostics**, called **Webhook Configuration**. It says "Configure webhooks to receive call log data in real-time. When enabled, call logs will be sent to your specified endpoint."
+
+## Set it up
+
+1. Open **Webhook Configuration**.
+2. Type your **Webhook URL**, for example `https://your-api.com/webhook`.
+3. Choose the **HTTP Method**.
+4. Add any **Headers** your system needs.
+5. Turn on **Active**.
+6. Click **Update Config** and publish. The webhook is saved with the rest of your changes.
+
+| Setting | What it does | Default |
+|---|---|---|
+| **Webhook URL** | The address that receives the call logs. | Empty |
+| **HTTP Method** | **POST**, **PUT** or **PATCH**. | POST |
+| **Headers** | Extra headers to send with each request, such as `Authorization` or `Content-Type`. Add a header name and a value for each. | None |
+| **Active** | Turns the webhook on or off. | Off |
+
+:::note
+A webhook only counts as active when it has a web address. The address must start with http or https.
+:::
+
+:::tip
+To stop sending data, turn **Active** off. Clearing the URL and saving removes the webhook.
+:::
+
+## Check that it works
+
+Make a test call with [Talk to Assistant](./phone-and-web-calls) or **Phone Calls**. After the call, look for a request at your address.
+
+## Related
+
+- [Advanced settings](./advanced-settings)
+- [Observability](../observability)

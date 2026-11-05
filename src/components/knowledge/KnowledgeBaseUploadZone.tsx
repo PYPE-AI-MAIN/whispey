@@ -195,7 +195,8 @@ export function KnowledgeBaseUploadZone({
   return (
     <div className={cn('space-y-4', className)}>
       {/* File upload zone */}
-      <div
+      <div /* NOSONAR: drag-and-drop target; the file picker inside is the keyboard control */
+        role="presentation"
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -203,7 +204,7 @@ export function KnowledgeBaseUploadZone({
           'relative rounded-xl border-2 border-dashed transition-colors flex flex-col items-center justify-center min-h-[180px] p-6',
           isDragging
             ? 'border-primary bg-primary/5 dark:bg-primary/10'
-            : 'border-gray-300 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-800/50 hover:border-gray-400 dark:hover:border-gray-500',
+            : 'border-border bg-muted/50 hover:border-border',
           (disabled || uploading) && 'pointer-events-none opacity-70'
         )}
       >
@@ -218,19 +219,19 @@ export function KnowledgeBaseUploadZone({
         {uploading ? (
           <Loader2 className="h-10 w-10 text-primary animate-spin mb-2" />
         ) : (
-          <Upload className="h-10 w-10 text-gray-500 dark:text-gray-400 mb-2" />
+          <Upload className="h-10 w-10 text-muted-foreground mb-2" />
         )}
-        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <p className="text-sm font-medium text-foreground mb-1">
           {uploading ? 'Uploading…' : 'Drag and drop or click to upload'}
         </p>
-        <p className="text-xs text-gray-500 dark:text-gray-400">
+        <p className="text-xs text-muted-foreground">
           PDF, TXT, DOC, DOCX, CSV up to {KNOWLEDGE_MAX_FILE_SIZE_MB}MB
         </p>
       </div>
 
       {/* URL ingestion */}
-      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800/50 p-4">
-        <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2 mb-2">
+      <div className="rounded-xl border border-border bg-card shadow-sm p-4">
+        <Label className="text-xs font-medium text-muted-foreground flex items-center gap-2 mb-2">
           <LinkIcon className="h-4 w-4" />
           Add from URL
         </Label>

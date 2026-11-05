@@ -1,0 +1,47 @@
+---
+title: Built-in variables
+description: The variables Whispey fills in on every call, such as the caller's number and today's date.
+---
+
+Built-in variables are ready to use in your prompt and greeting. You do not set them up and you do not need to return them from your own system.
+
+Write them in double curly brackets, for example `{{wcurrent_date}}`.
+
+## Variables on every call
+
+| Variable | What it holds | Example |
+|---|---|---|
+| `wcalling_number` | The phone number of the call | `+919876543210` |
+| `wcurrent_time` | The current time in Indian time (IST) | `02:30 PM` |
+| `wcurrent_date` | Today's date and day, in Indian time | `16 Nov 2025, Monday` |
+| `wcurrent_day` | Today's day name, in Indian time | `Monday` |
+
+If the time zone cannot be read, the time and date are given in UTC instead.
+
+If a call has no phone number, `wcalling_number` holds the placeholder number `+1234567890`.
+
+The prompt settings screen lists the predefined system variables as `wcalling_number`, `wcurrent_time`, `wcurrent_date` and `wcontext_dropoff`. The screen does not list `wcurrent_day`, but the voice backend provides it.
+
+:::note
+`wcontext_dropoff` is described in the dashboard as a context summary for drop-off calls. Whispey fills it only when drop-off context exists for the call.
+:::
+
+## Extra variables in workflow agents
+
+Workflow agents get the four variables above, and three more.
+
+| Variable | What it holds | Example |
+|---|---|---|
+| `wtoday` | Today's date in the form year-month-day, for APIs that take a date | `2026-07-31` |
+| `wtoday_plus_7` | The date seven days from today, in the same form | `2026-08-07` |
+| `MOBILE_NO` | The caller's number as 10 digits | `9876543210` |
+
+`MOBILE_NO` is left empty when the caller's number does not have 10 digits.
+
+Use `wcurrent_date` to speak the date aloud. Use `wtoday` to build a date range for an API.
+
+These names are never reported as undeclared in the workflow editor. To learn how workflow variables work, see [Variables and the knowledge base](../workflows/variables-and-knowledge).
+
+## Your own variables
+
+The built-in names start with `w`. Pick different names for your own variables so they do not clash. To fill your own variables from your system on inbound calls, see [Pre-call context fetch](./pre-call-context).

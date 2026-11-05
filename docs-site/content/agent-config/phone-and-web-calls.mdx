@@ -1,0 +1,75 @@
+---
+title: Phone and web calls
+description: Test your agent from the browser, place real test calls from the Phone Calls page, and see how Vapi web calls fit in.
+---
+
+Test your agent often. You can talk to it from your browser, or have it phone a real number.
+
+## Talk to Assistant
+
+**Talk to Assistant** is a button at the top of **Agent Config**. It opens a panel on the right where you talk to your agent without a phone.
+
+1. Click **Talk to Assistant**.
+2. Choose **Voice** or **Chat** at the top of the panel.
+3. Click **Start Call** (voice) or **Start Chat** (text, no audio).
+4. While connected, the panel shows **Connected**, the call time and a live transcript.
+5. In a voice call, use **Mute** and **Unmute** if you need to. Click **End Call** when you are done.
+6. In chat, type under "Type a message..." and click the send button.
+
+The panel offers these voice testing tips:
+
+- Test your system prompt and personality.
+- Verify the STT, LLM and TTS choices.
+- Check response timing and accuracy.
+- Test interruption handling.
+
+:::note
+The button is off while the prompt has errors, while a publish is running, or when the agent cannot be found. You cannot close the panel during a call. Click **End Call** first.
+:::
+
+Publish your changes first, then test. See [Publish and history](./publish-and-history).
+
+## Phone Calls
+
+Use **Phone Calls** in the left menu, under **Calls**, to place a test call from your agent to a real phone number. The page title is **Dispatch Call**.
+
+### Place a call
+
+1. Open **Phone Calls**.
+2. Under **Calling From**, pick one of your outbound phone numbers. The field is required. If you have none, the page says "No outbound phone numbers available".
+3. Under **Calling To**, choose the country (United States, +1, or India, +91) and type the number. The dialer button next to the label shows a number pad with a **Backspace** key.
+4. Under **Variables** (optional), add key and value pairs. They are sent with the call and fill any variables in your prompt. See [Prompt and greeting](./prompt-and-greeting).
+5. Click **Dispatch Call**.
+
+The page shows "Call dispatched successfully to" the number when it works.
+
+The agent must be running. If it is not, the page says "Start the agent to dispatch calls".
+
+:::warning
+Before a call, Whispey checks the number against your Do Not Call list. If the number is on it, the call is blocked and you see "is on the Do Not Call (DNC) list — call blocked."
+:::
+
+Other messages you may see: "Please enter a valid phone number", "Please select a phone number to call from" and "Selected phone number not found".
+
+### Call History
+
+The right side lists recent calls from this page.
+
+| Action | How |
+|---|---|
+| Call the same number again | Click the call. The page says it redials with the same settings. |
+| Rename a call | Use the pencil on the row. |
+| Delete one | Use the bin on the row. |
+| Delete all | **Clear All** |
+| Change how many are kept | **Store last** 5, 10 or 15 calls. The page says "calls for 7 days". |
+
+The history is kept in your own browser. It is not shared with your team.
+
+## Web calls for Vapi agents
+
+For agents connected from Vapi, the web call lives on the Vapi agent page. See [Vapi](../integrations/vapi).
+
+## Related
+
+- [Overview](./overview)
+- [Webhook](./webhook), to see call data after a test call

@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useRef, useEffect, useMemo, useCallback } from "react"
+import { useState, useRef, useEffect, useMemo, useCallback, useImperativeHandle } from "react"
 import { Play, Pause, Loader2, AlertCircle, Download, Gauge } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -23,11 +23,26 @@ interface AudioPlayerProps {
   url: string | null
   segmentStartTime?: number
   segmentDuration?: number
+  /** Called with the playhead (seconds) whenever it moves. */
+  onTimeUpdate?: (seconds: number) => void
+  /** Lets a parent move the playhead, e.g. from a transcript timestamp. */
+  controlRef?: React.Ref<AudioPlayerControls>
+  /** Resolve the recording link and start buffering on mount, so play starts at once. */
+  preload?: boolean
+}
+
+export interface AudioPlayerControls {
+  /** Jumps to `seconds` and plays, loading the recording first if needed. */
+  seek: (seconds: number) => void
+  /** Play / pause. */
+  toggle: () => void
+  /** Moves the playhead by `delta` seconds (negative = back). */
+  skip: (delta: number) => void
 }
 
 const PLAYBACK_SPEEDS = [1, 1.5, 2, 2.5, 3, 4]
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className, segmentStartTime, segmentDuration }) => {
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className, segmentStartTime, segmentDuration, onTimeUpdate, controlRef, preload = false }) => {
 
   const [isPlaying, setIsPlaying] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -47,6 +62,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
   const audioRef = useRef<HTMLAudioElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationRef = useRef<number>(0)
+  const onTimeUpdateRef = useRef(onTimeUpdate)
+  onTimeUpdateRef.current = onTimeUpdate
 
   // Generate waveform data
   const waveformData = useMemo(() => {
@@ -197,6 +214,63 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
       }
     }
   }, [isPlaying, getAudioUrl, segmentStartTime, segmentStarted, playbackSpeed])
+
+  const seek = useCallback(async (seconds: number) => {
+    const audio = audioRef.current
+    if (!audio) return
+    const src = await getAudioUrl()
+    if (!src || !audioRef.current) return
+    if (audio.src !== new URL(src, globalThis.location.href).href) {
+      audio.src = src
+      audio.playbackRate = playbackSpeed
+    }
+    const jump = () => {
+      audio.currentTime = Math.min(seconds, audio.duration || seconds)
+      setCurrentTime(audio.currentTime)
+    }
+    if (audio.readyState >= 1) jump()
+    else audio.addEventListener("loadedmetadata", jump, { once: true })
+    // A seek counts as the segment start, so play() doesn't jump back to it.
+    setSegmentStarted(true)
+    try {
+      await audio.play()
+      setIsPlaying(true)
+    } catch {
+      setError("Playback failed")
+      setIsPlaying(false)
+    }
+  }, [getAudioUrl, playbackSpeed])
+
+  // Only once per mount: the player is keyed by call, so a new call remounts it.
+  const preloaded = useRef(false)
+  useEffect(() => {
+    if (!preload || preloaded.current) return
+    preloaded.current = true
+    getAudioUrl().then((src) => {
+      const audio = audioRef.current
+      if (!src || !audio || audio.src) return
+      audio.src = src
+      audio.playbackRate = playbackSpeed
+    }).catch(() => {
+      // preload is best-effort; play() fetches the URL again
+    })
+  }, [preload, getAudioUrl, playbackSpeed])
+
+  useImperativeHandle(controlRef, () => ({
+    seek: (seconds: number) => { seek(seconds).catch(() => {}) },
+    toggle: () => { togglePlay().catch(() => {}) },
+    skip: (delta: number) => {
+      const audio = audioRef.current
+      if (!audio) return
+      // Not loaded yet: skipping forward starts from there, skipping back from the start.
+      if (!audio.src || audio.readyState < 1) {
+        seek(Math.max(0, delta)).catch(() => {})
+        return
+      }
+      audio.currentTime = Math.max(0, Math.min(audio.duration || Infinity, audio.currentTime + delta))
+      setCurrentTime(audio.currentTime)
+    },
+  }), [seek, togglePlay])
 
   // Generate default filename
   const getDefaultFileName = useCallback(() => {
@@ -411,6 +485,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
 
     const handleTimeUpdate = () => {
       setCurrentTime(audio.currentTime)
+      onTimeUpdateRef.current?.(audio.currentTime)
       
       // Check if we've reached the end of the segment
       if (segmentStartTime !== undefined && segmentDuration !== undefined) {
@@ -498,17 +573,17 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
 
   if (error) {
     return (
-      <Card className={cn("p-3 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20", className)}>
+      <Card className={cn("p-3 border-destructive/30 bg-destructive/10", className)}>
         <div className="flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
-          <span className="text-sm text-red-600 dark:text-red-400">Audio unavailable</span>
+          <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
+          <span className="text-sm text-destructive">Audio unavailable</span>
         </div>
       </Card>
     )
   }
 
   return (
-    <Card className={cn("p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700", className)}>
+    <Card className={cn("p-4 bg-card border border-border", className)}>
       <audio ref={audioRef} preload="metadata" />
 
       <div className="flex items-center gap-3">
@@ -544,9 +619,9 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
             </Button>
           </DialogTrigger>
           
-          <DialogContent className="sm:max-w-md bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <DialogContent className="sm:max-w-md bg-card border-border">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
+              <DialogTitle className="flex items-center gap-2 text-foreground">
                 <Download className="w-5 h-5" />
                 Download Audio File
               </DialogTitle>
@@ -555,15 +630,15 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
             <div className="space-y-4">
               {/* File Name Input */}
               <div className="space-y-2">
-                <Label htmlFor="filename" className="text-gray-700 dark:text-gray-300">File Name</Label>
+                <Label htmlFor="filename" className="text-foreground">File Name</Label>
                 <Input
                   id="filename"
                   value={downloadFileName}
                   onChange={(e) => setDownloadFileName(e.target.value)}
                   placeholder="Enter file name..."
-                  className="font-mono text-sm bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400"
+                  className="font-mono text-sm bg-card border-border text-foreground placeholder:text-muted-foreground"
                 />
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-muted-foreground">
                   File will be downloaded as MP3 format
                 </p>
               </div>
@@ -571,12 +646,12 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
               {/* URL Preview */}
               {downloadUrl && (
                 <div className="space-y-2">
-                  <Label className="text-gray-700 dark:text-gray-300">Download Source</Label>
-                  <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-md border border-gray-200 dark:border-gray-600">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 break-all">
+                  <Label className="text-foreground">Download Source</Label>
+                  <div className="p-3 bg-muted/50 rounded-md border border-border">
+                    <p className="text-xs text-muted-foreground break-all">
                       {downloadUrl.includes('amazonaws.com') ? 'AWS S3 URL' : 'Direct URL'}
                     </p>
-                    <p className="text-xs font-mono break-all mt-1 text-gray-600 dark:text-gray-300">
+                    <p className="text-xs font-mono break-all mt-1 text-muted-foreground">
                       {downloadUrl.length > 50 ? `${downloadUrl.substring(0, 50)}...` : downloadUrl}
                     </p>
                   </div>
@@ -584,11 +659,11 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
               )}
 
               {/* Download Instructions */}
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
-                <p className="text-xs text-blue-800 dark:text-blue-200">
+              <div className="p-3 bg-primary/10 border border-primary/30 rounded-md">
+                <p className="text-xs text-primary">
                   <strong>Download Instructions:</strong>
                 </p>
-                <ul className="text-xs text-blue-700 dark:text-blue-300 mt-1 space-y-1">
+                <ul className="text-xs text-primary mt-1 space-y-1">
                   <li>• Click "Download" to download the audio file</li>
                   <li>• The .mp3 extension will be added automatically if not provided</li>
                   <li>• File will be saved to your Downloads folder</li>
@@ -597,8 +672,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
 
               {/* Error Display */}
               {error && (
-                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
-                  <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-md">
+                  <p className="text-sm text-destructive">{error}</p>
                 </div>
               )}
 
@@ -646,14 +721,14 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
               <span className="text-xs font-medium">{playbackSpeed}x</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+          <DropdownMenuContent align="start" className="bg-card border-border">
             {PLAYBACK_SPEEDS.map((speed) => (
               <DropdownMenuItem
                 key={speed}
                 onClick={() => handleSpeedChange(speed)}
                 className={cn(
-                  "cursor-pointer text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700",
-                  playbackSpeed === speed && "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400"
+                  "cursor-pointer text-foreground hover:bg-muted",
+                  playbackSpeed === speed && "bg-success/10 text-success"
                 )}
               >
                 {speed}x {speed === 1 && "(Normal)"}
@@ -668,19 +743,19 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
             ref={canvasRef}
             width={600}
             height={40}
-            className="w-full h-10 cursor-pointer rounded bg-gray-50 dark:bg-gray-700"
+            className="w-full h-10 cursor-pointer rounded bg-muted/50"
             onClick={handleWaveformClick}
           />
 
           {isLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-gray-800/80 rounded">
-              <Loader2 className="w-4 h-4 animate-spin text-gray-500 dark:text-gray-400" />
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
             </div>
           )}
         </div>
 
         {/* Time Display */}
-        <div className="text-xs text-gray-500 dark:text-gray-400 font-mono flex-shrink-0 min-w-[35px]">
+        <div className="text-xs text-muted-foreground font-mono flex-shrink-0 min-w-[35px]">
           {formatTime(currentTime)}
         </div>
       </div>

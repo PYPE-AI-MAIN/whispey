@@ -1,0 +1,112 @@
+---
+title: Agent overview
+description: The Overview dashboard for one agent. What the ten starter charts show, how to change the date range and how to filter them.
+---
+
+The **Overview** is the first page you see for an agent. It is a dashboard of number tiles and charts that answer one question: how is this agent doing?
+
+To open it, choose an agent, then choose **Overview** in the left menu under **Monitor**. **Call Logs** sits right below it.
+
+## What you see
+
+Every new agent opens with ten starter charts. Nobody starts with a blank page.
+
+| Chart | Shown as | What it tells you |
+|---|---|---|
+| **Total calls** | Number | How many calls the agent handled. |
+| **Total cost** | Number | What those calls cost, in rupees. Lower is better. |
+| **Response time** | Number | How long the agent takes to answer, on average, in seconds. Lower is better. |
+| **Completed calls** | Number | Calls that ended with the reason `completed`. |
+| **Incomplete calls** | Number | Calls that ended for any other reason. Lower is better. |
+| **Live calls** | Number | Calls happening right now. Shows **No calls running** when there are none. |
+| **Daily call volume** | Line | How many calls came in on each day. |
+| **Usage minutes** | Bar | How many minutes of calls there were on each day. |
+| **Why calls ended** | Bar | How many calls ended for each reason. Shows up to 12 reasons. |
+| **Latency spread** | Line | The slow end of response time, day by day. Lower is better. |
+
+Under each chart title you see a short sentence that says exactly what the chart counts, for example **Count of calls · only where why the call ended is completed**. If a number looks odd, read this sentence first.
+
+Click the small **i** next to a title to see how its calculation works.
+
+:::note
+"Calls" on this page means calls that have finished. A call that is still going is left out of the numbers, except in **Live calls**. See [Reading your numbers](./reading-your-numbers).
+:::
+
+For the exact meaning of cost, minutes, response time and call end reasons, read [Reading your numbers](./reading-your-numbers).
+
+## Choose the date range
+
+Use the **Period** control at the top of the page.
+
+| Option | What it shows |
+|---|---|
+| **1D** | The last day. |
+| **7D** | The last 7 days. This is the default. |
+| **30D** | The last 30 days. |
+| **Custom** | Pick a start and an end date on the calendar. |
+
+The Period applies to every chart on the page at once. It replaces the range each chart was saved with. So the **Total calls** tile is not stuck on "7 days": whatever Period you pick is what it counts.
+
+Your choice is remembered for this agent when you move between pages.
+
+Dates use the India time zone (Asia/Kolkata).
+
+## Narrow the numbers
+
+Above the charts are two controls. They narrow every chart on the page.
+
+### When
+
+Click **When** to look at only some hours or some days.
+
+- **Time of day.** Choose **Any time**, **Morning · 6am–12pm**, **Afternoon · 12pm–6pm**, **Evening · 6pm–10pm** or **Night shift · 10pm–2am**. Or type your own start and end time. A window that crosses midnight, such as 10pm to 2am, works.
+- **Days.** Click the day letters (M, T, W, T, F, S, S) to switch days on or off. **Weekdays only** is a shortcut for Monday to Friday.
+
+When a time filter is on, **When** turns blue and shows what you picked. Click the small **x** next to it to clear it.
+
+### Filter
+
+Click **Filter** to keep only calls that match a rule, such as **Why the call ended is completed**. Pick a field, pick how to compare it (for example **is**, **is not**, **contains**, **is more than**, **is yes**), then pick or type a value and click **Add filter**.
+
+Every filter you add shows as a chip you can see. Click the **x** on a chip to remove it. The filters are kept in the page address, so you can copy the link and send a filtered view to a colleague.
+
+:::tip
+A chart can add its own rules on top of the page filters, but it can never go outside them.
+:::
+
+## Other buttons on the toolbar
+
+| Button | What it does |
+|---|---|
+| Refresh icon (**Run every chart again**) | Reloads the number on every chart. |
+| **Outcome order** | Sets which result "wins" when the same person was called more than once. Only shown to people who can edit the dashboard. See [Custom charts](./custom-charts). |
+| **Discard** and **Save** | Appear when you have changed the dashboard. **Save** keeps your changes. **Discard** throws them away. |
+
+## Open the calls behind a chart
+
+Click a bar, a pie slice or a table row to see the calls behind it. A window opens with one row per call: **When**, **Number**, **Length**, **Ended**, and the value of the chart's split. Click a row to open that call in a new tab. Use **Load more** to see further down the list, or **Export CSV** to download it. See [Exporting data](./exporting-data).
+
+For a number tile or a line chart, use the three-dot menu on the chart and choose **View calls**. This lists every call the chart counted.
+
+## Who can change the dashboard
+
+- People with view-only access can read the dashboard, filter it, open the calls behind a chart and (if downloads are on for them) export. They cannot add, edit, move or remove charts.
+- Everyone else can edit. See [Custom charts](./custom-charts).
+- Some members are not allowed to see cost, billing minutes or response time. For them, charts that use those fields show **You do not have access to this field.**
+
+## If a chart shows a message instead of a number
+
+| Message | What it means |
+|---|---|
+| **Nothing in this range.** | No calls match. Try a longer Period or remove a filter. |
+| **This chart took too long.** | The question was too big for the time allowed. Try a shorter date range. |
+| **Ran out of time — reload to try this chart again** | The page asked for many charts at once. Reload. |
+| **This chart reads a field the agent no longer produces.** | The field the chart depends on is gone from this agent. Edit the chart and pick another field. |
+| **You do not have access to this field.** | Your role hides this field. |
+
+## Next steps
+
+- [Reading your numbers](./reading-your-numbers)
+- [Build your own chart](./custom-charts)
+- [Call logs](./call-logs)
+- [Compare agents across a project](./project-analytics)

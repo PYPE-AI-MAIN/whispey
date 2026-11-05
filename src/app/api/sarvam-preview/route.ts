@@ -1,8 +1,29 @@
 import { NextRequest, NextResponse } from "next/server"
 
+const DEFAULT_PREVIEW_TEXT = 'Hi there! This is how I sound.'
+const HINDI_PREVIEW_TEXT = 'नमस्ते! मेरी आवाज़ ऐसी सुनाई देती है।'
+
+interface PreviewInput {
+  text?: string
+  speaker: string
+  model?: string
+  languageCode?: string
+}
+
+// v4 takes `text` + a required language code (and reads Indic text best in its own script);
+// v2/v3 keep the original request shape.
+function previewRequestBody({ text, speaker, model, languageCode }: PreviewInput) {
+  if (!model?.startsWith('bulbul:v4')) {
+    return { inputs: [text || DEFAULT_PREVIEW_TEXT], speaker, model }
+  }
+  const targetLanguageCode = languageCode || 'en-IN'
+  const sample = targetLanguageCode === 'hi-IN' ? HINDI_PREVIEW_TEXT : DEFAULT_PREVIEW_TEXT
+  return { text: text && text !== DEFAULT_PREVIEW_TEXT ? text : sample, target_language_code: targetLanguageCode, speaker, model }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { text, speaker, model } = await request.json()
+    const { text, speaker, model, languageCode } = await request.json()
 
     const apiKey = process.env.SARVAM_API_KEY
     if (!apiKey) {
@@ -15,11 +36,7 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/json',
         'API-Subscription-Key': apiKey,
       },
-      body: JSON.stringify({
-        inputs: [text || 'Hi there! This is how I sound.'],
-        speaker,
-        model,
-      }),
+      body: JSON.stringify(previewRequestBody({ text, speaker, model, languageCode })),
     })
 
     if (!response.ok) {

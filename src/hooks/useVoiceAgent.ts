@@ -51,7 +51,8 @@ interface VoiceAgentState {
 }
 
 interface VoiceAgentActions {
-  connect: () => Promise<void>
+  /** `variables` override the agent's configured {{variables}} for this call only. */
+  connect: (opts?: { variables?: Record<string, string> }) => Promise<void>
   disconnect: () => Promise<void>
   toggleMute: () => Promise<void>
   setVolume: (volume: number) => void
@@ -67,6 +68,8 @@ interface VoiceAgentConfig {
    * (node_enter, transition, variables_set, function_call, function_result, error, ended). */
   onWorkflowEvent?: (event: Record<string, any>) => void
   deploymentTarget?: 'classic' | 'docker'  // which voice backend this agent lives on
+  /** Runs before each call; resolves true to test the unpublished draft (`<name>__draft`) instead of the live config. */
+  prepareSession?: () => Promise<boolean>
 }
 
 function getSecureRandomInt(max: number): number {
@@ -85,13 +88,17 @@ function generateSecureId(prefix = 'user') {
   return `${prefix}_${Date.now()}_${getSecureRandomInt(100000)}`
 }
 
+const WATCHDOG_MESSAGE =
+  "The agent hasn't joined the call after a while — it may still be starting up (e.g. right after " +
+  "a Publish). You can end the call and try again in a few seconds."
+
 function isAgentParticipant(identity = '', metadata = '') {
   const id = identity.toLowerCase()
   const m  = metadata.toLowerCase()
   return id.includes('agent') || id.includes('assistant') || m.includes('agent') || m.includes('assistant')
 }
 
-export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/start-session', onWorkflowEvent, deploymentTarget = 'classic' }: VoiceAgentConfig): [VoiceAgentState, VoiceAgentActions] {
+export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/start-session', onWorkflowEvent, deploymentTarget = 'classic', prepareSession }: VoiceAgentConfig): [VoiceAgentState, VoiceAgentActions] {
   const [room, setRoom]                       = useState<Room | null>(null)
   const [isConnected, setIsConnected]         = useState(false)
   const [isConnecting, setIsConnecting]       = useState(false)
@@ -108,9 +115,11 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
   const audioElementsRef       = useRef<Set<HTMLAudioElement>>(new Set())
   const roomRef                = useRef<Room | null>(null)
   const onWorkflowEventRef     = useRef(onWorkflowEvent)
+  const prepareSessionRef      = useRef(prepareSession)
 
   useEffect(() => { roomRef.current = room }, [room])
   useEffect(() => { onWorkflowEventRef.current = onWorkflowEvent }, [onWorkflowEvent])
+  useEffect(() => { prepareSessionRef.current = prepareSession }, [prepareSession])
 
   useEffect(() => {
     if (isConnected) {
@@ -121,6 +130,23 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
     }
     return () => { if (connectionTimeInterval.current) clearInterval(connectionTimeInterval.current) }
   }, [isConnected])
+
+  // Warn if the room connects but no agent shows up within 20s.
+  useEffect(() => {
+    if (!isConnected || agentState !== 'initializing') return
+
+    const timeout = setTimeout(() => setConnectionError(WATCHDOG_MESSAGE), 20000)
+
+    return () => clearTimeout(timeout)
+  }, [isConnected, agentState])
+
+  // Clear the watchdog banner once the agent actually shows up (a slow-but-
+  // fine start looks identical to a stuck one until then).
+  useEffect(() => {
+    if (agentState !== 'initializing') {
+      setConnectionError(prev => (prev === WATCHDOG_MESSAGE ? null : prev))
+    }
+  }, [agentState])
 
   const cleanupAudioElements = useCallback(() => {
     audioElementsRef.current.forEach(audio => { try { audio.pause(); audio.remove() } catch {} })
@@ -220,11 +246,11 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
 
   }, [mode, volume, upsertTranscript, cleanupAudioElements])
 
-  const startWebSession = async (): Promise<WebSession> => {
+  const startWebSession = async (variables?: Record<string, string>, useDraft = false): Promise<WebSession> => {
     const res = await fetch(sessionEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_identity: generateSecureId('user'), user_name: `User ${getSecureRandomInt(10000)}`, agent_name: agentName, deploymentTarget }),
+      body: JSON.stringify({ user_identity: generateSecureId('user'), user_name: `User ${getSecureRandomInt(10000)}`, agent_name: useDraft ? `${agentName}__draft` : agentName, deploymentTarget, ...(variables && Object.keys(variables).length ? { variables } : {}) }),
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Unknown error' }))
@@ -233,7 +259,7 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
     return res.json()
   }
 
-  const connect = useCallback(async () => {
+  const connect = useCallback(async (opts?: { variables?: Record<string, string> }) => {
     if (isConnecting || isConnected) return
     if (!agentName?.trim()) { setConnectionError('Agent name is required'); return }
     // A prior session that ended any way other than a clean disconnect() (closing
@@ -243,7 +269,8 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
     setTranscripts([])
     setIsConnecting(true); setConnectionError(null)
     try {
-      const sessionData = await startWebSession()
+      const useDraft = (await prepareSessionRef.current?.()) ?? false
+      const sessionData = await startWebSession(opts?.variables, useDraft)
       setWebSession(sessionData)
       const liveKitRoom = new Room({
         audioCaptureDefaults: { autoGainControl: true, echoCancellation: true, noiseSuppression: true },
@@ -255,8 +282,26 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
       if (!sessionData.url) throw new Error('No LiveKit URL. Check NEXT_PUBLIC_LIVEKIT_URL.')
       if (!sessionData.token && !sessionData.user_token) throw new Error('No token in session response.')
       await liveKitRoom.connect(sessionData.url, sessionData.token || sessionData.user_token!, { autoSubscribe: true })
+      // Agent may already be in the room by now — ParticipantConnected only
+      // fires for joins AFTER this point, so check existing participants too.
+      for (const p of liveKitRoom.remoteParticipants.values()) {
+        if (isAgentParticipant(p.identity, p.metadata ?? '')) {
+          setAgentParticipant(p)
+          setAgentState('listening')
+          break
+        }
+      }
       if (mode === 'voice') {
-        await liveKitRoom.localParticipant.setMicrophoneEnabled(true).catch(e => console.warn('Mic enable failed:', e))
+        // Swallowing this used to mean: room connects fine, transcript panel
+        // shows the agent's greeting, everything LOOKS connected — but no
+        // local audio track ever gets published, so the agent never receives
+        // a single frame of the caller's voice and just sits there silently.
+        // Surface it instead of only logging, so a denied/blocked mic is
+        // visible rather than indistinguishable from "STT isn't working."
+        await liveKitRoom.localParticipant.setMicrophoneEnabled(true).catch(e => {
+          console.warn('Mic enable failed:', e)
+          setConnectionError(`Microphone access failed (${e?.name || 'error'}): ${e?.message || e}. Check your browser's mic permission for this site.`)
+        })
       }
       // chat mode: mic stays off, no audio elements created
     } catch (error) {
@@ -307,7 +352,7 @@ export function useVoiceAgent({ agentName, mode, sessionEndpoint = '/api/agents/
 
   useEffect(() => {
     return () => {
-      try { if (roomRef.current && isConnected) roomRef.current.disconnect() } catch {}
+      if (roomRef.current && isConnected) roomRef.current.disconnect().catch(() => {})
       cleanupAudioElements()
       if (connectionTimeInterval.current) clearInterval(connectionTimeInterval.current)
     }

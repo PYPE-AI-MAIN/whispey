@@ -31,6 +31,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+pi-sql-queries.log
+
+.scratch_*
 
 # env files (can opt-in for committing if needed)
 .env
@@ -75,3 +78,5 @@ Thumbs.db
 # local scratch tooling (personal, not part of the shipped repo)
 /_sonar-check.mjs
 .scannerwork
+# docs-site built for the app (npm run build:docs)
+/.docs-build

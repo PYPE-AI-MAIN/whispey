@@ -10,17 +10,19 @@ import { z } from 'zod'
 export const SCHEMA_VERSION = '1.0'
 
 // ── provider blocks (mirror agent/<name>/config.yaml) ────────────────────────
+// passthrough(): the pickers write provider-specific settings (mode, keyterms, base_url, ...). Plain z.object() strips
+// every key it does not list, so they were lost on load and on every save.
 export const sttConfig = z.object({
   name: z.string().default('deepgram'),
   model: z.string().nullish(),
   language: z.string().nullish().default('en'),
-})
+}).passthrough()
 
 export const llmConfig = z.object({
   name: z.string().default('openai'),
   model: z.string().nullish(),
   temperature: z.number().nullish(),
-})
+}).passthrough()
 
 export const ttsConfig = z.object({
   name: z.string().default('elevenlabs'),
@@ -28,7 +30,7 @@ export const ttsConfig = z.object({
   language: z.string().nullish(),
   model: z.string().nullish(),
   voice_settings: z.record(z.any()).nullish(),
-})
+}).passthrough()
 
 export const vadConfig = z.object({
   name: z.string().default('silero'),
@@ -82,6 +84,8 @@ export const agentConfig = z.object({
   vad: vadConfig.nullish(),
   turnDetection: turnDetectionConfig.nullish(),
   languages: z.array(languageSwitchTool).default([]),
+  // Answer from the knowledge base on any step, with no Knowledge node in the flow.
+  knowledge: z.object({ enabled: z.boolean().default(false), topK: z.number().int().default(4), knowledgeBase: z.string().nullish() }).default({}),
   advanced: z.record(z.any()).default({}),
 })
 
@@ -110,7 +114,8 @@ export const variableDef = z.object({
 
 // ── nodes ────────────────────────────────────────────────────────────────
 const position = z.object({ x: z.number().default(0), y: z.number().default(0) })
-const nodeBase = { id: z.string(), name: z.string().nullish(), position: position.nullish() }
+// `stage` groups steps by phase of the call (Greeting, Pitch, ...); it only organises the editor.
+const nodeBase = { id: z.string(), name: z.string().nullish(), stage: z.string().nullish(), position: position.nullish() }
 
 export const conversationNode = z.object({
   ...nodeBase,
@@ -121,19 +126,21 @@ export const conversationNode = z.object({
   blockInterruptions: z.boolean().default(false),
   model: llmConfig.nullish(),
   voice: ttsConfig.nullish(),
-  functions: z.array(z.string()).default([]),
+  functions: z.array(z.string()).default([]),  maxTurns: z.number().int().min(1).nullish(),
 })
 
 export const extractionField = z.object({
   variable: z.string(),
   description: z.string().nullish(),
   type: varType.default('string'),
+  // false: nice to have; the step moves on without it instead of asking until the caller gives it.
+  required: z.boolean().default(true),
 })
 export const extractVariableNode = z.object({
   ...nodeBase,
   type: z.literal('extract_variable'),
   prompt: z.string().nullish(),
-  extractions: z.array(extractionField).default([]),
+  extractions: z.array(extractionField).default([]),  maxTurns: z.number().int().min(1).nullish(),
 })
 
 export const logicSplitNode = z.object({ ...nodeBase, type: z.literal('logic_split') })
@@ -166,6 +173,9 @@ export const callTransferNode = z.object({
   transferTo: z.string().default(''),
   mode: z.enum(['cold', 'warm']).default('cold'),
   message: z.string().nullish(),
+  sipHeaders: z.record(z.any()).nullish(),
+  preTransferWebhookUrl: z.string().nullish(),
+  preTransferWebhookFields: z.array(z.string()).nullish(),
 })
 
 export const pressDigitNode = z.object({
@@ -192,7 +202,7 @@ export const subagentNode = z.object({
   prompt: z.string().default(''),
   model: llmConfig.nullish(),
   voice: ttsConfig.nullish(),
-  functions: z.array(z.string()).default([]),
+  functions: z.array(z.string()).default([]),  maxTurns: z.number().int().min(1).nullish(),
 })
 
 export const mcpNode = z.object({
@@ -246,6 +256,16 @@ export const edge = z.object({
   label: z.string().nullish(),
 })
 
+// A condition that applies from many steps at once ("they ask for a human" -> transfer),
+// written once instead of as an edge from every step. Empty `sources` = every listening step.
+export const globalRule = z.object({
+  id: z.string(),
+  target: z.string(),
+  condition: z.string(),
+  label: z.string().nullish(),
+  sources: z.array(z.string()).default([]),
+})
+
 // ── top-level workflow ─────────────────────────────────────────────────────
 export const metadata = z.object({ name: z.string().default(''), description: z.string().nullish() })
 
@@ -258,6 +278,7 @@ export const workflow = z.object({
   start: z.string(),
   nodes: z.array(anyNode).default([]),
   edges: z.array(edge).default([]),
+  globalRules: z.array(globalRule).default([]),
 })
 
 // ── inferred types ─────────────────────────────────────────────────────────
@@ -265,6 +286,7 @@ export type Workflow = z.infer<typeof workflow>
 export type WorkflowNode = z.infer<typeof anyNode>
 export type NodeType = WorkflowNode['type']
 export type Edge = z.infer<typeof edge>
+export type GlobalRule = z.infer<typeof globalRule>
 export type EdgeKind = Edge['kind']
 export type VariableDef = z.infer<typeof variableDef>
 export type VarType = z.infer<typeof varType>

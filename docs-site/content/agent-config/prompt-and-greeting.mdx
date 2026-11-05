@@ -1,0 +1,92 @@
+---
+title: Prompt and greeting
+description: Write the system prompt, choose who speaks first, and use variables.
+---
+
+The **System Prompt** is the main instruction for your agent. It says who the agent is, how it talks and what it should do. It sits under **Conversation Start** on the left side of **Agent Config**.
+
+## Conversation Start
+
+Pick who speaks first from the **Conversation Start** list.
+
+| Option | What happens |
+|---|---|
+| **User speaks first** | The agent waits for the caller to say something. |
+| **Assistant speaks first** | The agent says your first message as soon as the call connects. A text box appears so you can type it. |
+| **Assistant with generated message** | The agent makes up its opening line. No text box is shown. |
+
+For **Assistant speaks first**, type the line in the box that says "Enter the first message...". New agents start with this mode and the message "Hello! How can I help you today?".
+
+Your first message can use variables, for example `Hello {{customer_name}}!`.
+
+## The system prompt
+
+Type the instructions in the large box under **System Prompt**. The placeholder reads "Define your agent's behavior and personality... Use `{{variable_name}}` for dynamic values."
+
+Above the box:
+
+| Control | What it does |
+|---|---|
+| Font size button (the "T" icon) | Opens a **Font Size** slider from 8px to 18px. This only changes how the text looks in your editor. |
+| **Settings** | Opens **Prompt Settings**, where you manage variables. A red count shows when the prompt uses variables that are not set up yet. |
+| **Copy** | Copies the prompt. It shows **Copied!** for a moment. |
+
+Under the box, a counter shows the number of characters.
+
+### Writing tips
+
+- Say who the agent is and what the call is for in the first lines.
+- Describe how to talk, for example "short, friendly sentences".
+- List what the agent should do, and what it should not do.
+- Keep one idea per sentence. Test the agent with [Talk to Assistant](./phone-and-web-calls) and adjust.
+
+## Variables
+
+A variable is a placeholder that is filled in at call time. Write it in double curly brackets in the prompt or the first message, for example `{{customer_name}}`.
+
+### Naming rules
+
+The editor checks every variable and shows a red **Errors** badge if one is wrong. Click the badge to see **Variable Validation Errors**. The rules are:
+
+- The name cannot be empty.
+- No spaces. Use underscores.
+- Only letters, numbers and underscores.
+- It cannot start with a number.
+- It cannot start or end with an underscore.
+- It cannot be longer than 16 characters.
+- Every opening bracket needs a closing bracket.
+
+:::warning
+While the prompt has an error, **Update Config** is disabled. The popup says "Fix these errors to enable config updates".
+:::
+
+When the prompt is fine, a green badge such as **2 Variables** appears. Click it to see **Detected Variables**.
+
+### Prompt Settings
+
+Click **Settings** above the prompt to open **Prompt Settings**.
+
+**Predefined System Variables** are filled in for you. You do not add them. See [Built-in variables](./built-in-variables) for what they hold.
+
+**Custom Variables** are your own.
+
+| Control | What it does |
+|---|---|
+| **Add Variable** | Adds a row. Type a name and a **Default value**. |
+| **Map All** | Shows when the prompt uses names that are not in the list yet. Adds all of them at once. The banner reads "N unmapped variable - click to configure". |
+| Bin icon | Removes the variable from the list. The `{{name}}` text stays in the prompt. |
+| **Replace Variables in Prompt** | Appears when at least one custom variable has a value. |
+
+The name box tidies what you type: spaces become underscores, odd characters are dropped, letters become lower case, and it stops at 16 characters.
+
+:::warning
+**Replace Variables in Prompt** rewrites your prompt. Each `{{name}}` that has a default value is replaced by that value in the text, and the placeholder is gone. Use it only when you want the value written into the prompt for good. You can undo it with **Discard Changes** before you publish.
+:::
+
+### Pass variables on a phone call
+
+When you place a test call from **Phone Calls**, you can add variables as key and value pairs. See [Phone and web calls](./phone-and-web-calls).
+
+## Publishing
+
+Prompt edits are not live until you click **Update Config** and publish. See [Publish and history](./publish-and-history).

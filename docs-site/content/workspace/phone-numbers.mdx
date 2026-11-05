@@ -1,0 +1,99 @@
+---
+title: Phone numbers
+description: See which phone number each agent uses, request a number, and register numbers for inbound and outbound calls.
+---
+
+Phone numbers are how your agents take and make real calls. There are two places in the dashboard that deal with them.
+
+| Page | Where | What it is for |
+|---|---|---|
+| **Phone Settings** | Sidebar, under **Calling** | See each agent's number and request a new one |
+| **Phone Numbers** | Not in the sidebar. Opened by its address. | Add, edit and delete the numbers registered to the organization |
+
+Viewers do not see **Phone Settings** by default. See [Team and roles](./team-and-roles).
+
+## Phone Settings
+
+The page shows two counters at the top: **Total Numbers** and **Active**.
+
+The table has these columns.
+
+| Column | Meaning |
+|---|---|
+| Number | The agent's phone number, or **No number assigned** |
+| Assigned Agent Name | The agent that uses the number |
+| Last Updated | Today, Yesterday, a number of days ago, or a date |
+| Actions | **Request Number** for agents that have no number |
+
+Use the **Search phone numbers or agents...** box to filter the list.
+
+If you have no agents yet, the page says **No agents created yet** and suggests creating an agent first.
+
+### Request a number
+
+1. On the agent's row, choose **Request Number**.
+2. In **Request Phone Number**, answer **Why do you need a phone number?** Describe your use case, expected call volume and any special needs. You must write something.
+3. Send the request.
+
+You see **Request Sent Successfully!** The window says the team reviews requests within 24 hours, assigns a number once approved, and then you can set it up with your agent.
+
+## Phone Numbers page
+
+This page lists numbers registered to your organization. It has no sidebar item. To open it, go to `/settings/phone-numbers` after your organization ID in the address bar.
+
+The table has these columns: **Phone Number**, **Provider**, **Type**, **Assigned Agent**, **API Key** and **Actions**.
+
+### Add a number
+
+1. Choose **Add Number**, or **Add your first number** if the list is empty.
+2. Fill in the form.
+
+| Field | Options and notes |
+|---|---|
+| Phone Number | Digits with the country code, for example `918064151286`. Cannot be changed later. |
+| Provider | **Acefone**, **Plivo** or **Other** |
+| Number Type | **Inbound only**, **Outbound only** or **Both** |
+| Assign to Agent | An agent from your organization, or **Unassigned** |
+| Acefone C2C API Key | Only shown when the provider is Acefone. Use the eye icon to show or hide it. |
+
+3. Choose **Add Number**.
+
+### Inbound, outbound or both
+
+The **Number Type** decides how the number can be used.
+
+| Number Type | Use |
+|---|---|
+| Inbound only | The number receives calls for its agent |
+| Outbound only | The number can be picked as the **From Number** in a [campaign](./campaigns) |
+| Both | Does both |
+
+When you create a campaign, the **From Number (Outbound)** list shows only numbers that are **Outbound only** or **Both**.
+
+### Edit and delete
+
+- Choose the pencil to edit a number. Editing is offered for Acefone numbers only. You can change the provider, type, agent and API key. You cannot change the number.
+- Choose the bin, then the tick to confirm **Delete?**.
+
+### Acefone setup guide
+
+Choose **Setup Guide** to open the **Acefone Setup Guide**. It lists what to set in your Acefone dashboard. Replace `your-bridge-domain` with the domain of your bridge.
+
+| Call type | Acefone setting | Values to enter |
+|---|---|---|
+| Inbound | **Static Endpoint** | WebSocket stream `wss://your-bridge-domain/bridge`, prewarm webhook `https://your-bridge-domain/acefone/inbound-prewarm`, hangup webhook `https://your-bridge-domain/acefone/hangup` |
+| Outbound (campaigns) | **Dynamic Endpoint** | WebSocket stream `wss://your-bridge-domain/bridge`, dynamic endpoint `https://your-bridge-domain/dynamic-endpoint`, hangup webhook `https://your-bridge-domain/acefone/hangup` |
+
+The guide also describes two keys.
+
+| Key | Used for |
+|---|---|
+| C2C API Key | Outbound campaigns. Found in the Acefone dashboard under API settings. |
+| Acefone Token (JWT) | Mid-call transfer only. Set in the agent under Tools and Actions, then Transfer Call. |
+
+Use `wss://` with a real domain in production.
+
+## Related pages
+
+- [Campaigns](./campaigns)
+- [Do not call list](./do-not-call)

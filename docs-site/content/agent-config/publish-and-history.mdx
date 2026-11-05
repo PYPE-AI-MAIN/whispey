@@ -1,0 +1,94 @@
+---
+title: Publish and history
+description: Publish your changes with a message, compare versions, restore an old one and send a version to production.
+---
+
+Changes on **Agent Config** do not reach callers until you publish them. Each publish is saved as a numbered version, so you can look back, compare and restore.
+
+## Publish your changes
+
+1. Edit the prompt or any setting.
+2. Click **Update Config** at the top. The button works only when something has changed and the prompt has no errors.
+3. In **Review Changes**, write a **Commit message** that says what you changed, for example "Fixed greeting for missed calls".
+4. Look at the changes. Two tabs, **Prompt** and **Settings**, show what is different from the last published version. If there is none, the window says "No prior published version — this will be the first version."
+5. Click **Publish**. You can also press Command and Enter (or Ctrl and Enter) in the message box.
+
+A commit message is required. **Publish** stays off until you type one.
+
+While it works, the button shows the stage in progress. When it ends, a message says **Changes published**.
+
+To throw away edits instead, click **Discard Changes**.
+
+:::note
+If the button is off, hover over it. The tooltip may say "Voice backend unreachable — cannot save" or "Production agent — read only".
+:::
+
+### What if part of it fails?
+
+If the agent is updated but a related setting such as the webhook, drop-off or callback does not save, you see a message that starts "Config deployed." The agent is live, and the other setting needs another try.
+
+## Merge to prod
+
+After a publish, a window may ask **Version saved! Merge to prod?** with the text "Your version was committed. Do you want to merge this to a production agent now?"
+
+- **Not now** closes it.
+- **Open History & Merge** opens the version list so you can merge.
+
+## Version history
+
+Click **History** at the top. The **Version History** panel shows how many versions are recorded. Each row has:
+
+| Item | Meaning |
+|---|---|
+| **Version #** and time | The number and when it was published. |
+| Author | The email of the person who published it. |
+| Commit message | The message you wrote. |
+| **GitHub** or **Sync failed** badge | Whether the version was saved to GitHub. |
+| **Merged** badge | The version was already sent to production. |
+
+Click a row to see that version: **System Prompt**, **LLM Settings**, **Voice (TTS)**, **Speech-to-Text**, **Opening Message** and **Variables**. A **Copy** button copies its configuration as JSON.
+
+New publishes appear here automatically. With no versions, the panel says "No versions yet".
+
+### Compare two versions
+
+1. Open a version and click **Compare**, or click **Compare** on a row. It becomes the baseline. The row says **Selected as baseline**.
+2. The panel says **Step 2 — Pick a second version**. Click **Compare** on any other row.
+3. A side-by-side view shows the differences in the prompt and in the settings. Parts that did not change are marked **unchanged**.
+
+### Restore a version
+
+Restore puts an old version back on the dev agent. The **Restore** button shows only on dev agents.
+
+1. Click **Restore** on a row.
+2. In **Restore version**, check the **Commit message**. It starts as "Rollback to v" and the number.
+3. Click **Restore & Deploy**.
+
+The old settings are deployed and saved as a new version. Nothing is deleted. The message says "Restored as v" and the new number.
+
+## Dev and production agents
+
+Many projects keep a dev agent for testing and a production agent for real calls.
+
+- On a production agent, **Agent Config** is read only. A banner says "Production agent — read only. Edit the dev agent and use Merge to Prod to update this prompt."
+- On a dev agent, each version row has a **Merge** button.
+
+### Merge a version to production
+
+1. On the dev agent, open **History**.
+2. Click **Merge** on the version you want.
+3. In **Merge to Production**, select the production agent. If there is none, the window says "No production agents found in this project."
+4. Click **Create PR**.
+
+A GitHub pull request is created for review. The window shows its number, with a link you can copy or open. Production updates automatically when the pull request is merged.
+
+## Copy and paste a configuration
+
+The three-dots menu at the top has two other tools.
+
+| Menu item | What it does |
+|---|---|
+| **Copy Configuration** | Shows the full configuration as JSON with **Copy to Clipboard**. Use it to move settings to another agent. |
+| **Paste Configuration** | Paste JSON from another agent. Whispey checks it and shows "Configuration is valid and ready to apply", or lists the errors. |
+
+**Paste Configuration** is off while you have unsaved changes. Publish or discard them first.

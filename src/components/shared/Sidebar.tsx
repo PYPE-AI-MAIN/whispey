@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect } from 'react'
 import { useUser, SignedIn, useClerk } from '@clerk/nextjs'
-import { useTheme } from 'next-themes'
 import { useHotkeys } from 'react-hotkeys-hook'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { 
   ArrowLeft,
@@ -18,8 +18,6 @@ import {
   Users,
   Crown,
   HelpCircle,
-  Sun,
-  Moon,
   LogOut,
   List,
   FileText,
@@ -31,6 +29,7 @@ import {
   Link as LinkIcon,
   User,
   Shield,
+  ShieldCheck,
   UserPlus,
   TrendingUp,
   BarChart,
@@ -41,26 +40,33 @@ import {
   PanelRightOpen,
   PanelRightClose,
   BookOpen,
+  MoreHorizontal,
+  Moon,
+  Sun,
   FlaskConical,
-  GitBranch
+  GitBranch,
+  Pi
 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import SupportSheet from './SupportPanel'
+import { useTheme } from 'next-themes'
+import NotificationBell from './NotificationBell'
+import { ThemeToggle } from './ThemeToggle'
 import { SidebarConfig } from './SidebarWrapper'
 import OrganizationSwitcher from '../projects/OrganisationSwitcher'
 import ProjectCreationDialog from '../projects/ProjectCreationDialog'
 
 // Extended icon mapping to support new page types
 const ICONS = {
-  Activity, 
-  BarChart3, 
-  Settings, 
-  Key, 
-  Users, 
-  List, 
-  FileText, 
-  Home, 
+  Activity,
+  BarChart3,
+  Settings,
+  Key,
+  Users,
+  List,
+  FileText,
+  Home,
   Webhook,
   Phone,
   Download,
@@ -68,6 +74,7 @@ const ICONS = {
   Link: LinkIcon,
   User,
   Shield,
+  ShieldCheck,
   UserPlus,
   TrendingUp,
   BarChart,
@@ -77,7 +84,8 @@ const ICONS = {
   X,
   BookOpen,
   FlaskConical,
-  GitBranch
+  GitBranch,
+  Pi
 } as const
 
 interface NavigationItem {
@@ -87,6 +95,8 @@ interface NavigationItem {
   path: string
   external?: boolean
   group?: string
+  disabled?: boolean
+  badge?: string
 }
 
 interface NavigationGroup {
@@ -108,10 +118,10 @@ interface SidebarProps {
 
 // Extended pricing configurations
 const PRICING_CONFIGS: Record<string, { showPricingBox: boolean; plan: string; features: string[]; upgradeText: string; upgradeLink: string }> = {
-  organisations: {
+  organizations: {
     showPricingBox: false,
     plan: 'Free Plan',
-    features: ['5 Organisations', 'Basic Analytics', 'Community Support'],
+    features: ['5 Organizations', 'Basic Analytics', 'Community Support'],
     upgradeText: 'Upgrade to Pro',
     upgradeLink: '/pricing'
   },
@@ -158,7 +168,7 @@ function getUserDisplayName(user: ReturnType<typeof useUser>['user']): string {
 const GROUP_NAME_OVERRIDES: Record<string, string> = {
   'logs': 'LOGS',
   'batch calls': 'Batch Calls',
-  'project settings': 'Project Settings',
+  'organization settings': 'Organization settings',
 }
 
 function formatGroupDisplayName(groupId: string): string {
@@ -193,6 +203,7 @@ function groupNavigationItems(navigation: NavigationItem[]): NavigationGroup[] {
   }
 
   const groupOrder = [
+    'monitor', 'build', 'calls', 'calling',
     'logs', 'agents', 'reports', 'analytics', 'integrations',
     'team', 'settings', 'configuration', 'call configuration', 'batch calls', 'resources',
     'project settings'
@@ -308,7 +319,7 @@ function renderContextHeader(config: SidebarConfig, isCollapsed: boolean, isMobi
       <div className="space-y-2">
         <Link
           href={config.backPath || '/'}
-          className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+          className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
           onClick={() => {
             if (isMobile && onMobileClose) {
               onMobileClose()
@@ -322,6 +333,17 @@ function renderContextHeader(config: SidebarConfig, isCollapsed: boolean, isMobi
     )
   }
   return null
+}
+
+function navItemTone(disabled: boolean | undefined, isActive: boolean): string {
+  if (disabled) return 'cursor-not-allowed text-muted-foreground'
+  if (isActive) return 'cursor-pointer bg-primary/10 text-primary border border-primary/30'
+  return 'cursor-pointer text-foreground hover:bg-muted/50 hover:text-foreground'
+}
+
+function navIconTone(disabled: boolean | undefined, isActive: boolean): string {
+  if (disabled) return 'text-gray-300 dark:text-gray-700'
+  return isActive ? 'text-primary' : 'text-muted-foreground'
 }
 
 function renderNavigationItem(
@@ -351,19 +373,36 @@ function renderNavigationItem(
 
   const content = (
     <div className={`
-      flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer
-      ${isActive
-        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
-        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-      }
+      flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200
+      ${navItemTone(item.disabled, isActive)}
       ${isCollapsed && !isMobile ? 'justify-center px-2' : ''}
     `}>
-      <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`} />
+      <Icon className={`w-4 h-4 flex-shrink-0 ${navIconTone(item.disabled, isActive)}`} />
       {(!isCollapsed || isMobile) && (
-        <span className="truncate">{item.name}</span>
+        <>
+          <span className="truncate">{item.name}</span>
+          {item.badge && (
+            <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0 h-4 font-medium rounded-full">{item.badge}</Badge>
+          )}
+        </>
       )}
     </div>
   )
+
+  if (item.disabled) {
+    const disabledItem = <div key={item.id} aria-disabled="true">{content}</div>
+    if (isCollapsed && !isMobile) {
+      return (
+        <TooltipProvider key={item.id}>
+          <Tooltip>
+            <TooltipTrigger asChild>{disabledItem}</TooltipTrigger>
+            <TooltipContent side="right"><p>{item.name} ({item.badge ?? 'Beta'})</p></TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )
+    }
+    return disabledItem
+  }
 
   const navItem = item.external ? (
     <a key={item.id} href={item.path} target="_blank" rel="noopener noreferrer" onClick={handleClick}>
@@ -393,6 +432,71 @@ function renderNavigationItem(
   return navItem
 }
 
+type UtilitiesProps = Readonly<{
+  collapsed: boolean
+  mounted: boolean
+  resolvedTheme: string | undefined
+  setTheme: (theme: string) => void
+  onOpenSupport: () => void
+}>
+
+const ICON_BUTTON = 'inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground'
+
+/** Docs, help, notifications and theme, always at the top; one menu when the sidebar is collapsed. */
+function SidebarUtilities({ collapsed, mounted, resolvedTheme, setTheme, onOpenSupport }: UtilitiesProps): React.ReactNode {
+  if (collapsed) {
+    const dark = mounted && resolvedTheme === 'dark'
+    const ThemeIcon = dark ? Sun : Moon
+    return (
+      <div className="flex justify-center border-b border-border px-3 py-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" aria-label="Docs, help and theme" className={ICON_BUTTON}>
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="right" align="start">
+            <DropdownMenuItem onClick={() => window.open('/docs', '_blank', 'noopener,noreferrer')}>
+              <BookOpen className="mr-2 h-4 w-4" />Docs
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onOpenSupport}>
+              <HelpCircle className="mr-2 h-4 w-4" />Help Center
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}>
+              <ThemeIcon className="mr-2 h-4 w-4" />{dark ? 'Light mode' : 'Dark mode'}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-1 border-b border-border px-3 py-2">
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <a href="/docs" target="_blank" rel="noopener noreferrer" aria-label="Docs" className={ICON_BUTTON}>
+              <BookOpen className="h-4 w-4" />
+            </a>
+          </TooltipTrigger>
+          <TooltipContent side="bottom"><p>Docs</p></TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button type="button" onClick={onOpenSupport} aria-label="Help Center" className={ICON_BUTTON}>
+              <HelpCircle className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom"><p>Help Center</p></TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <NotificationBell side="bottom" align="start" />
+      <ThemeToggle plain />
+    </div>
+  )
+}
+
 export default function Sidebar({
   config,
   currentPath,
@@ -406,8 +510,8 @@ export default function Sidebar({
   const { user, isLoaded } = useUser()
   const { signOut } = useClerk()
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { resolvedTheme, setTheme } = useTheme()
+  const searchParams = useSearchParams()
   const [mounted, setMounted] = useState(false)
   const [isSupportOpen, setIsSupportOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
@@ -517,7 +621,7 @@ export default function Sidebar({
       <aside className={`
         ${isMobile ? 'fixed left-0 top-0 h-full w-64' : 'relative'}
         ${!isMobile && isCollapsed ? 'w-16 h-full' : 'w-64 h-full'}
-        bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 
+        bg-card  border-r border-border  
         flex flex-col transition-all duration-300 ease-in-out z-50
         ${isMobile ? 'shadow-lg' : ''}
       `}>
@@ -528,7 +632,7 @@ export default function Sidebar({
               variant="ghost"
               size="sm"
               onClick={onMobileClose}
-              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="p-1 hover:bg-muted"
               aria-label="Close sidebar"
             >
               <X className="w-4 h-4" />
@@ -537,7 +641,7 @@ export default function Sidebar({
         )}
 
         {/* Logo & Context Header */}
-        <div className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
+        <div className="px-4 py-4 border-b border-border/60">
           <div className="flex items-center justify-between gap-3">
             {(!isCollapsed || isMobile) && (
               <div className="flex items-center gap-3 group flex-1 min-w-0">
@@ -575,14 +679,14 @@ export default function Sidebar({
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', height: '32px', justifyContent: 'space-between' }}>
                     <span
-                      className="text-[#111827] dark:text-[#F3F4F6]"
+                      className="text-foreground"
                       style={{ fontSize: '17px', fontWeight: 600, lineHeight: 1, fontFamily: '-apple-system, "Segoe UI", sans-serif', alignSelf: 'flex-start' }}
                     >
                       Whispey
                     </span>
                     <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '5px' }}>
                       <span
-                        className="text-[#6D28D9] dark:text-[#8B7BC9]"
+                        className="text-muted-foreground"
                         style={{ fontSize: '10px', fontWeight: 600, fontFamily: '-apple-system, "Segoe UI", sans-serif' }}
                       >
                         by
@@ -594,25 +698,26 @@ export default function Sidebar({
               </div>
             )}
 
+
             {!isMobile && onToggleCollapse && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={onToggleCollapse}
-                className={`p-2 hover:bg-gray-100 hover:cursor-pointer dark:hover:bg-gray-800 transition-colors group ${
+                className={`p-2 hover:bg-muted hover:cursor-pointer  transition-colors group ${
                   isCollapsed ? 'w-full flex justify-center' : ''
                 }`}
                 aria-label={isCollapsed ? 'Expand sidebar (Cmd+B)' : 'Collapse sidebar (Cmd+B)'}
               >
                 {isCollapsed ? (
                   <>
-                    <PanelRightClose className="w-4 h-4 text-gray-600 dark:text-gray-400 group-hover:hidden transition-all" />
-                    <span className="text-gray-600 dark:text-gray-400 hidden group-hover:block text-lg">→</span>
+                    <PanelRightClose className="w-4 h-4 text-muted-foreground group-hover:hidden transition-all" />
+                    <span className="text-muted-foreground hidden group-hover:block text-lg">→</span>
                   </>
                 ) : (
                   <>
-                    <PanelRightOpen className="w-4 h-4 text-gray-600 dark:text-gray-400 group-hover:hidden transition-all" />
-                    <span className="text-gray-600 dark:text-gray-400 hidden group-hover:block text-lg">←</span>
+                    <PanelRightOpen className="w-4 h-4 text-muted-foreground group-hover:hidden transition-all" />
+                    <span className="text-muted-foreground hidden group-hover:block text-lg">←</span>
                   </>
                 )}
               </Button>
@@ -622,9 +727,17 @@ export default function Sidebar({
           {renderContextHeader(config, isCollapsed, isMobile, onMobileClose)}
         </div>
 
+        <SidebarUtilities
+          collapsed={isCollapsed && !isMobile}
+          mounted={mounted}
+          resolvedTheme={resolvedTheme}
+          setTheme={setTheme}
+          onOpenSupport={() => setIsSupportOpen(true)}
+        />
+
         {/* Navigation with Groups */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          <OrganizationSwitcher 
+          <OrganizationSwitcher
             isCollapsed={isCollapsed}
             isMobile={isMobile}
             externalOpen={orgSwitcherOpen}
@@ -639,14 +752,14 @@ export default function Sidebar({
             <div key={group.id}>
               {group.name && (!isCollapsed || isMobile) && (
                 <div className={`px-3 py-2 ${groupIndex > 0 ? 'mt-4' : ''}`}>
-                  <h3 className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+                  <h3 className="text-xs font-medium text-muted-foreground">
                     {group.name}
                   </h3>
                 </div>
               )}
               
               {group.name && isCollapsed && !isMobile && groupIndex > 0 && (
-                <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
+                <div className="border-t border-border my-2" />
               )}
 
               <div className={`space-y-1 ${group.name && (!isCollapsed || isMobile) ? 'ml-0' : ''}`}>
@@ -671,8 +784,6 @@ export default function Sidebar({
           isCollapsed={isCollapsed}
           isMobile={isMobile}
           user={user}
-          resolvedTheme={resolvedTheme}
-          setTheme={setTheme}
           isSuperAdmin={isSuperAdmin}
           projectId={projectId}
           router={router}
@@ -680,27 +791,6 @@ export default function Sidebar({
           onSignOut={handleSignOut}
         />
 
-        {/* Help Center */}
-        <div className="border-t border-gray-100 dark:border-gray-800 p-3">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button 
-                  onClick={() => setIsSupportOpen(true)}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 w-full ${
-                    isCollapsed && !isMobile ? 'justify-center' : ''
-                  }`}
-                >
-                  <HelpCircle className="w-4 h-4 flex-shrink-0" />
-                  {(!isCollapsed || isMobile) && <span>Help Center</span>}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                <p>Help Center</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
       </aside>
 
       {/* Support Sheet */}
@@ -738,16 +828,16 @@ function PricingBox({
   }
 
   return (
-    <div className="mx-3 mb-4 p-3 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+    <div className="mx-3 mb-4 p-3 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/30 border border-primary/30 rounded-lg">
       <div className="flex items-center gap-2 mb-2">
-        <Crown className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-        <span className="text-xs font-semibold text-purple-900 dark:text-purple-100">{pricingConfig.plan}</span>
+        <Crown className="w-4 h-4 text-primary" />
+        <span className="text-xs font-semibold text-blue-900 dark:text-blue-100">{pricingConfig.plan}</span>
       </div>
       {pricingConfig.features && pricingConfig.features.length > 0 && (
         <ul className="space-y-1 mb-3">
           {pricingConfig.features.map((feature: string) => (
-            <li key={feature} className="text-xs text-purple-700 dark:text-purple-300 flex items-center gap-1">
-              <div className="w-1 h-1 bg-purple-400 rounded-full flex-shrink-0" />
+            <li key={feature} className="text-xs text-primary flex items-center gap-1">
+              <div className="w-1 h-1 bg-blue-400 rounded-full flex-shrink-0" />
               {feature}
             </li>
           ))}
@@ -759,7 +849,7 @@ function PricingBox({
             onMobileClose()
           }
         }}>
-          <Button size="sm" className="w-full text-xs h-7 bg-purple-600 hover:bg-purple-700 text-white">
+          <Button size="sm" className="w-full text-xs h-7 bg-blue-600 hover:bg-blue-700 text-white">
             {pricingConfig.upgradeText}
           </Button>
         </Link>
@@ -774,8 +864,6 @@ function SidebarUserMenu({
   isCollapsed,
   isMobile,
   user,
-  resolvedTheme,
-  setTheme,
   isSuperAdmin,
   projectId,
   router,
@@ -787,8 +875,6 @@ function SidebarUserMenu({
   isCollapsed: boolean
   isMobile: boolean
   user: ReturnType<typeof useUser>['user']
-  resolvedTheme: ReturnType<typeof useTheme>['resolvedTheme']
-  setTheme: ReturnType<typeof useTheme>['setTheme']
   isSuperAdmin: boolean
   projectId?: string
   router: ReturnType<typeof useRouter>
@@ -796,17 +882,17 @@ function SidebarUserMenu({
   onSignOut: () => void
 }>): React.ReactNode {
   return (
-    <div className="border-t border-gray-100 dark:border-gray-800 p-3">
+    <div className="border-t border-border/60 p-3">
       {!mounted || !isLoaded ? (
         <UserMenuSkeleton isCollapsed={isCollapsed} isMobile={isMobile} />
       ) : (
         <SignedIn>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className={`w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
+              <button className={`w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50  transition-colors ${
                 isCollapsed && !isMobile ? 'justify-center' : ''
               }`}>
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center text-primary-foreground text-xs font-semibold flex-shrink-0">
                   {getUserDisplayName(user).charAt(0).toUpperCase()}
                 </div>
                 <UserMenuNameEmail user={user} isCollapsed={isCollapsed} isMobile={isMobile} />
@@ -815,16 +901,15 @@ function SidebarUserMenu({
             <DropdownMenuContent
               align={isCollapsed && !isMobile ? "center" : "start"}
               side={isCollapsed && !isMobile ? "right" : "top"}
-              className="w-56 shadow-lg border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800"
+              className="w-56 shadow-lg border border-border rounded-xl bg-card"
             >
-              <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700">
-                <p className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{getUserDisplayName(user)}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+              <div className="px-3 py-2 border-b border-border/60">
+                <p className="text-xs font-medium text-foreground truncate">{getUserDisplayName(user)}</p>
+                <p className="text-xs text-muted-foreground truncate">
                   {user?.emailAddresses?.[0]?.emailAddress}
                 </p>
               </div>
               <div className="py-1">
-                <ThemeToggleMenuItem mounted={mounted} resolvedTheme={resolvedTheme} setTheme={setTheme} />
                 <SuperAdminSettingsMenuItem isSuperAdmin={isSuperAdmin} projectId={projectId} router={router} />
               </div>
               <DropdownMenuSeparator />
@@ -868,34 +953,11 @@ function UserMenuNameEmail({
 
   return (
     <div className="min-w-0 flex-1 text-left">
-      <p className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{getUserDisplayName(user)}</p>
-      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+      <p className="text-xs font-medium text-foreground truncate">{getUserDisplayName(user)}</p>
+      <p className="text-xs text-muted-foreground truncate">
         {user?.emailAddresses?.[0]?.emailAddress}
       </p>
     </div>
-  )
-}
-
-function ThemeToggleMenuItem({
-  mounted,
-  resolvedTheme,
-  setTheme
-}: Readonly<{
-  mounted: boolean
-  resolvedTheme: ReturnType<typeof useTheme>['resolvedTheme']
-  setTheme: ReturnType<typeof useTheme>['setTheme']
-}>): React.ReactNode {
-  return (
-    <DropdownMenuItem
-      onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-      className="px-3 py-2 text-xs"
-    >
-      {mounted && resolvedTheme === 'dark' ? (
-        <><Sun className="w-4 h-4 mr-2" />Light Mode</>
-      ) : (
-        <><Moon className="w-4 h-4 mr-2" />Dark Mode</>
-      )}
-    </DropdownMenuItem>
   )
 }
 
@@ -933,7 +995,7 @@ function SignOutMenuItem({
   return (
     <DropdownMenuItem
       onClick={onSignOut}
-      className="px-3 py-2 text-xs text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400"
+      className="px-3 py-2 text-xs text-destructive focus:text-destructive"
       disabled={isSigningOut}
     >
       <LogOut className={`w-4 h-4 mr-2 ${isSigningOut ? 'animate-spin' : ''}`} />

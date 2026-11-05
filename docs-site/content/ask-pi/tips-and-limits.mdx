@@ -1,0 +1,83 @@
+---
+title: Tips and limits
+description: How to phrase requests, what needs confirmation, and what to do when something goes wrong.
+---
+
+## How to phrase requests
+
+- Name the agent. "Change the greeting of the Clinic agent" works better than "change the greeting".
+- Ask for one thing at a time when the task is a change. It is easier to check.
+- For numbers, say the time range: "last 7 days", "last 30 days".
+- If Pi asks which agent you mean, answer with the agent's name.
+- If an answer looks wrong, ask again with more detail. For example, name the field you mean.
+
+:::tip
+Start a new chat when you change topic. Pi only uses the last 24 turns of a chat, and a fresh chat keeps answers focused.
+:::
+
+## What needs your confirmation
+
+These actions never run on their own. Pi shows a card with **Confirm** and **Cancel**.
+
+| Action | What the card shows |
+|---|---|
+| Create an agent | What will be created |
+| Change an agent | What will change, such as "replace the prompt" or "change the greeting" |
+| Buy a phone number | The number, the city and the monthly price |
+| Attach a phone number | The number, the agent and the connection name |
+
+Click **Cancel** to drop the action. The chat then shows "Cancelled."
+
+If a click fails, Pi says nothing was changed. For a purchase, Whispey does not retry for you. Reload the chat and check before you try again.
+
+Pi should only tell you something changed after the action ran. If a card is still waiting, nothing has happened yet.
+
+Adding a custom tool also waits for you. Pi opens a form, and the tool is added only when you submit it.
+
+## Permissions
+
+| Role | Read data and ask questions | Create or edit agents | Buy numbers |
+|---|---|---|---|
+| Owner or admin | Yes | Yes | Yes |
+| Any other role | Yes, if you can open the page | Yes | No |
+| Viewer | Yes | No | No |
+
+:::note
+The table is based on the code checks. They test for "viewer" and for "owner or admin". The sidebar entry is greyed out for anyone who is not an owner or admin. We did not confirm which other roles exist or how each one behaves.
+:::
+
+## Privacy
+
+- Your chats are private to you. Other members, including owners and admins, cannot open them.
+- Phone numbers are masked before they reach the AI model.
+- You can delete a chat from the three-dot menu.
+
+## Limits
+
+| Limit | Value |
+|---|---|
+| Length of one message | 4,000 characters |
+| Conversation memory | The last 24 turns |
+| Chats shown in the list | The 200 most recent, 50 at a time. Click **Show more** for more. |
+| Chat title | Up to 120 characters |
+| Message in the prompt editor popup | Up to 2,000 characters |
+
+## Troubleshooting
+
+| What you see | What to try |
+|---|---|
+| **Ask Pi** is greyed out in the sidebar with **Beta** | Ask a project owner or admin to open it or to change your role. |
+| "Viewer access — cannot create or edit agents" | Your role is viewer. Ask an admin for edit access. |
+| "Only project owners and admins can buy numbers" | Ask an owner or admin to buy the number. |
+| "Message is too long" | Shorten the message to 4,000 characters or fewer. |
+| **Try again** appears after an error | Click it to send the message again. |
+| "Could not reach the server" on a card | Check your connection. Reload the chat before you click **Confirm** again. |
+| "Voice transcription is not configured" | Type your request instead. Voice input is not set up here. |
+| Pi says a field or term does not exist | Say what the term means for that agent, or ask Pi to search the field descriptions for the exact word. |
+| The chat seems to forget early messages | Pi uses only the last 24 turns. Repeat the key detail or start a new chat. |
+
+## Related
+
+- [Ask Pi overview](./overview)
+- [What you can ask](./what-you-can-ask)
+- [Workflows overview](../workflows/overview)

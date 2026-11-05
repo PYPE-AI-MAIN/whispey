@@ -1,0 +1,63 @@
+---
+title: Build your first workflow
+description: Create a booking agent in about ten minutes, test it and make it live.
+---
+
+In this guide you build an agent that books appointments. It greets the caller, asks what they need, collects a day and time, and confirms.
+
+## 1. Create the agent
+
+1. Open your workspace and go to **Agents**.
+2. Choose **Create Agent** and pick **Conversation Flow**. (The other option is a single-prompt agent.)
+3. Give it a name and create it.
+
+The workflow editor opens.
+
+## 2. Describe the call
+
+A new agent shows a box that asks **What should this agent do?**
+
+Type what you want in plain words. For example:
+
+> Book appointments for a clinic. Greet the caller, ask why they want to visit and which day suits them, then say the team will call to confirm.
+
+Press the arrow. Pi, the built-in assistant, builds the steps for you. You can also click one of the example prompts, or start from a template such as **Appointment Booking**.
+
+:::tip
+Describe the whole call in one go, including how it should end. You can change anything afterwards.
+:::
+
+## 3. Read what Pi built
+
+You should see a short chain of steps from left to right, usually four to eight. To read them as a list, click the panel icon next to the back arrow in the top bar and open the **Outline** tab. Click a step to jump to it.
+
+If the canvas looks too busy, use **Fit view** (top right) to see everything, or **Go to start** to jump to the first step.
+
+## 4. Follow the checklist
+
+A card called **Get your agent live** sits on the canvas. It ticks itself off as you go:
+
+1. **Describe the call.** Done in step 2.
+2. **Fix any problems.** If the top bar shows a red "to fix" button, click it. Each problem says what to do, and clicking one jumps to the step.
+3. **Choose the voice and language.** Open **Setup**, then **Voice, model and language**.
+4. **Add documents (optional).** Open **Setup**, then **Knowledge base**.
+5. **Deploy.**
+6. **Make a test call.**
+
+## 5. Deploy
+
+Click **Deploy**. A box asks **What changed?**. Type a short note, such as "First version", and confirm. Your agent is now live for new calls.
+
+Deploy stays greyed out until you have made a change.
+
+## 6. Test call
+
+Click **Test call** in the top bar and talk to your agent in the browser. The canvas follows the step the agent is on, shown in green.
+
+:::note
+A test call uses the last deployed version. If you have unsaved changes, the editor warns you. Deploy first to include them.
+:::
+
+## If something goes wrong
+
+See [Troubleshooting](./troubleshooting). The most common cases are the agent staying on one step, or asking for something again.

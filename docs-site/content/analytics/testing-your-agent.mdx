@@ -1,0 +1,113 @@
+---
+title: Testing your agent
+description: The ways to try an agent before real callers do. Studio, Playground, web call and Prompt Forge, and what each one changes.
+---
+
+Whispey has several places to test an agent. They are not the same. Some talk to the live agent. One is a sandbox. This page tells you which is which, so you do not change something by accident.
+
+| Tool | What it is | Voice or text | Changes the live agent? |
+|---|---|---|---|
+| **Agent Studio** test panel | A call with the live agent from your browser, with insights and the last call's result beside it. | Voice | Only if you press **Update and start** or change the voice. |
+| **Playground** | A voice call with the live agent, with a voice picker. | Voice | Only if you press **Update Voice**. |
+| **Web call** | A browser call for agents connected to Vapi. | Voice | No. |
+| **Prompt Forge** | A sandbox for prompt changes. | Text | Never. See [Prompt Forge](./prompt-forge). |
+| **Test call** in the workflow editor | A call to a workflow agent. | Voice | No. See [Test, deploy and version history](../workflows/test-deploy). |
+
+A test call is a real call as far as the logs go. It shows up in [Call Logs](./call-logs) and counts in the Overview numbers. If you do not want test calls in your numbers, filter on the **Environment** field. See [Reading your numbers](./reading-your-numbers).
+
+## Agent Studio
+
+Agent Studio (Beta) is the most complete way to test. Its header reads **Studio · Beta**. **Copy ID** copies the agent's id, which you need when you work with the Whispey MCP.
+
+### Where to find it
+
+**Agent Studio** is in the left menu under **Build**. It only appears for LiveKit agents.
+
+- For project owners and admins it appears on every LiveKit agent.
+- For other members it appears only on agents that were built through the Whispey MCP.
+
+If you open it on an agent that was not built through the MCP, the page says **Build this agent through the MCP**. A link, **See what Studio looks like with sample data**, shows you a preview.
+
+Studio is for testing and for watching how the agent does. The header says it plainly: changes to the agent itself are made through the MCP.
+
+### Start a test call
+
+1. Open **Agent Studio**.
+2. In the left panel, make sure the **Voice** tab is selected. **Phone** and **Chat** are marked **Soon** and do not work yet.
+3. Click **Start call**. Allow your microphone when the browser asks.
+4. Talk. The panel shows what the agent is doing: **Waiting for agent…**, **Listening**, **Thinking** or **Speaking**, and a live transcript. You can mute your microphone.
+5. End the call when you are done.
+
+If an update to the agent is in progress, Studio will not start a call. It tells you to try again in a moment.
+
+If the agent never joins, a message with a **Try again** option appears.
+
+### Setup
+
+Under the call button is a **Setup** drawer. Click it to open it. It holds two things.
+
+**Voice.** Pick a different voice for the agent.
+
+:::warning
+Picking a voice here saves the new voice to the live agent and restarts it. This takes a short time, and the panel shows the stage it is at. Real callers get the new voice once it finishes.
+:::
+
+**Variables.** The values the agent starts a call with, such as a customer name. Type test values. Empty ones show **Not set**.
+
+:::warning
+Variable values you type here are saved to the agent when you press **Update and start**. The button's label changes from **Start call** to **Update and start** as soon as you change a value. It updates the live agent, then starts the call.
+:::
+
+### After the call
+
+When the call ends, a **Last call** card shows what was said, split into **You** and **Agent**, with the call length, the number of turns and why it ended. While the call is being saved it says **Saving call…**. If the call takes more than a short while to show up, a **Check again** button appears. The call also lands in Call Logs.
+
+Click the small arrow icon (**View full details**) to open the call's [trace page](./traces-and-timeline) in a new tab.
+
+### Insights and dispositions
+
+On the right of Studio:
+
+- **Overall** shows two cards. **Calls** counts every call this agent has handled over the last 400 days, including test calls from this page. **Completion rate** is not defined yet and shows no number.
+- **Dispositions** lists the details the agent extracts from each call. After your test call, the values appear. While the call is on, it says **Call in progress — values from this call will show up once it ends.** If nothing has been set up yet, it says **Nothing extracted yet**. People who may edit dispositions can change them here.
+
+## Playground
+
+The Playground is a simple voice test of the live agent. It is a full-screen page, without the usual side menu.
+
+:::note
+The Playground is not in the left menu. To open it, add `/playground` to the end of the agent's address.
+:::
+
+1. Open the Playground. It checks whether the agent is running. A green box says **Agent is Live**. A red box says **Agent not found** and asks you to deploy the agent first.
+2. Under **Select a Voice**, click a voice. Click it again to clear it.
+3. If the voice you picked is different from the one the agent uses now, an **Update Voice** button appears. You must press it before you can start.
+4. Click **Start Conversation**.
+
+:::warning
+**Update Voice** changes the live agent's voice and restarts its worker. It can take about a minute. Do not use it while real calls are coming in.
+:::
+
+During the call you see a live transcript and moving bars that show who is speaking. The bottom bar has a microphone button to mute yourself and an **END CALL** button.
+
+## Web call
+
+The web call page runs a call in your browser for an agent that is connected to Vapi. It needs the agent to have a Vapi assistant. If it does not, the page says **Configuration Missing**.
+
+You see the agent's name and assistant, a **Live Web Call** widget, and a **Call History** list for this visit that shows each call's start time, length and how it ended.
+
+:::note
+Like the Playground, the web call page is not in the left menu. To open it, add `/web-call` to the end of the agent's address.
+:::
+
+## Which one should I use?
+
+| I want to... | Use |
+|---|---|
+| Check how the agent sounds and flows right now | **Agent Studio**, or the workflow editor's **Test call** |
+| Try a prompt change without risk | [Prompt Forge](./prompt-forge) |
+| Replay a real call with a new prompt | [Prompt Forge](./prompt-forge), **Import log** |
+| Hear different voices | **Agent Studio** setup, or the Playground |
+| Test a Vapi agent from the browser | **Web call** |
+
+After a test, open the call in [Call Logs](./call-logs) or the [trace page](./traces-and-timeline) to see where the time went.

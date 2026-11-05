@@ -4,7 +4,7 @@ import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { isPlatformAdmin } from '@/lib/isPlatformAdmin'
-import { sendPendingApprovalNotice } from '@/lib/sendApprovalEmail'
+import { notifyAdminsOfPendingSignup } from '@/lib/sendApprovalEmail'
 
 interface ClerkWebhookEvent {
   data: {
@@ -125,27 +125,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       console.log('🎉 User created successfully:', data)
 
-      if (!isAdmin) {
-        try {
-          // Separate from PYPE_ADMINS (superadmin auth) on purpose — who
-          // gets notified of a pending signup isn't necessarily the same
-          // list as who has superadmin access.
-          const adminEmails = process.env.APPROVAL_NOTICE_EMAILS?.split(',').map(e => e.trim()).filter(Boolean) || []
-          if (adminEmails.length > 0) {
-            const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.whispey.xyz').replace(/\/$/, '')
-            await sendPendingApprovalNotice({
-              adminEmails,
-              userEmail,
-              userName: `${first_name ?? ''} ${last_name ?? ''}`.trim() || userEmail,
-              approveLink: `${appUrl}/api/admin/pending-users/${data.id}/action?decision=approve&token=${data.approval_token}`,
-              declineLink: `${appUrl}/api/admin/pending-users/${data.id}/action?decision=decline&token=${data.approval_token}`,
-            })
-          } else {
-            console.warn('⚠️ APPROVAL_NOTICE_EMAILS not configured — skipping pending-approval notice')
-          }
-        } catch (notifyErr) {
-          console.error('⚠️ Failed to notify admins of pending signup:', notifyErr)
-        }
+      if (!isAdmin && data.approval_token) {
+        await notifyAdminsOfPendingSignup({
+          rowId: data.id,
+          approvalToken: data.approval_token,
+          userEmail,
+          userName: `${first_name ?? ''} ${last_name ?? ''}`.trim(),
+        })
       }
 
       // Link and consume any pending invite mapping for this email — clearing

@@ -1,0 +1,72 @@
+---
+title: Drop-off and callbacks
+description: Ring people back automatically, either after a call that dropped or when a caller asks to be called later.
+---
+
+Two sections in **Advanced Settings**, under **Conversation Behaviour**, place follow-up calls for you.
+
+| Feature | What it is for |
+|---|---|
+| **Drop-off Call Configuration** | Call someone again after a call that probably needs a retry, for example the line dropped or went to voicemail. |
+| **Callback Scheduling** | Call someone later when they ask to be called back. |
+
+Both need an outbound phone number. If none is listed, the screen says "No outbound phone numbers available" and points you to SIP Management, where phone numbers are set up.
+
+## Drop-off Call Configuration
+
+Turn on **Enable Drop-off Calls** ("Activate drop-off call functionality for this agent"). New agents have it off.
+
+### Call Configuration
+
+| Setting | What it does |
+|---|---|
+| **Drop-off Call Message** | What the agent says on the follow-up call. |
+| **Context Summary Prompt** | A prompt that writes a summary of the earlier conversation. The summary is available as `{{wcontext_dropoff}}` in your drop-off message. |
+
+### Retry Settings
+
+| Setting | What it does |
+|---|---|
+| **Call Delay (Minutes)** | How long to wait after a call ends before the drop-off call starts. |
+| **Maximum Retry Attempts** | How many times to try again if a drop-off call fails. 0 to 10. |
+| **Retry Metric Prompt** | The prompt that decides whether a call needs a retry. |
+
+The retry decision uses a metric called `call_retry_required`. It is switched on for you when you save. The starting prompt scores a call as needing a retry when, for example:
+
+- the caller never spoke and the call lasted under 10 seconds,
+- the call went straight to voicemail,
+- the audio was blank, or
+- the caller was engaged but the call ended abruptly without a goodbye and the task was not done.
+
+It scores a call as not needing a retry when, for example, the caller said goodbye, said they were not interested, or the task was completed. You can edit the prompt.
+
+### Phone Number Configuration
+
+Pick the **Outbound Phone Number** for drop-off calls from the list, or choose **None**. The screen then shows the number and its SIP trunk ID.
+
+Drop-off settings are saved when you click **Update Config** and publish. See [Publish and history](./publish-and-history).
+
+## Callback Scheduling
+
+When a caller says "call me later", the agent can schedule a call. The section says "Auto-schedule callbacks when a caller asks to be called back."
+
+Turn on **Enable Callback Scheduling**, set the options below, then click **Save Configuration** at the bottom of the section.
+
+| Setting | What it does | Starting value |
+|---|---|---|
+| **Allowed Call-back Window**: **Start (From)** and **End (To)** | The hours when callbacks may be made, in 24-hour time. A request outside the window is moved to the next free slot. The end must be after the start. Overnight windows are not supported. | 09:00 to 18:00 |
+| **Timezone** | The time zone for the window. Choose from the list. | Shown on screen |
+| **Allowed Days** | Tick the days callbacks may be made, Mon to Sun. At least one day is needed. | Mon to Fri |
+| **Outbound Phone Number** | The number used for callbacks. **None (use original call's number)** reuses the number of the first call. | None |
+| **Max Future Days** | Rejects requests too far ahead, such as "call me in 5 years". 1 to 365. | 7 |
+| **Max Callbacks / Contact** | Stops endless loops for one phone number. 1 to 20. | 3 |
+| **Min Delay (min)** | The shortest wait before any callback. 1 to 1440. | Shown on screen |
+| **Default Delay (min)** | Used when the caller's timing is vague. It cannot be less than the minimum. Up to 1440. | Shown on screen |
+
+The screen shows a message if a value is not allowed, for example "Select at least one allowed day" or "Default delay must be ≥ minimum delay".
+
+## Tips
+
+- Set the time window to hours when people will pick up.
+- Keep **Max Callbacks / Contact** low so nobody is called too often.
+- Check your local rules about calling people before you turn these on.
