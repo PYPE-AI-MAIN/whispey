@@ -13,13 +13,13 @@ export function DestinationsTab() {
   const qc = useQueryClient()
   const key = ['admin', 'destinations']
   const { data, isLoading } = useQuery<{ destinations: Dest[] }>({ queryKey: key, queryFn: () => adminCall('/api/admin/data-destinations') })
-  const [form, setForm] = useState({ name: '', base_url: '', audience: '', kid: '', secret_ref: '' })
+  const [form, setForm] = useState({ name: '', base_url: '', audience: '', kid: '', storage: '', secret_ref: '' })
   const [checks, setChecks] = useState<Record<string, Check[]>>({})
   const refresh = () => qc.invalidateQueries({ queryKey: key })
 
   const attach = useMutation({
-    mutationFn: () => post('/api/admin/data-destinations', { name: form.name, kind: 'postgrest', config: { base_url: form.base_url, ...(form.audience && { audience: form.audience }), ...(form.kid && { kid: form.kid }) }, secret_ref: form.secret_ref || null }),
-    onSuccess: () => { setForm({ name: '', base_url: '', audience: '', kid: '', secret_ref: '' }); return refresh() },
+    mutationFn: () => post('/api/admin/data-destinations', { name: form.name, kind: 'postgrest', config: { base_url: form.base_url, ...(form.audience && { audience: form.audience }), ...(form.kid && { kid: form.kid }), ...(form.storage && { storage: form.storage }) }, secret_ref: form.secret_ref || null }),
+    onSuccess: () => { setForm({ name: '', base_url: '', audience: '', kid: '', storage: '', secret_ref: '' }); return refresh() },
   })
   const verify = useMutation({
     mutationFn: (id: string) => post(`/api/admin/data-destinations/${id}/verify`, {}),
@@ -30,11 +30,12 @@ export function DestinationsTab() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-2 sm:grid-cols-[1fr_1.6fr_1fr_1fr_1.6fr_auto]">
+      <div className="grid gap-2 sm:grid-cols-[1fr_1.6fr_1fr_1fr_1fr_1.6fr_auto]">
         <Input placeholder="Name (acme-prod)" value={form.name} onChange={set('name')} />
         <Input placeholder="Base URL (https://…)" value={form.base_url} onChange={set('base_url')} />
         <Input placeholder="Audience (optional)" value={form.audience} onChange={set('audience')} />
         <Input placeholder="Key ID (kid)" value={form.kid} onChange={set('kid')} />
+        <Input placeholder="Storage (none = test)" value={form.storage} onChange={set('storage')} />
         <Input placeholder="Secret ARN (arn:aws:secretsmanager:…)" value={form.secret_ref} onChange={set('secret_ref')} />
         <Button onClick={() => attach.mutate()} disabled={attach.isPending}>Attach</Button>
       </div>
