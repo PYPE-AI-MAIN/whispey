@@ -47,7 +47,9 @@ function baseUrl(dest: PostgrestDestination): string {
   if (!url || (url.protocol !== 'https:' && !local)) {
     throw new DestinationIncompatible(dest.name, 'Destination has no valid base_url')
   }
-  return url.href.replace(/\/+$/, '')
+  let href = url.href
+  while (href.endsWith('/')) href = href.slice(0, -1)
+  return href
 }
 
 /** `privateKeyPem` is the already-resolved secret; it is never stored on the plane or logged. */
