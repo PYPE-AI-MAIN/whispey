@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { isQaDenied, qaDb, resolveAgentAccess } from '@/server/qa/access'
+import { qaDb } from '@/server/qa/access'
+import { loadTicket } from '@/server/qa/ticketAccess'
+import { withDataPlane } from '@/server/data-plane'
 import { ticketAttachments } from '@/lib/qaAudit'
 import { notifyQaStatusChange } from '@/server/qa/notify'
 
 /** QA team only: add a comment (text and/or images) at any status; the customer sees it and is notified. */
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const POST = withDataPlane(async (dp, request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
-  const { data: ticket } = await qaDb.from('qa_flag_tickets').select('id, agent_id, call_log_id, flagged_by_email').eq('id', id).maybeSingle()
-  if (!ticket) return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
-
-  const access = await resolveAgentAccess(ticket.agent_id)
-  if (isQaDenied(access)) return NextResponse.json({ error: access.error }, { status: access.status })
+  const b = (await request.json().catch(() => ({}))) as { body?: unknown; attachments?: unknown; agentId?: unknown }
+  const loaded = await loadTicket(dp, typeof b.agentId === 'string' ? b.agentId : null, id, 'id, agent_id, call_log_id, flagged_by_email')
+  if ('error' in loaded) return loaded.error
+  const { access, ticket } = loaded
   if (!access.canManage) return NextResponse.json({ error: 'Only the QA team can comment' }, { status: 403 })
 
-  const b = (await request.json().catch(() => ({}))) as { body?: unknown; attachments?: unknown }
   const text = typeof b.body === 'string' ? b.body.trim().slice(0, 4000) : ''
   const attachments = ticketAttachments(b.attachments, id)
   if (!text && attachments.length === 0) return NextResponse.json({ error: 'Write a comment or attach an image' }, { status: 400 })
@@ -38,4 +38,4 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   })
 
   return NextResponse.json({ comment: data }, { status: 201 })
-}
+})

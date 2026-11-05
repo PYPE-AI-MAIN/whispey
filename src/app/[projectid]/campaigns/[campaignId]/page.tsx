@@ -12,6 +12,9 @@ import { useProjectAgents } from '@/hooks/useProjectAgents'
 import { resolveStoredAgentName } from '@/lib/agentDisplayName'
 import { CampaignWebhookCard } from '@/components/campaigns/CampaignWebhook'
 import { useCampaignLogs } from '@/hooks/useCampaignLogs'
+import { CampaignDataNote } from '@/components/campaigns/CampaignDataNote'
+import { CampaignImportCard } from '@/components/campaigns/CampaignImportCard'
+import { CONTACT_STATUSES } from '@/types/campaignScheduler'
 import { useQueryClient } from '@tanstack/react-query'
 
 interface CampaignDetails {
@@ -166,6 +169,7 @@ const STATUS_COLORS: Record<string, string> = {
   failed: 'bg-destructive/15 text-destructive',
   pending: 'bg-warning/15 text-warning',
   in_progress: 'bg-primary/15 text-primary',
+  calling: 'bg-primary/15 text-primary',
 }
 
 const getStatusColor = (status: string) => STATUS_COLORS[status.toLowerCase()] ?? 'bg-muted text-foreground'
@@ -240,7 +244,8 @@ function ViewCampaign() {
 
   // Logs: 100 per page with Prev/Next; search covers every page (see useCampaignLogs).
   const queryClient = useQueryClient()
-  const logsView = useCampaignLogs(campaignId, campaignDetails?.callStats?.total ?? campaignDetails?.totalContacts)
+  const [statusFilter, setStatusFilter] = useState('all')
+  const logsView = useCampaignLogs(campaignId, campaignDetails?.callStats?.total ?? campaignDetails?.totalContacts, statusFilter)
   const logs = logsView.rows
   const loadingLogs = logsView.loading
   // What is typed vs. what is searched: results change only on Enter / Search.
@@ -935,6 +940,9 @@ function ViewCampaign() {
             <CampaignWebhookCard campaignId={campaignId} className="lg:col-span-2 p-4" />
           </div>
 
+          <CampaignDataNote projectId={projectId} />
+          <CampaignImportCard campaignId={campaignId} />
+
           {/* Campaign Logs Table */}
           <div className="flex-1 min-h-[320px] flex flex-col rounded-xl border border-border bg-card shadow-sm overflow-hidden">
             <div className="px-4 py-3 border-b border-border flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -944,6 +952,17 @@ function ViewCampaign() {
                 {logsView.error && <span className="text-xs text-destructive">{logsView.error}</span>}
               </div>
               <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  aria-label="Filter logs by status"
+                  className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                >
+                  <option value="all">All statuses</option>
+                  {CONTACT_STATUSES.map((s) => (
+                    <option key={s} value={s}>{s.replace('_', ' ')}</option>
+                  ))}
+                </select>
                 <form
                   className="flex items-center gap-2"
                   onSubmit={(e) => { e.preventDefault(); runSearch() }}

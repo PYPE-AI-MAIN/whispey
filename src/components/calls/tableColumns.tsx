@@ -182,6 +182,7 @@ function renderTagsCell(
   return (
     <TagEditor
       callId={call.id}
+      agentId={call.agent_id}
       initialTags={
         Array.isArray(call.transcription_metrics?.tags)
           ? call.transcription_metrics.tags
@@ -212,6 +213,7 @@ function renderFlagCell(
   return (
     <FlagEditor
       callId={call.id}
+      agentId={call.agent_id}
       initialFlag={call.transcription_metrics?.flag}
       currentUserId={currentUserId}
       currentUserEmail={currentUserEmail}

@@ -1,13 +1,12 @@
 // app/api/campaigns/contacts/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+import { callScheduler } from '@/lib/campaignScheduler'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const campaignId = searchParams.get('campaignId')
-    const limit = searchParams.get('limit') || '50'
-    const lastKey = searchParams.get('lastKey')
-    const status = searchParams.get('status') // Add status filter support
+    const status = searchParams.get('status')
 
     if (!campaignId) {
       return NextResponse.json(
@@ -16,34 +15,34 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN
-    let apiUrl = `${baseUrl}/api/v1/campaigns/${campaignId}/contacts?limit=${limit}`
-    
-    if (lastKey) {
-      apiUrl += `&lastKey=${encodeURIComponent(lastKey)}`
-    }
-    
-    // Add status filter if provided
-    if (status && status !== 'all') {
-      apiUrl += `&status=${encodeURIComponent(status)}`
-    }
-
-    const response = await fetch(apiUrl, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
+    const out = await callScheduler(`campaigns/${encodeURIComponent(campaignId)}/contacts`, {
+      query: {
+        limit: searchParams.get('limit') || '50',
+        lastKey: searchParams.get('lastKey'),
+        cursor: searchParams.get('cursor'),
+        status: status && status !== 'all' ? status : null,
       },
     })
+    if ('error' in out) return out.error
+    const { res } = out
 
-    const data = await response.json()
+    const data = await res.json()
 
-    if (!response.ok) {
+    if (!res.ok) {
       return NextResponse.json(
         { error: data.error || 'Failed to fetch contacts' },
-        { status: response.status }
+        { status: res.status }
       )
     }
 
+    // The scheduler may answer { items, nextCursor }; the UI reads { contacts, pagination }.
+    if (data.items && !data.contacts) {
+      return NextResponse.json({
+        ...data,
+        contacts: data.items,
+        pagination: { hasMore: Boolean(data.nextCursor), nextKey: data.nextCursor ?? null },
+      })
+    }
     return NextResponse.json(data)
   } catch (error) {
     console.error('List contacts error:', error)

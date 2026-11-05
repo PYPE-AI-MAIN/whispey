@@ -1,19 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceRoleClient } from '@/lib/supabase-server'
+import { auth } from '@clerk/nextjs/server'
+import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
+import { withDataPlane, rethrowDataPlane, projectIdForAgent } from '@/server/data-plane'
 
-const supabase = createServiceRoleClient()
-
-export async function PATCH(
+export const PATCH = withDataPlane(async (
+  dp,
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   try {
     const { id } = await params
     const body = await request.json()
-    const { tags, tagComments } = body as {
+    const { tags, tagComments, agent_id: agentId } = body as {
       tags?: unknown
       tagComments?: unknown
+      agent_id?: unknown
     }
+
+    // The call row lives in the project's data plane, so the agent id is required to find it.
+    if (typeof agentId !== 'string' || !agentId) {
+      return NextResponse.json({ error: 'agent_id required' }, { status: 400 })
+    }
+    const { userId } = await auth()
+    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const projectId = await projectIdForAgent(agentId)
+    if (!projectId || !(await getProjectRoleForApi(projectId))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    const plane = await dp.forProject(projectId)
 
     // At least one of tags or tagComments must be present
     if (tags === undefined && tagComments === undefined) {
@@ -29,13 +43,10 @@ export async function PATCH(
     }
 
     // Fetch current transcription_metrics so we can merge without clobbering other keys
-    const { data: current, error: fetchError } = await supabase
-      .from('pype_voice_call_logs')
-      .select('transcription_metrics')
-      .eq('id', id)
-      .single()
-
-    if (fetchError) throw fetchError
+    const current = await plane.callData.getCallLog(id, 'transcription_metrics, agent_id')
+    if (!current || current.agent_id !== agentId) {
+      return NextResponse.json({ error: 'Call not found' }, { status: 404 })
+    }
 
     const updatedMetrics: Record<string, unknown> = { ...(current?.transcription_metrics || {}) }
 
@@ -57,17 +68,13 @@ export async function PATCH(
       updatedMetrics.tagComments = cleanComments
     }
 
-    const { error } = await supabase
-      .from('pype_voice_call_logs')
-      .update({ transcription_metrics: updatedMetrics })
-      .eq('id', id)
-
-    if (error) throw error
+    await plane.callLogs.setTranscriptionMetrics(id, updatedMetrics)
 
     return NextResponse.json({ success: true })
   } catch (error: unknown) {
+    rethrowDataPlane(error)
     const message = error instanceof Error ? error.message : 'Unknown error'
     console.error('Error updating call log tags:', message)
     return NextResponse.json({ error: message }, { status: 500 })
   }
-}
+})

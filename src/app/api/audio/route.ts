@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import AWS from 'aws-sdk'
+import { withDataPlane, rethrowDataPlane } from '@/server/data-plane'
+import { signRoutedRecording } from '@/server/audio/routed'
 
 const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -34,9 +36,14 @@ function parseS3Url(inputUrl: string): { bucket?: string; key?: string } {
   }
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withDataPlane(async (dp, request: NextRequest) => {
   try {
-    const { s3Key, url } = await request.json()
+    const { s3Key, url, agentId } = await request.json()
+
+    // A customer-held project's recording is signed by the customer's signer.
+    const routed = await signRoutedRecording(dp, agentId, s3Key || url || '')
+    if (routed instanceof NextResponse) return routed
+    if (routed) return NextResponse.json({ url: routed.url, routed: true })
 
     let bucket = process.env.AWS_S3_BUCKET as string | undefined
     let key = s3Key as string | undefined
@@ -63,7 +70,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: signedUrl, bucket, key })
   } catch (error) {
+    rethrowDataPlane(error)
     console.error('Error generating presigned URL:', error)
     return NextResponse.json({ error: 'Failed to generate URL' }, { status: 500 })
   }
-}
+})

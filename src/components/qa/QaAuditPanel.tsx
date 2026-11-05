@@ -21,6 +21,7 @@ import { Textarea } from '@/components/ui/textarea'
 
 type Ticket = {
   id: string
+  agent_id: string
   call_log_id: string
   reason: string
   flagged_by_email: string | null
@@ -324,7 +325,7 @@ function TicketRow({ ticket, canManage, internal, engineers, agentId, projectId 
   )
 }
 
-const imageSrc = (key: string) => `/api/qa-audit/attachments?key=${encodeURIComponent(key)}`
+const imageSrc = (key: string, agentId: string) => `/api/qa-audit/attachments?key=${encodeURIComponent(key)}&agentId=${agentId}`
 
 /** What has happened to this flag so far: flagged, status changes, hand-offs and every comment, oldest first. */
 function Thread({ ticket }: Readonly<{ ticket: Ticket }>) {
@@ -352,9 +353,9 @@ function Thread({ ticket }: Readonly<{ ticket: Ticket }>) {
           {c.attachments.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-2">
               {c.attachments.map((a) => (
-                <a key={a.key} href={imageSrc(a.key)} target="_blank" rel="noreferrer">
+                <a key={a.key} href={imageSrc(a.key, ticket.agent_id)} target="_blank" rel="noreferrer">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={imageSrc(a.key)} alt={a.name} className="h-24 rounded-md border border-border object-cover" />
+                  <img src={imageSrc(a.key, ticket.agent_id)} alt={a.name} className="h-24 rounded-md border border-border object-cover" />
                 </a>
               ))}
             </div>
@@ -391,6 +392,7 @@ function Composer({ ticket, engineers, agentId }: Readonly<{ ticket: Ticket; eng
       for (const file of Array.from(files).slice(0, 5 - images.length)) {
         const form = new FormData()
         form.append('ticketId', ticket.id)
+        form.append('agentId', ticket.agent_id)
         form.append('file', file)
         const res = await fetch('/api/qa-audit/attachments', { method: 'POST', body: form })
         const json = await res.json().catch(() => ({}))
@@ -417,8 +419,9 @@ function Composer({ ticket, engineers, agentId }: Readonly<{ ticket: Ticket; eng
             sheet_url: sheet,
             assignee_email: assignee,
             comment: { body: text, attachments: images },
+            agentId: ticket.agent_id,
           })
-        : send(`/api/qa-audit/flags/${ticket.id}/comments`, 'POST', { body: text, attachments: images }),
+        : send(`/api/qa-audit/flags/${ticket.id}/comments`, 'POST', { body: text, attachments: images, agentId: ticket.agent_id }),
     onSuccess: () => {
       setText('')
       setImages([])

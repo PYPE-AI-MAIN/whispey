@@ -180,7 +180,7 @@ export function SplitView(props: Readonly<SplitViewProps>) {
       <div className="col-span-2 col-start-2 flex items-center gap-3 border-t border-[var(--cl-border)] bg-[var(--cl-panel)] px-4 py-2">
         <div className="min-w-0 flex-1">
           {call.recording_url ? (
-            <AudioPlayer key={call.id} s3Key={extractS3Key(call.recording_url)} url={call.recording_url} callId={call.id} controlRef={playerRef} onTimeUpdate={onPlayhead} preload className="border-0 bg-transparent p-0 shadow-none dark:bg-transparent" />
+            <AudioPlayer key={call.id} s3Key={extractS3Key(call.recording_url)} url={call.recording_url} callId={call.id} agentId={call.agent_id} controlRef={playerRef} onTimeUpdate={onPlayhead} preload className="border-0 bg-transparent p-0 shadow-none dark:bg-transparent" />
           ) : (
             <p className="py-2 text-center text-[13px] text-[var(--cl-text3)]">No recording for this call.</p>
           )}

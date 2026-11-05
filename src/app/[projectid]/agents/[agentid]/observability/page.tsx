@@ -111,6 +111,7 @@ export default function ObservabilityPage({ params, searchParams }: Observabilit
             s3Key={extractS3Key(recordingUrl)}
             url={recordingUrl}
             callId={callInfo?.id}
+            agentId={resolvedParams.agentid}
             segmentStartTime={seekTo}
           />
         </div>

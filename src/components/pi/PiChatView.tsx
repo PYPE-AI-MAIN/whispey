@@ -825,7 +825,7 @@ export default function PiChatView({
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Request failed' }))
-        setMessages((prev) => failAssistant(prev, assistantId, err.error ?? 'Error'))
+        setMessages((prev) => failAssistant(prev, assistantId, err.message ?? err.error ?? 'Error'))
         setRetryable(res.status >= 500 || res.status === 429)
         return
       }

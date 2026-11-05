@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { withDataPlane, rethrowDataPlane } from '@/server/data-plane'
 
 // Create Supabase client for server-side operations
 const supabase = createServiceRoleClient()
@@ -32,7 +33,7 @@ const verifyToken = async (token: string, environment = 'dev') => {
   }
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withDataPlane(async (dp, request: NextRequest) => {
   try {
     // Parse request body
     const body = await request.json()
@@ -137,14 +138,13 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString()
     }
 
-    // Insert log into Supabase
-    const { data: insertedLog, error: insertError } = await supabase
-      .from('pype_voice_call_logs')
-      .insert(logData)
-      .select()
-      .single()
-
-    if (insertError) {
+    // The token names the project, and the project's route names where the log is written.
+    const plane = await dp.forProject(project_id as string)
+    let insertedLog
+    try {
+      insertedLog = await plane.callLogs.insertCallLog(logData)
+    } catch (insertError) {
+      rethrowDataPlane(insertError)
       console.error('Database insert error:', insertError)
       return NextResponse.json(
         { error: 'Failed to save call log' },
@@ -174,15 +174,13 @@ export async function POST(request: NextRequest) {
         unix_timestamp: turn.timestamp
       }))
  
-      // Insert all conversation turns to Supabase
-      const { error: turnsError } = await supabase
-        .from('pype_voice_metrics_logs')
-        .insert(conversationTurns)
- 
-      if (turnsError) {
-        console.error('Error inserting conversation turns to Supabase:', turnsError)
-      } else {
-        console.log(`Inserted ${conversationTurns.length} conversation turns to Supabase`)
+      // Insert all conversation turns
+      try {
+        await plane.callLogs.insertTurns(conversationTurns)
+        console.log(`Inserted ${conversationTurns.length} conversation turns`)
+      } catch (turnsError) {
+        rethrowDataPlane(turnsError)
+        console.error('Error inserting conversation turns:', turnsError)
       }
     }
 
@@ -196,10 +194,11 @@ export async function POST(request: NextRequest) {
     }, { status: 200 })
 
   } catch (error) {
+    rethrowDataPlane(error)
     console.error('Send call log error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     )
   }
-}
+})

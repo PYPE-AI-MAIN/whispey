@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
-import { DNC_TABLE, getSuperAdminEmail, toNumbersArray, buildDncRows, type DncScope } from '@/lib/dnc'
+import { getSuperAdminEmail, toNumbersArray, buildDncRows, type DncScope } from '@/lib/dnc'
+import { withDataPlane, rethrowDataPlane } from '@/server/data-plane'
+import { dncStoresFor } from '@/server/dnc/stores'
 
 export const runtime = 'nodejs'
 
@@ -29,7 +31,7 @@ async function agentProjectId(supabase: ReturnType<typeof createServiceRoleClien
  * Superadmin only. Adds numbers to the DNC list. Duplicates within a scope are
  * skipped (the partial unique index also enforces this at the DB level).
  */
-export async function POST(request: NextRequest) {
+export const POST = withDataPlane(async (dp, request: NextRequest) => {
   const admin = await getSuperAdminEmail()
   if (!admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
@@ -75,29 +77,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No valid numbers', invalid }, { status: 400 })
   }
 
-  // Skip numbers already active in this scope so we don't trip the unique index.
-  let existingQuery = supabase
-    .from(DNC_TABLE)
-    .select('phone_e164')
-    .eq('is_active', true)
-    .eq('scope', scope)
-    .in('phone_e164', rows.map((r) => r.phone_e164 as string))
-  if (scope === 'project') existingQuery = existingQuery.eq('project_id', projectId!)
-  if (scope === 'agent') existingQuery = existingQuery.eq('agent_id', body.agent_id!)
-  const existing = await existingQuery
-  if (existing.error) {
-    console.error('DNC add (dupe check) error:', existing.error)
-    return NextResponse.json({ error: 'Failed to add numbers' }, { status: 500 })
-  }
-  const already = new Set((existing.data ?? []).map((r) => r.phone_e164))
-  const toInsert = rows.filter((r) => !already.has(r.phone_e164 as string))
+  // Global entries stay in Pype; project and agent entries go to the project's data plane.
+  const stores = await dncStoresFor(dp, projectId)
+  const store = scope === 'global' ? stores.pype : stores.scoped
 
-  if (toInsert.length > 0) {
-    const { error } = await supabase.from(DNC_TABLE).insert(toInsert)
-    if (error) {
-      console.error('DNC add (insert) error:', error)
-      return NextResponse.json({ error: 'Failed to add numbers' }, { status: 500 })
-    }
+  // Skip numbers already active in this scope so we don't trip the unique index.
+  let toInsert: typeof rows
+  try {
+    const already = new Set(await store.findActive(rows.map((r) => r.phone_e164 as string), scope, projectId, body.agent_id))
+    toInsert = rows.filter((r) => !already.has(r.phone_e164 as string))
+    if (toInsert.length > 0) await store.addEntries(toInsert)
+  } catch (error) {
+    rethrowDataPlane(error)
+    console.error('DNC add error:', error)
+    return NextResponse.json({ error: 'Failed to add numbers' }, { status: 500 })
   }
 
   return NextResponse.json({
@@ -105,4 +98,4 @@ export async function POST(request: NextRequest) {
     skipped_duplicates: rows.length - toInsert.length,
     invalid,
   })
-}
+})

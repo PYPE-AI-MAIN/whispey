@@ -13,6 +13,7 @@ import crypto from 'node:crypto'
 import { verifyToken } from '@/lib/auth'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { guarded } from '@/server/analytics/guard'
+import { customerHeldResponse } from '@/server/data-plane'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -69,6 +70,8 @@ async function handlePOST(req: NextRequest): Promise<Response> {
 
   const { valid, project_id } = await verifyToken(token)
   if (!valid || !project_id) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+  const held = await customerHeldResponse(project_id)
+  if (held) return held
 
   const raw = await readCappedBody(req)
   if (raw === null) return NextResponse.json({ error: 'Payload too large' }, { status: 413 })

@@ -40,6 +40,8 @@ interface SpanDetailSheetProps {
   span: any;
   isOpen: boolean;
   onClose: () => void;
+  /** Routing hint: the span lives in the agent's project data plane. */
+  agentId?: string;
 }
 
 // Improved timestamp formatting function
@@ -264,7 +266,7 @@ const RawDataView = ({ span }: { span: any }) => {
   );
 };
 
-const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
+const SpanDetailSheet = ({ span, isOpen, onClose, agentId }: SpanDetailSheetProps) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'technical' | 'raw'>('overview');
 
   const shouldFetchFull = isOpen && activeTab === 'raw' && span?.id;
@@ -275,6 +277,7 @@ const SpanDetailSheet = ({ span, isOpen, onClose }: SpanDetailSheetProps) => {
       ? {
           select: "*",
           filters: [{ column: "id", operator: "eq", value: span.id }],
+          auth: agentId ? { agentId } : undefined,
         }
       : null
   );

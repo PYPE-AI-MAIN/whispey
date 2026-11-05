@@ -691,6 +691,7 @@ const handleRowClick = (trace: TraceLog) => {
             fetchNextPage={fetchNextPage}
             isFetchingNextPage={isFetchingNextPage}
             totalCount={totalSpansCount}
+            agentId={agentId}
           />
         )}
 
@@ -699,6 +700,7 @@ const handleRowClick = (trace: TraceLog) => {
           <WaterfallView 
             trace={{...sessionTrace, spans: sessionSpans}} 
             loading={traceLoading || spansLoading} 
+            agentId={agentId}
           />
         )}
 

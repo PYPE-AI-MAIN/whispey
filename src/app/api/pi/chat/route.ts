@@ -32,6 +32,7 @@ import { isReasoningModel, piModels, samplingFor } from '@/lib/piModels'
 import { PI_MANDATORY_ANALYTICS_TOOLS_DOC, runCallVolumeTrend, runCompletionInsights } from '@/lib/piAnalyticsTools'
 import { resolveWhispeyKeyFields } from '@/server/mcpAgentDb'
 import { resolveScope, isDenied } from '@/server/analytics/context'
+import { customerHeldResponse } from '@/server/data-plane'
 import { applyDeclarations, summarise } from '@/server/analytics/extractor'
 import { catalogIsStale, rescan as rescanAnalyticsFields } from '@/server/analytics/catalog'
 import { Spec, ALL_COLS } from '@/server/analytics/spec'
@@ -1600,6 +1601,9 @@ async function authorize(projectId: string): Promise<{ response: NextResponse } 
   if (!userId) return { response: NextResponse.json({ error: 'Not signed in' }, { status: 401 }) }
   const access = await getProjectRoleForApi(projectId)
   if (!access) return { response: NextResponse.json({ error: 'Not a member of this project' }, { status: 403 }) }
+  // Pi reads call data straight from Pype's database; a customer-held project's data is not there.
+  const held = await customerHeldResponse(projectId)
+  if (held) return { response: held }
   return { userId, canWrite: access.role !== 'viewer' }
 }
 

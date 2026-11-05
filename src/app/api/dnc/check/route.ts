@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { checkDncNumbers, toNumbersArray } from '@/lib/dnc'
+import { withDataPlane, rethrowDataPlane } from '@/server/data-plane'
+import { dncProjectId, dncStoresFor } from '@/server/dnc/stores'
 
 export const runtime = 'nodejs'
 
@@ -14,7 +16,7 @@ export const runtime = 'nodejs'
  *   200 -> nothing blocked            { blocked: false, results: [...] }
  *   406 -> at least one on the DNC     { blocked: true, results: [...], blocked_numbers: [...] }
  */
-export async function POST(request: NextRequest) {
+export const POST = withDataPlane(async (dp, request: NextRequest) => {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -31,7 +33,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const results = await checkDncNumbers(numbers, body.project_id ?? null, body.agent_id ?? null)
+    // Global entries are checked in Pype; project and agent entries also in a customer-held project's destination.
+    const { all } = await dncStoresFor(dp, await dncProjectId(body.project_id, body.agent_id))
+    const results = await checkDncNumbers(numbers, body.project_id ?? null, body.agent_id ?? null, all)
     const blocked = results.filter((r) => r.blocked)
     return NextResponse.json(
       {
@@ -42,7 +46,8 @@ export async function POST(request: NextRequest) {
       { status: blocked.length > 0 ? 406 : 200 }
     )
   } catch (error) {
+    rethrowDataPlane(error)
     console.error('DNC check error:', error)
     return NextResponse.json({ error: 'DNC check failed' }, { status: 500 })
   }
-}
+})
