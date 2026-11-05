@@ -6,6 +6,8 @@
  * Only a fixed set of typed fields is passed back to the model — the service's free text is not trusted as
  * instructions — and the number is URL-encoded digits (with a leading + if given) so it cannot alter the URL.
  */
+import { jitterFraction } from '@/lib/piFetch'
+
 const DEFAULT_URL = 'https://scam-check.pypeai.com'
 const ATTEMPT_TIMEOUT_MS = 6_000
 const MAX_RETRIES = 2
@@ -20,7 +22,7 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 function retryDelay(attempt: number, retryAfter: string | null) {
   const seconds = Number(retryAfter)
   if (retryAfter && Number.isFinite(seconds)) return Math.min(seconds * 1000, MAX_RETRY_AFTER_MS)
-  return BASE_DELAY_MS * 2 ** attempt + Math.random() * BASE_DELAY_MS
+  return BASE_DELAY_MS * 2 ** attempt + jitterFraction() * BASE_DELAY_MS
 }
 
 /** `transient` marks an outage (unreachable, 429/5xx) as opposed to a bad request or token — only outages trip the circuit breaker. */

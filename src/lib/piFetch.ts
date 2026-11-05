@@ -6,6 +6,9 @@
  */
 const RETRYABLE = new Set([429, 502, 503, 504])
 
+/** Retry jitter in [0, 1) from the Web Crypto RNG (Math.random is flagged as a security hotspot). */
+export const jitterFraction = () => crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32
+
 export async function fetchWithBackoff(
   url: string,
   init: RequestInit,
@@ -18,10 +21,10 @@ export async function fetchWithBackoff(
       const res = await fetchImpl(url, init)
       if (!RETRYABLE.has(res.status) || attempt >= retries) return res
       const retryAfter = Number(res.headers.get('retry-after'))
-      await wait(Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter * 1000, 3000) : baseMs * 2 ** attempt + Math.random() * baseMs)
+      await wait(Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter * 1000, 3000) : baseMs * 2 ** attempt + jitterFraction() * baseMs)
     } catch (err) {
       if (attempt >= retries) throw err
-      await wait(baseMs * 2 ** attempt + Math.random() * baseMs)
+      await wait(baseMs * 2 ** attempt + jitterFraction() * baseMs)
     }
   }
 }
