@@ -15,6 +15,7 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.848.0",
     "@aws-sdk/client-s3": "^3.848.0",
+    "@aws-sdk/client-secrets-manager": "^3.1005.0",
     "@aws-sdk/lib-dynamodb": "^3.850.0",
     "@clerk/nextjs": "^6.27.1",
     "@dagrejs/dagre": "^3.1.1",

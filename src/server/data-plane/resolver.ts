@@ -4,6 +4,7 @@
  * when one is, and an error when a route exists but cannot be used. There is no
  * fallback to Pype once a route exists.
  */
+import { GetSecretValueCommand, SecretsManagerClient } from '@aws-sdk/client-secrets-manager'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { CircuitBreaker, withBreaker } from './breaker'
 import { DestinationIncompatible, DestinationUnavailable, RouteInMaintenance } from './errors'
@@ -65,18 +66,42 @@ export const readRegistry: RegistryReader = async (projectId) => {
   return (data ?? []) as unknown as RegistryRoute[]
 }
 
-// ponytail: only env:NAME references resolve here. ARN references need the AWS
-// Secrets Manager client (a new dependency, needs a human yes); inject one via deps.secrets.
-// A PEM cannot sit in an env file as-is, so the value may be base64 of the PEM or use literal \n.
+// `env:NAME` reads the server environment (PEM as base64 or with literal \n, since an env file is one line);
+// any other reference is an AWS Secrets Manager id whose value is the PEM or JSON with `private_key`.
 const fromEnv = (raw: string) => {
   const decoded = raw.includes('BEGIN') ? raw : Buffer.from(raw, 'base64').toString('utf8')
   return decoded.includes('BEGIN') ? decoded.replace(/\\n/g, '\n') : raw
 }
 
+const SECRET_CACHE_MS = 60_000 // short, so a rotated key is picked up within a minute
+const cachedSecrets = new Map<string, { at: number; value: string }>()
+let secretsClient: SecretsManagerClient | undefined
+
+async function fromSecretsManager(ref: string): Promise<string | undefined> {
+  const hit = cachedSecrets.get(ref)
+  if (hit && Date.now() - hit.at < SECRET_CACHE_MS) return hit.value
+  secretsClient ??= new SecretsManagerClient({ region: process.env.AWS_REGION ?? process.env.AWS_DEFAULT_REGION ?? 'us-east-2' })
+  const res = await secretsClient.send(new GetSecretValueCommand({ SecretId: ref }))
+  let value = res.SecretString
+  try {
+    value = (JSON.parse(value ?? '') as { private_key?: string }).private_key ?? value
+  } catch {
+    // not JSON: the value is the key itself
+  }
+  if (value) cachedSecrets.set(ref, { at: Date.now(), value: fromEnv(value) })
+  return value ? fromEnv(value) : undefined
+}
+
 export const resolveSecret: SecretResolver = async (ref) => {
-  const raw = ref.startsWith('env:') ? process.env[ref.slice(4)] : undefined
-  if (!raw) throw new DestinationUnavailable(undefined, 'Destination secret could not be resolved')
-  return fromEnv(raw)
+  let value: string | undefined
+  try {
+    value = ref.startsWith('env:') ? (process.env[ref.slice(4)] ? fromEnv(process.env[ref.slice(4)] as string) : undefined) : await fromSecretsManager(ref)
+  } catch (e) {
+    console.error('[data-plane] destination secret lookup failed', ref, e instanceof Error ? e.name : 'error') // name only, never a value
+    value = undefined
+  }
+  if (!value) throw new DestinationUnavailable(undefined, 'Destination secret could not be resolved')
+  return value
 }
 
 interface Deps {
