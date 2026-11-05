@@ -79,4 +79,11 @@ describe('postgrest adapter', () => {
     const head = JSON.parse(Buffer.from(mintToken({ ...dest, config: { ...dest.config, kid: 'k1' } }, pem).split('.')[0], 'base64url').toString())
     expect(head.kid).toBe('k1')
   })
+
+  it('storage none checks the data API root instead of the signer health', async () => {
+    const urls: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => { urls.push(url); return new Response('{"schema":1,"schema_version":1}', { status: 200 }) }))
+    await verifyPostgrestDestination({ ...dest, config: { ...dest.config, storage: 'none' } }, pem, 1)
+    expect(urls.some((u) => u.includes('/signer/v1/health'))).toBe(false)
+  })
 })
