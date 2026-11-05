@@ -127,8 +127,9 @@ export function createQueryPlane(db: Db, opts: { typed: boolean; destination?: s
         const withUser = { ...args, p_user_clerk_id: user.clerkId, p_user_email: user.email }
         let res = await db.rpc('get_call_logs_with_distinct', withUser)
         if (res.error?.code === 'PGRST202') {
-          // Older functions (and customer schemas) take the 13 data arguments only.
-          res = await db.rpc('get_call_logs_with_distinct', args)
+          // Older functions take the 13 data arguments only. The customer schema also needs the agent
+          // allow-list (NULL returns nothing); access to this agent was already checked by the caller.
+          res = await db.rpc('get_call_logs_with_distinct', opts.typed ? { ...args, p_allowed_agent_ids: [args.p_agent_id] } : args)
         }
         return (ok(res).data ?? []) as Row[]
       },
