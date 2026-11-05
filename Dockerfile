@@ -1,13 +1,21 @@
 FROM node:20-alpine AS base
 RUN apk add --no-cache libc6-compat
-WORKDIR /app
 
-# Install dependencies
-COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts --legacy-peer-deps
+# Non-root user up front so every file is owned by it as it is created. A trailing
+# `chown -R /app` instead copied the whole app (node_modules included) into one more
+# layer on every build: ~64s to build and a larger image to push and pull.
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+WORKDIR /app
+RUN chown nextjs:nodejs /app
+USER nextjs
+
+# Install dependencies (npm cache pointed at /tmp: the user's home may not be writable)
+COPY --chown=nextjs:nodejs package.json package-lock.json ./
+RUN npm_config_cache=/tmp/.npm npm ci --ignore-scripts --legacy-peer-deps
 
 # Copy application files
-COPY . .
+COPY --chown=nextjs:nodejs . .
 
 ENV NODE_ENV=production
 
@@ -68,14 +76,7 @@ ARG NEXT_PUBLIC_REPROCESS_API_BASE_URL
 ENV NEXT_PUBLIC_REPROCESS_API_BASE_URL=${NEXT_PUBLIC_REPROCESS_API_BASE_URL}
 
 # Build the production bundle
-RUN npm run build
-
-# Create a non-root user
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs && \
-    chown -R nextjs:nodejs /app
-
-USER nextjs
+RUN npm_config_cache=/tmp/.npm NEXT_TELEMETRY_DISABLED=1 npm run build
 
 EXPOSE 3000
 
