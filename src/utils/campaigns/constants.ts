@@ -203,6 +203,7 @@ export const VALID_CALL_METADATA_FIELD_KEYS = CALL_METADATA_FIELDS.filter(f => f
 // Campaign types
 export interface CallStats {
   pending: number
+  calling?: number
   completed: number
   failed: number
   total: number

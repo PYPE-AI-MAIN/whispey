@@ -98,3 +98,12 @@ describe('DataPlaneResolver', () => {
     expect(String(err.message)).not.toContain('SECRET')
   })
 })
+
+describe('campaignLocation', () => {
+  const loc = (routes: RegistryRoute[]) => new DataPlaneResolver({ registry: async () => routes }).campaignLocation('p1')
+  it('is pype with no route or a pype destination, customer for anything else', async () => {
+    expect(await loc([])).toBe('pype')
+    expect(await loc([route('campaigns', dest({ kind: 'pype_supabase' }))])).toBe('pype')
+    expect(await loc([route('campaigns', dest())])).toBe('customer')
+  })
+})
