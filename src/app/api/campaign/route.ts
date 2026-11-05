@@ -121,7 +121,13 @@ export async function POST(request: NextRequest) {
     console.log(schedulePayload)
 
 
-    const scheduleResponse = await fetch('https://3vakfucpd4.execute-api.ap-south-1.amazonaws.com/dev/api/v1/cron/create-schedule', {
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN
+    if (!baseUrl) {
+      console.error('NEXT_PUBLIC_API_BASE_URL_CAMPAIGN is not configured')
+      return NextResponse.json({ error: 'Campaign scheduler is not configured' }, { status: 500 })
+    }
+
+    const scheduleResponse = await fetch(`${baseUrl}/api/v1/cron/create-schedule`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
