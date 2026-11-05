@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { DataPlaneResolver, REGISTRY_CACHE_MS, resolveSecret, type RegistryRoute, type RegistryDestination } from '@/server/data-plane/resolver'
 import { DestinationIncompatible, DestinationUnavailable, RouteInMaintenance } from '@/server/data-plane/errors'
 import { createFakePlane } from '@/server/data-plane/testing/fakePlane'
@@ -123,5 +123,32 @@ describe('resolveSecret env values', () => {
     process.env.TEST_PEM = 'plain-secret'
     expect(await resolveSecret('env:TEST_PEM')).toBe('plain-secret')
     delete process.env.TEST_PEM
+  })
+})
+
+const smSend = vi.fn()
+vi.mock('@aws-sdk/client-secrets-manager', () => ({
+  SecretsManagerClient: vi.fn(() => ({ send: smSend })),
+  GetSecretValueCommand: vi.fn((input) => ({ input })),
+}))
+
+describe('resolveSecret from Secrets Manager', () => {
+  beforeEach(() => smSend.mockReset())
+  const PEM = '-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----\n'
+  it('returns private_key from a JSON secret', async () => {
+    smSend.mockResolvedValueOnce({ SecretString: JSON.stringify({ private_key: PEM }) })
+    expect(await resolveSecret('pype/prod/dest-a')).toBe(PEM)
+  })
+  it('returns a bare PEM secret and caches it', async () => {
+    smSend.mockResolvedValueOnce({ SecretString: PEM })
+    expect(await resolveSecret('pype/prod/dest-b')).toBe(PEM)
+    expect(await resolveSecret('pype/prod/dest-b')).toBe(PEM)
+    expect(smSend).toHaveBeenCalledTimes(1)
+  })
+  it('a failed or empty lookup is DestinationUnavailable', async () => {
+    smSend.mockRejectedValueOnce(new Error('AccessDenied'))
+    await expect(resolveSecret('pype/prod/dest-c')).rejects.toBeInstanceOf(DestinationUnavailable)
+    smSend.mockResolvedValueOnce({ SecretString: '' })
+    await expect(resolveSecret('pype/prod/dest-d')).rejects.toBeInstanceOf(DestinationUnavailable)
   })
 })
