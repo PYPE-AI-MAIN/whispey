@@ -3,7 +3,7 @@
  * The Supabase client always calls /rest/v1, so this builds a PostgrestClient on
  * the customer base URL. Calls time out after 8 s; the token lives 5 minutes.
  */
-import { createSign, randomUUID } from 'node:crypto'
+import { createSign } from 'node:crypto'
 import { PostgrestClient } from '@supabase/postgrest-js'
 import { DestinationIncompatible, DestinationUnavailable } from '../errors'
 import type { DataPlane } from '../ports'
@@ -16,20 +16,21 @@ export interface PostgrestDestination {
   id: string
   name: string
   /** Non-secret registry config. */
-  config: { base_url?: string; audience?: string; role?: string }
+  config: { base_url?: string; audience?: string; role?: string; kid?: string }
 }
 
 const b64url = (v: string | Buffer) => Buffer.from(v).toString('base64url')
 
 /** RS256 token for one customer: audience per customer, role pype_writer unless config says otherwise. */
-export function mintToken(dest: PostgrestDestination, privateKeyPem: string, now = Date.now()): string {
+export function mintToken(dest: PostgrestDestination, privateKeyPem: string, now = Date.now(), extra: Record<string, string> = {}): string {
   const iat = Math.floor(now / 1000)
-  const head = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }))
+  const head = b64url(JSON.stringify({ alg: 'RS256', typ: 'JWT', ...(dest.config.kid && { kid: dest.config.kid }) }))
   const body = b64url(JSON.stringify({
     aud: dest.config.audience ?? dest.name,
     role: dest.config.role ?? 'pype_writer',
     iat,
     exp: iat + TOKEN_TTL_S,
+    ...extra,
   }))
   const sig = createSign('RSA-SHA256').update(`${head}.${body}`).sign(privateKeyPem)
   return `${head}.${body}.${b64url(sig)}`
@@ -67,10 +68,13 @@ export function createPostgrestPlane(dest: PostgrestDestination, privateKeyPem: 
       async signRecordingUrl(key, ttlSeconds) {
         let res: Response
         try {
-          res = await authedFetch(`${base}/signer/v1/recordings/sign`, {
+          // The signer only signs keys `recordings/<project_id>/...` for a token carrying that project_id.
+          const token = mintToken(dest, privateKeyPem, Date.now(), { project_id: key.split('/')[1] ?? '' })
+          res = await fetch(`${base}/signer/v1/recordings/sign`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key, ttl_seconds: ttlSeconds }),
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ key, expires_in: ttlSeconds }),
+            signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
           })
         } catch {
           throw new DestinationUnavailable(dest.name)
@@ -85,9 +89,8 @@ export function createPostgrestPlane(dest: PostgrestDestination, privateKeyPem: 
 export interface VerifyCheck { name: string; ok: boolean; detail?: string }
 
 /**
- * The attach checklist: connect, schema version, write/read/delete probe, storage sign.
- * Assumes the schema pack's `pype_probe(id, note)` table and the signer's
- * `/signer/v1/health` and `/signer/v1/version` (design page 2, section 5). Details never include secrets.
+ * The attach checklist: connect, schema version, database schema_info (the signer's health check covers storage).
+ * Uses the signer's `/signer/v1/health` and `/signer/v1/version` and the schema pack's `rpc/schema_info`. Details never include secrets.
  */
 export async function verifyPostgrestDestination(dest: PostgrestDestination, privateKeyPem: string, expectedSchemaVersion: number): Promise<VerifyCheck[]> {
   const base = baseUrl(dest)
@@ -108,24 +111,17 @@ export async function verifyPostgrestDestination(dest: PostgrestDestination, pri
     return res
   }
   const jsonHeaders = { 'Content-Type': 'application/json', Prefer: 'return=representation' }
-  const probeId = randomUUID()
 
   return [
     await run('connect', async () => { need(await call('/signer/v1/health'), 'health') }),
     await run('schema version', async () => {
-      const { version } = (await need(await call('/signer/v1/version'), 'version').json()) as { version: number }
-      if (version !== expectedSchemaVersion) throw new Error(`schema version ${version}, expected ${expectedSchemaVersion}`)
-      return `v${version}`
+      const { schema } = (await need(await call('/signer/v1/version'), 'version').json()) as { schema: number }
+      if (schema !== expectedSchemaVersion) throw new Error(`schema version ${schema}, expected ${expectedSchemaVersion}`)
+      return `v${schema}`
     }),
-    await run('write probe', async () => { need(await call('/pype_probe', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ id: probeId, note: 'verify' }) }), 'write') }),
-    await run('read probe', async () => {
-      const rows = (await need(await call(`/pype_probe?id=eq.${probeId}&select=id`), 'read').json()) as unknown[]
-      if (rows.length !== 1) throw new Error('probe row not found')
-    }),
-    await run('delete probe', async () => { need(await call(`/pype_probe?id=eq.${probeId}`, { method: 'DELETE' }), 'delete') }),
-    await run('storage sign', async () => {
-      const res = need(await call('/signer/v1/recordings/sign', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ key: `probe/${probeId}`, ttl_seconds: 60 }) }), 'sign')
-      if (!((await res.json()) as { url?: string }).url) throw new Error('no signed url returned')
+    await run('database', async () => {
+      const { schema_version } = (await need(await call('/rpc/schema_info', { method: 'POST', headers: jsonHeaders, body: '{}' }), 'schema_info').json()) as { schema_version: number }
+      if (schema_version !== expectedSchemaVersion) throw new Error(`database schema ${schema_version}, expected ${expectedSchemaVersion}`)
     }),
   ]
 }
