@@ -12,7 +12,8 @@ import {
   Trash2,
   Loader2,
   ChevronRight,
-  Phone
+  Phone,
+  Lock
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -260,7 +261,7 @@ const AgentBadges: React.FC<AgentBadgesProps> = ({ agent, isWorkflow, sizeClassN
       <Badge variant="outline" className={sizeClassName}>Dockerized</Badge>
     )}
     {isWorkflow && (
-      <Badge variant="outline" className={`${sizeClassName} border-violet-300 text-violet-600 dark:border-violet-700 dark:text-violet-400`}>Workflow</Badge>
+      <Badge variant="outline" className={`${sizeClassName} border-input bg-muted text-muted-foreground`}>Workflow</Badge>
     )}
   </>
 )
@@ -418,7 +419,8 @@ const MobileAgentCard: React.FC<AgentViewProps> = ({
 
         {/* Status and environment row */}
         <div className="flex items-center justify-between mb-4">
-          <span className={`inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-full ${getEnvironmentBadgeColor(agent.environment)}`}>
+          <span className={`inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-full ${getEnvironmentBadgeColor(agent.environment)}`}>
+            {/^prod(uction)?$/i.test(agent.environment ?? '') && <Lock className="h-3 w-3" />}
             {agent.environment}
           </span>
           
@@ -586,7 +588,8 @@ const ListAgentRow: React.FC<AgentViewWithMobileProps> = ({
                 <h3 className="font-semibold text-sm text-foreground truncate">
                   {agentDisplayName(agent)}
                 </h3>
-                <span className={`text-xs font-medium px-2 py-1 rounded-full ${getEnvironmentBadgeColor(agent.environment)}`}>
+                <span className={`text-xs font-medium px-2 py-1 rounded-full ${getEnvironmentBadgeColor(agent.environment)} inline-flex items-center gap-1`}>
+                  {/^prod(uction)?$/i.test(agent.environment ?? '') && <Lock className="h-3 w-3" />}
                   {agent.environment}
                 </span>
                 <AgentBadges agent={agent} isWorkflow={isWorkflow} sizeClassName="text-xs px-2 py-0 h-5" showDeployment={true} hidePype />
@@ -768,7 +771,8 @@ return (
 
         {/* Environment Badge */}
         <div className="mb-3">
-          <span className={`inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full ${getEnvironmentBadgeColor(agent.environment)}`}>
+          <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full ${getEnvironmentBadgeColor(agent.environment)}`}>
+            {/^prod(uction)?$/i.test(agent.environment ?? '') && <Lock className="h-3 w-3" />}
             {agent.environment}
           </span>
         </div>

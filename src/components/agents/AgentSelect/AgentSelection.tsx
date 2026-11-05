@@ -50,6 +50,7 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
     try { localStorage.setItem('agents_view_mode', mode) } catch {}
   }, [])
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [envTab, setEnvTab] = useState<'prod' | 'dev' | null>(null)
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   // const router = useRouter()
 
@@ -141,7 +142,12 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
   const { isOwnerOrAdmin } = useMemberVisibility(projectId)
 
   // All users can see the agents in their project (backend enforces access controls)
+  // ponytail: anything that isn't 'prod' (dev, staging) lives under the Dev tab
+  const isProd = (a: { environment: string }) => /^prod(uction)?$/i.test(a.environment ?? '')
+  const prodCount = (agents || []).filter(isProd).length
+  const tab = envTab ?? (prodCount > 0 ? 'prod' : 'dev')
   const filteredAgents = (agents || []).filter(agent => {
+    if (isProd(agent) !== (tab === 'prod')) return false
     const matchesSearch = agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       agentDisplayName(agent).toLowerCase().includes(searchQuery.toLowerCase()) ||
       agent.agent_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -154,6 +160,8 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
     return matchesSearch && matchesStatus
   })
 
+  // the active tab has no agents, but the other one does (and nothing is being searched)
+  const tabIsEmpty = filteredAgents.length === 0 && !searchQuery && (agents?.length || 0) > 0
   const loading = projectLoading || agentsLoading
   const error = projectError || agentsError
 
@@ -207,9 +215,23 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
           />
         </div>
 
+        <div className="mb-4 flex gap-2 md:shrink-0" role="tablist">
+          {([
+            ['prod', 'Production', prodCount, 'border-red-500/40 bg-red-500/15 text-red-700 dark:border-red-400/40 dark:bg-red-400/15 dark:text-red-300', 'border-transparent bg-red-500/5 text-muted-foreground hover:bg-red-500/10', 'bg-red-500 dark:bg-red-400'],
+            ['dev', 'Development', (agents || []).length - prodCount, 'border-green-600/40 bg-green-500/15 text-green-700 dark:border-green-400/40 dark:bg-green-400/15 dark:text-green-300', 'border-transparent bg-green-500/5 text-muted-foreground hover:bg-green-500/10', 'bg-green-600 dark:bg-green-400'],
+          ] as const).map(([k, label, n, on, off, dot]) => (
+            <button key={k} role="tab" aria-selected={tab === k} onClick={() => setEnvTab(k)}
+              className={`flex items-center gap-2 rounded-lg border px-3.5 py-1.5 text-sm transition-colors ${tab === k ? on + ' font-medium' : off}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
+              {label}
+              <span className="rounded-full bg-background/60 px-1.5 text-xs text-muted-foreground">{n}</span>
+            </button>
+          ))}
+        </div>
+
         {/* -m-1/p-1 leave room for card rings and shadows at the scroll edges */}
         <div className="agent-list-scroll md:-m-1 md:min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain md:p-1">
-          {filteredAgents.length > 0 ? (
+          {filteredAgents.length > 0 && (
             <AgentList
               agents={filteredAgents}
               viewMode={viewMode}
@@ -219,7 +241,13 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
               onCopyAgentId={handleCopyAgentId}
               onDeleteAgent={setShowDeleteConfirm}
             />
-          ) : (
+          )}
+          {tabIsEmpty && (
+            <p className="py-16 text-center text-sm text-muted-foreground">
+              No {tab === 'prod' ? 'production' : 'development'} agents yet.
+            </p>
+          )}
+          {filteredAgents.length === 0 && !tabIsEmpty && (
             <AgentEmptyStates
               searchQuery={searchQuery}
               totalAgents={agents?.length || 0}
