@@ -14,12 +14,12 @@ export function rethrowDataPlane(e: unknown): void {
  * HTTP 503 ("try again"). The handler resolves the plane after its own auth check:
  * `const plane = await dp.forProject(projectId)`.
  */
-export function withDataPlane<Req, Ctx = unknown>(
-  handler: (dp: PlaneSource, req: Req, ctx: Ctx) => Promise<Response>
-): (req: Req, ctx?: Ctx) => Promise<Response> {
-  return async (req, ctx) => {
+// ctx defaults to any: routes without params declare no third argument.
+export function withDataPlane<Req, Ctx = any>(handler: (dp: PlaneSource, req: Req, ctx: Ctx) => Promise<Response>): (req: Req, ctx: Ctx) => Promise<Response> {
+  // Next.js checks a route export's second argument, so it must be the handler's own (not optional).
+  return async (req: Req, ctx: Ctx): Promise<Response> => {
     try {
-      return await handler(getDataPlaneResolver(), req, ctx as Ctx)
+      return await handler(getDataPlaneResolver(), req, ctx)
     } catch (e) {
       if (!(e instanceof DataPlaneError)) throw e
       return NextResponse.json(
