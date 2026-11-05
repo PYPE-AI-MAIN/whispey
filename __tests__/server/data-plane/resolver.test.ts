@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { DataPlaneResolver, REGISTRY_CACHE_MS, type RegistryRoute, type RegistryDestination } from '@/server/data-plane/resolver'
+import { DataPlaneResolver, REGISTRY_CACHE_MS, resolveSecret, type RegistryRoute, type RegistryDestination } from '@/server/data-plane/resolver'
 import { DestinationIncompatible, DestinationUnavailable, RouteInMaintenance } from '@/server/data-plane/errors'
 import { createFakePlane } from '@/server/data-plane/testing/fakePlane'
 
@@ -105,5 +105,23 @@ describe('campaignLocation', () => {
     expect(await loc([])).toBe('pype')
     expect(await loc([route('campaigns', dest({ kind: 'pype_supabase' }))])).toBe('pype')
     expect(await loc([route('campaigns', dest())])).toBe('customer')
+  })
+})
+
+describe('resolveSecret env values', () => {
+  const pem = '-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----\n'
+  it.each([
+    ['raw', pem],
+    ['escaped newlines', pem.replace(/\n/g, '\\n')],
+    ['base64', Buffer.from(pem).toString('base64')],
+  ])('returns the PEM from a %s value', async (_n, v) => {
+    process.env.TEST_PEM = v
+    expect(await resolveSecret('env:TEST_PEM')).toBe(pem)
+    delete process.env.TEST_PEM
+  })
+  it('passes a non-PEM secret through', async () => {
+    process.env.TEST_PEM = 'plain-secret'
+    expect(await resolveSecret('env:TEST_PEM')).toBe('plain-secret')
+    delete process.env.TEST_PEM
   })
 })

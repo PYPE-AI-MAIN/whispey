@@ -67,10 +67,16 @@ export const readRegistry: RegistryReader = async (projectId) => {
 
 // ponytail: only env:NAME references resolve here. ARN references need the AWS
 // Secrets Manager client (a new dependency, needs a human yes); inject one via deps.secrets.
+// A PEM cannot sit in an env file as-is, so the value may be base64 of the PEM or use literal \n.
+const fromEnv = (raw: string) => {
+  const decoded = raw.includes('BEGIN') ? raw : Buffer.from(raw, 'base64').toString('utf8')
+  return decoded.includes('BEGIN') ? decoded.replace(/\\n/g, '\n') : raw
+}
+
 export const resolveSecret: SecretResolver = async (ref) => {
-  const value = ref.startsWith('env:') ? process.env[ref.slice(4)] : undefined
-  if (!value) throw new DestinationUnavailable(undefined, 'Destination secret could not be resolved')
-  return value
+  const raw = ref.startsWith('env:') ? process.env[ref.slice(4)] : undefined
+  if (!raw) throw new DestinationUnavailable(undefined, 'Destination secret could not be resolved')
+  return fromEnv(raw)
 }
 
 interface Deps {
