@@ -193,6 +193,7 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({
               {callId && (
                 <FlagEditor
                   callId={callId}
+                  agentId={agentId}
                   initialFlag={initialFlag}
                   currentUserId={currentUserId}
                   currentUserEmail={currentUserEmail}

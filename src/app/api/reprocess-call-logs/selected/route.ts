@@ -9,6 +9,7 @@ import { auth } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
 import { canShowOrgSection } from '@/types/visibility'
+import { withDataPlane, rethrowDataPlane } from '@/server/data-plane'
 import { REANALYZE_CONCURRENCY, parseLogIds, runLimited } from '@/lib/reprocessSelection'
 
 const REPROCESS_API_BASE_URL = process.env.NEXT_PUBLIC_REPROCESS_API_BASE_URL ||
@@ -18,7 +19,7 @@ const REPROCESS_API_BASE_URL = process.env.NEXT_PUBLIC_REPROCESS_API_BASE_URL ||
 const TYPES = new Set(['empty_only', 'all'])
 const OPTIONS = new Set(['transcription', 'metrics', 'both'])
 
-export async function POST(request: NextRequest) {
+export const POST = withDataPlane(async (dp, request: NextRequest) => {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -53,16 +54,16 @@ export async function POST(request: NextRequest) {
   }
 
   // Only this agent's calls; the lambda only reanalyzes completed ones.
-  const { data: rows, error } = await supabase
-    .from('pype_voice_call_logs')
-    .select('id, created_at, call_ended_reason')
-    .eq('agent_id', agent_id)
-    .in('id', parsed.ids)
-  if (error) {
+  const plane = await dp.forProject(agent.project_id)
+  let rows
+  try {
+    rows = await plane.callData.findCallLogs(agent_id, parsed.ids, 'id, created_at, call_ended_reason')
+  } catch (error) {
+    rethrowDataPlane(error)
     console.error('Reanalyze selected: call lookup failed', error)
     return NextResponse.json({ error: 'Could not look up the calls' }, { status: 500 })
   }
-  const calls = (rows ?? []).filter((r) => r.call_ended_reason === 'completed' && r.created_at)
+  const calls = rows.filter((r) => r.call_ended_reason === 'completed' && r.created_at)
 
   const apiUrl = `${REPROCESS_API_BASE_URL}/reprocess-call-logs`
   const results = await runLimited(calls, REANALYZE_CONCURRENCY, async (call) => {
@@ -95,4 +96,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Could not start reanalyzing. Try again.', queued, skipped, failed }, { status: 502 })
   }
   return NextResponse.json({ queued, skipped, failed })
-}
+})

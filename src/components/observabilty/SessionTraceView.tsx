@@ -12,6 +12,7 @@ interface SessionTraceViewProps {
   fetchNextPage?: () => void;
   isFetchingNextPage?: boolean;
   totalCount?: number;
+  agentId?: string;
 }
 
 
@@ -32,7 +33,8 @@ const SessionTraceView = ({
   hasNextPage = false,
   fetchNextPage = () => {},
   isFetchingNextPage = false,
-  totalCount = 0
+  totalCount = 0,
+  agentId
 }: SessionTraceViewProps) => {
   const [selectedSpan, setSelectedSpan] = useState<Span | null>(null);
   const [expandedTurns, setExpandedTurns] = useState<Set<string>>(new Set());
@@ -461,6 +463,7 @@ const SessionTraceView = ({
         span={selectedSpan}
         isOpen={!!selectedSpan}
         onClose={() => setSelectedSpan(null)}
+        agentId={agentId}
       />
     </>
   );

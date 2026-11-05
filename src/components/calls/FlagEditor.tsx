@@ -13,6 +13,8 @@ export type { FlagEntry } from '@/utils/callLogsUtils'
 
 export interface FlagEditorProps {
   callId: string
+  /** The call's agent: tells the server which project's data to read. */
+  agentId: string
   initialFlag?: unknown
   /** Current signed-in user's Clerk id — used to tell which flags they authored */
   currentUserId?: string | null
@@ -309,6 +311,7 @@ function formatRelativeTime(iso: string): string {
 
 export const FlagEditor: React.FC<FlagEditorProps> = ({
   callId,
+  agentId,
   initialFlag,
   currentUserId,
   currentUserEmail,
@@ -338,11 +341,11 @@ export const FlagEditor: React.FC<FlagEditorProps> = ({
     const res = await fetch(`/api/logs/call-logs/${callId}/flag`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ ...body, agent_id: agentId }),
     })
     if (!res.ok) throw new Error(await res.text())
     return await res.json() as { flags: FlagEntry[]; qaPath?: string | null }
-  }, [callId])
+  }, [callId, agentId])
 
   const handleAdd = async () => {
     const text = draft.trim()

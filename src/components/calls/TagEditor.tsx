@@ -289,6 +289,8 @@ const TagDot: React.FC<{ tag: string }> = ({ tag }) => {
 // ─── Props ────────────────────────────────────────────────────────────────────
 export interface TagEditorProps {
   callId: string
+  /** The call's agent: tells the server which project's data to read. */
+  agentId: string
   initialTags: string[]
   initialTagComments?: Record<string, string>
   availableTags: string[]
@@ -305,6 +307,7 @@ export interface TagEditorProps {
 // ─── Component ────────────────────────────────────────────────────────────────
 export const TagEditor: React.FC<TagEditorProps> = ({
   callId,
+  agentId,
   initialTags,
   initialTagComments = {},
   availableTags,
@@ -337,7 +340,7 @@ export const TagEditor: React.FC<TagEditorProps> = ({
       const res = await fetch(`/api/logs/call-logs/${callId}/tags`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tags: nextTags }),
+        body: JSON.stringify({ tags: nextTags, agent_id: agentId }),
       })
       if (!res.ok) throw new Error(await res.text())
       // No refetch — local state is already correct; refetching caused the flicker
@@ -347,7 +350,7 @@ export const TagEditor: React.FC<TagEditorProps> = ({
     } finally {
       setSaving(false)
     }
-  }, [callId])
+  }, [callId, agentId])
 
   const persistComment = useCallback(async (
     nextComments: Record<string, string>,
@@ -357,7 +360,7 @@ export const TagEditor: React.FC<TagEditorProps> = ({
       const res = await fetch(`/api/logs/call-logs/${callId}/tags`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tagComments: nextComments }),
+        body: JSON.stringify({ tagComments: nextComments, agent_id: agentId }),
       })
       if (!res.ok) throw new Error(await res.text())
     } catch (err) {

@@ -154,6 +154,7 @@ function DetailHeader({
           <FlagEditor
             variant="quiet"
             callId={call.id}
+            agentId={call.agent_id}
             initialFlag={call.transcription_metrics?.flag}
             currentUserId={currentUserId}
             currentUserEmail={currentUserEmail}
@@ -223,6 +224,7 @@ function DetailHeader({
               key={`tags-${call.id}`}
               variant="quiet"
               callId={call.id}
+              agentId={call.agent_id}
               initialTags={tags}
               initialTagComments={tagComments && typeof tagComments === "object" && !Array.isArray(tagComments) ? tagComments : {}}
               availableTags={availableTags}

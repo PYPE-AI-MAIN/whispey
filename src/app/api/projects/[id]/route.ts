@@ -4,6 +4,7 @@ import { auth } from '@clerk/nextjs/server'
 import crypto from 'crypto'
 import { createProjectApiKey } from '@/lib/api-key-management'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { withDataPlane, rethrowDataPlane } from '@/server/data-plane'
 
 // Create Supabase client for server-side operations
 const supabase = createServiceRoleClient()
@@ -164,10 +165,11 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
+export const DELETE = withDataPlane(async (
+  dp,
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   try {
     const { id: projectId } = await params
 
@@ -198,34 +200,20 @@ export async function DELETE(
     const agentIds = agents?.map((agent: { id: string }) => agent.id) || []
     console.log(`Found ${agentIds.length} agents to clean up`)
 
-    // 2. Delete call logs for all agents in this project
+    // 2. Delete call data (per-turn rows, then call logs) of all agents from the project's data plane
     if (agentIds.length > 0) {
-      const { error: callLogsError } = await supabase
-        .from('pype_voice_call_logs')
-        .delete()
-        .in('agent_id', agentIds)
-
-      if (callLogsError) {
+      const plane = await dp.forProject(projectId)
+      try {
+        await plane.callLogs.deleteCallDataForAgents(agentIds)
+      } catch (callLogsError) {
+        rethrowDataPlane(callLogsError)
         console.error('Error deleting call logs:', callLogsError)
         return NextResponse.json(
           { error: 'Failed to delete call logs' },
           { status: 500 }
         )
       }
-      console.log('Successfully deleted call logs')
-
-      // 3. Delete metrics logs (adjust based on your schema relationships)
-      const { error: metricsError } = await supabase
-        .from('pype_voice_metrics_logs')
-        .delete()
-        .in('session_id', agentIds) // Adjust this field based on your actual schema
-
-      // Don't fail if metrics logs have different relationships
-      if (metricsError) {
-        console.warn('Warning: Could not delete metrics logs:', metricsError)
-      } else {
-        console.log('Successfully deleted metrics logs')
-      }
+      console.log('Successfully deleted call data')
     }
 
     console.log('Successfully deleted auth tokens')
@@ -269,13 +257,14 @@ export async function DELETE(
     )
 
   } catch (error) {
+    rethrowDataPlane(error)
     console.error('Unexpected error during project deletion:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     )
   }
-}
+})
 
 export async function GET(
   request: NextRequest,

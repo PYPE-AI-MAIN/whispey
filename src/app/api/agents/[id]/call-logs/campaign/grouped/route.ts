@@ -3,13 +3,15 @@ import { auth } from '@clerk/nextjs/server'
 import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import type { CallLog } from '@/types/logs'
+import { withDataPlane, rethrowDataPlane } from '@/server/data-plane'
 
 const supabase = createServiceRoleClient()
 
-export async function POST(
+export const POST = withDataPlane(async (
+  dp,
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const { id: agentId } = await params
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -48,26 +50,25 @@ export async function POST(
     rpcParams.p_filters = filters
   }
 
-  const { data, error } = await supabase.rpc('get_campaign_grouped_call_logs', rpcParams)
+  const plane = await dp.forProject(agentRow.project_id as string)
 
-  if (error) {
-    console.error('get_campaign_grouped_call_logs:', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  let groupedRows: CallLog[]
+  try {
+    groupedRows = (await plane.callData.campaignGroupedCallLogs(rpcParams)) as CallLog[]
+  } catch (e) {
+    rethrowDataPlane(e)
+    console.error('get_campaign_grouped_call_logs:', e)
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Unknown error' }, { status: 500 })
   }
-
-  const groupedRows = (data ?? []) as CallLog[]
 
   // Batch-fetch all calls for the 50 contacts so sub_rows are available instantly on expand
   if (groupedRows.length > 0) {
     const customerNumbers = groupedRows.map(r => r.customer_number)
 
-    const { data: allCalls } = await supabase
-      .from('pype_voice_call_logs')
-      .select('*')
-      .eq('agent_id', agentId)
-      .filter('metadata->>campaignId', 'eq', campaignId)
-      .in('customer_number', customerNumbers)
-      .order('call_started_at', { ascending: false })
+    const allCalls = await plane.callData.listCampaignCalls(agentId, campaignId, customerNumbers).catch((e) => {
+      rethrowDataPlane(e) // a failed sub-row lookup still returns the grouped rows, as before
+      return null
+    })
 
     if (allCalls && allCalls.length > 0) {
       const callsByContact = new Map<string, CallLog[]>()
@@ -87,4 +88,4 @@ export async function POST(
   }
 
   return NextResponse.json({ data: groupedRows })
-}
+})
