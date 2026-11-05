@@ -65,6 +65,24 @@ function dataArgs(body: Record<string, unknown>, agentId: string, p_select: unkn
   }
 }
 
+/** Download rules: the project may disable them, and so may the agent's per-user settings. */
+function downloadDenied(isDownload: boolean, access: Access, callLogSettings: any, isSuperAdmin: boolean, userEmail: string | null): string | null {
+  if (!isDownload) return null
+  if (access.downloadDisabled) return 'Downloads are disabled for this project'
+  return isAgentDownloadDisabledForUser(callLogSettings, isSuperAdmin, userEmail) ? 'Downloads are disabled for this user on this agent' : null
+}
+
+async function fetchRows(dp: PlaneSource, projectId: string, args: ReturnType<typeof dataArgs>, user: { clerkId: string; email: string | null }) {
+  try {
+    const plane = await dp.forProject(projectId)
+    return (await plane.callData.queryCallLogs(args, user)) as CallLog[]
+  } catch (e) {
+    rethrowDataPlane(e)
+    console.error('get_call_logs_with_distinct:', e)
+    return deny(e instanceof Error ? e.message : 'Unknown error', 500)
+  }
+}
+
 export async function handleCallLogsQuery(dp: PlaneSource, request: NextRequest, scope: QueryScope) {
   const { userId } = await auth()
   const user = await currentUser()
@@ -86,8 +104,6 @@ export async function handleCallLogsQuery(dp: PlaneSource, request: NextRequest,
   const { agentRow, access, agentId } = resolved
 
   const isDownload = body.p_purpose === 'download'
-  if (isDownload && access.downloadDisabled) return deny('Downloads are disabled for this project', 403)
-
   const userEmail = user?.emailAddresses?.[0]?.emailAddress ?? null
   const { isSuperAdmin, disallowedColumns } = await resolveColumnAccessForRequest({
     userId,
@@ -95,21 +111,13 @@ export async function handleCallLogsQuery(dp: PlaneSource, request: NextRequest,
     callLogSettings: agentRow.call_log_settings,
     isDownload,
   })
-  if (isDownload && isAgentDownloadDisabledForUser(agentRow.call_log_settings, isSuperAdmin, userEmail)) {
-    return deny('Downloads are disabled for this user on this agent', 403)
-  }
+  const denied = downloadDenied(isDownload, access, agentRow.call_log_settings, isSuperAdmin, userEmail)
+  if (denied) return deny(denied, 403)
 
   const p_select = filterSelectColumns(body.p_select ?? '*', disallowedColumns)
-  let rows: CallLog[]
-  try {
-    const plane = await dp.forProject(agentRow.project_id)
-    rows = (await plane.callData.queryCallLogs(dataArgs(body, agentId, p_select), { clerkId: userId, email: userEmail })) as CallLog[]
-  } catch (e) {
-    rethrowDataPlane(e)
-    console.error('get_call_logs_with_distinct:', e)
-    return deny(e instanceof Error ? e.message : 'Unknown error', 500)
-  }
+  const fetched = await fetchRows(dp, agentRow.project_id, dataArgs(body, agentId, p_select), { clerkId: userId, email: userEmail })
+  if (fetched instanceof NextResponse) return fetched
 
-  if (access.role === 'viewer') rows = redactTagsFromCallLogsForViewer(rows)
+  const rows = access.role === 'viewer' ? redactTagsFromCallLogsForViewer(fetched) : fetched
   return NextResponse.json({ data: stripDisallowedColumns(rows, disallowedColumns) })
 }
