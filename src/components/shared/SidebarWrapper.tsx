@@ -23,7 +23,7 @@ interface SidebarWrapperProps {
 const ENHANCED_PROJECT_ID = '371c4bbb-76db-4c61-9926-bd75726a1cda'
 
 // Reserved paths that are NOT project IDs
-const RESERVED_PATHS = ['sign', 'docs', 'projects', 'onboarding', 'privacy-policy', 'terms-of-service', 'invite']
+const RESERVED_PATHS = ['sign', 'docs', 'projects', 'onboarding', 'privacy-policy', 'terms-of-service', 'invite', 'admin']
 
 interface RoutePattern {
   pattern: string
@@ -59,6 +59,8 @@ interface SidebarContext {
   isSuperAdmin: boolean
   /** True only for users with globalRole === 'superadmin' in pype_voice_users */
   isGlobalSuperAdmin: boolean
+  /** True for platform admins (PYPE_ADMINS): shows the Data destinations admin panel link */
+  isDataAdmin?: boolean
 }
 
 // Agent Studio (beta) — LiveKit agents only; its test panel uses the LiveKit
@@ -256,6 +258,16 @@ const sidebarRoutes: SidebarRoute[] = [
           name: 'Settings',
           icon: 'Settings',
           path: `/${projectId}/settings`,
+          group: 'Settings'
+        })
+      }
+
+      if (context.isDataAdmin) {
+        projectSettingItems.push({
+          id: 'data-destinations',
+          name: 'Data destinations',
+          icon: 'Database',
+          path: '/admin/data-destinations',
           group: 'Settings'
         })
       }
@@ -552,6 +564,11 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
 
   const { isOwnerOrAdmin, visibility } = useMemberVisibility(isValidProjectId ? projectId : undefined)
   const { isSuperAdmin: isGlobalSuperAdmin, canAccessPromptForge: globalCanAccessPromptForge } = useGlobalRole()
+  const { data: dataAdminAccess } = useQuery({
+    queryKey: ['admin', 'data-destinations', 'access'],
+    queryFn: async () => (await fetch('/api/admin/data-destinations/access')).json() as Promise<{ isDataAdmin: boolean }>,
+    staleTime: 5 * 60 * 1000,
+  })
   
   // Check if agentId is valid (not a reserved path)
   const agentReservedPaths = ['api-keys', 'sip-management']
@@ -625,6 +642,7 @@ export default function SidebarWrapper({ children }: SidebarWrapperProps) {
     visibility: visibility ?? null,
     isSuperAdmin: globalCanAccessPromptForge,
     isGlobalSuperAdmin,
+    isDataAdmin: !!dataAdminAccess?.isDataAdmin,
   }
   
   const sidebarConfig = getSidebarConfig(pathname, sidebarContext)
