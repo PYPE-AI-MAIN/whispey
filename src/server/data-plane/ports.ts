@@ -46,6 +46,8 @@ export interface CallDataReader {
   /** Generic read for the supabase-select proxy; `table` must pass `isCallDataTable`. */
   selectRows(table: string, q: SelectQuery): Promise<Row[]>
   countRows(table: string, filters: Filter[]): Promise<number>
+  /** Overview analytics input: the columns the aggregator reads, call_started_at in [from, to) (UTC `timestamp` text), at most maxRows. */
+  analyticsRows(q: { agentIds: string[]; from: string; to: string; maxRows: number }): Promise<Row[]>
 }
 
 export interface CallLogMutator {

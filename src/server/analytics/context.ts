@@ -15,9 +15,27 @@ import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
 import { resolveColumnAccessForRequest } from '@/lib/agentCallLogSettingsStore'
 import type { CallLogSettings } from '@/lib/callLogSettings'
 import type { Ctx } from './buildQuery'
-import { customerHeldResponse } from '@/server/data-plane'
+import { customerHeldResponse, getDataPlaneResolver, DataPlaneError } from '@/server/data-plane'
 
 const supabase = createServiceRoleClient()
+
+/**
+ * Overview charts can read a customer-held project through the data plane;
+ * everything else here reads Pype's database and gets the typed 501. A caller
+ * that opts in is told which case it is in so it never runs Pype SQL on it.
+ */
+async function customerHeldGate(projectId: string, allow: boolean | undefined): Promise<{ held: boolean } | { errorResponse: NextResponse }> {
+  if (!allow) {
+    const refused = await customerHeldResponse(projectId)
+    return refused ? { errorResponse: refused } : { held: false }
+  }
+  try {
+    return { held: await getDataPlaneResolver().isCustomerHeld(projectId) }
+  } catch (e) {
+    if (!(e instanceof DataPlaneError)) throw e
+    return { errorResponse: NextResponse.json({ error: e.message, code: e.code, retryable: true }, { status: 503, headers: { 'Retry-After': '5' } }) }
+  }
+}
 
 /**
  * Until each project carries its own zone (§6.5). A named zone, never a fixed
@@ -45,6 +63,7 @@ export type AnalyticsContext = {
   agent: { id: string; name: string; projectId: string; outcomeRanking: unknown; extractorPrompt: unknown }
   role: string
   downloadDisabled: boolean
+  customerHeld: boolean
 }
 
 /**
@@ -54,7 +73,7 @@ export type AnalyticsContext = {
  */
 export async function resolveAnalyticsContext(
   agentId: string,
-  opts: { forDownload?: boolean } = {}
+  opts: { forDownload?: boolean; allowCustomerHeld?: boolean } = {}
 ): Promise<AnalyticsContext | { errorResponse: NextResponse }> {
   const deny = (status: number, error: string) => ({ errorResponse: NextResponse.json({ error }, { status }) })
 
@@ -71,9 +90,9 @@ export async function resolveAnalyticsContext(
   const access = await getProjectRoleForApi(agent.project_id)
   if (!access) return deny(403, 'Not a member of this project')
 
-  // Analytics reads Pype's database directly; a customer-held project's data is not there.
-  const held = await customerHeldResponse(agent.project_id)
-  if (held) return { errorResponse: held }
+  // Pype SQL cannot reach a customer-held project's data.
+  const gate = await customerHeldGate(agent.project_id, opts.allowCustomerHeld)
+  if ('errorResponse' in gate) return gate
 
   // a member can be limited to particular agents; an empty list means none
   const visibleAgentIds = access.visibility.org.visibleAgentIds
@@ -116,6 +135,7 @@ export async function resolveAnalyticsContext(
     },
     role: access.role,
     downloadDisabled: access.downloadDisabled,
+    customerHeld: gate.held,
   }
 }
 
@@ -128,6 +148,7 @@ export type ProjectAnalyticsContext = {
   projectId: string
   role: string
   downloadDisabled: boolean
+  customerHeld: boolean
 }
 
 /**
@@ -144,7 +165,7 @@ export type ProjectAnalyticsContext = {
  */
 export async function resolveProjectAnalyticsContext(
   projectId: string,
-  opts: { forDownload?: boolean; agentIds?: string[] } = {}
+  opts: { forDownload?: boolean; agentIds?: string[]; allowCustomerHeld?: boolean } = {}
 ): Promise<ProjectAnalyticsContext | { errorResponse: NextResponse }> {
   const deny = (status: number, error: string) => ({ errorResponse: NextResponse.json({ error }, { status }) })
 
@@ -154,8 +175,8 @@ export async function resolveProjectAnalyticsContext(
   const access = await getProjectRoleForApi(projectId)
   if (!access) return deny(403, 'Not a member of this project')
 
-  const held = await customerHeldResponse(projectId)
-  if (held) return { errorResponse: held }
+  const gate = await customerHeldGate(projectId, opts.allowCustomerHeld)
+  if ('errorResponse' in gate) return gate
 
   const { data: agents } = await supabase
     .from('pype_voice_agents')
@@ -204,6 +225,7 @@ export async function resolveProjectAnalyticsContext(
     projectId,
     role: access.role,
     downloadDisabled: access.downloadDisabled,
+    customerHeld: gate.held,
   }
 }
 
@@ -215,7 +237,7 @@ export async function resolveProjectAnalyticsContext(
  */
 export function resolveScope(
   { agentId, projectId, agentIds }: { agentId?: string | null; projectId?: string | null; agentIds?: string[] },
-  opts: { forDownload?: boolean } = {}
+  opts: { forDownload?: boolean; allowCustomerHeld?: boolean } = {}
 ) {
   if (projectId) return resolveProjectAnalyticsContext(projectId, { ...opts, agentIds })
   if (agentId) return resolveAnalyticsContext(agentId, opts)

@@ -28,6 +28,10 @@ export const isCallDataTable = (table: string) => SELECTABLE.has(table)
 export const isCallLogsTable = (table: string) => table === T.callLogs
 
 const PAGE = 500
+// at or under the PostgREST max-rows default (1000), or a page would come back short and end the loop early
+const PAGE_ANALYTICS = 1000
+const ANALYTICS_COLUMNS =
+  'id,call_id,agent_id,customer_number,call_started_at,call_ended_at,call_ended_reason,wcall_event,environment,duration_seconds,billing_duration_seconds,avg_latency,total_stt_cost,total_tts_cost,total_llm_cost'
 const SCOPE_VALUES = new Set(['global', 'project', 'agent'])
 
 /**
@@ -134,6 +138,24 @@ export function createQueryPlane(db: Db, opts: { typed: boolean; destination?: s
         return (ok(res).data ?? []) as Row[]
       },
       selectRows,
+      async analyticsRows(q) {
+        const rows: Row[] = []
+        for (let from = 0; from <= q.maxRows; from += PAGE_ANALYTICS) {
+          const page = await selectRows(T.callLogs, {
+            select: ANALYTICS_COLUMNS,
+            filters: [
+              { column: 'agent_id', operator: 'in', value: q.agentIds },
+              { column: 'call_started_at', operator: 'gte', value: q.from },
+              { column: 'call_started_at', operator: 'lt', value: q.to },
+            ],
+            orderBy: { column: 'call_started_at', ascending: true },
+            range: [from, from + PAGE_ANALYTICS - 1],
+          })
+          rows.push(...page)
+          if (page.length < PAGE_ANALYTICS) break
+        }
+        return rows
+      },
       async countRows(table, filters) {
         if (!isCallDataTable(table)) throw new Error('Table is not call data')
         const res = await applyFilters(db.from(table).select('*', { count: 'exact', head: true }), filters)

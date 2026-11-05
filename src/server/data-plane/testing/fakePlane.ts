@@ -38,6 +38,7 @@ export function createFakePlane(seed: Record<string, Row[]> = {}): FakePlane {
       async queryCallLogs(args) { return log('queryCallLogs', t(CALL_LOGS).filter((r) => r.agent_id === args.p_agent_id)) },
       async selectRows(table) { return log('selectRows', [...t(table)]) },
       async countRows(table) { return log('countRows', t(table).length) },
+      async analyticsRows(q) { return log('analyticsRows', t(CALL_LOGS).filter((r) => q.agentIds.includes(r.agent_id) && r.call_started_at >= q.from && r.call_started_at < q.to)) },
     },
     callLogs: {
       async insertCallLog(row) { const r = { id: `log-${t(CALL_LOGS).length + 1}`, ...row }; t(CALL_LOGS).push(r); return log('insertCallLog', r) },

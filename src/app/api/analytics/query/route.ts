@@ -19,6 +19,8 @@ import { planDashboardQueries, SpecError, InternalSpecError } from '@/server/ana
 import { runQuery, isTimeout } from '@/server/analytics/db'
 import { resolveScope, isDenied, outcomeOrderFor } from '@/server/analytics/context'
 import { guarded } from '@/server/analytics/guard'
+import { withDataPlane } from '@/server/data-plane'
+import { assertSupported, aggregateCustomerRows, loadCustomerRows } from '@/server/analytics/customerQuery'
 import { asFormulaSpec, combineFormula, type WidgetResult } from '@/server/analytics/formula'
 
 export const runtime = 'nodejs'
@@ -131,10 +133,15 @@ function planWidget(
 }
 
 /** Runs one shared-scan statement and records every member widget's result. */
+type Plan = ReturnType<typeof planDashboardQueries>[number]
+type Exec = (plan: Plan) => Promise<{ rows: Record<string, unknown>[]; meta: Plan['meta'] }>
+const runPostgres: Exec = async (plan) => ({ rows: await runQuery(plan.sql, plan.params, PER_CHART_TIMEOUT_MS), meta: plan.meta })
+
 async function runPlan(
-  plan: ReturnType<typeof planDashboardQueries>[number],
+  plan: Plan,
   startedAt: number,
-  results: Map<string, WidgetResult>
+  results: Map<string, WidgetResult>,
+  exec: Exec = runPostgres
 ): Promise<void> {
   const fail = (status: WidgetResult['status'], error: string) => {
     for (const id of plan.members) results.set(id, { widget_id: id, status, error })
@@ -144,13 +151,13 @@ async function runPlan(
     return
   }
   try {
-    const rows = await runQuery(plan.sql, plan.params, PER_CHART_TIMEOUT_MS)
+    const { rows, meta } = await exec(plan)
     plan.members.forEach((id, index) => {
       results.set(id, {
         widget_id: id,
         status: 'ok',
         data: unpack(rows, plan.members.length > 1 ? index : null),
-        meta: plan.meta,
+        meta,
       })
     })
   } catch (err) {
@@ -173,13 +180,13 @@ async function runPlan(
   }
 }
 
-export const POST = guarded('analytics/query', async (req: NextRequest) => {
+export const POST = guarded('analytics/query', withDataPlane(async (dp, req: NextRequest) => {
   const parsed = Body.safeParse(await req.json().catch(() => null))
   if (!parsed.success) {
     return NextResponse.json({ error: 'Bad request', detail: parsed.error.flatten() }, { status: 400 })
   }
   const body = parsed.data
-  const resolved = await resolveScope(body)
+  const resolved = await resolveScope(body, { allowCustomerHeld: true })
   if (!resolved) return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
   if (isDenied(resolved)) return resolved.errorResponse
   const { ctx } = resolved
@@ -207,7 +214,40 @@ export const POST = guarded('analytics/query', async (req: NextRequest) => {
   }
 
   // charts that read the same rows under the same rules answer in one statement
-  const plans = runnable.length ? planDashboardQueries(runnable, ctx) : []
+  let plans: Plan[] = []
+  let exec: Exec = runPostgres
+  if (resolved.customerHeld) {
+    // no SQL against Pype's database for this project: its rows come through the data plane
+    const specs = new Map<string, Spec>()
+    const supported = runnable.filter(({ id, spec }) => {
+      try {
+        assertSupported(spec, ctx)
+        specs.set(id, spec)
+        return true
+      } catch (err) {
+        results.set(id, { widget_id: id, status: 'error', error: explain(err, id) })
+        return false
+      }
+    })
+    plans = supported.map(({ id }) => ({ sql: '', params: [], meta: undefined as never, members: [id] }))
+    if (supported.length) {
+      const plane = await dp.forProject(ctx.projectId)
+      let rows: Awaited<ReturnType<typeof loadCustomerRows>> | null = null
+      let loadError = ''
+      try {
+        rows = await loadCustomerRows(plane, supported.map((w) => w.spec), ctx)
+      } catch (err) {
+        if (!(err instanceof SpecError)) throw err
+        loadError = err.message
+      }
+      exec = async (plan) => {
+        if (!rows) throw new SpecError(loadError)
+        return aggregateCustomerRows(rows, specs.get(plan.members[0])!, ctx)
+      }
+    }
+  } else if (runnable.length) {
+    plans = planDashboardQueries(runnable, ctx)
+  }
 
   // Streamed as newline-delimited JSON, one WidgetResult per line, instead of
   // one JSON array returned after every plan finishes. The batching above is
@@ -246,7 +286,7 @@ export const POST = guarded('analytics/query', async (req: NextRequest) => {
 
       await Promise.all(
         plans.map(async (plan) => {
-          await runPlan(plan, startedAt, results)
+          await runPlan(plan, startedAt, results, exec)
           for (const id of plan.members) {
             const r = results.get(id)
             if (r) send(r)
@@ -273,7 +313,7 @@ export const POST = guarded('analytics/query', async (req: NextRequest) => {
       'X-Accel-Buffering': 'no',
     },
   })
-})
+}))
 
 
 /**
