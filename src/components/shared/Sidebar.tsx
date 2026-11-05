@@ -45,7 +45,8 @@ import {
   Sun,
   FlaskConical,
   GitBranch,
-  Pi
+  Pi,
+  Database
 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -85,7 +86,8 @@ const ICONS = {
   BookOpen,
   FlaskConical,
   GitBranch,
-  Pi
+  Pi,
+  Database
 } as const
 
 interface NavigationItem {
