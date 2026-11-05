@@ -90,6 +90,7 @@ export function TagsCell({
     <TagEditor
       variant="quiet"
       callId={call.id}
+      agentId={call.agent_id}
       initialTags={Array.isArray(tm?.tags) ? tm.tags : []}
       initialTagComments={tm?.tagComments && typeof tm.tagComments === "object" && !Array.isArray(tm.tagComments) ? tm.tagComments : {}}
       availableTags={availableTags}
@@ -107,6 +108,7 @@ export function FlagCell({
     <FlagEditor
       variant="quiet"
       callId={call.id}
+      agentId={call.agent_id}
       initialFlag={call.transcription_metrics?.flag}
       currentUserId={currentUserId}
       currentUserEmail={currentUserEmail}

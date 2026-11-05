@@ -137,6 +137,7 @@ function CallListItem({
             key={`flag-${call.id}`}
             variant="icon"
             callId={call.id}
+            agentId={call.agent_id}
             initialFlag={call.transcription_metrics?.flag}
             currentUserId={flag.currentUserId}
             currentUserEmail={flag.currentUserEmail}

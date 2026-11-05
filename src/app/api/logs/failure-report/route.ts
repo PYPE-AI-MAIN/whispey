@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServiceRoleClient } from '@/lib/supabase-server';
+import { withDataPlane, rethrowDataPlane } from '@/server/data-plane';
 import { verifyToken } from '../../../../lib/auth';
 import { FailureReportRequest } from '../../../../types/logs';
 
@@ -15,7 +15,7 @@ export async function OPTIONS(request: NextRequest) {
   });
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withDataPlane(async (dp, request: NextRequest) => {
   try {
     const body: FailureReportRequest = await request.json();
     const {
@@ -62,14 +62,13 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString()
     };
 
-    const supabase = createServiceRoleClient();
-    const { data: insertedLog, error: insertError } = await supabase
-      .from('pype_voice_call_logs')
-      .insert(failureData)
-      .select()
-      .single();
-
-    if (insertError) {
+    // The token names the project, and the project's route names where the log is written.
+    const plane = await dp.forProject(tokenVerification.project_id as string);
+    let insertedLog;
+    try {
+      insertedLog = await plane.callLogs.insertCallLog(failureData);
+    } catch (insertError) {
+      rethrowDataPlane(insertError);
       console.error('Database insert error:', insertError);
       return NextResponse.json(
         { success: false, error: 'Failed to save failure report' },
@@ -86,10 +85,11 @@ export async function POST(request: NextRequest) {
     }, { status: 200 });
 
   } catch (error) {
+    rethrowDataPlane(error);
     console.error('Send failure report error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }
     );
   }
-}
+});

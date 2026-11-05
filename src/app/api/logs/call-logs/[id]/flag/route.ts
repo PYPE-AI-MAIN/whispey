@@ -5,6 +5,7 @@ import { createServiceRoleClient } from '@/lib/supabase-server'
 import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
 import { normalizeFlags, type FlagEntry } from '@/utils/callLogsUtils'
 import { logQaEvent, notifyQaTeam } from '@/server/qa/notify'
+import { withDataPlane, rethrowDataPlane, type DataPlane } from '@/server/data-plane'
 
 const supabase = createServiceRoleClient()
 
@@ -12,6 +13,9 @@ type FlagAction =
   | { action: 'add'; text: string }
   | { action: 'update'; flagId: string; text: string }
   | { action: 'delete'; flagId: string }
+
+// agent_id is the routing hint: the call row lives in the project's data plane.
+type FlagRequest = FlagAction & { agent_id?: string }
 
 type FlagActionResult = { nextFlags: FlagEntry[] } | { error: string; status: number }
 
@@ -70,6 +74,7 @@ function applyFlagAction(
  * is already saved, and a ticket hiccup must not make the customer's flag fail.
  */
 async function syncQaTicket(
+  plane: DataPlane,
   body: FlagAction,
   nextFlags: FlagEntry[],
   ids: { callLogId: string; agentId: string; projectId: string; agentName: string },
@@ -78,7 +83,7 @@ async function syncQaTicket(
     if (body.action === 'add') {
       const flag = nextFlags.at(-1)
       if (!flag) return
-      await supabase.from('qa_flag_tickets').upsert({
+      await plane.qa.upsertFlagTicket({
         call_log_id: ids.callLogId,
         agent_id: ids.agentId,
         project_id: ids.projectId,
@@ -87,9 +92,9 @@ async function syncQaTicket(
         flagged_by_user_id: flag.flagged_by?.userId ?? null,
         flagged_by_email: flag.flagged_by?.email ?? null,
         flagged_at: flag.flagged_at,
-      }, { onConflict: 'call_log_id,flag_id', ignoreDuplicates: true })
-      const { data: ticket } = await supabase.from('qa_flag_tickets').select('id').eq('call_log_id', ids.callLogId).eq('flag_id', flag.id).maybeSingle()
-      if (ticket) await logQaEvent(ticket.id, 'flagged', flag.flagged_by?.email ?? '', flag.text)
+      })
+      const ticketId = await plane.qa.findTicketId(ids.callLogId, flag.id)
+      if (ticketId) await logQaEvent(ticketId, 'flagged', flag.flagged_by?.email ?? '', flag.text)
       await notifyQaTeam({
         kind: 'flag',
         agentName: ids.agentName,
@@ -100,22 +105,22 @@ async function syncQaTicket(
         detail: flag.text,
       })
     } else if (body.action === 'update') {
-      await supabase.from('qa_flag_tickets').update({ reason: body.text.trim() })
-        .eq('call_log_id', ids.callLogId).eq('flag_id', body.flagId).eq('status', 'pending')
+      await plane.qa.updatePendingReason(ids.callLogId, body.flagId, body.text.trim())
     } else {
       // Only a ticket nobody has started on goes away with the flag.
-      await supabase.from('qa_flag_tickets').delete()
-        .eq('call_log_id', ids.callLogId).eq('flag_id', body.flagId).eq('status', 'pending')
+      await plane.qa.deletePending(ids.callLogId, body.flagId)
     }
   } catch (e) {
+    rethrowDataPlane(e)
     console.error('QA ticket sync failed:', e instanceof Error ? e.message : e)
   }
 }
 
-export async function PATCH(
+export const PATCH = withDataPlane(async (
+  dp,
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   try {
     const { userId } = await auth()
     const user = await currentUser()
@@ -124,26 +129,27 @@ export async function PATCH(
     }
 
     const { id } = await params
-    const body = await request.json() as FlagAction
+    const body = await request.json() as FlagRequest
+    if (typeof body.agent_id !== 'string' || !body.agent_id) {
+      return NextResponse.json({ error: 'agent_id required' }, { status: 400 })
+    }
 
-    // Fetch current transcription_metrics + agent_id (to resolve the project for role checks)
-    const { data: current, error: fetchError } = await supabase
-      .from('pype_voice_call_logs')
-      .select('transcription_metrics, agent_id')
-      .eq('id', id)
-      .single()
-
-    if (fetchError) throw fetchError
-
+    // Resolve the project from the hinted agent (control plane) before touching call data.
     const { data: agent } = await supabase
       .from('pype_voice_agents')
       .select('project_id, name, display_name')
-      .eq('id', current?.agent_id)
+      .eq('id', body.agent_id)
       .maybeSingle()
 
     const projectRole = agent?.project_id ? await getProjectRoleForApi(agent.project_id) : null
     if (!projectRole) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const plane = await dp.forProject(agent!.project_id)
+    const current = await plane.callData.getCallLog(id, 'transcription_metrics, agent_id')
+    if (!current || current.agent_id !== body.agent_id) {
+      return NextResponse.json({ error: 'Call not found' }, { status: 404 })
     }
     const canDeleteAnyFlag = projectRole.role === 'admin' || projectRole.role === 'owner'
 
@@ -167,22 +173,18 @@ export async function PATCH(
       delete updatedMetrics.flag
     }
 
-    const { error } = await supabase
-      .from('pype_voice_call_logs')
-      .update({ transcription_metrics: updatedMetrics })
-      .eq('id', id)
-
-    if (error) throw error
+    await plane.callLogs.setTranscriptionMetrics(id, updatedMetrics)
 
     if (current?.agent_id && agent?.project_id) {
-      await syncQaTicket(body, nextFlags, { callLogId: id, agentId: current.agent_id, projectId: agent.project_id, agentName: agent.display_name || agent.name })
+      await syncQaTicket(plane, body, nextFlags, { callLogId: id, agentId: current.agent_id, projectId: agent.project_id, agentName: agent.display_name || agent.name })
     }
 
     const qaPath = current?.agent_id && agent?.project_id ? `/${agent.project_id}/agents/${current.agent_id}/qa` : null
     return NextResponse.json({ success: true, flags: nextFlags, qaPath })
   } catch (error: unknown) {
+    rethrowDataPlane(error)
     const message = error instanceof Error ? error.message : 'Unknown error'
     console.error('Error updating call log flag:', message)
     return NextResponse.json({ error: message }, { status: 500 })
   }
-}
+})

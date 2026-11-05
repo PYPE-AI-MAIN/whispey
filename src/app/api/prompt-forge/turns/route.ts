@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceRoleClient } from '@/lib/supabase-server'
 import { requireForgeUser } from '@/server/promptForge/access'
+import { withDataPlane, rethrowDataPlane, projectIdForAgent } from '@/server/data-plane'
 
 export const runtime = 'nodejs'
 
@@ -35,35 +35,30 @@ function transcriptJsonToTurns(transcriptJson: any[]): any[] {
   return turns
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withDataPlane(async (dp, request: NextRequest) => {
   const { searchParams } = new URL(request.url)
   const sessionId = searchParams.get('session_id')
+  const agentId = searchParams.get('agent_id')
 
   if (!sessionId) {
     return NextResponse.json({ error: 'session_id required' }, { status: 400 })
   }
+  // The call lives in the project's data plane, so the agent id is required to find it.
+  if (!agentId) {
+    return NextResponse.json({ error: 'agent_id required' }, { status: 400 })
+  }
 
   try {
-    const supabase = createServiceRoleClient()
-
-    // The call must belong to a project where the caller can use Prompt Forge.
-    const { data: call } = await supabase
-      .from('pype_voice_call_logs')
-      .select('agent_id, transcript_json')
-      .eq('id', sessionId)
-      .maybeSingle()
-    if (!call) return NextResponse.json({ error: 'Call not found' }, { status: 404 })
-    const { data: agent } = await supabase.from('pype_voice_agents').select('project_id').eq('id', call.agent_id).maybeSingle()
-    const access = await requireForgeUser(agent?.project_id)
+    // The caller must be able to use Prompt Forge in the hinted agent's project, and the call must be that agent's.
+    const projectId = await projectIdForAgent(agentId)
+    const access = await requireForgeUser(projectId ?? undefined)
     if ('response' in access) return access.response
 
-    const { data: metricsData, error } = await supabase
-      .from('pype_voice_metrics_logs')
-      .select('id, user_transcript, agent_response, tool_calls, unix_timestamp, created_at')
-      .eq('session_id', sessionId)
-      .order('unix_timestamp', { ascending: true })
+    const plane = await dp.forProject(projectId!)
+    const call = await plane.callData.getCallLog(sessionId, 'agent_id, transcript_json')
+    if (!call || call.agent_id !== agentId) return NextResponse.json({ error: 'Call not found' }, { status: 404 })
 
-    if (error) throw error
+    const metricsData = await plane.callData.listTurns(sessionId)
 
     const hasContent = (metricsData ?? []).some(t => t.user_transcript || t.agent_response)
     if (hasContent) return NextResponse.json(metricsData)
@@ -78,7 +73,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(transcriptJsonToTurns(transcriptJson))
   } catch (err: any) {
+    rethrowDataPlane(err)
     console.error('[prompt-forge/turns]', err)
     return NextResponse.json({ error: err?.message ?? 'Unknown error' }, { status: 500 })
   }
-}
+})

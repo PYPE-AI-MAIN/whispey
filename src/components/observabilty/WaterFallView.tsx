@@ -5,6 +5,7 @@ import SpanDetailSheet from './SpanDetailSheet';
 interface WaterfallViewProps {
   trace: any;
   loading: boolean;
+  agentId?: string;
 }
 
 interface SpanData {
@@ -126,7 +127,7 @@ const useTraceGrouping = (spans: SpanData[]) => {
   }, [spans]);
 };
 
-const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
+const WaterfallView = ({ trace, loading, agentId }: WaterfallViewProps) => {
   const [selectedSpan, setSelectedSpan] = useState<any>(null);
   const [expandedTraces, setExpandedTraces] = useState<Set<string>>(new Set());
 
@@ -380,6 +381,7 @@ const WaterfallView = ({ trace, loading }: WaterfallViewProps) => {
         span={selectedSpan}
         isOpen={!!selectedSpan}
         onClose={() => setSelectedSpan(null)}
+        agentId={agentId}
       />
     </>
   );

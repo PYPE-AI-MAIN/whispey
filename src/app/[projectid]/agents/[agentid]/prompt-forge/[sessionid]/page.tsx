@@ -789,7 +789,7 @@ function ImportLogDialog({ open, onClose, agentId, onImport, transcriptionFields
     if (selectedId === log.id) return
     setSelectedId(log.id); setPreviewTurns(null); setPreviewLoading(true)
     try {
-      const res = await fetch(`/api/prompt-forge/turns?session_id=${log.id}`)
+      const res = await fetch(`/api/prompt-forge/turns?session_id=${log.id}&agent_id=${agentId}`)
       const turns = await res.json()
       setPreviewTurns(Array.isArray(turns) ? turns : [])
     } catch { setPreviewTurns([]) }

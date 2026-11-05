@@ -26,6 +26,7 @@ const T = {
 /** Tables the supabase-select proxy may read through the router. */
 const SELECTABLE = new Set([T.callLogs, T.metrics, T.traces, T.spans])
 export const isCallDataTable = (table: string) => SELECTABLE.has(table)
+export const isCallLogsTable = (table: string) => table === T.callLogs
 
 const PAGE = 500
 const SCOPE_VALUES = new Set(['global', 'project', 'agent'])

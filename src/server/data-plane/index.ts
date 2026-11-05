@@ -1,5 +1,6 @@
 export * from './errors'
 export * from './ports'
-export { isCallDataTable } from './adapters/queryPlane'
+export { isCallDataTable, isCallLogsTable } from './adapters/queryPlane'
 export { withDataPlane, rethrowDataPlane, type PlaneSource } from './withDataPlane'
 export { DataPlaneResolver, getDataPlaneResolver } from './resolver'
+export { projectIdForAgent } from './hint'

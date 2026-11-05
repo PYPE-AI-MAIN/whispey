@@ -2,52 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
 import { authorizeTableSelect, isAllowedTable } from '@/lib/supabase-select-auth'
+import { withDataPlane, rethrowDataPlane, isCallDataTable, isCallLogsTable, type DataPlane, type SelectQuery } from '@/server/data-plane'
 import { filterSelectColumns, stripDisallowedColumns, type CallLogSettings } from '@/lib/callLogSettings'
 import { resolveColumnAccessForRequest } from '@/lib/agentCallLogSettingsStore'
+import type { Filter } from '@/lib/supabase-query-types'
+import { applyFilters } from '@/server/data-plane/adapters/queryPlane'
 
-type Filter = { column: string; operator: string; value: unknown }
-
-function applyFilters(query: any, filters: Filter[]) {
-  let q = query
-  for (const filter of filters) {
-    switch (filter.operator) {
-      case 'eq':
-        q = q.eq(filter.column, filter.value)
-        break
-      case 'neq':
-      case '<>':
-        q = q.neq(filter.column, filter.value)
-        break
-      case 'gt':
-        q = q.gt(filter.column, filter.value)
-        break
-      case 'gte':
-        q = q.gte(filter.column, filter.value)
-        break
-      case 'lt':
-        q = q.lt(filter.column, filter.value)
-        break
-      case 'lte':
-        q = q.lte(filter.column, filter.value)
-        break
-      case 'like':
-        q = q.like(filter.column, filter.value as string)
-        break
-      case 'ilike':
-        q = q.ilike(filter.column, filter.value)
-        break
-      case 'in':
-        q = q.in(filter.column, filter.value)
-        break
-      case 'not.is':
-        q = q.not(filter.column, 'is', filter.value)
-        break
-      default:
-        break
-    }
-  }
-  return q
-}
 
 type RequestBody = {
   table: string
@@ -75,7 +35,7 @@ async function parseRequestBody(request: NextRequest): Promise<RequestBody | nul
 
 // This generic route is the only fetch path (besides the dedicated
 // agent/project call-logs query routes) that can return
-// `pype_voice_call_logs` rows — e.g. the observability/session-detail page
+// call-log rows — e.g. the observability/session-detail page
 // fetches a single call log by id through here. It must enforce the same
 // per-agent/per-user column restrictions (`call_log_settings`) those
 // dedicated routes apply, otherwise a column hidden there (like
@@ -83,9 +43,9 @@ async function parseRequestBody(request: NextRequest): Promise<RequestBody | nul
 async function resolveDisallowedColumns(
   table: string,
   agentId: string | undefined,
-  supabase: ReturnType<typeof createServiceRoleClient>
+  supabase: Supabase
 ): Promise<Set<string>> {
-  if (table !== 'pype_voice_call_logs' || !agentId) return new Set()
+  if (!isCallLogsTable(table) || !agentId) return new Set()
 
   const { userId } = await auth()
   if (!userId) return new Set()
@@ -105,64 +65,51 @@ async function resolveDisallowedColumns(
   return access.disallowedColumns
 }
 
-async function handleCountMode(
-  supabase: ReturnType<typeof createServiceRoleClient>,
+type Supabase = ReturnType<typeof createServiceRoleClient>
+
+// Control-plane tables read straight from Pype; call-data tables go through the
+// project's data plane. Both take the same filter/order/range shape.
+async function readRows(
+  plane: DataPlane | null,
+  supabase: Supabase,
   table: string,
-  filters: Filter[]
-) {
-  let q = supabase.from(table).select('*', { count: 'exact', head: true })
-  q = applyFilters(q, filters)
-  const { count, error } = await q
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ count: count ?? 0 })
+  q: SelectQuery
+): Promise<Record<string, unknown>[]> {
+  if (plane) return plane.callData.selectRows(table, q)
+  let query: any = applyFilters(supabase.from(table).select(q.select || '*'), q.filters ?? [])
+  if (q.cursor) query = query.gt(q.cursor.column, q.cursor.value)
+  if (q.orderBy) query = query.order(q.orderBy.column, { ascending: q.orderBy.ascending })
+  if (q.range) query = query.range(q.range[0], q.range[1])
+  else if (q.limit) query = query.limit(q.limit)
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+  return (data ?? []) as Record<string, unknown>[]
 }
 
-async function handleInfiniteMode(
-  supabase: ReturnType<typeof createServiceRoleClient>,
-  table: string,
-  effectiveSelect: string,
-  disallowedColumns: Set<string>,
-  query: NonNullable<RequestBody['query']>
-) {
-  const { filters = [], orderBy, pageParam, cursorColumn, pageSize } = query
-  let q = supabase.from(table).select(effectiveSelect)
-  q = applyFilters(q, filters)
-  if (pageParam !== undefined && pageParam !== null && cursorColumn) {
-    q = q.gt(cursorColumn, pageParam)
-  }
-  if (orderBy) {
-    q = q.order(orderBy.column, { ascending: orderBy.ascending })
-  }
-  if (pageSize) q = q.limit(pageSize)
-  const { data, error } = await q
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data: stripDisallowedColumns((data ?? []) as unknown as Record<string, unknown>[], disallowedColumns) })
+async function countRows(plane: DataPlane | null, supabase: Supabase, table: string, filters: Filter[]): Promise<number> {
+  if (plane) return plane.callData.countRows(table, filters)
+  const { count, error } = await applyFilters(supabase.from(table).select('*', { count: 'exact', head: true }), filters)
+  if (error) throw new Error(error.message)
+  return count ?? 0
 }
 
-async function handleListMode(
-  supabase: ReturnType<typeof createServiceRoleClient>,
-  table: string,
-  effectiveSelect: string,
-  disallowedColumns: Set<string>,
-  query: NonNullable<RequestBody['query']>
-) {
-  const { filters = [], orderBy, limit, range } = query
-  let q = supabase.from(table).select(effectiveSelect)
-  q = applyFilters(q, filters)
-  if (orderBy) {
-    q = q.order(orderBy.column, { ascending: orderBy.ascending })
+function toSelectQuery(mode: 'list' | 'infinite', effectiveSelect: string, query: NonNullable<RequestBody['query']>): SelectQuery {
+  const { filters = [], orderBy } = query
+  if (mode === 'infinite') {
+    const { pageParam, cursorColumn, pageSize } = query
+    return {
+      select: effectiveSelect,
+      filters: filters,
+      orderBy,
+      limit: pageSize,
+      cursor: pageParam !== undefined && pageParam !== null && cursorColumn ? { column: cursorColumn, value: pageParam } : undefined,
+    }
   }
-  if (range && range.length === 2) {
-    q = q.range(range[0], range[1])
-  } else if (limit) {
-    q = q.limit(limit)
-  }
-  const { data, error } = await q
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data: stripDisallowedColumns((data ?? []) as unknown as Record<string, unknown>[], disallowedColumns) })
+  const { limit, range } = query
+  return { select: effectiveSelect, filters: filters, orderBy, limit, range: range && range.length === 2 ? range : undefined }
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withDataPlane(async (dp, request: NextRequest) => {
   const { userId } = await auth()
   if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -187,16 +134,19 @@ export async function POST(request: NextRequest) {
   if (!authz.ok) return authz.response
 
   const supabase = createServiceRoleClient()
+  const plane = isCallDataTable(table) ? await dp.forProject(authz.projectId) : null
 
-  if (mode === 'count') {
-    return handleCountMode(supabase, table, filters)
+  try {
+    if (mode === 'count') {
+      return NextResponse.json({ count: await countRows(plane, supabase, table, filters) })
+    }
+
+    const disallowedColumns = await resolveDisallowedColumns(table, authz.agentId, supabase)
+    const effectiveSelect = filterSelectColumns(select || '*', disallowedColumns) as string
+    const rows = await readRows(plane, supabase, table, toSelectQuery(mode === 'infinite' ? 'infinite' : 'list', effectiveSelect, query))
+    return NextResponse.json({ data: stripDisallowedColumns(rows, disallowedColumns) })
+  } catch (e) {
+    rethrowDataPlane(e)
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Unknown error' }, { status: 500 })
   }
-
-  const disallowedColumns = await resolveDisallowedColumns(table, authz.agentId, supabase)
-  const effectiveSelect = filterSelectColumns(select || '*', disallowedColumns) as string
-
-  if (mode === 'infinite') {
-    return handleInfiniteMode(supabase, table, effectiveSelect, disallowedColumns, query)
-  }
-  return handleListMode(supabase, table, effectiveSelect, disallowedColumns, query)
-}
+})

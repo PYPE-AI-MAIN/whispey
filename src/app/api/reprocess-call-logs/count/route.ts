@@ -2,10 +2,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { withDataPlane, rethrowDataPlane, projectIdForAgent } from '@/server/data-plane'
 
 const supabase = createServiceRoleClient()
 
-export async function GET(request: NextRequest) {
+export const GET = withDataPlane(async (dp, request: NextRequest) => {
   try {
     const { userId } = await auth()
     if (!userId) {
@@ -68,59 +69,45 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Build base query with count
-    let query = supabase
-      .from('pype_voice_call_logs')
-      .select('*', { count: 'exact', head: true })
+    // The calls live in the project's data plane, so an agent or project hint is required.
+    if (!agent_id && !project_id) {
+      return NextResponse.json({ error: 'agent_id or project_id is required' }, { status: 400 })
+    }
+    const projectOfCalls = agent_id ? await projectIdForAgent(agent_id) : project_id
+    if (!projectOfCalls) return NextResponse.json({ count: 0 })
+    const plane = await dp.forProject(projectOfCalls)
 
-    // Filter by agent_id if provided
+    let agentIds: string[]
     if (agent_id) {
-      query = query.eq('agent_id', agent_id)
-    } else if (project_id) {
-      // If no agent_id but project_id, get all agents for this project first
+      agentIds = [agent_id]
+    } else {
+      // No agent_id but project_id: all agents of this project
       const { data: agents } = await supabase
         .from('pype_voice_agents')
         .select('id')
         .eq('project_id', project_id)
-
-      if (agents && agents.length > 0) {
-        const agentIds = agents.map(a => a.id)
-        query = query.in('agent_id', agentIds)
-      } else {
-        // No agents found, return 0
-        return NextResponse.json({ count: 0 })
-      }
+      if (!agents || agents.length === 0) return NextResponse.json({ count: 0 })
+      agentIds = agents.map(a => a.id)
     }
 
-    // Filter by date range
-    query = query
-      .gte('created_at', fromDate.toISOString())
-      .lte('created_at', toDate.toISOString())
+    // When specific transcription_fields or metrics_fields are given the count is
+    // approximate: exact field-level filtering happens in the Lambda function.
+    const emptyColumns =
+      reprocess_type !== 'empty_only' ? undefined
+      : reprocess_options === 'transcription' ? ['transcription_metrics']
+      : reprocess_options === 'metrics' ? ['metrics']
+      : ['transcription_metrics', 'metrics']
 
-    // Apply reprocess_type filters for empty_only
-    if (reprocess_type === 'empty_only') {
-      if (reprocess_options === 'transcription') {
-        // Count logs with null or empty transcription_metrics. When specific
-        // transcription_fields are given, this count is approximate — exact
-        // field-level filtering happens in the Lambda function.
-        query = query.or('transcription_metrics.is.null,transcription_metrics.eq.{}')
-      } else if (reprocess_options === 'metrics') {
-        // Count logs with null or empty metrics. When specific metrics_fields
-        // are given, this count is approximate — exact field-level filtering
-        // happens in the Lambda function.
-        query = query.or('metrics.is.null,metrics.eq.{}')
-      } else if (reprocess_options === 'both') {
-        // Count logs where transcription_metrics is null/empty OR metrics is null/empty
-        query = query.or('transcription_metrics.is.null,transcription_metrics.eq.{},metrics.is.null,metrics.eq.{}')
-      }
-    }
-    // If reprocess_type is 'all', no additional filters needed
-    // Note: When specific transcription_fields or metrics_fields are provided,
-    // the count may be approximate. The Lambda function will apply the exact field-level filtering.
-
-    const { count, error: countError } = await query
-
-    if (countError) {
+    let count: number
+    try {
+      count = await plane.callData.countCallLogs({
+        agentIds,
+        from: fromDate.toISOString(),
+        to: toDate.toISOString(),
+        emptyColumns,
+      })
+    } catch (countError) {
+      rethrowDataPlane(countError)
       console.error('Count error:', countError)
       return NextResponse.json(
         { error: 'Failed to count call logs' },
@@ -128,13 +115,14 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    return NextResponse.json({ count: count || 0 })
+    return NextResponse.json({ count })
   } catch (error) {
+    rethrowDataPlane(error)
     console.error('Count call logs error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     )
   }
-}
+})
 
