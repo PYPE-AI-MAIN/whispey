@@ -141,7 +141,7 @@ export class InternalSpecError extends Error {}
 /* ------------------------------------------------------------ time in a zone */
 
 /** Wall clock in `tz` at instant `at`, as "YYYY-MM-DD HH:MM:SS". */
-function wallClock(at: Date, tz: string): string {
+export function wallClock(at: Date, tz: string): string {
   return at.toLocaleString('sv-SE', { timeZone: tz })
 }
 
@@ -158,14 +158,14 @@ function addDays(isoDate: string, n: number): string {
 }
 
 /** `timestamp without time zone` literal — unambiguous, no session TimeZone involved. */
-function pgTimestamp(d: Date): string {
+export function pgTimestamp(d: Date): string {
   return d.toISOString().replace('T', ' ').replace('Z', '')
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 const CLOCK = /^([01]\d|2[0-3]):[0-5]\d$/
 
-function resolveRange(spec: Spec, ctx: Ctx) {
+export function resolveRange(spec: Spec, ctx: Ctx) {
   const now = ctx.now ?? new Date()
   const today = wallClock(now, ctx.tz).slice(0, 10)
 

@@ -81,13 +81,13 @@ export const GET = guarded('analytics/dashboard', async (req: NextRequest) => {
   let dashboardResult: Awaited<ReturnType<typeof loadOrCreateDashboard>>
 
   if (projectId) {
-    const resolved = await resolveProjectAnalyticsContext(projectId)
+    const resolved = await resolveProjectAnalyticsContext(projectId, { allowCustomerHeld: true })
     if (isDenied(resolved)) return resolved.errorResponse
     role = resolved.role
     downloadDisabled = resolved.downloadDisabled
     dashboardResult = await loadOrCreateDashboard({ scope: 'project', project_id: projectId }, { project_id: projectId }, 'Explore')
   } else if (agentId) {
-    const resolved = await resolveAnalyticsContext(agentId)
+    const resolved = await resolveAnalyticsContext(agentId, { allowCustomerHeld: true })
     if (isDenied(resolved)) return resolved.errorResponse
     role = resolved.role
     downloadDisabled = resolved.downloadDisabled
@@ -189,8 +189,8 @@ export const PUT = guarded('analytics/dashboard', async (req: NextRequest) => {
   if (!body.agentId && !body.projectId) return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
 
   const resolveScope = () => {
-    if (body.projectId) return resolveProjectAnalyticsContext(body.projectId)
-    if (body.agentId) return resolveAnalyticsContext(body.agentId)
+    if (body.projectId) return resolveProjectAnalyticsContext(body.projectId, { allowCustomerHeld: true })
+    if (body.agentId) return resolveAnalyticsContext(body.agentId, { allowCustomerHeld: true })
     return null
   }
   const resolved = await resolveScope()

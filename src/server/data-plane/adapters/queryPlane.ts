@@ -28,6 +28,10 @@ export const isCallDataTable = (table: string) => SELECTABLE.has(table)
 export const isCallLogsTable = (table: string) => table === T.callLogs
 
 const PAGE = 500
+// at or under the PostgREST max-rows default (1000), or a page would come back short and end the loop early
+const PAGE_ANALYTICS = 1000
+export const ANALYTICS_COLUMNS =
+  'id,call_id,agent_id,customer_number,call_started_at,call_ended_at,call_ended_reason,transcript_type,wcall_event,environment,duration_seconds,billing_duration_seconds,avg_latency,total_stt_cost,total_tts_cost,total_llm_cost'
 const SCOPE_VALUES = new Set(['global', 'project', 'agent'])
 
 /**
@@ -81,6 +85,7 @@ export function createQueryPlane(db: Db, opts: { typed: boolean; destination?: s
     let query: any = applyFilters(db.from(table).select(q.select || '*'), q.filters ?? [])
     if (q.cursor) query = query.gt(q.cursor.column, q.cursor.value)
     if (q.orderBy) query = query.order(q.orderBy.column, { ascending: q.orderBy.ascending })
+    if (q.thenBy) query = query.order(q.thenBy, { ascending: true })
     if (q.range) query = query.range(q.range[0], q.range[1])
     else if (q.limit) query = query.limit(q.limit)
     return ((await ok(await query)).data ?? []) as Row[]
@@ -139,6 +144,25 @@ export function createQueryPlane(db: Db, opts: { typed: boolean; destination?: s
         return (ok(res).data ?? []) as Row[]
       },
       selectRows,
+      async analyticsRows(q) {
+        const rows: Row[] = []
+        for (let from = 0; from <= q.maxRows; from += PAGE_ANALYTICS) {
+          const page = await selectRows(T.callLogs, {
+            select: ANALYTICS_COLUMNS,
+            filters: [
+              { column: 'agent_id', operator: 'in', value: q.agentIds },
+              { column: 'call_started_at', operator: 'gte', value: q.from },
+              { column: 'call_started_at', operator: 'lt', value: q.to },
+            ],
+            orderBy: { column: 'call_started_at', ascending: true },
+            thenBy: 'id', // call_started_at ties (bulk campaigns) would otherwise shuffle between pages
+            range: [from, from + PAGE_ANALYTICS - 1],
+          })
+          rows.push(...page)
+          if (page.length < PAGE_ANALYTICS) break
+        }
+        return rows
+      },
       async countRows(table, filters) {
         if (!isCallDataTable(table)) throw new Error('Table is not call data')
         const res = await applyFilters(db.from(table).select('*', { count: 'exact', head: true }), filters)
