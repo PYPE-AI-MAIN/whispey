@@ -4,6 +4,19 @@ import { createServiceRoleClient } from '@/lib/supabase-server'
 // Create Supabase client for server-side operations
 const supabase = createServiceRoleClient()
 
+const VALID_RETRY_CODES = new Set(['408', '480', '486', '504', '600'])
+
+function validateRetryConfig(retryConfig: Record<string, unknown> | null): string | null {
+  if (!retryConfig) return null
+  for (const [code, minutes] of Object.entries(retryConfig)) {
+    if (!VALID_RETRY_CODES.has(code)) return `Invalid SIP code: ${code}`
+    if (typeof minutes !== 'number' || minutes < 1 || minutes > 1440) {
+      return `Invalid retry minutes for ${code}: must be between 1 and 1440`
+    }
+  }
+  return null
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
@@ -32,17 +45,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'CSV file is required' }, { status: 400 })
     }
 
-    // Validate retry configuration
-    if (retryConfig) {
-      const validCodes = ['408', '480', '486', '504', '600']
-      for (const [code, minutes] of Object.entries(retryConfig)) {
-        if (!validCodes.includes(code)) {
-          return NextResponse.json({ error: `Invalid SIP code: ${code}` }, { status: 400 })
-        }
-        if (typeof minutes !== 'number' || minutes < 1 || minutes > 1440) {
-          return NextResponse.json({ error: `Invalid retry minutes for ${code}: must be between 1 and 1440` }, { status: 400 })
-        }
-      }
+    const retryError = validateRetryConfig(retryConfig)
+    if (retryError) {
+      return NextResponse.json({ error: retryError }, { status: 400 })
     }
 
     // Verify project exists
@@ -121,7 +126,13 @@ export async function POST(request: NextRequest) {
     console.log(schedulePayload)
 
 
-    const scheduleResponse = await fetch('https://3vakfucpd4.execute-api.ap-south-1.amazonaws.com/dev/api/v1/cron/create-schedule', {
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN
+    if (!baseUrl) {
+      console.error('NEXT_PUBLIC_API_BASE_URL_CAMPAIGN is not configured')
+      return NextResponse.json({ error: 'Campaign scheduler is not configured' }, { status: 500 })
+    }
+
+    const scheduleResponse = await fetch(`${baseUrl}/api/v1/cron/create-schedule`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
