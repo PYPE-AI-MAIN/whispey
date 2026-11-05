@@ -11,6 +11,7 @@ export type FilterOperator =
   | 'ilike'
   | 'in'
   | 'not.is'
+  | 'is'
 
 export interface Filter {
   column: string

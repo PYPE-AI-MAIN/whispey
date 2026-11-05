@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { generateKeyPairSync, createVerify } from 'node:crypto'
-import { createPostgrestPlane, mintToken } from '@/server/data-plane/adapters/postgrest'
+import { createPostgrestPlane, mintToken, verifyPostgrestDestination } from '@/server/data-plane/adapters/postgrest'
 import { DestinationIncompatible, DestinationUnavailable } from '@/server/data-plane/errors'
 
 const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
@@ -58,5 +58,20 @@ describe('postgrest adapter', () => {
   it('refuses a destination without an https base_url', () => {
     expect(() => createPostgrestPlane({ ...dest, config: { base_url: 'http://acme.test' } }, pem)).toThrow(DestinationIncompatible)
     expect(() => createPostgrestPlane({ ...dest, config: { base_url: 'http://localhost:3000' } }, pem)).not.toThrow()
+  })
+
+  it('verify runs the checklist and reports each failing item without secrets', async () => {
+    const ok = () => new Response('{"version":1,"url":"https://s/x"}', { status: 200 })
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/signer/v1/version')) return new Response('{"version":2}', { status: 200 })
+      if (url.includes('/pype_probe?id=eq.') && !init?.method) return new Response('[]', { status: 200 })
+      return ok()
+    }))
+    const checks = await verifyPostgrestDestination(dest, pem, 1)
+    expect(checks.map((c) => [c.name, c.ok])).toEqual([
+      ['connect', true], ['schema version', false], ['write probe', true], ['read probe', false], ['delete probe', true], ['storage sign', true],
+    ])
+    expect(checks[1].detail).toMatch(/schema version 2, expected 1/)
+    expect(JSON.stringify(checks)).not.toContain('PRIVATE KEY')
   })
 })

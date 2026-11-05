@@ -10,13 +10,11 @@ import { DestinationIncompatible, DestinationUnavailable, RouteInMaintenance } f
 import type { DataPlane } from './ports'
 import { createPostgrestPlane } from './adapters/postgrest'
 import { createPypePlane } from './adapters/pype'
+import { checkRoutes, TOGETHER } from './routingPolicy'
 
 export const REGISTRY_CACHE_MS = 15_000
 /** The schema pack version this dashboard build speaks. */
 export const SUPPORTED_SCHEMA_VERSION = 1
-
-/** Call data, QA tickets and DNC reference each other, so they live in one destination. */
-const TOGETHER = ['call_data', 'qa', 'dnc'] as const
 
 export interface RegistryDestination {
   id: string
@@ -50,7 +48,7 @@ const readRegistry: RegistryReader = async (projectId) => {
 
 // ponytail: only env:NAME references resolve here. ARN references need the AWS
 // Secrets Manager client (a new dependency, needs a human yes); inject one via deps.secrets.
-const envSecret: SecretResolver = async (ref) => {
+export const resolveSecret: SecretResolver = async (ref) => {
   const value = ref.startsWith('env:') ? process.env[ref.slice(4)] : undefined
   if (!value) throw new DestinationUnavailable(undefined, 'Destination secret could not be resolved')
   return value
@@ -72,7 +70,7 @@ export class DataPlaneResolver {
   constructor(deps: Deps = {}) {
     this.d = {
       registry: deps.registry ?? readRegistry,
-      secrets: deps.secrets ?? envSecret,
+      secrets: deps.secrets ?? resolveSecret,
       now: deps.now ?? Date.now,
       pypePlane: deps.pypePlane ?? createPypePlane,
       postgrestPlane: deps.postgrestPlane ?? createPostgrestPlane,
@@ -98,18 +96,9 @@ export class DataPlaneResolver {
     const paused = routes.find((r) => r.state === 'paused')
     if (paused) throw new RouteInMaintenance(projectId, paused.data_type)
 
-    const campaigns = byType.get('campaigns')
-    if (campaigns && campaigns.destination?.kind !== 'pype_supabase') {
-      throw new DestinationIncompatible(campaigns.destination?.name, 'Campaigns can only use Pype for now')
-    }
-
+    const violation = checkRoutes(routes)
+    if (violation) throw new DestinationIncompatible(undefined, violation)
     const together = TOGETHER.map((t) => byType.get(t))
-    if (together.some(Boolean)) {
-      const ids = new Set(together.map((r) => r?.destination?.id))
-      if (together.some((r) => !r?.destination) || ids.size !== 1) {
-        throw new DestinationIncompatible(undefined, 'Call data, QA and DNC must share one destination')
-      }
-    }
 
     const callPlane = together[0]?.destination ? await this.planeFor(together[0].destination) : this.d.pypePlane()
     const recordings = byType.get('recordings')?.destination

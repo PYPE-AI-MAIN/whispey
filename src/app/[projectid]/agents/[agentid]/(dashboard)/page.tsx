@@ -3,6 +3,7 @@
 import { useParams } from 'next/navigation'
 import { Suspense } from 'react'
 import Dashboard from '@/components/Dashboard'
+import { DataLocationBanner } from '@/components/DataLocationBanner'
 import { AlertCircle } from 'lucide-react'
 
 function AgentDashboardContent() {
@@ -37,7 +38,13 @@ function AgentDashboardContent() {
   }
 
   // Pass agentId to Dashboard - let Dashboard handle the data fetching
-  return <Dashboard agentId={agentId} />
+  const projectId = Array.isArray(params?.projectid) ? params.projectid[0] : params.projectid
+  return (
+    <>
+      {projectId && <DataLocationBanner projectId={projectId} />}
+      <Dashboard agentId={agentId} />
+    </>
+  )
 }
 
 export default function AgentDashboardPage() {

@@ -3,7 +3,7 @@
  * The Supabase client always calls /rest/v1, so this builds a PostgrestClient on
  * the customer base URL. Calls time out after 8 s; the token lives 5 minutes.
  */
-import { createSign } from 'node:crypto'
+import { createSign, randomUUID } from 'node:crypto'
 import { PostgrestClient } from '@supabase/postgrest-js'
 import { DestinationIncompatible, DestinationUnavailable } from '../errors'
 import type { DataPlane } from '../ports'
@@ -78,4 +78,52 @@ export function createPostgrestPlane(dest: PostgrestDestination, privateKeyPem: 
       },
     },
   }
+}
+
+export interface VerifyCheck { name: string; ok: boolean; detail?: string }
+
+/**
+ * The attach checklist: connect, schema version, write/read/delete probe, storage sign.
+ * Assumes the schema pack's `pype_probe(id, note)` table and the signer's
+ * `/signer/v1/health` and `/signer/v1/version` (design page 2, section 5). Details never include secrets.
+ */
+export async function verifyPostgrestDestination(dest: PostgrestDestination, privateKeyPem: string, expectedSchemaVersion: number): Promise<VerifyCheck[]> {
+  const base = baseUrl(dest)
+  const call = async (path: string, init?: RequestInit) => {
+    const headers = new Headers(init?.headers)
+    headers.set('Authorization', `Bearer ${mintToken(dest, privateKeyPem)}`)
+    return fetch(`${base}${path}`, { ...init, headers, signal: AbortSignal.timeout(CALL_TIMEOUT_MS) })
+  }
+  const run = async (name: string, fn: () => Promise<string | void>): Promise<VerifyCheck> => {
+    try {
+      return { name, ok: true, detail: (await fn()) || undefined }
+    } catch (e) {
+      return { name, ok: false, detail: e instanceof Error ? e.message : 'failed' }
+    }
+  }
+  const need = (res: Response, what: string) => {
+    if (!res.ok) throw new Error(`${what} returned HTTP ${res.status}`)
+    return res
+  }
+  const jsonHeaders = { 'Content-Type': 'application/json', Prefer: 'return=representation' }
+  const probeId = randomUUID()
+
+  return [
+    await run('connect', async () => { need(await call('/signer/v1/health'), 'health') }),
+    await run('schema version', async () => {
+      const { version } = (await need(await call('/signer/v1/version'), 'version').json()) as { version: number }
+      if (version !== expectedSchemaVersion) throw new Error(`schema version ${version}, expected ${expectedSchemaVersion}`)
+      return `v${version}`
+    }),
+    await run('write probe', async () => { need(await call('/pype_probe', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ id: probeId, note: 'verify' }) }), 'write') }),
+    await run('read probe', async () => {
+      const rows = (await need(await call(`/pype_probe?id=eq.${probeId}&select=id`), 'read').json()) as unknown[]
+      if (rows.length !== 1) throw new Error('probe row not found')
+    }),
+    await run('delete probe', async () => { need(await call(`/pype_probe?id=eq.${probeId}`, { method: 'DELETE' }), 'delete') }),
+    await run('storage sign', async () => {
+      const res = need(await call('/signer/v1/recordings/sign', { method: 'POST', headers: jsonHeaders, body: JSON.stringify({ key: `probe/${probeId}`, ttl_seconds: 60 }) }), 'sign')
+      if (!((await res.json()) as { url?: string }).url) throw new Error('no signed url returned')
+    }),
+  ]
 }
