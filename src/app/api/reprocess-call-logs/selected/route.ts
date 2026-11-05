@@ -12,9 +12,8 @@ import { canShowOrgSection } from '@/types/visibility'
 import { withDataPlane, rethrowDataPlane } from '@/server/data-plane'
 import { REANALYZE_CONCURRENCY, parseLogIds, runLimited } from '@/lib/reprocessSelection'
 
-const REPROCESS_API_BASE_URL = process.env.NEXT_PUBLIC_REPROCESS_API_BASE_URL ||
-  process.env.NEXT_PUBLIC_PYPEAI_API_URL ||
-  'https://xxxxx.execute-api.ap-south-1.amazonaws.com/dev'
+// No built-in default: a region-specific gateway must never be assumed.
+const REPROCESS_API_BASE_URL = process.env.NEXT_PUBLIC_REPROCESS_API_BASE_URL || process.env.NEXT_PUBLIC_PYPEAI_API_URL
 
 const TYPES = new Set(['empty_only', 'all'])
 const OPTIONS = new Set(['transcription', 'metrics', 'both'])
@@ -65,6 +64,7 @@ export const POST = withDataPlane(async (dp, request: NextRequest) => {
   }
   const calls = rows.filter((r) => r.call_ended_reason === 'completed' && r.created_at)
 
+  if (!REPROCESS_API_BASE_URL) return NextResponse.json({ error: 'Reprocess API is not configured' }, { status: 500 })
   const apiUrl = `${REPROCESS_API_BASE_URL}/reprocess-call-logs`
   const results = await runLimited(calls, REANALYZE_CONCURRENCY, async (call) => {
     try {
