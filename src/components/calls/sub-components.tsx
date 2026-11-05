@@ -1,10 +1,10 @@
 // components/CallLogs/sub-components.tsx
 
-import React, { memo } from "react"
+import React, { memo, useState } from "react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Sparkles } from "lucide-react"
+import { Check, Copy, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import ReanalyzeCallLogs from "../reprocess/ReprocessCallLogs"
@@ -65,6 +65,38 @@ export const TableSkeleton = memo(() => (
 TableSkeleton.displayName = "TableSkeleton"
 
 // ============================================
+// COPYABLE TOOLTIP
+// ============================================
+
+/** Tooltip body whose text can be selected, plus a copy button that appears on hover. */
+function CopyTooltipContent({ text, className }: Readonly<{ text: string; className?: string }>) {
+  const [copied, setCopied] = useState(false)
+  const copy = async (e: React.MouseEvent) => {
+    e.stopPropagation() // a click here must not reach the row's own onClick
+    try { await navigator.clipboard.writeText(text) } catch { return } // clipboard blocked (e.g. non-HTTPS)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+  return (
+    <TooltipContent
+      sideOffset={6}
+      className={cn("relative pointer-events-auto select-text cursor-text", className)}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        type="button"
+        onClick={copy}
+        aria-label="Copy"
+        className="absolute right-1.5 top-1.5 z-10 rounded bg-primary-foreground/15 p-1 hover:bg-primary-foreground/30"
+      >
+        {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+      </button>
+      <div className="max-h-64 overflow-auto break-words pr-6">{text}</div>
+    </TooltipContent>
+  )
+}
+
+// ============================================
 // TEXT COMPONENTS
 // ============================================
 
@@ -89,13 +121,7 @@ export const TruncatedText = memo<TruncatedTextProps>(({
         </span>
       </TooltipTrigger>
       {text.length > maxLength && (
-        <TooltipContent
-          sideOffset={6}
-          className="pointer-events-auto max-w-[420px] max-h-64 overflow-auto break-words"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {text}
-        </TooltipContent>
+        <CopyTooltipContent text={text} className="max-w-[420px]" />
       )}
     </Tooltip>
   )
@@ -182,18 +208,7 @@ export const DynamicJsonCell = memo<DynamicJsonCellProps>(({
               <span className="min-w-0 truncate text-foreground">{preview || <span className="text-muted-foreground">empty</span>}</span>
             </span>
           </TooltipTrigger>
-            {/* pointer-events-auto so the value can be selected/copied — but that
-                also means a click here bubbles to the row's own onClick (React
-                replays it against the component tree, not the DOM tree a Radix
-                portal actually renders into), navigating to the log's detail
-                page mid-copy. stopPropagation keeps it inside this tooltip. */}
-            <TooltipContent
-              sideOffset={6}
-              className="pointer-events-auto max-w-[520px] max-h-64 overflow-auto whitespace-pre-wrap break-words"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {jsonString}
-            </TooltipContent>
+            <CopyTooltipContent text={jsonString} className="max-w-[520px] whitespace-pre-wrap" />
         </Tooltip>
       </div>
     )
@@ -217,13 +232,7 @@ export const DynamicJsonCell = memo<DynamicJsonCellProps>(({
           </span>
         </TooltipTrigger>
         {shouldTruncate && (
-          <TooltipContent
-            sideOffset={6}
-            className="pointer-events-auto max-w-[420px] max-h-64 overflow-auto break-words"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {stringValue}
-          </TooltipContent>
+          <CopyTooltipContent text={stringValue} className="max-w-[420px]" />
         )}
       </Tooltip>
     </div>

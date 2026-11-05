@@ -25,6 +25,8 @@ describe('validateToolArgs', () => {
     ['edit_agent', { agent_id: A, prompt_patch: { old_string: 'a', new_string: 'b' }, dispositions: [{ key: 'k', description: 'd' }] }],
     ['attach_inbound_number', { agent_id: A, number: '+918065587702', krisp_enabled: true }],
     ['buy_plivo_number', { number: '+918065587702', country_iso: 'IN' }],
+    ['buy_plivo_number', { number: 918065587702, country_iso: 'IN' }],
+    ['attach_inbound_number', { agent_id: A, number: 918065587702 }],
     ['search_plivo_numbers', { country_iso: 'IN' }],
     ['no_such_tool', { anything: 1 }],
   ])('accepts %s %j', (name, args) => {

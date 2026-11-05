@@ -356,6 +356,31 @@ describe('tool argument validation', () => {
     expect(result.result.__pending).toBeUndefined()
   })
 
+  it('holds an attach for Confirm when the model sends the number unquoted', async () => {
+    state.llm.push(toolCall('num1', 'attach_inbound_number', { agent_id: 'a1', number: 918065587702 }), [text('ok'), stop])
+    const { frames } = await sse({ projectId: P, message: 'attach' })
+    expect(frames.find((f: any) => f.toolResult).toolResult.result.__pending).toBe(true)
+  })
+
+  it('does not offer buying to anyone but a platform super admin', async () => {
+    state.llm.push(toolCall('buy1', 'buy_plivo_number', { number: '+918065587702', country_iso: 'IN' }), [text('ok'), stop])
+    const { frames } = await sse({ projectId: P, message: 'buy it' })
+    const result = frames.find((f: any) => f.toolResult).toolResult
+    expect(result).toMatchObject({ success: false, result: { error: expect.stringContaining('super admins') } })
+    expect(result.result.__pending).toBeUndefined()
+  })
+
+  it('holds a super admin buy for Confirm', async () => {
+    process.env.PYPE_ADMINS = 'u@x.com'
+    try {
+      state.llm.push(toolCall('buy2', 'buy_plivo_number', { number: '+918065587702', country_iso: 'IN' }), [text('ok'), stop])
+      const { frames } = await sse({ projectId: P, message: 'buy it' })
+      expect(frames.find((f: any) => f.toolResult).toolResult.result.__pending).toBe(true)
+    } finally {
+      delete process.env.PYPE_ADMINS
+    }
+  })
+
   it('rejects a wrongly typed argument instead of passing it to the tool', async () => {
     state.llm.push(toolCall('bad2', 'get_agent_details', { agent_id: { $ne: 'x' } }), [text('ok'), stop])
     const { frames } = await sse({ projectId: P, message: 'details' })
