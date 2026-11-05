@@ -116,37 +116,42 @@ jobs:
             --repository-name "${ECR_REPOSITORY}" \
             --region "${AWS_REGION}"
 
-      - name: Build Docker image
-        run: |
-          docker build \
-            -f Dockerfile \
-            --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}" \
-            --build-arg NEXT_PUBLIC_AGENT_CREATION_WHITELIST="${{ secrets.NEXT_PUBLIC_AGENT_CREATION_WHITELIST }}" \
-            --build-arg NEXT_PUBLIC_POSTHOG_BLACKLIST="${{ secrets.NEXT_PUBLIC_POSTHOG_BLACKLIST }}" \
-            --build-arg NEXT_PUBLIC_POSTHOG_KEY="${{ secrets.NEXT_PUBLIC_POSTHOG_KEY }}" \
-            --build-arg NEXT_PUBLIC_POSTHOG_HOST="${{ secrets.NEXT_PUBLIC_POSTHOG_HOST }}" \
-            --build-arg NEXT_PUBLIC_SONIC_LINKER_ORG_ID="${{ secrets.NEXT_PUBLIC_SONIC_LINKER_ORG_ID }}" \
-            --build-arg NEXT_PUBLIC_APP_URL="${{ secrets.NEXT_PUBLIC_APP_URL }}" \
-            --build-arg NEXT_PUBLIC_MONITORING_SERVICE_BASE_URL="${{ secrets.NEXT_PUBLIC_MONITORING_SERVICE_BASE_URL }}" \
-            --build-arg NEXT_PUBLIC_MONITORING_AGENT_BASE_URL="${{ secrets.NEXT_PUBLIC_MONITORING_AGENT_BASE_URL }}" \
-            --build-arg NEXT_PUBLIC_PYPEAI_API_URL="${{ secrets.NEXT_PUBLIC_PYPEAI_API_URL }}" \
-            --build-arg NEXT_PUBLIC_DISPOSITION_PROJECTS="${{ secrets.NEXT_PUBLIC_DISPOSITION_PROJECTS }}" \
-            --build-arg NEXT_PUBLIC_METABASE_URL="${{ secrets.NEXT_PUBLIC_METABASE_URL }}" \
-            --build-arg NEXT_PUBLIC_FEEDBACK_URL="${{ secrets.NEXT_PUBLIC_FEEDBACK_URL }}" \
-            --build-arg NEXT_PUBLIC_X_API_KEY="${{ secrets.NEXT_PUBLIC_X_API_KEY }}" \
-            --build-arg NEXT_PUBLIC_API_BASE_URL_CAMPAIGN="${{ secrets.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN }}" \
-            --build-arg NEXT_PUBLIC_LIVEKIT_URL="${{ secrets.NEXT_PUBLIC_LIVEKIT_URL }}" \
-            --build-arg NEXT_PUBLIC_API_BASE_URL_SEND_CALL_LOG_LAMBDA="${{ secrets.NEXT_PUBLIC_API_BASE_URL_SEND_CALL_LOG_LAMBDA }}" \
-            --build-arg NEXT_PUBLIC_API_BASE_URL_OLD_CAMPAIGN="${{ secrets.NEXT_PUBLIC_API_BASE_URL_OLD_CAMPAIGN }}" \
-            --build-arg NEXT_PUBLIC_REPROCESS_API_BASE_URL="${{ secrets.NEXT_PUBLIC_REPROCESS_API_BASE_URL }}" \
-            -t "${IMAGE_URI}" \
-            -t "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}" \
-            .
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Push Docker image
-        run: |
-          docker push "${IMAGE_URI}"
-          docker push "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}:${IMAGE_TAG}"
+      # One build-and-push: layers are cached across runs in the GitHub Actions cache,
+      # so the npm ci layer is rebuilt only when package-lock.json changes, and the
+      # image is pushed straight from the builder (no separate docker push / unpack).
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_URI }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+            NEXT_PUBLIC_AGENT_CREATION_WHITELIST=${{ secrets.NEXT_PUBLIC_AGENT_CREATION_WHITELIST }}
+            NEXT_PUBLIC_POSTHOG_BLACKLIST=${{ secrets.NEXT_PUBLIC_POSTHOG_BLACKLIST }}
+            NEXT_PUBLIC_POSTHOG_KEY=${{ secrets.NEXT_PUBLIC_POSTHOG_KEY }}
+            NEXT_PUBLIC_POSTHOG_HOST=${{ secrets.NEXT_PUBLIC_POSTHOG_HOST }}
+            NEXT_PUBLIC_SONIC_LINKER_ORG_ID=${{ secrets.NEXT_PUBLIC_SONIC_LINKER_ORG_ID }}
+            NEXT_PUBLIC_APP_URL=${{ secrets.NEXT_PUBLIC_APP_URL }}
+            NEXT_PUBLIC_MONITORING_SERVICE_BASE_URL=${{ secrets.NEXT_PUBLIC_MONITORING_SERVICE_BASE_URL }}
+            NEXT_PUBLIC_MONITORING_AGENT_BASE_URL=${{ secrets.NEXT_PUBLIC_MONITORING_AGENT_BASE_URL }}
+            NEXT_PUBLIC_PYPEAI_API_URL=${{ secrets.NEXT_PUBLIC_PYPEAI_API_URL }}
+            NEXT_PUBLIC_DISPOSITION_PROJECTS=${{ secrets.NEXT_PUBLIC_DISPOSITION_PROJECTS }}
+            NEXT_PUBLIC_METABASE_URL=${{ secrets.NEXT_PUBLIC_METABASE_URL }}
+            NEXT_PUBLIC_FEEDBACK_URL=${{ secrets.NEXT_PUBLIC_FEEDBACK_URL }}
+            NEXT_PUBLIC_X_API_KEY=${{ secrets.NEXT_PUBLIC_X_API_KEY }}
+            NEXT_PUBLIC_API_BASE_URL_CAMPAIGN=${{ secrets.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN }}
+            NEXT_PUBLIC_LIVEKIT_URL=${{ secrets.NEXT_PUBLIC_LIVEKIT_URL }}
+            NEXT_PUBLIC_API_BASE_URL_SEND_CALL_LOG_LAMBDA=${{ secrets.NEXT_PUBLIC_API_BASE_URL_SEND_CALL_LOG_LAMBDA }}
+            NEXT_PUBLIC_API_BASE_URL_OLD_CAMPAIGN=${{ secrets.NEXT_PUBLIC_API_BASE_URL_OLD_CAMPAIGN }}
+            NEXT_PUBLIC_REPROCESS_API_BASE_URL=${{ secrets.NEXT_PUBLIC_REPROCESS_API_BASE_URL }}
+
   deploy:
     environment: ${{ (github.ref_name == 'main' || github.ref_name == 'main-new') && 'production' || 'develop' }}
     name: Deploy to Private EC2 using Blue Green
