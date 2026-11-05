@@ -2,8 +2,8 @@
 // the superadmin gate used by the /api/dnc routes and the settings/dnc UI.
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
-
-export const DNC_TABLE = 'pype_voice_dnc_list'
+import { createPypePlane } from '@/server/data-plane/adapters/pype'
+import type { DncStore } from '@/server/data-plane'
 
 /**
  * Normalize a raw phone number to E.164 (default region India / +91).
@@ -104,17 +104,7 @@ export interface DncCheckResult {
   scope?: DncScope
 }
 
-/**
- * The PostgREST filter for rows that apply to a call: global rows always,
- * project rows for its project, agent rows (e.g. added by the DNC checker) for
- * its agent only. Same rule as the backend (utils/dnc.py) and the scheduler.
- */
-export function dncScopeFilter(projectId?: string | null, agentId?: string | null): string {
-  const clauses = ['scope.eq.global']
-  if (projectId) clauses.push(`and(scope.eq.project,project_id.eq.${projectId})`)
-  if (agentId) clauses.push(`and(scope.eq.agent,agent_id.eq.${agentId})`)
-  return clauses.join(',')
-}
+export { dncScopeFilter } from '@/server/data-plane/adapters/queryPlane'
 
 // When a number is blocked at more than one level, the widest one is reported.
 const SCOPE_RANK: Record<DncScope, number> = { global: 3, project: 2, agent: 1 }
@@ -129,9 +119,10 @@ const SCOPE_RANK: Record<DncScope, number> = { global: 3, project: 2, agent: 1 }
 export async function checkDncNumbers(
   numbers: string[],
   projectId?: string | null,
-  agentId?: string | null
+  agentId?: string | null,
+  // Pype only by default; a customer-held project also passes its destination's store.
+  stores: DncStore[] = [createPypePlane().dnc]
 ): Promise<DncCheckResult[]> {
-  const supabase = createServiceRoleClient()
   const normalized = numbers.map((n) => ({ input: n, normalized: normalizePhone(n) }))
   const lookup = [...new Set(normalized.map((n) => n.normalized).filter(Boolean))] as string[]
 
@@ -145,17 +136,12 @@ export async function checkDncNumbers(
   const blockedMap = new Map<string, DncScope>()
   for (let i = 0; i < lookup.length; i += CHUNK) {
     const slice = lookup.slice(i, i + CHUNK)
-    const { data, error } = await supabase
-      .from(DNC_TABLE)
-      .select('phone_e164, scope, project_id, agent_id')
-      .eq('is_active', true)
-      .in('phone_e164', slice)
-      .or(dncScopeFilter(projectId, agentId))
-    if (error) throw error
-    for (const row of data ?? []) {
-      const scope = row.scope as DncScope
-      const existing = blockedMap.get(row.phone_e164)
-      if (!existing || SCOPE_RANK[scope] > SCOPE_RANK[existing]) blockedMap.set(row.phone_e164, scope)
+    for (const store of stores) {
+      for (const row of await store.findBlocked(slice, projectId, agentId)) {
+        const scope = row.scope as DncScope
+        const existing = blockedMap.get(row.phone_e164)
+        if (!existing || SCOPE_RANK[scope] > SCOPE_RANK[existing]) blockedMap.set(row.phone_e164, scope)
+      }
     }
   }
 

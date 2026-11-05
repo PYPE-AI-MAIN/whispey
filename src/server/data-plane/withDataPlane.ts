@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server'
 import { DataPlaneError } from './errors'
-import type { DataPlane } from './ports'
-import { getDataPlaneResolver } from './resolver'
+import { getDataPlaneResolver, type PlaneSource } from './resolver'
 
-export type PlaneSource = { forProject(projectId: string): Promise<DataPlane> }
+export type { PlaneSource }
 
 /** Routes with their own try/catch call this first so a data-plane failure still becomes a 503. */
 export function rethrowDataPlane(e: unknown): void {

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { isQaDenied, qaDb, resolveAgentAccess, type QaAccess } from '@/server/qa/access'
+import { qaDb, type QaAccess } from '@/server/qa/access'
+import { loadTicket } from '@/server/qa/ticketAccess'
+import { withDataPlane, rethrowDataPlane } from '@/server/data-plane'
 import { sheetUrlError, ticketAttachments, ticketPatch } from '@/lib/qaAudit'
 import { logQaEvent, notifyQaStatusChange } from '@/server/qa/notify'
 
@@ -63,38 +65,41 @@ async function parseUpdate(body: Record<string, unknown>, ticketId: string) {
 }
 
 /** QA team only: move a ticket along, add a comment, and hand it to a prompt engineer. */
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const PATCH = withDataPlane(async (dp, request: NextRequest, { params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
-  const { data: ticket } = await qaDb.from('qa_flag_tickets').select('id, agent_id, call_log_id, status, flagged_by_email, assignee_email, reason').eq('id', id).maybeSingle()
-  if (!ticket) return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
-
-  const access = await resolveAgentAccess(ticket.agent_id)
-  if (isQaDenied(access)) return NextResponse.json({ error: access.error }, { status: access.status })
+  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
+  const loaded = await loadTicket(dp, typeof body.agentId === 'string' ? body.agentId : null, id, 'id, agent_id, call_log_id, status, flagged_by_email, assignee_email, reason')
+  if ('error' in loaded) return loaded.error
+  const { access, plane, ticket } = loaded
   if (!access.canManage) return NextResponse.json({ error: 'Only the QA team can update tickets' }, { status: 403 })
 
-  const parsed = await parseUpdate((await request.json().catch(() => ({}))) as Record<string, unknown>, id)
+  const parsed = await parseUpdate(body, id)
   if ('error' in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 })
   const { check, sheet, assignee, engineer, commentText, commentFiles } = parsed
 
   const done = check.patch.status === 'resolved'
-  const { data, error } = await qaDb
-    .from('qa_flag_tickets')
-    .update({
-      ...check.patch,
-      sheet_url: sheet || null,
-      assignee_email: assignee || null,
-      resolved_by: done ? access.email : null,
-      resolved_at: done ? new Date().toISOString() : null,
-    })
-    .eq('id', id)
-    .select('id, status, resolution_note, resolved_by, resolved_at, sheet_url, assignee_email')
-    .single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  let data
+  try {
+    data = await plane.qa.updateTicket(
+      id,
+      {
+        ...check.patch,
+        sheet_url: sheet || null,
+        assignee_email: assignee || null,
+        resolved_by: done ? access.email : null,
+        resolved_at: done ? new Date().toISOString() : null,
+      },
+      'id, status, resolution_note, resolved_by, resolved_at, sheet_url, assignee_email'
+    )
+  } catch (e) {
+    rethrowDataPlane(e)
+    return NextResponse.json({ error: e instanceof Error ? e.message : 'Unknown error' }, { status: 500 })
+  }
 
   if (commentText || commentFiles.length) {
     await qaDb.from('qa_flag_comments').insert({ ticket_id: id, author_email: access.email, body: commentText, attachments: commentFiles })
   }
-  await announce(access, ticket, { status: check.patch.status, said: commentText || check.patch.resolution_note, sheet, assignee, engineer })
+  await announce(access, ticket as Ticket, { status: check.patch.status, said: commentText || check.patch.resolution_note, sheet, assignee, engineer })
 
   return NextResponse.json({ ticket: data })
-}
+})

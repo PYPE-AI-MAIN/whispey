@@ -15,6 +15,7 @@ import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
 import { resolveColumnAccessForRequest } from '@/lib/agentCallLogSettingsStore'
 import type { CallLogSettings } from '@/lib/callLogSettings'
 import type { Ctx } from './buildQuery'
+import { customerHeldResponse } from '@/server/data-plane'
 
 const supabase = createServiceRoleClient()
 
@@ -69,6 +70,10 @@ export async function resolveAnalyticsContext(
 
   const access = await getProjectRoleForApi(agent.project_id)
   if (!access) return deny(403, 'Not a member of this project')
+
+  // Analytics reads Pype's database directly; a customer-held project's data is not there.
+  const held = await customerHeldResponse(agent.project_id)
+  if (held) return { errorResponse: held }
 
   // a member can be limited to particular agents; an empty list means none
   const visibleAgentIds = access.visibility.org.visibleAgentIds
@@ -148,6 +153,9 @@ export async function resolveProjectAnalyticsContext(
 
   const access = await getProjectRoleForApi(projectId)
   if (!access) return deny(403, 'Not a member of this project')
+
+  const held = await customerHeldResponse(projectId)
+  if (held) return { errorResponse: held }
 
   const { data: agents } = await supabase
     .from('pype_voice_agents')

@@ -6,7 +6,6 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Filter } from '@/lib/supabase-query-types'
-import { dncScopeFilter } from '@/lib/dnc'
 import { DestinationUnavailable } from '../errors'
 import type { DataPlane, Row, SelectQuery } from '../ports'
 
@@ -30,6 +29,18 @@ export const isCallLogsTable = (table: string) => table === T.callLogs
 
 const PAGE = 500
 const SCOPE_VALUES = new Set(['global', 'project', 'agent'])
+
+/**
+ * The PostgREST filter for DNC rows that apply to a call: global rows always,
+ * project rows for its project, agent rows for its agent only. Same rule as the
+ * backend (utils/dnc.py) and the scheduler.
+ */
+export function dncScopeFilter(projectId?: string | null, agentId?: string | null): string {
+  const clauses = ['scope.eq.global']
+  if (projectId) clauses.push(`and(scope.eq.project,project_id.eq.${projectId})`)
+  if (agentId) clauses.push(`and(scope.eq.agent,agent_id.eq.${agentId})`)
+  return clauses.join(',')
+}
 
 export function applyFilters(query: any, filters: Filter[]) {
   let q = query
@@ -164,8 +175,52 @@ export function createQueryPlane(db: Db, opts: { typed: boolean; destination?: s
       async deletePending(callLogId, flagId) {
         ok(await db.from(T.tickets).delete().eq('call_log_id', callLogId).eq('flag_id', flagId).eq('status', 'pending'))
       },
+      async listTickets(agentId, q) {
+        let query = db.from(T.tickets).select(q.columns, { count: 'exact' }).eq('agent_id', agentId)
+        if (q.status) query = query.eq('status', q.status)
+        const res = ok(await query.order('flagged_at', { ascending: false }).range(q.from, q.to))
+        return { rows: (res.data ?? []) as unknown as Row[], total: res.count ?? 0 }
+      },
+      async countByStatus(agentId, statuses) {
+        const counts = await Promise.all(
+          statuses.map(async (s) => ok(await db.from(T.tickets).select('id', { count: 'exact', head: true }).eq('agent_id', agentId).eq('status', s)).count ?? 0)
+        )
+        return Object.fromEntries(statuses.map((s, i) => [s, counts[i]]))
+      },
+      async getTicket(id, columns) {
+        return (ok(await db.from(T.tickets).select(columns).eq('id', id).maybeSingle()).data ?? null) as Row | null
+      },
+      async updateTicket(id, patch, columns) {
+        return ok(await db.from(T.tickets).update(patch).eq('id', id).select(columns).single()).data as unknown as Row
+      },
     },
     dnc: {
+      async listEntries(q) {
+        let query = db.from(T.dnc)
+          .select('id, phone_e164, phone_raw, scope, project_id, agent_id, call_log_id, reason, source, added_by, created_at', { count: 'exact' })
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+        if (q.scope) query = query.eq('scope', q.scope)
+        if (q.projectId) query = query.eq('project_id', q.projectId)
+        if (q.agentId) query = query.eq('agent_id', q.agentId)
+        if (q.source === 'auto') query = query.eq('source', 'auto')
+        if (q.source === 'manual') query = query.neq('source', 'auto')
+        if (q.digits) query = query.ilike('phone_e164', `%${q.digits}%`)
+        const res = ok(await query.limit(q.limit))
+        return { rows: (res.data ?? []) as unknown as Row[], total: res.count ?? 0 }
+      },
+      async findActive(phones, scope, projectId, agentId) {
+        let query = db.from(T.dnc).select('phone_e164').eq('is_active', true).eq('scope', scope).in('phone_e164', phones)
+        if (scope === 'project') query = query.eq('project_id', projectId!)
+        if (scope === 'agent') query = query.eq('agent_id', agentId!)
+        return (ok(await query).data ?? []).map((r: Row) => r.phone_e164 as string)
+      },
+      async addEntries(rows) {
+        ok(await db.from(T.dnc).insert(rows))
+      },
+      async deactivate(id) {
+        ok(await db.from(T.dnc).update({ is_active: false, deleted_at: new Date().toISOString() }).eq('id', id).eq('is_active', true))
+      },
       async findBlocked(phones, projectId, agentId) {
         const res = await db.from(T.dnc).select('phone_e164, scope')
           .eq('is_active', true).in('phone_e164', phones).or(dncScopeFilter(projectId, agentId))

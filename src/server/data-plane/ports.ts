@@ -61,11 +61,34 @@ export interface QaTicketStore {
   findTicketId(callLogId: string, flagId: string): Promise<string | null>
   updatePendingReason(callLogId: string, flagId: string, reason: string): Promise<void>
   deletePending(callLogId: string, flagId: string): Promise<void>
+  /** One page (rows `from`..`to`, inclusive) of an agent's tickets, newest flag first, with the total. */
+  listTickets(agentId: string, q: { status?: string; from: number; to: number; columns: string }): Promise<{ rows: Row[]; total: number }>
+  countByStatus(agentId: string, statuses: readonly string[]): Promise<Record<string, number>>
+  getTicket(id: string, columns: string): Promise<Row | null>
+  updateTicket(id: string, patch: Row, columns: string): Promise<Row>
 }
 
 export type DncScope = 'global' | 'project' | 'agent'
 
+export interface DncListQuery {
+  scope?: DncScope
+  projectId?: string
+  agentId?: string
+  /** 'auto' = added by the checker; 'manual' = everything else. */
+  source?: 'auto' | 'manual'
+  /** Digits to match inside the number. */
+  digits?: string
+  limit: number
+}
+
 export interface DncStore {
+  /** Active entries, newest first, with the total before the limit. */
+  listEntries(q: DncListQuery): Promise<{ rows: Row[]; total: number }>
+  /** Of these numbers, the ones already active in exactly this scope. */
+  findActive(phones: string[], scope: DncScope, projectId?: string | null, agentId?: string | null): Promise<string[]>
+  addEntries(rows: Row[]): Promise<void>
+  /** Soft delete (keeps the audit trail). */
+  deactivate(id: string): Promise<void>
   /** Active rows for these (already normalised) numbers that apply to the project or agent. */
   findBlocked(phones: string[], projectId?: string | null, agentId?: string | null): Promise<{ phone_e164: string; scope: DncScope }[]>
 }
