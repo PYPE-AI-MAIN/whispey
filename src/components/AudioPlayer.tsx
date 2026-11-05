@@ -29,6 +29,8 @@ interface AudioPlayerProps {
   controlRef?: React.Ref<AudioPlayerControls>
   /** Resolve the recording link and start buffering on mount, so play starts at once. */
   preload?: boolean
+  /** The call's agent: tells the server whose storage holds the recording (needed for customer-held projects). */
+  agentId?: string
 }
 
 export interface AudioPlayerControls {
@@ -42,7 +44,7 @@ export interface AudioPlayerControls {
 
 const PLAYBACK_SPEEDS = [1, 1.5, 2, 2.5, 3, 4]
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className, segmentStartTime, segmentDuration, onTimeUpdate, controlRef, preload = false }) => {
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className, segmentStartTime, segmentDuration, onTimeUpdate, controlRef, preload = false, agentId }) => {
 
   const [isPlaying, setIsPlaying] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -101,7 +103,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
         const testResponse = await fetch('/api/audio-proxy', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url, method: 'HEAD' })
+          body: JSON.stringify({ url, method: 'HEAD', agentId })
         })
 
         const result = await testResponse.json()
@@ -115,7 +117,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
             return result.url
           }
           // Otherwise, stream via proxy GET
-          const proxyUrl = `/api/audio-proxy?url=${encodeURIComponent(url)}`
+          const proxyUrl = `/api/audio-proxy?url=${encodeURIComponent(url)}${agentId ? `&agentId=${agentId}` : ''}`
           setAudioUrl(proxyUrl)
           setIsLoading(false)
           return proxyUrl
@@ -131,7 +133,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
         const response = await fetch("/api/audio", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url }),
+          body: JSON.stringify({ url, agentId }),
         })
         if (response.ok) {
           const { url: s3Url } = await response.json()
@@ -143,7 +145,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
       const response = await fetch("/api/audio", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ s3Key }),
+        body: JSON.stringify({ s3Key, agentId }),
       })
   
       if (!response.ok) throw new Error("Failed to get audio URL")
@@ -157,7 +159,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
     } finally {
       setIsLoading(false)
     }
-  }, [audioUrl, url, s3Key])
+  }, [audioUrl, url, s3Key, agentId])
 
   // Handle playback speed change
   const handleSpeedChange = useCallback((speed: number) => {
@@ -382,7 +384,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
 
       // If we have a direct/presigned URL, route via proxy GET to avoid CORS and preserve filename
       if (downloadUrl.includes('amazonaws.com')) {
-        const proxy = `/api/audio-proxy?url=${encodeURIComponent(downloadUrl)}&filename=${encodeURIComponent(finalFileName)}`
+        const proxy = `/api/audio-proxy?url=${encodeURIComponent(downloadUrl)}&filename=${encodeURIComponent(finalFileName)}${agentId ? `&agentId=${agentId}` : ''}`
         const link = document.createElement('a')
         link.href = proxy
         link.download = finalFileName
@@ -399,7 +401,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ s3Key, url, callId, className
       if (!cleanS3Key) {
         throw new Error("Invalid S3 key")
       }
-      const downloadApiUrl = `/api/audio-download?s3Key=${encodeURIComponent(cleanS3Key)}&filename=${encodeURIComponent(finalFileName)}`
+      const downloadApiUrl = `/api/audio-download?s3Key=${encodeURIComponent(cleanS3Key)}&filename=${encodeURIComponent(finalFileName)}${agentId ? `&agentId=${agentId}` : ''}`
       const link = document.createElement('a')
       link.href = downloadApiUrl
       link.download = finalFileName

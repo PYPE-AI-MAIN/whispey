@@ -36,7 +36,7 @@ export function usePiConversation({ projectId, getPageContext }: {
       })
       if (!res.ok || !res.body) {
         const err = await res.json().catch(() => null)
-        setMessages((m) => failAssistant(m, assistantId, err?.error ?? "Pi couldn't answer. Please try again."))
+        setMessages((m) => failAssistant(m, assistantId, err?.message ?? err?.error ?? "Pi couldn't answer. Please try again."))
         return
       }
       await consumeSse(res.body, (line) => {

@@ -66,6 +66,7 @@ interface Deps {
 
 export class DataPlaneResolver {
   private readonly cache = new Map<string, { at: number; plane: DataPlane }>()
+  private readonly routeCache = new Map<string, { at: number; routes: RegistryRoute[] }>()
   private readonly breakers = new Map<string, CircuitBreaker>()
   private readonly d: Required<Deps>
 
@@ -87,11 +88,29 @@ export class DataPlaneResolver {
     return plane
   }
 
-  private async build(projectId: string): Promise<DataPlane> {
-    // A route with a future effective_from has not switched yet.
+  /** Pype's own plane, for data that always stays in Pype (global DNC entries). No registry read. */
+  pype(): DataPlane {
+    return this.d.pypePlane()
+  }
+
+  /** True when any of the project's routes points at a customer destination (not Pype). */
+  async isCustomerHeld(projectId: string): Promise<boolean> {
+    return (await this.routesFor(projectId)).some((r) => r.destination?.kind !== 'pype_supabase')
+  }
+
+  /** The routes in effect for the project; a route with a future effective_from has not switched yet. */
+  private async routesFor(projectId: string): Promise<RegistryRoute[]> {
+    const hit = this.routeCache.get(projectId)
+    if (hit && this.d.now() - hit.at < REGISTRY_CACHE_MS) return hit.routes
     const routes = (await this.d.registry(projectId)).filter(
       (r) => !r.effective_from || Date.parse(r.effective_from) <= this.d.now()
     )
+    this.routeCache.set(projectId, { at: this.d.now(), routes })
+    return routes
+  }
+
+  private async build(projectId: string): Promise<DataPlane> {
+    const routes = await this.routesFor(projectId)
     if (routes.length === 0) return this.d.pypePlane()
 
     const byType = new Map(routes.map((r) => [r.data_type, r]))
@@ -131,7 +150,20 @@ export class DataPlaneResolver {
   }
 }
 
-let shared: Pick<DataPlaneResolver, 'forProject'> | null = null
-export const getDataPlaneResolver = () => (shared ??= new DataPlaneResolver())
-/** Tests swap in a resolver backed by fake planes; pass null to restore. */
-export const setDataPlaneResolverForTests = (r: Pick<DataPlaneResolver, 'forProject'> | null) => { shared = r }
+export type PlaneSource = Pick<DataPlaneResolver, 'forProject' | 'isCustomerHeld' | 'pype'>
+
+let shared: PlaneSource | null = null
+export const getDataPlaneResolver = (): PlaneSource => (shared ??= new DataPlaneResolver())
+/**
+ * Tests swap in a resolver backed by fake planes; pass null to restore. Only
+ * forProject is required: a project is Pype-held unless the test says otherwise.
+ */
+export const setDataPlaneResolverForTests = (
+  r: (Pick<PlaneSource, 'forProject'> & Partial<PlaneSource>) | null
+) => {
+  shared = r && {
+    isCustomerHeld: async () => false,
+    pype: () => { throw new Error('no Pype plane in this test') },
+    ...r,
+  }
+}

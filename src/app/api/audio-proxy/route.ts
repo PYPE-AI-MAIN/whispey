@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import AWS from 'aws-sdk'
+import { withDataPlane, rethrowDataPlane } from '@/server/data-plane'
+import { signRoutedRecording } from '@/server/audio/routed'
 
 const s3 = new AWS.S3({
   accessKeyId: process.env.AWS_ACCESS_KEY_ID,
@@ -31,29 +33,14 @@ function parseS3Url(inputUrl: string): { bucket?: string; key?: string; host?: s
   }
 }
 
-function resolveBucketName(
-  bucketFromUrl: string | undefined,
-  key: string | undefined,
-  host: string | undefined
-): string | undefined {
-  if (bucketFromUrl) return bucketFromUrl
-  const haystack = `${host || ''}/${key || ''}`.toLowerCase()
-  const firstSeg = (key || '').split('/')[0].toLowerCase()
-
-  // Prefer explicit env mapping if we detect known identifiers
-  if (haystack.includes('samunati') || firstSeg.includes('samunati')) {
-    return process.env.AWS_S3_BUCKET_SAMUNATI || process.env.AWS_S3_BUCKET
-  }
-  if (haystack.includes('kannada') || firstSeg.includes('kannada')) {
-    return process.env.AWS_S3_BUCKET_KANNADA || process.env.AWS_S3_BUCKET
-  }
-  // Fallback to default bucket
-  return process.env.AWS_S3_BUCKET
+// The bucket comes from the stored recording URL; recordings whose URL does not name one use the default bucket.
+function resolveBucketName(bucketFromUrl: string | undefined): string | undefined {
+  return bucketFromUrl || process.env.AWS_S3_BUCKET
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withDataPlane(async (dp, request: NextRequest) => {
   try {
-    const { url, method = 'HEAD' } = await request.json()
+    const { url, method = 'HEAD', agentId } = await request.json()
 
     if (!url) {
       return NextResponse.json(
@@ -73,6 +60,13 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`Audio Proxy: ${method} request to ${url}`)
+
+    // A customer-held project's recording is signed by the customer's signer.
+    const routed = await signRoutedRecording(dp, agentId, url)
+    if (routed instanceof NextResponse) return routed
+    if (routed) {
+      return NextResponse.json({ accessible: true, status: 200, statusText: 'OK', url: routed.url, routed: true })
+    }
 
     // Check if this is an S3 URL
     const isS3Url = url.includes('.s3.') || url.includes('.amazonaws.com')
@@ -119,8 +113,8 @@ export async function POST(request: NextRequest) {
           })
         }
         // Not a valid presigned URL or expired; try re-signing using our AWS creds
-        const { bucket, key, host } = parseS3Url(url)
-        const effectiveBucket = resolveBucketName(bucket, key, host)
+        const { bucket, key } = parseS3Url(url)
+        const effectiveBucket = resolveBucketName(bucket)
         if (effectiveBucket && key) {
           try {
             const resigned = await s3.getSignedUrlPromise('getObject', {
@@ -204,6 +198,7 @@ export async function POST(request: NextRequest) {
     )
 
   } catch (error: any) {
+    rethrowDataPlane(error)
     console.error('Audio Proxy Error:', error)
     
     if (error.name === 'TimeoutError') {
@@ -218,10 +213,10 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+})
 
 // GET endpoint for direct audio streaming with URL parameter
-export async function GET(request: NextRequest) {
+export const GET = withDataPlane(async (dp, request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url)
     const audioUrl = searchParams.get('url')
@@ -246,7 +241,11 @@ export async function GET(request: NextRequest) {
 
     console.log(`Audio Proxy GET: Streaming audio from ${audioUrl}`)
 
-    const response = await fetch(audioUrl, {
+    // A customer-held project's recording is streamed from the customer's signed link.
+    const routed = await signRoutedRecording(dp, searchParams.get('agentId'), audioUrl)
+    if (routed instanceof NextResponse) return routed
+
+    const response = await fetch(routed ? routed.url : audioUrl, {
       method: 'GET',
       headers: {
         'User-Agent': 'Pype-Voice-Analytics/1.0',
@@ -283,6 +282,7 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error: any) {
+    rethrowDataPlane(error)
     console.error('Audio Proxy GET Error:', error)
     
     if (error.name === 'TimeoutError') {
@@ -297,4 +297,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
-} 
+})

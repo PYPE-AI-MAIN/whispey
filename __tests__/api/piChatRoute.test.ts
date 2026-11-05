@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { setDataPlaneResolverForTests } from '@/server/data-plane/resolver'
 
 // Characterization tests for POST /api/pi/chat: the real handler runs against a scripted model and an
 // in-memory session store, so refactors of the route can be checked against today's behaviour.
@@ -93,6 +94,7 @@ async function sse(body: unknown) {
 const stored = (id: string) => state.sessions.get(id)
 
 beforeEach(() => {
+  setDataPlaneResolverForTests({ forProject: async () => { throw new Error('unused') } }) // projects here are Pype-held
   state.sessions.clear(); state.agents = []; state.llm = []; state.llmCalls = []; state.authUser = 'user-1'; state.role = 'admin'; state.seq = 0; state.createImpl = defaultCreate; state.updates = []; state.versions = []; state.deployCalls = []; state.deployResult = { ok: true }; state.assistant = { prompt: 'Hello world', llm: { temperature: 0.5 } }; state.configOk = true
   vi.stubEnv('OPENAI_API_KEY', 'test-key')
   vi.stubEnv('AZURE_OPENAI_API_KEY', '')

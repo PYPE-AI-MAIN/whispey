@@ -23,7 +23,7 @@ async function json<T>(url: string, init?: RequestInit): Promise<T> {
     throw new Error('Could not reach the server. Check your connection and try again — nothing was lost.')
   }
   const body = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(body?.error ?? `Something went wrong (${res.status})`)
+  if (!res.ok) throw new Error(body?.message ?? body?.error ?? `Something went wrong (${res.status})`)
   return body as T
 }
 
@@ -226,7 +226,7 @@ export function useChartData(
         })
         if (!res.ok) {
           const body = await res.json().catch(() => ({}))
-          throw new Error(body?.error ?? `Something went wrong (${res.status})`)
+          throw new Error(body?.message ?? body?.error ?? `Something went wrong (${res.status})`)
         }
 
         // a context change (date range, filters, When) makes every card's old

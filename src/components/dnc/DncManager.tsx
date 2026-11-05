@@ -75,9 +75,11 @@ export function DncManager({ currentProjectId }: Readonly<{ currentProjectId: st
 
   // The whole list (newest 1000); every filter works on it in the browser.
   const { data, isLoading, error } = useQuery({
-    queryKey: ['dnc-list'],
+    // With an organization picked, its entries come from where its data lives (a customer-held
+    // organization keeps them in its own database); global entries are included either way.
+    queryKey: ['dnc-list', orgId],
     queryFn: async () => {
-      const res = await fetch('/api/dnc/list')
+      const res = await fetch(orgId ? `/api/dnc/list?project_id=${orgId}&with_global=1` : '/api/dnc/list')
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json.error || 'Failed to load the DNC list')
       return json as { entries: DncEntry[]; total: number; limit: number }
@@ -125,9 +127,11 @@ export function DncManager({ currentProjectId }: Readonly<{ currentProjectId: st
 
   const [removingId, setRemovingId] = useState<string | null>(null)
   const remove = useMutation({
-    mutationFn: async (id: string) => {
-      setRemovingId(id)
-      const res = await fetch(`/api/dnc/${id}`, { method: 'DELETE' })
+    mutationFn: async (entry: DncEntry) => {
+      setRemovingId(entry.id)
+      // project_id tells the server where the entry lives; global entries have none.
+      const hint = entry.project_id ? `?project_id=${entry.project_id}` : ''
+      const res = await fetch(`/api/dnc/${entry.id}${hint}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Could not remove the number')
     },
     onSettled: () => {
@@ -217,7 +221,7 @@ export function DncManager({ currentProjectId }: Readonly<{ currentProjectId: st
         </div>
       )
     }
-    return <DncTable entries={shown} onRemove={(id) => remove.mutate(id)} removingId={removingId} />
+    return <DncTable entries={shown} onRemove={(id) => { const e = entries.find((x) => x.id === id); if (e) remove.mutate(e) }} removingId={removingId} />
   }
 
   return (

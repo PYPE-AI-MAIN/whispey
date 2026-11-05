@@ -21,6 +21,7 @@ export function createFakePlane(seed: Record<string, Row[]> = {}): FakePlane {
   const CALL_LOGS = 'call_logs'
   const TURNS = 'turns'
   const TICKETS = 'tickets'
+  const DNC = 'dnc'
 
   const plane: FakePlane = {
     rows,
@@ -54,6 +55,19 @@ export function createFakePlane(seed: Record<string, Row[]> = {}): FakePlane {
       },
     },
     qa: {
+      async listTickets(agentId, q) {
+        const all = t(TICKETS).filter((r) => r.agent_id === agentId && (!q.status || r.status === q.status))
+        return log('listTickets', { rows: all.slice(q.from, q.to + 1), total: all.length })
+      },
+      async countByStatus(agentId, statuses) {
+        return log('countByStatus', Object.fromEntries(statuses.map((s) => [s, t(TICKETS).filter((r) => r.agent_id === agentId && r.status === s).length])))
+      },
+      async getTicket(id) { return log('getTicket', t(TICKETS).find((r) => r.id === id) ?? null) },
+      async updateTicket(id, patch) {
+        const row = t(TICKETS).find((r) => r.id === id)!
+        Object.assign(row, patch)
+        return log('updateTicket', row)
+      },
       async upsertFlagTicket(row) {
         if (!t(TICKETS).some((r) => r.call_log_id === row.call_log_id && r.flag_id === row.flag_id)) t(TICKETS).push({ id: `t-${t(TICKETS).length + 1}`, status: 'pending', ...row })
         log('upsertFlagTicket', 0)
@@ -68,7 +82,20 @@ export function createFakePlane(seed: Record<string, Row[]> = {}): FakePlane {
         log('deletePending', 0)
       },
     },
-    dnc: { async findBlocked() { return log('findBlocked', []) } },
+    dnc: {
+      async findBlocked(phones, projectId, agentId) {
+        return log('findBlocked', t(DNC).filter((r) => r.is_active && phones.includes(r.phone_e164) && (r.scope === 'global' || (r.scope === 'project' && r.project_id === projectId) || (r.scope === 'agent' && r.agent_id === agentId))).map((r) => ({ phone_e164: r.phone_e164, scope: r.scope })))
+      },
+      async listEntries(q) {
+        const rows = t(DNC).filter((r) => r.is_active && (!q.scope || r.scope === q.scope) && (!q.projectId || r.project_id === q.projectId) && (!q.agentId || r.agent_id === q.agentId))
+        return log('listEntries', { rows: rows.slice(0, q.limit), total: rows.length })
+      },
+      async findActive(phones, scope, projectId, agentId) {
+        return log('findActive', t(DNC).filter((r) => r.is_active && r.scope === scope && phones.includes(r.phone_e164) && (scope !== 'project' || r.project_id === projectId) && (scope !== 'agent' || r.agent_id === agentId)).map((r) => r.phone_e164))
+      },
+      async addEntries(r) { t(DNC).push(...r.map((x, i) => ({ id: `d-${t(DNC).length + i + 1}`, ...x }))); log('addEntries', 0) },
+      async deactivate(id) { t(DNC).filter((r) => r.id === id).forEach((r) => (r.is_active = false)); log('deactivate', 0) },
+    },
     storage: { async signRecordingUrl(key) { return log('signRecordingUrl', `https://fake.test/${key}`) } },
   }
   return plane
