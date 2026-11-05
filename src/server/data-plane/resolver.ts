@@ -37,12 +37,31 @@ export type RegistryReader = (projectId: string) => Promise<RegistryRoute[]>
 /** Turns a secret reference into the secret. Never logged, never returned by an API. */
 export type SecretResolver = (ref: string) => Promise<string>
 
-const readRegistry: RegistryReader = async (projectId) => {
+/**
+ * PostgREST PGRST205 / Postgres 42P01: the registry tables are not installed yet.
+ * No table means no route can exist anywhere, so every project is on Pype (today's
+ * behaviour). Any other registry error still fails closed.
+ */
+export const isMissingRegistryTable = (e: { code?: string; message?: string } | null | undefined): boolean =>
+  !!e && (e.code === 'PGRST205' || e.code === '42P01' || /could not find the table|relation .* does not exist/i.test(e.message ?? ''))
+
+let warnedMissingRegistry = false
+
+export const readRegistry: RegistryReader = async (projectId) => {
   const { data, error } = await createServiceRoleClient()
     .from('data_destination_routes')
     .select('data_type, state, version, effective_from, destination:data_destinations(id, name, kind, config, secret_ref, schema_version, status)')
     .eq('project_id', projectId)
-  if (error) throw new DestinationUnavailable(undefined, 'Data routing registry is unavailable')
+  if (error) {
+    if (isMissingRegistryTable(error)) {
+      if (!warnedMissingRegistry) {
+        warnedMissingRegistry = true
+        console.warn('[data-plane] registry tables are not installed; every project stays on Pype (apply migrations/data_plane_registry.sql)')
+      }
+      return []
+    }
+    throw new DestinationUnavailable(undefined, 'Data routing registry is unavailable')
+  }
   return (data ?? []) as unknown as RegistryRoute[]
 }
 
