@@ -68,8 +68,8 @@ const SCHEMAS: Record<string, z.ZodTypeAny> = {
   }),
   list_phone_numbers: z.object({}),
   search_plivo_numbers: z.object({ country_iso: text(8), type: text(20).optional(), pattern: text(20).optional() }),
-  buy_plivo_number: z.object({ number: text(32), country_iso: text(8) }),
-  attach_inbound_number: z.object({ agent_id: id, number: text(32), krisp_enabled: z.boolean().optional() }),
+  buy_plivo_number: z.object({ number: z.union([text(32), z.number()]), country_iso: text(8) }),
+  attach_inbound_number: z.object({ agent_id: id, number: z.union([text(32), z.number()]), krisp_enabled: z.boolean().optional() }),
 }
 
 export const PI_TOOL_NAMES = Object.keys(SCHEMAS)
