@@ -4,6 +4,7 @@
  * 429/502/503/504 with exponential backoff + jitter; any other status is returned for the caller to show.
  * Do NOT use this for a Confirm click or a form submit — those are not idempotent.
  */
+// Statuses worth retrying: rate limit and transient gateway/upstream errors.
 const RETRYABLE = new Set([429, 502, 503, 504])
 
 /** Retry jitter in [0, 1) from the Web Crypto RNG (Math.random is flagged as a security hotspot). */
