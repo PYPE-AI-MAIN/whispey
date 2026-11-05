@@ -43,17 +43,15 @@ describe('postgrest adapter', () => {
     expect(err.message).toBe('bad filter')
   })
 
-  it('falls back to the 13-argument call-log function when the 15-argument one is missing', async () => {
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(new Response('{"code":"PGRST202","message":"no fn"}', { status: 404 }))
-      .mockResolvedValueOnce(new Response('[{"id":"c1"}]', { status: 200 }))
+  it('customer call-log query asks for the whole row and passes the agent allow-list', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(new Response('[{"id":"c1"}]', { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
-    const rows = await createPostgrestPlane(dest, pem).callData.queryCallLogs({ p_agent_id: 'a1', p_select: '*' }, { clerkId: 'u', email: 'e@x.com' })
+    const rows = await createPostgrestPlane(dest, pem).callData.queryCallLogs({ p_agent_id: 'a1', p_select: 'id,call_id' }, { clerkId: 'u', email: 'e@x.com' })
     expect(rows).toEqual([{ id: 'c1' }])
-    const bodies = fetchMock.mock.calls.map((c) => JSON.parse((c[1] as RequestInit).body as string))
-    expect(bodies[0]).toHaveProperty('p_user_clerk_id')
-    expect(bodies[1]).not.toHaveProperty('p_user_clerk_id')
-    expect(bodies[1].p_allowed_agent_ids).toEqual(['a1'])
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)
+    expect(body).toMatchObject({ p_select: '*', p_allowed_agent_ids: ['a1'] })
+    expect(body).not.toHaveProperty('p_user_clerk_id')
   })
 
   it('refuses a destination without an https base_url', () => {
