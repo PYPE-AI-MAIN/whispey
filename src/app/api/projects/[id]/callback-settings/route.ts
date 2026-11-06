@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getDataPlaneResolver } from '@/server/data-plane'
 
 const SCHEDULER_API_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN || process.env.SCHEDULER_API_URL || ''
@@ -40,7 +41,8 @@ export async function PUT(
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        // a customer-held store needs the project id in the body; Pype's body stays as sent
+        body: JSON.stringify((await getDataPlaneResolver().isCustomerHeld(id)) ? { projectId: id, ...body } : body),
       }
     )
 

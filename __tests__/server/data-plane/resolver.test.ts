@@ -70,8 +70,10 @@ describe('DataPlaneResolver', () => {
     await expect(make([route('call_data', dest())]).r.forProject('p1')).rejects.toBeInstanceOf(DestinationIncompatible)
   })
 
-  it('campaigns accept only a Pype destination', async () => {
+  it('a customer campaigns route needs call data on the same destination', async () => {
     await expect(make([route('campaigns', dest())]).r.forProject('p1')).rejects.toBeInstanceOf(DestinationIncompatible)
+    const ok = make([...unit, route('campaigns', dest())])
+    expect(await ok.r.forProject('p1')).toBeTruthy()
     const m = make([route('campaigns', dest({ kind: 'pype_supabase' }))])
     expect(await m.r.forProject('p1')).toMatchObject({ callData: m.pype.callData })
   })
@@ -105,6 +107,12 @@ describe('campaignLocation', () => {
     expect(await loc([])).toBe('pype')
     expect(await loc([route('campaigns', dest({ kind: 'pype_supabase' }))])).toBe('pype')
     expect(await loc([route('campaigns', dest())])).toBe('customer')
+  })
+  it('names the customer destination only', async () => {
+    const name = (routes: RegistryRoute[]) => new DataPlaneResolver({ registry: async () => routes }).campaignDestinationName('p1')
+    expect(await name([route('campaigns', dest())])).toBe('acme')
+    expect(await name([route('campaigns', dest({ kind: 'pype_supabase' }))])).toBeNull()
+    expect(await name([])).toBeNull()
   })
 })
 

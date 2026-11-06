@@ -18,6 +18,8 @@ import { useUserPermissions } from '@/contexts/UserPermissionsContext'
 import { PhoneNumber } from '@/utils/campaigns/constants'
 import { useProjectAgents } from '@/hooks/useProjectAgents'
 import { agentDisplayName } from '@/lib/agentDisplayName'
+import { useCampaignLocation } from '@/hooks/useCampaignExtras'
+import { ACEFONE_UNSUPPORTED } from '@/utils/campaigns/constants'
 
 interface CampaignFormFieldsProps {
   onFieldChange: (field: string, value: any) => void
@@ -38,6 +40,7 @@ interface CampaignFormFieldsProps {
 
 export function CampaignFormFields({ onFieldChange, values, projectId, maxConcurrency = 5 }: CampaignFormFieldsProps) {
   const { permissions, loading: permissionsLoading } = useUserPermissions({ projectId })
+  const customerHeld = useCampaignLocation(projectId).data === 'customer'
   const [phoneNumbers, setPhoneNumbers] = useState<PhoneNumber[]>([])
   const [loadingPhones, setLoadingPhones] = useState(true)
   const [pipecatAgents, setPipecatAgents] = useState<{ id: string; name: string }[]>([])
@@ -294,6 +297,7 @@ export function CampaignFormFields({ onFieldChange, values, projectId, maxConcur
               </>
             )}
           </Field>
+          {customerHeld && values.acefoneApiKey && <p className="text-xs text-destructive mt-1">{ACEFONE_UNSUPPORTED}</p>}
           <ErrorMessage name="fromNumber" component="p" className="text-xs text-destructive mt-1" />
         </div>
       )}

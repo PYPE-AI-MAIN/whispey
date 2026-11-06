@@ -9,12 +9,13 @@ import Papa from 'papaparse'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { v4 as uuidv4 } from 'uuid'
-import { RecipientRow, CsvValidationError, RetryConfig, VALID_SIP_ERROR_CODE_VALUES } from '@/utils/campaigns/constants'
+import { ACEFONE_UNSUPPORTED, RecipientRow, CsvValidationError, RetryConfig, VALID_SIP_ERROR_CODE_VALUES } from '@/utils/campaigns/constants'
 import { CampaignFormFields } from '@/components/campaigns/CampaignFormFields'
 import { CsvUploadSection } from '@/components/campaigns/CsvUploadSection'
 import { ScheduleSelector } from '@/components/campaigns/ScheduleSelector'
 import { RecipientsPreview } from '@/components/campaigns/RecipientsPreview'
 import { RetryConfiguration } from '@/components/campaigns/RetryConfiguration'
+import { useCampaignLocation } from '@/hooks/useCampaignExtras'
 import { WebhookCreateSection, type WebhookDraft } from '@/components/campaigns/CampaignWebhook'
 
 // Per-type retryConfig validators — each returns an error message or null.
@@ -121,6 +122,7 @@ const createValidationSchema = (maxConcurrency: number) => Yup.object({
       .max(2048, 'URL is too long')
       .test('https', 'Must be an https:// URL', (value) => !value || /^https:\/\/\S+$/i.test(value)),
     token: Yup.string().max(1024, 'Token is too long'),
+    tokenRef: Yup.string().max(512, 'Reference is too long'),
   })),
   callWindowStart: Yup.string().required('Call window start time is required'),
   callWindowEnd: Yup.string().required('Call window end time is required'),
@@ -322,6 +324,7 @@ function CreateCampaign() {
   const router = useRouter()
   const params = useParams()
   const projectId = params.projectid as string
+  const customerHeld = useCampaignLocation(projectId).data === 'customer'
 
   const [csvFile, setCsvFile] = useState<File | null>(null)
   const [csvData, setCsvData] = useState<RecipientRow[]>([])
@@ -425,6 +428,12 @@ function CreateCampaign() {
 
     if (validationErrors.length > 0) {
       alert('Please fix validation errors before submitting')
+      setSubmitting(false)
+      return
+    }
+
+    if (customerHeld && values.acefoneApiKey) {
+      alert(ACEFONE_UNSUPPORTED)
       setSubmitting(false)
       return
     }
@@ -535,7 +544,7 @@ function CreateCampaign() {
         const res = await fetch(`/api/campaigns/${campaignId}/webhook`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'add', url: w.url.trim(), token: w.token.trim() || undefined }),
+          body: JSON.stringify({ action: 'add', url: w.url.trim(), ...(customerHeld ? { tokenRef: w.tokenRef?.trim() || undefined } : { token: w.token.trim() || undefined }) }),
         }).catch(() => null)
         if (!res?.ok) {
           const error = await res?.json().catch(() => null)
@@ -650,6 +659,7 @@ function CreateCampaign() {
                   projectId={projectId}
                   webhooks={values.webhooks}
                   onChange={(webhooks) => setFieldValue('webhooks', webhooks)}
+                  customerHeld={customerHeld}
                 />
 
                 {/* Action Buttons */}

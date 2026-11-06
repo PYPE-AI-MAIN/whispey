@@ -1,5 +1,6 @@
 // app/api/campaigns/create/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+import { schedulerErrorMessage } from '@/utils/campaigns/constants'
 
 export async function POST(request: NextRequest) {
   try {
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: data.error || 'Failed to create campaign' },
+        { error: schedulerErrorMessage(data, 'Failed to create campaign'), ...(data.code && { code: data.code }) },
         { status: response.status }
       )
     }

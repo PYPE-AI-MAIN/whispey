@@ -1,6 +1,7 @@
 // app/api/campaigns/contacts/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { callScheduler } from '@/lib/campaignScheduler'
+import { schedulerErrorMessage } from '@/utils/campaigns/constants'
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     if (!res.ok) {
       return NextResponse.json(
-        { error: data.error || 'Failed to fetch contacts' },
+        { error: schedulerErrorMessage(data, 'Failed to fetch contacts'), ...(data.code && { code: data.code }) },
         { status: res.status }
       )
     }

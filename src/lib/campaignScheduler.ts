@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { mintServiceToken } from '@/lib/serviceToken'
+import { schedulerErrorMessage } from '@/utils/campaigns/constants'
 
 type Query = Record<string, string | null | undefined>
 
@@ -40,6 +41,6 @@ export async function callScheduler(
 /** Passes a scheduler answer through, or its `error` with the same status. */
 export async function relay(res: Response, fallback: string): Promise<NextResponse> {
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) return NextResponse.json({ error: data.error || fallback }, { status: res.status })
+  if (!res.ok) return NextResponse.json({ error: schedulerErrorMessage(data, fallback), ...(data.code && { code: data.code }) }, { status: res.status })
   return NextResponse.json(data)
 }

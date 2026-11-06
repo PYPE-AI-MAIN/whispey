@@ -1,5 +1,6 @@
 // app/api/campaigns/schedule/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+import { schedulerErrorMessage } from '@/utils/campaigns/constants'
 import { VALID_SIP_ERROR_CODE_VALUES, VALID_CALL_METADATA_FIELD_KEYS } from '@/utils/campaigns/constants'
 
 const badRequest = (error: string) => NextResponse.json({ error }, { status: 400 })
@@ -227,7 +228,7 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: data.error || 'Failed to schedule campaign' },
+        { error: schedulerErrorMessage(data, 'Failed to schedule campaign'), ...(data.code && { code: data.code }) },
         { status: response.status }
       )
     }

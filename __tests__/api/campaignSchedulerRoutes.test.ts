@@ -120,7 +120,7 @@ describe('campaign scheduler routes', () => {
 
   it('location: reports the data location and never breaks on a registry error', async () => {
     setDataPlaneResolverForTests({ campaignLocation: async () => 'customer' })
-    expect(await (await location(req('/api/campaigns/location?projectId=p1'))).json()).toEqual({ location: 'customer' })
+    expect(await (await location(req('/api/campaigns/location?projectId=p1'))).json()).toEqual({ location: 'customer', destination: null })
     setDataPlaneResolverForTests({ campaignLocation: async () => { throw new Error('registry down') } })
     expect(await (await location(req('/api/campaigns/location?projectId=p1'))).json()).toEqual({ location: 'pype' })
   })

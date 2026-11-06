@@ -8,6 +8,7 @@
 import { NextResponse } from 'next/server'
 import { mintServiceToken } from '@/lib/serviceToken'
 import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
+import { schedulerErrorMessage } from '@/utils/campaigns/constants'
 import type { CampaignWebhooks } from '@/utils/campaigns/constants'
 
 type SchedulerResult = { status: number; data: any }
@@ -68,4 +69,5 @@ export async function authorizeCampaignWebhook(
 }
 
 /** Relay the scheduler's answer as-is (status code and JSON). */
-export const relay = ({ status, data }: SchedulerResult) => NextResponse.json(data, { status })
+export const relay = ({ status, data }: SchedulerResult) =>
+  NextResponse.json(status >= 400 && data?.code ? { ...data, error: schedulerErrorMessage(data, data.error) } : data, { status })

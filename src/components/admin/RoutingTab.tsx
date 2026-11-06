@@ -73,13 +73,13 @@ export function RoutingTab() {
                 <span>{t}</span>
                 <select className="h-9 rounded-md border border-border bg-card px-2" value={choice[t] ?? ''} onChange={(e) => choose(t, e.target.value)}>
                   <option value="">Pype (default)</option>
-                  {dests.data?.destinations.filter((d) => t !== 'campaigns').map((d) => (
+                  {dests.data?.destinations.map((d) => (
                     <option key={d.id} value={d.id} disabled={d.status !== 'healthy'}>{d.name}{d.status !== 'healthy' ? ` (${d.status})` : ''}</option>
                   ))}
                 </select>
               </label>
             ))}
-            <p className="text-xs text-muted-foreground">Call data, QA and DNC move together. Campaigns stay on Pype for now. History is not moved: older calls stay where they were.</p>
+            <p className="text-xs text-muted-foreground">Call data, QA and DNC move together. Campaigns can use a customer destination only together with call data on the same one. History is not moved: older calls and existing campaigns stay in Pype.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" disabled={!changes || run.isPending} onClick={() => run.mutate(true)}>Dry run</Button>

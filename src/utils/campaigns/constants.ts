@@ -300,3 +300,20 @@ export interface Contact {
   createdAt: string
   updatedAt: string
 }
+
+export const ACEFONE_UNSUPPORTED =
+  "This number uses an Acefone API key, which can't be stored in the customer's cloud yet (it needs a secret reference). Pick a number without one."
+
+const SCHEDULER_MESSAGES: Record<string, string> = {
+  secret_not_storable: ACEFONE_UNSUPPORTED,
+  token_not_storable: "Webhook tokens can't be stored in the customer's cloud. Use a token reference instead.",
+  destination_unavailable: "The customer's data store is unavailable right now. Try again shortly.",
+  destination_unhealthy: "The customer's data store is unavailable right now. Try again shortly.",
+  route_paused: "This project's data routing is paused for maintenance. Try again shortly.",
+  destination_incompatible: "The customer's data store is not set up for campaigns yet. Ask your Pype admin to check it.",
+  unavailable: "The customer's data store is unavailable right now. Try again shortly.",
+}
+
+/** The scheduler's error as a readable sentence: known codes get a plain explanation, anything else its own text. */
+export const schedulerErrorMessage = (data: { error?: string; code?: string } | null | undefined, fallback: string): string =>
+  (data?.code && SCHEDULER_MESSAGES[data.code]) || data?.error || fallback
