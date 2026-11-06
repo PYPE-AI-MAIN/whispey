@@ -146,6 +146,7 @@ export interface CallLogRequest {
 export interface FailureReportRequest {
   token: string;
   call_id: string;
+  agent_id?: string;
   error_message: string;
   error_type?: string;
   stack_trace?: string;

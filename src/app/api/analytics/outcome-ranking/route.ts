@@ -39,7 +39,8 @@ export const PUT = guarded('analytics/outcome-ranking', async (req: NextRequest)
     return NextResponse.json({ error: 'The same outcome appears twice' }, { status: 400 })
   }
 
-  const resolved = await resolveAnalyticsContext(agentId)
+  // the order is the agent's own configuration (control plane), so it is saved for a customer-held project too
+  const resolved = await resolveAnalyticsContext(agentId, { allowCustomerHeld: true })
   if (isDenied(resolved)) return resolved.errorResponse
   if (resolved.role === 'viewer') {
     return NextResponse.json({ error: 'Only an admin can change the outcome order' }, { status: 403 })

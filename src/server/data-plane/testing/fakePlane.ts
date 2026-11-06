@@ -35,14 +35,32 @@ export function createFakePlane(seed: Record<string, Row[]> = {}): FakePlane {
       },
       async listTurns(sessionId) { return log('listTurns', t(TURNS).filter((r) => r.session_id === sessionId)) },
       async campaignGroupedCallLogs() { return log('campaignGroupedCallLogs', []) },
+      async campaignGroupedCount() { return log('campaignGroupedCount', 0) },
+      async campaignCallCounts(agentId, campaignId) {
+        const by = new Map<string, number>()
+        for (const r of t(CALL_LOGS).filter((x) => x.agent_id === agentId && x.metadata?.campaignId === campaignId)) by.set(r.customer_number, (by.get(r.customer_number) ?? 0) + 1)
+        return log('campaignCallCounts', [...by].map(([customer_number, call_count]) => ({ customer_number, call_count })))
+      },
+      async campaignContactCalls(agentId, campaignId, customerNumber) {
+        return log('campaignContactCalls', t(CALL_LOGS).filter((x) => x.agent_id === agentId && x.metadata?.campaignId === campaignId && x.customer_number === customerNumber))
+      },
       async queryCallLogs(args) { return log('queryCallLogs', t(CALL_LOGS).filter((r) => r.agent_id === args.p_agent_id)) },
       async selectRows(table) { return log('selectRows', [...t(table)]) },
+      async analyticsRun() { return log('analyticsRun', []) },
+      async sampleCallRows(q) { return log('sampleCallRows', t(CALL_LOGS).filter((r) => r.agent_id === q.agentId && r.call_started_at >= q.from).sort((a, b) => (a.call_started_at < b.call_started_at ? 1 : -1)).slice(0, q.limit)) },
       async countRows(table) { return log('countRows', t(table).length) },
       async analyticsRows(q) { return log('analyticsRows', t(CALL_LOGS).filter((r) => q.agentIds.includes(r.agent_id) && r.call_started_at >= q.from && r.call_started_at < q.to)) },
     },
     callLogs: {
       async insertCallLog(row) { const r = { id: `log-${t(CALL_LOGS).length + 1}`, ...row }; t(CALL_LOGS).push(r); return log('insertCallLog', r) },
       async insertTurns(r) { t(TURNS).push(...r); log('insertTurns', 0) },
+      async findStartedLog(agentId, callId) {
+        const r = t(CALL_LOGS).find((x) => x.agent_id === agentId && x.call_id === callId && x.wcall_event === 'call_started')
+        return log('findStartedLog', r ? { id: r.id } : null)
+      },
+      async updateCallLog(id, patch) { const r = t(CALL_LOGS).find((x) => x.id === id)!; Object.assign(r, patch); return log('updateCallLog', r) },
+      async insertTrace(row) { const r = { id: `tr-${t('traces').length + 1}`, ...row }; t('traces').push(r); return log('insertTrace', r) },
+      async insertSpans(r) { t('spans').push(...r); log('insertSpans', 0) },
       async setTranscriptionMetrics(id, metrics) {
         const row = t(CALL_LOGS).find((r) => r.id === id)
         if (row) row.transcription_metrics = metrics

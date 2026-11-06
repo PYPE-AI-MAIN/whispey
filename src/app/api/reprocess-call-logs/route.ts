@@ -1,13 +1,15 @@
 // src/app/api/reprocess-call-logs/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
+import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
+import { withDataPlane, rethrowDataPlane, projectIdForAgent } from '@/server/data-plane'
 
 // Get API base URL from environment
 const REPROCESS_API_BASE_URL = process.env.NEXT_PUBLIC_REPROCESS_API_BASE_URL || 
   process.env.NEXT_PUBLIC_PYPEAI_API_URL || 
   'https://xxxxx.execute-api.ap-south-1.amazonaws.com/dev'
 
-export async function POST(request: NextRequest) {
+export const POST = withDataPlane(async (dp, request: NextRequest) => {
   try {
     const { userId } = await auth()
     if (!userId) {
@@ -92,6 +94,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // The project comes from the agent (control plane) when one is named; the caller needs access to it,
+    // and a project whose route cannot be used fails here (503) instead of reaching the Lambda.
+    if (!agent_id && !project_id) {
+      return NextResponse.json({ error: 'agent_id or project_id is required' }, { status: 400 })
+    }
+    const projectOfCalls = agent_id ? await projectIdForAgent(agent_id) : project_id
+    if (!projectOfCalls) return NextResponse.json({ error: 'Agent not found' }, { status: 404 })
+    if (agent_id && project_id && project_id !== projectOfCalls) {
+      return NextResponse.json({ error: 'agent_id does not belong to project_id' }, { status: 400 })
+    }
+    if (!(await getProjectRoleForApi(projectOfCalls))) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    await dp.forProject(projectOfCalls)
+
     // Forward request to Lambda API
     const apiUrl = `${REPROCESS_API_BASE_URL}/reprocess-call-logs`
     
@@ -107,7 +124,7 @@ export async function POST(request: NextRequest) {
           reprocess_type,
           reprocess_options,
           agent_id: agent_id || null,
-          project_id: project_id || null,
+          project_id: projectOfCalls,
           ...(transcription_fields && Array.isArray(transcription_fields) && transcription_fields.length > 0 && { transcription_fields }),
           ...(metrics_fields && Array.isArray(metrics_fields) && metrics_fields.length > 0 && { metrics_fields })
         })
@@ -137,11 +154,12 @@ export async function POST(request: NextRequest) {
       )
     }
   } catch (error) {
+    rethrowDataPlane(error)
     console.error('Reprocess trigger error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     )
   }
-}
+})
 

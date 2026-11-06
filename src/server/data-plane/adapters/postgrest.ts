@@ -8,6 +8,7 @@ import { PostgrestClient } from '@supabase/postgrest-js'
 import { DestinationIncompatible, DestinationUnavailable } from '../errors'
 import type { DataPlane } from '../ports'
 import { createQueryPlane, type Db } from './queryPlane'
+import { mtlsFetch, type ClientCert } from './mtlsFetch'
 
 export const CALL_TIMEOUT_MS = 8000
 const TOKEN_TTL_S = 300
@@ -16,7 +17,7 @@ export interface PostgrestDestination {
   id: string
   name: string
   /** Non-secret registry config. */
-  config: { base_url?: string; audience?: string; role?: string; kid?: string; storage?: string }
+  config: { base_url?: string; audience?: string; role?: string; kid?: string; storage?: string; /** the front end requires Pype's TLS client certificate */ mtls?: boolean; /** free-text note on how the customer's network admits Pype (IP allow-list, mTLS, both) */ ingress?: string }
 }
 
 const b64url = (v: string | Buffer) => Buffer.from(v).toString('base64url')
@@ -54,12 +55,15 @@ function baseUrl(dest: PostgrestDestination): string {
 }
 
 /** `privateKeyPem` is the already-resolved secret; it is never stored on the plane or logged. */
-export function createPostgrestPlane(dest: PostgrestDestination, privateKeyPem: string): DataPlane {
+export function createPostgrestPlane(dest: PostgrestDestination, privateKeyPem: string, clientCert?: ClientCert): DataPlane {
   const base = baseUrl(dest)
+  // mtls: true without a certificate is an error, never a plain connection
+  if (dest.config.mtls && !clientCert) throw new DestinationIncompatible(dest.name, 'Destination requires a client certificate')
+  const send: typeof fetch = clientCert ? mtlsFetch(clientCert) : fetch
   const authedFetch: typeof fetch = (input, init) => {
     const headers = new Headers(init?.headers)
     headers.set('Authorization', `Bearer ${mintToken(dest, privateKeyPem)}`)
-    return fetch(input, { ...init, headers, signal: AbortSignal.timeout(CALL_TIMEOUT_MS) })
+    return send(input, { ...init, headers, signal: AbortSignal.timeout(CALL_TIMEOUT_MS) })
   }
   const db = new PostgrestClient(base, { fetch: authedFetch }) as unknown as Db
   return {
@@ -70,7 +74,7 @@ export function createPostgrestPlane(dest: PostgrestDestination, privateKeyPem: 
         try {
           // The signer only signs keys `recordings/<project_id>/...` for a token carrying that project_id.
           const token = mintToken(dest, privateKeyPem, Date.now(), { project_id: key.split('/')[1] ?? '' })
-          res = await fetch(`${base}/signer/v1/recordings/sign`, {
+          res = await send(`${base}/signer/v1/recordings/sign`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({ key, expires_in: ttlSeconds }),
@@ -92,12 +96,14 @@ export interface VerifyCheck { name: string; ok: boolean; detail?: string }
  * The attach checklist: connect, schema version, database schema_info (the signer's health check covers storage).
  * Uses the signer's `/signer/v1/health` and `/signer/v1/version` and the schema pack's `rpc/schema_info`. Details never include secrets.
  */
-export async function verifyPostgrestDestination(dest: PostgrestDestination, privateKeyPem: string, expectedSchemaVersion: number): Promise<VerifyCheck[]> {
+export async function verifyPostgrestDestination(dest: PostgrestDestination, privateKeyPem: string, expectedSchemaVersion: number, clientCert?: ClientCert): Promise<VerifyCheck[]> {
   const base = baseUrl(dest)
+  if (dest.config.mtls && !clientCert) return [{ name: 'client certificate', ok: false, detail: 'config.mtls is set but the secret has no client_cert / client_key' }]
+  const send: typeof fetch = clientCert ? mtlsFetch(clientCert) : fetch
   const call = async (path: string, init?: RequestInit) => {
     const headers = new Headers(init?.headers)
     headers.set('Authorization', `Bearer ${mintToken(dest, privateKeyPem)}`)
-    return fetch(`${base}${path}`, { ...init, headers, signal: AbortSignal.timeout(CALL_TIMEOUT_MS) })
+    return send(`${base}${path}`, { ...init, headers, signal: AbortSignal.timeout(CALL_TIMEOUT_MS) })
   }
   const run = async (name: string, fn: () => Promise<string | void>): Promise<VerifyCheck> => {
     try {

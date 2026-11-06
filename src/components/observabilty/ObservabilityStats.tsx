@@ -40,6 +40,8 @@ interface TranscriptLog {
   bug_report?: boolean
 }
 
+const NO_SESSION = '00000000-0000-0000-0000-000000000000'
+
 const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({
   sessionId, agentId, callData, agent,
   callId, initialFlag, currentUserId, currentUserEmail, canDeleteAnyFlag, onFlagUpdated,
@@ -53,7 +55,8 @@ const ObservabilityStats: React.FC<ObservabilityStatsProps> = ({
     select: METRICS_LOGS_SELECT,
     filters: sessionId 
       ? [{ column: "session_id", operator: "eq", value: sessionId }]
-      : [{ column: "session_id::text", operator: "like", value: `${agentId}%` }],
+      // no call selected: match nothing, with a plain column filter (a cast in the column name is not valid PostgREST)
+      : [{ column: "session_id", operator: "eq", value: NO_SESSION }],
     orderBy: { column: "unix_timestamp", ascending: true },
     auth: { agentId },
   })

@@ -43,18 +43,35 @@ export interface CallDataReader {
   listCampaignCalls(agentId: string, campaignId: string, customerNumbers: string[]): Promise<Row[]>
   listTurns(sessionId: string): Promise<Row[]>
   campaignGroupedCallLogs(params: Record<string, unknown>): Promise<Row[]>
+  campaignGroupedCount(params: Record<string, unknown>): Promise<number>
+  /** One row per contact: { customer_number, call_count }. */
+  campaignCallCounts(agentId: string, campaignId: string): Promise<Row[]>
+  campaignContactCalls(agentId: string, campaignId: string, customerNumber: string): Promise<Row[]>
   /** The paged, distinct-aware call-log query (RPC); the 13-argument fallback lives in the adapter. */
   queryCallLogs(args: CallLogsQueryArgs, user: { clerkId: string; email: string | null }): Promise<Row[]>
   /** Generic read for the supabase-select proxy; `table` must pass `isCallDataTable`. */
   selectRows(table: string, q: SelectQuery): Promise<Row[]>
   countRows(table: string, filters: Filter[]): Promise<number>
   /** Overview analytics input: the columns the aggregator reads, call_started_at in [from, to) (UTC `timestamp` text), at most maxRows. */
-  analyticsRows(q: { agentIds: string[]; from: string; to: string; maxRows: number }): Promise<Row[]>
+  analyticsRows(q: { agentIds: string[]; from: string; to: string; maxRows: number; /** comma list; default is the base columns */ columns?: string }): Promise<Row[]>
+  /**
+   * Runs one analytics Spec inside the customer database (api.analytics_run, schema revision 2+). Rejects with
+   * `code: 'PGRST202'` when the function is not installed. Pype's own plane has no such function.
+   */
+  analyticsRun(spec: Record<string, unknown>, ctx: { project_id: string; agent_ids: string[]; tz: string; now?: string; denied_fields?: string[]; max_days?: number }): Promise<Row[]>
+  /** Newest calls of one agent since `from`, with the given columns (field-catalog sampling). */
+  sampleCallRows(q: { agentId: string; from: string; limit: number; columns: string }): Promise<Row[]>
 }
 
 export interface CallLogMutator {
   insertCallLog(row: Row): Promise<Row>
   insertTurns(rows: Row[]): Promise<void>
+  /** The call_started row of this call, if the worker already sent one. */
+  findStartedLog(agentId: string, callId: string): Promise<{ id: string } | null>
+  updateCallLog(id: string, patch: Row): Promise<Row>
+  /** Session trace row; resolves with it (null when the store returned none). */
+  insertTrace(row: Row): Promise<Row | null>
+  insertSpans(rows: Row[]): Promise<void>
   setTranscriptionMetrics(id: string, metrics: Record<string, unknown>): Promise<void>
   /** Deletes the per-turn rows (keyed by call log id) and then the call logs of these agents. */
   deleteCallDataForAgents(agentIds: string[]): Promise<void>

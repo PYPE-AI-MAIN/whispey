@@ -16,6 +16,7 @@ interface NodeDetailsProps {
   selectedNode: string
   trace: any
   recordingUrl?: string
+  agentId?: string
   callStartTime?: string
   audioSegmentInfo?: {
     startTime: number
@@ -30,6 +31,7 @@ function NodeDetails({
   selectedNode, 
   trace, 
   recordingUrl,
+  agentId,
   callStartTime,
   audioSegmentInfo,
   formatTranscript = (s) => s ?? '',
@@ -192,6 +194,7 @@ function NodeDetails({
           <AudioPlayer
             url={recordingUrl}
             s3Key=""
+            agentId={agentId}
             callId={`${trace.turn_id}-${type}`}
             className="border-0 bg-transparent p-2"
             segmentStartTime={segmentStartTime}

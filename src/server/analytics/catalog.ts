@@ -21,10 +21,10 @@ import { createServiceRoleClient } from '@/lib/supabase-server'
 const supabase = createServiceRoleClient()
 
 /** Depth 2 covers metadata.usage.llm_prompt_tokens. Deeper fields still chart; they just are not offered. */
-const MAX_DEPTH = 2
+export const MAX_DEPTH = 2
 /** ponytail: whole-table scan is the alternative. Raise it if agents start producing rarer fields. */
-const SAMPLE_ROWS = 2000
-const SAMPLE_DAYS = 90
+export const SAMPLE_ROWS = 2000
+export const SAMPLE_DAYS = 90
 /** Above this a field is a value, not a category. */
 const ENUM_MAX_DISTINCT = 15
 /**
@@ -264,7 +264,7 @@ export async function scanColumn(agentId: string, col: (typeof JSON_COLS)[number
  * and a reason it ended. Only their value lists and coverage are read from the
  * data.
  */
-const BUILTIN: { col: string; label: string; value_type: FieldInference['value_type']; is_dimension: boolean }[] = [
+export const BUILTIN: { col: string; label: string; value_type: FieldInference['value_type']; is_dimension: boolean }[] = [
   { col: 'environment', label: 'Environment', value_type: 'enum', is_dimension: true },
   { col: 'call_ended_reason', label: 'Why the call ended', value_type: 'enum', is_dimension: true },
   { col: 'wcall_event', label: 'Call state', value_type: 'enum', is_dimension: true },
@@ -368,7 +368,7 @@ export function catalogIsStale(
 }
 
 /** One row for a real column — every call has a duration and a reason it ended, so it is measured, not discovered. */
-function builtinFieldRow(
+export function builtinFieldRow(
   b: Awaited<ReturnType<typeof scanBuiltins>>[number],
   agentId: string,
   projectId: string,
@@ -407,7 +407,7 @@ function builtinFieldRow(
 }
 
 /** One row for a JSON field — a person's label and confirmed type win over anything we work out. */
-function jsonFieldRow(
+export function jsonFieldRow(
   stats: FieldStats,
   col: string,
   agentId: string,

@@ -10,6 +10,7 @@ import { CircuitBreaker, withBreaker } from './breaker'
 import { DestinationIncompatible, DestinationUnavailable, RouteInMaintenance } from './errors'
 import type { DataPlane } from './ports'
 import { createPostgrestPlane } from './adapters/postgrest'
+import type { ClientCert } from './adapters/mtlsFetch'
 import { createPypePlane } from './adapters/pype'
 import { checkRoutes, TOGETHER } from './routingPolicy'
 
@@ -77,19 +78,49 @@ const SECRET_CACHE_MS = 60_000 // short, so a rotated key is picked up within a 
 const cachedSecrets = new Map<string, { at: number; value: string }>()
 let secretsClient: SecretsManagerClient | undefined
 
-async function fromSecretsManager(ref: string): Promise<string | undefined> {
+async function rawFromSecretsManager(ref: string): Promise<string | undefined> {
   const hit = cachedSecrets.get(ref)
   if (hit && Date.now() - hit.at < SECRET_CACHE_MS) return hit.value
   secretsClient ??= new SecretsManagerClient({ region: process.env.AWS_REGION ?? process.env.AWS_DEFAULT_REGION ?? 'us-east-2' })
   const res = await secretsClient.send(new GetSecretValueCommand({ SecretId: ref }))
-  let value = res.SecretString
+  if (res.SecretString) cachedSecrets.set(ref, { at: Date.now(), value: res.SecretString })
+  return res.SecretString
+}
+
+async function fromSecretsManager(ref: string): Promise<string | undefined> {
+  const value = await rawFromSecretsManager(ref)
+  if (!value) return undefined
   try {
-    value = (JSON.parse(value ?? '') as { private_key?: string }).private_key ?? value
+    return fromEnv((JSON.parse(value) as { private_key?: string }).private_key ?? value)
   } catch {
-    // not JSON: the value is the key itself
+    return fromEnv(value) // not JSON: the value is the key itself
   }
-  if (value) cachedSecrets.set(ref, { at: Date.now(), value: fromEnv(value) })
-  return value ? fromEnv(value) : undefined
+}
+
+/**
+ * The TLS client certificate of an mTLS destination (config.mtls): `client_cert` and `client_key` (PEM or base64 PEM)
+ * in the same Secrets Manager JSON as the signing key, or for `env:NAME` the variables NAME_CLIENT_CERT / NAME_CLIENT_KEY.
+ * Missing parts are an error (never a plain connection).
+ */
+export const resolveClientCert = async (ref: string): Promise<ClientCert> => {
+  let cert: string | undefined
+  let key: string | undefined
+  try {
+    if (ref.startsWith('env:')) {
+      const name = ref.slice(4)
+      cert = process.env[`${name}_CLIENT_CERT`]
+      key = process.env[`${name}_CLIENT_KEY`]
+    } else {
+      const raw = await rawFromSecretsManager(ref)
+      const doc = JSON.parse(raw ?? '') as { client_cert?: string; client_key?: string }
+      cert = doc.client_cert
+      key = doc.client_key
+    }
+  } catch (e) {
+    console.error('[data-plane] destination client certificate lookup failed', ref, e instanceof Error ? e.name : 'error') // name only, never a value
+  }
+  if (!cert || !key) throw new DestinationUnavailable(undefined, 'Destination client certificate could not be resolved')
+  return { cert: fromEnv(cert), key: fromEnv(key) }
 }
 
 export const resolveSecret: SecretResolver = async (ref) => {
@@ -107,6 +138,7 @@ export const resolveSecret: SecretResolver = async (ref) => {
 interface Deps {
   registry?: RegistryReader
   secrets?: SecretResolver
+  clientCert?: (ref: string) => Promise<ClientCert>
   now?: () => number
   pypePlane?: () => DataPlane
   postgrestPlane?: typeof createPostgrestPlane
@@ -122,6 +154,7 @@ export class DataPlaneResolver {
     this.d = {
       registry: deps.registry ?? readRegistry,
       secrets: deps.secrets ?? resolveSecret,
+      clientCert: deps.clientCert ?? resolveClientCert,
       now: deps.now ?? Date.now,
       pypePlane: deps.pypePlane ?? createPypePlane,
       postgrestPlane: deps.postgrestPlane ?? createPostgrestPlane,
@@ -191,7 +224,8 @@ export class DataPlaneResolver {
     const key = await this.d.secrets(dest.secret_ref)
     const breaker = this.breakers.get(dest.id) ?? new CircuitBreaker(dest.name, this.d.now)
     this.breakers.set(dest.id, breaker)
-    return withBreaker(this.d.postgrestPlane({ id: dest.id, name: dest.name, config: dest.config }, key), breaker)
+    const clientCert = dest.config.mtls === true ? await this.d.clientCert(dest.secret_ref) : undefined
+    return withBreaker(this.d.postgrestPlane({ id: dest.id, name: dest.name, config: dest.config }, key, clientCert), breaker)
   }
 }
 

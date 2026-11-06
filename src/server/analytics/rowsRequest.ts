@@ -13,6 +13,8 @@ import { Spec, FilterNode } from './spec'
 import { buildQuery, bucketText, type Ctx, type Target } from './buildQuery'
 import { runQuery } from './db'
 import { outcomeOrderFor } from './context'
+import { assertSupported, drillCustomerRows, loadCustomerRows } from './customerQuery'
+import type { DataPlane } from '@/server/data-plane'
 
 export const RowsBody = z.object({
   agentId: z.string().uuid().optional(),
@@ -47,7 +49,9 @@ export async function fetchRowPage(
   body: z.infer<typeof RowsBody>,
   ctx: Ctx,
   outcomeRanking: unknown,
-  target: Target
+  target: Target,
+  /** A customer-held project: the rows come through its data plane, never Pype's SQL. */
+  plane?: DataPlane
 ): Promise<{ rows: Record<string, unknown>[]; nextCursor: { startedAt: string; id: string } | null }> {
   const spec = Spec.parse({
     ...(body.spec as object),
@@ -65,6 +69,19 @@ export async function fetchRowPage(
   }
 
   const limit = body.limit ?? (target === 'export' ? 2000 : 100)
+  if (plane) {
+    assertSupported(spec, ctx)
+    const all = await loadCustomerRows(plane, [spec], ctx, { target: target === 'export' ? 'export' : 'drill' })
+    const { rows } = drillCustomerRows(all, spec, ctx, {
+      ...(body.dimensionValue === undefined ? {} : { dimensionValue: body.dimensionValue }),
+      ...(body.bucketValue === undefined ? {} : { bucketValue: bucketText(body.bucketValue) }),
+      ...(body.cursor ? { cursor: body.cursor } : {}),
+      limit,
+      target: target === 'export' ? 'export' : 'drill',
+    })
+    const last = rows.length === limit ? rows.at(-1) : null
+    return { rows, nextCursor: last ? { startedAt: String(last.started_at), id: String(last.id) } : null }
+  }
   const { sql, params } = buildQuery(spec, ctx, target, {
     // only narrow by the clicked bar when the caller actually clicked one —
     // `undefined` means "all rows", `null` means "the empty bucket"

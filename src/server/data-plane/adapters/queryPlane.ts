@@ -68,6 +68,9 @@ export function applyFilters(query: any, filters: Filter[]) {
   return q
 }
 
+/** Columns the customer schema (v1) does not have; dropped from writes until schema v2 adds them. */
+const CUSTOMER_UNKNOWN_COLUMNS = ['voice_recording_url']
+
 /**
  * `typed` is true for customer destinations: a network failure, timeout or 5xx
  * is a DestinationUnavailable (counted by the breaker). Pype keeps today's
@@ -77,6 +80,12 @@ export function createQueryPlane(db: Db, opts: { typed: boolean; destination?: s
   const fail = (res: { error: any; status?: number }): never => {
     if (opts.typed && (!res.status || res.status >= 500)) throw new DestinationUnavailable(opts.destination)
     throw Object.assign(new Error(res.error.message), { code: res.error.code, details: res.error.details })
+  }
+  const writable = (row: Row): Row => {
+    if (!opts.typed) return row
+    const out = { ...row }
+    for (const c of CUSTOMER_UNKNOWN_COLUMNS) delete out[c]
+    return out
   }
   const ok = <R extends { error: any; status?: number }>(res: R): R => (res.error ? fail(res) : res)
 
@@ -128,6 +137,16 @@ export function createQueryPlane(db: Db, opts: { typed: boolean; destination?: s
       async campaignGroupedCallLogs(params) {
         return ((await ok(await db.rpc('get_campaign_grouped_call_logs', params))).data ?? []) as Row[]
       },
+      async campaignGroupedCount(params) {
+        return Number((await ok(await db.rpc('get_campaign_grouped_call_logs_count', params))).data ?? 0)
+      },
+      async campaignCallCounts(agentId, campaignId) {
+        return ((await ok(await db.rpc('get_campaign_call_counts', { p_agent_id: agentId, p_campaign_id: campaignId }))).data ?? []) as Row[]
+      },
+      async campaignContactCalls(agentId, campaignId, customerNumber) {
+        const res = await db.rpc('get_campaign_contact_call_logs', { p_agent_id: agentId, p_campaign_id: campaignId, p_customer_number: customerNumber })
+        return (ok(res).data ?? []) as Row[]
+      },
       async queryCallLogs(args, user) {
         if (opts.typed) {
           // The customer schema function returns the whole row (p_select must be '*') and needs the agent
@@ -148,7 +167,7 @@ export function createQueryPlane(db: Db, opts: { typed: boolean; destination?: s
         const rows: Row[] = []
         for (let from = 0; from <= q.maxRows; from += PAGE_ANALYTICS) {
           const page = await selectRows(T.callLogs, {
-            select: ANALYTICS_COLUMNS,
+            select: q.columns ?? ANALYTICS_COLUMNS,
             filters: [
               { column: 'agent_id', operator: 'in', value: q.agentIds },
               { column: 'call_started_at', operator: 'gte', value: q.from },
@@ -163,6 +182,23 @@ export function createQueryPlane(db: Db, opts: { typed: boolean; destination?: s
         }
         return rows
       },
+      async analyticsRun(spec, ctx) {
+        const data = (await ok(await db.rpc('analytics_run', { p_spec: spec, p_ctx: ctx }))).data as unknown
+        const rows = Array.isArray(data) ? data : (data as { rows?: unknown[] } | null)?.rows
+        return (rows ?? []) as Row[]
+      },
+      async sampleCallRows(q) {
+        return selectRows(T.callLogs, {
+          select: q.columns,
+          filters: [
+            { column: 'agent_id', operator: 'eq', value: q.agentId },
+            { column: 'call_started_at', operator: 'gte', value: q.from },
+          ],
+          orderBy: { column: 'call_started_at', ascending: false },
+          thenBy: 'id',
+          limit: q.limit,
+        })
+      },
       async countRows(table, filters) {
         if (!isCallDataTable(table)) throw new Error('Table is not call data')
         const res = await applyFilters(db.from(table).select('*', { count: 'exact', head: true }), filters)
@@ -171,10 +207,23 @@ export function createQueryPlane(db: Db, opts: { typed: boolean; destination?: s
     },
     callLogs: {
       async insertCallLog(row) {
-        return (await ok(await db.from(T.callLogs).insert(row).select().single())).data as Row
+        return (await ok(await db.from(T.callLogs).insert(writable(row)).select().single())).data as Row
       },
       async insertTurns(rows) {
         ok(await db.from(T.metrics).insert(rows))
+      },
+      async findStartedLog(agentId, callId) {
+        const res = await db.from(T.callLogs).select('id').eq('agent_id', agentId).eq('call_id', callId).eq('wcall_event', 'call_started').limit(1).maybeSingle()
+        return ok(res).data as { id: string } | null
+      },
+      async updateCallLog(id, patch) {
+        return (await ok(await db.from(T.callLogs).update(writable(patch)).eq('id', id).select().single())).data as Row
+      },
+      async insertTrace(row) {
+        return (await ok(await db.from(T.traces).insert(row).select().single())).data as Row | null
+      },
+      async insertSpans(rows) {
+        ok(await db.from(T.spans).insert(rows).select('id'))
       },
       async setTranscriptionMetrics(id, metrics) {
         ok(await db.from(T.callLogs).update({ transcription_metrics: metrics }).eq('id', id))

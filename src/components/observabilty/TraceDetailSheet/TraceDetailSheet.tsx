@@ -424,6 +424,7 @@ const EnhancedTraceDetailSheet: React.FC<TraceDetailSheetProps> = ({
                       selectedNode={selectedNode} 
                       trace={trace}
                       recordingUrl={recordingUrl}
+                      agentId={agent?.id}
                       callStartTime={callStartTime}
                       audioSegmentInfo={audioSegmentInfo}
                       formatTranscript={formatTranscript}
