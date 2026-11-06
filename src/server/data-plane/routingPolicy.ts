@@ -35,7 +35,7 @@ export function checkDetach(routeCount: number): string | null {
   return routeCount > 0 ? `Destination is used by ${routeCount} route${routeCount === 1 ? '' : 's'}; remove them first` : null
 }
 
-const SECRET_REF = /^(env:[A-Z0-9_]+|arn:aws[a-z-]*:secretsmanager:[a-z0-9-]+:\d{12}:secret:[\w/+=.@-]+)$/
+export const SECRET_REF = /^(env:[A-Z0-9_]+|arn:aws[a-z-]*:secretsmanager:[a-z0-9-]+:\d{12}:secret:[\w/+=.@-]+)$/
 
 export interface DestinationInput {
   name: string
@@ -58,7 +58,10 @@ export function parseDestinationInput(body: Record<string, unknown>, partial = f
   if (body.config !== undefined) {
     if (typeof body.config !== 'object' || body.config === null || Array.isArray(body.config)) return { error: 'config must be an object' }
     if (Object.keys(body.config).some((k) => /secret|key|token|password/i.test(k))) return { error: 'config is non-secret; put secrets behind secret_ref' }
-    out.config = body.config as Record<string, unknown>
+    const cfg = body.config as Record<string, unknown>
+    if (cfg.mtls !== undefined && typeof cfg.mtls !== 'boolean') return { error: 'config.mtls must be true or false' }
+    if (cfg.ingress !== undefined && (typeof cfg.ingress !== 'string' || cfg.ingress.length > 500)) return { error: 'config.ingress must be text (500 chars max)' }
+    out.config = cfg
   } else if (!partial) out.config = {}
   if (body.secret_ref !== undefined && body.secret_ref !== null) {
     if (typeof body.secret_ref !== 'string' || !SECRET_REF.test(body.secret_ref)) return { error: 'secret_ref must be an AWS Secrets Manager ARN (or env:NAME)' }

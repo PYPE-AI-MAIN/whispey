@@ -3,7 +3,7 @@ import { requirePlatformAdmin } from '@/server/admin/requirePlatformAdmin'
 import { getRegistryStore } from '@/server/data-plane/admin/registryStore'
 import { verifyPostgrestDestination, type VerifyCheck } from '@/server/data-plane/adapters/postgrest'
 import { createPypePlane } from '@/server/data-plane/adapters/pype'
-import { SUPPORTED_SCHEMA_VERSION, resolveSecret } from '@/server/data-plane/resolver'
+import { SUPPORTED_SCHEMA_VERSION, resolveSecret, resolveClientCert } from '@/server/data-plane/resolver'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -20,7 +20,8 @@ async function verify(dest: NonNullable<Awaited<ReturnType<ReturnType<typeof get
   if (!dest.secret_ref) return [{ name: 'secret', ok: false, detail: 'No secret reference set' }]
   try {
     const key = await resolveSecret(dest.secret_ref)
-    return await verifyPostgrestDestination({ id: dest.id, name: dest.name, config: dest.config }, key, SUPPORTED_SCHEMA_VERSION)
+    const clientCert = dest.config.mtls === true ? await resolveClientCert(dest.secret_ref) : undefined
+    return await verifyPostgrestDestination({ id: dest.id, name: dest.name, config: dest.config }, key, SUPPORTED_SCHEMA_VERSION, clientCert)
   } catch (e) {
     return [{ name: 'secret', ok: false, detail: e instanceof Error ? e.message : 'failed' }]
   }
