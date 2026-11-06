@@ -157,7 +157,7 @@ export function createQueryPlane(db: Db, opts: { typed: boolean; destination?: s
         const rows: Row[] = []
         for (let from = 0; from <= q.maxRows; from += PAGE_ANALYTICS) {
           const page = await selectRows(T.callLogs, {
-            select: ANALYTICS_COLUMNS,
+            select: q.columns ?? ANALYTICS_COLUMNS,
             filters: [
               { column: 'agent_id', operator: 'in', value: q.agentIds },
               { column: 'call_started_at', operator: 'gte', value: q.from },
@@ -171,6 +171,18 @@ export function createQueryPlane(db: Db, opts: { typed: boolean; destination?: s
           if (page.length < PAGE_ANALYTICS) break
         }
         return rows
+      },
+      async sampleCallRows(q) {
+        return selectRows(T.callLogs, {
+          select: q.columns,
+          filters: [
+            { column: 'agent_id', operator: 'eq', value: q.agentId },
+            { column: 'call_started_at', operator: 'gte', value: q.from },
+          ],
+          orderBy: { column: 'call_started_at', ascending: false },
+          thenBy: 'id',
+          limit: q.limit,
+        })
       },
       async countRows(table, filters) {
         if (!isCallDataTable(table)) throw new Error('Table is not call data')

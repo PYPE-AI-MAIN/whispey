@@ -49,7 +49,9 @@ export interface CallDataReader {
   selectRows(table: string, q: SelectQuery): Promise<Row[]>
   countRows(table: string, filters: Filter[]): Promise<number>
   /** Overview analytics input: the columns the aggregator reads, call_started_at in [from, to) (UTC `timestamp` text), at most maxRows. */
-  analyticsRows(q: { agentIds: string[]; from: string; to: string; maxRows: number }): Promise<Row[]>
+  analyticsRows(q: { agentIds: string[]; from: string; to: string; maxRows: number; /** comma list; default is the base columns */ columns?: string }): Promise<Row[]>
+  /** Newest calls of one agent since `from`, with the given columns (field-catalog sampling). */
+  sampleCallRows(q: { agentId: string; from: string; limit: number; columns: string }): Promise<Row[]>
 }
 
 export interface CallLogMutator {

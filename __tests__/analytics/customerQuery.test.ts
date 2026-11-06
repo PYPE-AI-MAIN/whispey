@@ -56,10 +56,21 @@ describe('customer analytics aggregator', () => {
   it('p95 interpolates like percentile_cont', () => {
     expect(run('Latency spread')[0].value).toBeCloseTo(2.9)
   })
-  it('refuses what it cannot answer exactly', () => {
-    const bad = Spec.parse({ spec_version: 1, agg: { fn: 'count' }, range: { days: 7 }, having: [{ field: { col: 'metadata', path: ['x'] }, op: 'eq', value: '1' }] })
-    expect(() => assertSupported(bad, ctx)).toThrow(/not available/)
+  it('refuses another source and a denied field, answers JSON paths and the newer aggregates', () => {
+    const other = Spec.parse({ spec_version: 1, source: 'whatsapp', agg: { fn: 'count' }, range: { days: 7 } })
+    expect(() => assertSupported(other, ctx)).toThrow(/not available/)
     const denied = Spec.parse({ spec_version: 1, agg: { fn: 'sum', field: { col: 'total_cost' } }, range: { days: 7 } })
     expect(() => assertSupported(denied, { ...ctx, deniedFields: new Set(['total_cost']) })).toThrow(/no permission/)
+    const deniedPath = Spec.parse({ spec_version: 1, agg: { fn: 'count' }, range: { days: 7 }, having: [{ field: { col: 'metadata', path: ['x', 'y'] }, op: 'eq', value: '1' }] })
+    expect(() => assertSupported(deniedPath, { ...ctx, deniedFields: new Set(['metadata.x']) })).toThrow(/no permission/)
+    const json = Spec.parse({ spec_version: 1, agg: { fn: 'count_distinct', field: { col: 'customer_number' } }, range: { days: 7 }, having: [{ field: { col: 'metadata', path: ['x'] }, op: 'eq', value: '1' }] })
+    expect(() => assertSupported(json, ctx)).not.toThrow()
+  })
+  it('count_distinct folds phone formats; sum_ceil_minutes rounds each call up', () => {
+    const phones = [call('2026-11-06T01:00:00', { customer_number: '+919876543210', billing_duration_seconds: 61 }), call('2026-11-06T02:00:00', { customer_number: '919876543210', billing_duration_seconds: 60 }), call('2026-11-06T03:00:00', { customer_number: '+91-9876500000', billing_duration_seconds: 1 })]
+    const distinct = Spec.parse({ spec_version: 1, agg: { fn: 'count_distinct', field: { col: 'customer_number' } }, range: { days: 7 } })
+    expect(aggregateCustomerRows(phones, distinct, ctx).rows[0].value).toBe(2)
+    const mins = Spec.parse({ spec_version: 1, agg: { fn: 'sum_ceil_minutes', field: { col: 'billing_duration_seconds' } }, range: { days: 7 } })
+    expect(aggregateCustomerRows(phones, mins, ctx).rows[0].value).toBe(4)
   })
 })
