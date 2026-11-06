@@ -35,6 +35,15 @@ export function createFakePlane(seed: Record<string, Row[]> = {}): FakePlane {
       },
       async listTurns(sessionId) { return log('listTurns', t(TURNS).filter((r) => r.session_id === sessionId)) },
       async campaignGroupedCallLogs() { return log('campaignGroupedCallLogs', []) },
+      async campaignGroupedCount() { return log('campaignGroupedCount', 0) },
+      async campaignCallCounts(agentId, campaignId) {
+        const by = new Map<string, number>()
+        for (const r of t(CALL_LOGS).filter((x) => x.agent_id === agentId && x.metadata?.campaignId === campaignId)) by.set(r.customer_number, (by.get(r.customer_number) ?? 0) + 1)
+        return log('campaignCallCounts', [...by].map(([customer_number, call_count]) => ({ customer_number, call_count })))
+      },
+      async campaignContactCalls(agentId, campaignId, customerNumber) {
+        return log('campaignContactCalls', t(CALL_LOGS).filter((x) => x.agent_id === agentId && x.metadata?.campaignId === campaignId && x.customer_number === customerNumber))
+      },
       async queryCallLogs(args) { return log('queryCallLogs', t(CALL_LOGS).filter((r) => r.agent_id === args.p_agent_id)) },
       async selectRows(table) { return log('selectRows', [...t(table)]) },
       async sampleCallRows(q) { return log('sampleCallRows', t(CALL_LOGS).filter((r) => r.agent_id === q.agentId && r.call_started_at >= q.from).sort((a, b) => (a.call_started_at < b.call_started_at ? 1 : -1)).slice(0, q.limit)) },

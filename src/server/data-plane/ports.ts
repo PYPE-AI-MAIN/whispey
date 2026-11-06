@@ -43,6 +43,10 @@ export interface CallDataReader {
   listCampaignCalls(agentId: string, campaignId: string, customerNumbers: string[]): Promise<Row[]>
   listTurns(sessionId: string): Promise<Row[]>
   campaignGroupedCallLogs(params: Record<string, unknown>): Promise<Row[]>
+  campaignGroupedCount(params: Record<string, unknown>): Promise<number>
+  /** One row per contact: { customer_number, call_count }. */
+  campaignCallCounts(agentId: string, campaignId: string): Promise<Row[]>
+  campaignContactCalls(agentId: string, campaignId: string, customerNumber: string): Promise<Row[]>
   /** The paged, distinct-aware call-log query (RPC); the 13-argument fallback lives in the adapter. */
   queryCallLogs(args: CallLogsQueryArgs, user: { clerkId: string; email: string | null }): Promise<Row[]>
   /** Generic read for the supabase-select proxy; `table` must pass `isCallDataTable`. */

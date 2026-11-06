@@ -137,6 +137,16 @@ export function createQueryPlane(db: Db, opts: { typed: boolean; destination?: s
       async campaignGroupedCallLogs(params) {
         return ((await ok(await db.rpc('get_campaign_grouped_call_logs', params))).data ?? []) as Row[]
       },
+      async campaignGroupedCount(params) {
+        return Number((await ok(await db.rpc('get_campaign_grouped_call_logs_count', params))).data ?? 0)
+      },
+      async campaignCallCounts(agentId, campaignId) {
+        return ((await ok(await db.rpc('get_campaign_call_counts', { p_agent_id: agentId, p_campaign_id: campaignId }))).data ?? []) as Row[]
+      },
+      async campaignContactCalls(agentId, campaignId, customerNumber) {
+        const res = await db.rpc('get_campaign_contact_call_logs', { p_agent_id: agentId, p_campaign_id: campaignId, p_customer_number: customerNumber })
+        return (ok(res).data ?? []) as Row[]
+      },
       async queryCallLogs(args, user) {
         if (opts.typed) {
           // The customer schema function returns the whole row (p_select must be '*') and needs the agent

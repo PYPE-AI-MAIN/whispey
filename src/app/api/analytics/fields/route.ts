@@ -15,36 +15,44 @@ import { resolveAnalyticsContext, resolveProjectAnalyticsContext, isDenied } fro
 import { applyDeclarations } from '@/server/analytics/extractor'
 import { llmDeclaredValues } from '@/server/analytics/llmValues'
 import { guarded } from '@/server/analytics/guard'
+import { customerFieldRows } from '@/server/analytics/customerCatalog'
+import { withDataPlane, type PlaneSource } from '@/server/data-plane'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const supabase = createServiceRoleClient()
 
-export const GET = guarded('analytics/fields', async (req: NextRequest) => {
+export const GET = guarded('analytics/fields', withDataPlane(async (dp, req: NextRequest) => {
   const agentId = req.nextUrl.searchParams.get('agentId')
   const projectId = req.nextUrl.searchParams.get('projectId')
   const force = req.nextUrl.searchParams.get('refresh') === '1'
   if (!agentId && !projectId) return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
 
-  if (projectId) return getProjectFields(projectId)
+  if (projectId) return getProjectFields(projectId, dp)
   // unreachable — the guard above requires at least one of agentId/projectId
   if (!agentId) return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
 
-  const resolved = await resolveAnalyticsContext(agentId)
+  const resolved = await resolveAnalyticsContext(agentId, { allowCustomerHeld: true })
   if (isDenied(resolved)) return resolved.errorResponse
   const { ctx, agent } = resolved
 
-  const { data: existing } = await supabase
-    .from('pype_analytics_fields')
-    .select('*')
-    .eq('agent_id', agentId)
-    .order('coverage_pct', { ascending: false })
+  // a customer-held project's field values are its data: read through the plane, never stored in Pype
+  const plane = resolved.customerHeld ? await dp.forProject(agent.projectId) : null
+  const { data: existing } = plane
+    ? { data: [] as Record<string, any>[] }
+    : await supabase
+        .from('pype_analytics_fields')
+        .select('*')
+        .eq('agent_id', agentId)
+        .order('coverage_pct', { ascending: false })
 
   const stale = catalogIsStale(existing ?? [], Date.now())
 
-  let rows = existing ?? []
-  if (stale || force) {
+  let rows: any[] = existing ?? []
+  if (plane) {
+    rows = await customerFieldRows(plane, agentId, agent.projectId, { force })
+  } else if (stale || force) {
     try {
       rows = await rescan(agentId, agent.projectId, existing ?? [])
     } catch (err) {
@@ -80,7 +88,7 @@ export const GET = guarded('analytics/fields', async (req: NextRequest) => {
     outcome_ranking: agent.outcomeRanking ?? null,
     fields: described,
   })
-})
+}))
 
 /**
  * Confluence "Analytics Phase 3 and 4 — Build Spec" §3.4: union the field
@@ -93,13 +101,16 @@ export const GET = guarded('analytics/fields', async (req: NextRequest) => {
  * There is no single agent's outcome_ranking here, so it's returned null —
  * ranking a project's outcomes stays an agent-page concept, not an org one.
  */
-async function getProjectFields(projectId: string) {
-  const resolved = await resolveProjectAnalyticsContext(projectId)
+async function getProjectFields(projectId: string, dp: PlaneSource) {
+  const resolved = await resolveProjectAnalyticsContext(projectId, { allowCustomerHeld: true })
   if (isDenied(resolved)) return resolved.errorResponse
   const { ctx } = resolved
 
+  const plane = resolved.customerHeld ? await dp.forProject(projectId) : null
   const [{ data: existingRows }, { data: agents }] = await Promise.all([
-    supabase.from('pype_analytics_fields').select('*').in('agent_id', ctx.agentIds).order('coverage_pct', { ascending: false }),
+    plane
+      ? Promise.resolve({ data: [] as Record<string, any>[] })
+      : supabase.from('pype_analytics_fields').select('*').in('agent_id', ctx.agentIds).order('coverage_pct', { ascending: false }),
     supabase.from('pype_voice_agents').select('id, field_extractor_prompt').in('id', ctx.agentIds),
   ])
   const extractorPromptByAgent = new Map((agents ?? []).map((a) => [a.id, a.field_extractor_prompt ?? null]))
@@ -112,6 +123,7 @@ async function getProjectFields(projectId: string) {
   }
   const scanned = await Promise.all(
     ctx.agentIds.map(async (agentId) => {
+      if (plane) return customerFieldRows(plane, agentId, projectId)
       const existing = byAgent.get(agentId) ?? []
       if (!catalogIsStale(existing, Date.now())) return existing
       try {

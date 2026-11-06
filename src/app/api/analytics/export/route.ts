@@ -15,15 +15,16 @@ import { RowsBody, fetchRowPage, ROW_COLUMNS } from '@/server/analytics/rowsRequ
 import { resolveScope, isDenied } from '@/server/analytics/context'
 import { csvPage } from '@/server/analytics/csv'
 import { guarded, specErrorResponse } from '@/server/analytics/guard'
+import { withDataPlane, rethrowDataPlane } from '@/server/data-plane'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-export const POST = guarded('analytics/export', async (req: NextRequest) => {
+export const POST = guarded('analytics/export', withDataPlane(async (dp, req: NextRequest) => {
   const parsed = RowsBody.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'Bad request' }, { status: 400 })
 
-  const resolved = await resolveScope(parsed.data, { forDownload: true })
+  const resolved = await resolveScope(parsed.data, { forDownload: true, allowCustomerHeld: true })
   if (!resolved) return NextResponse.json({ error: 'agentId or projectId is required' }, { status: 400 })
   if (isDenied(resolved)) return resolved.errorResponse
   if (resolved.downloadDisabled) {
@@ -32,7 +33,9 @@ export const POST = guarded('analytics/export', async (req: NextRequest) => {
   const outcomeRanking = 'agent' in resolved ? resolved.agent.outcomeRanking : undefined
 
   try {
-    const { rows, nextCursor } = await fetchRowPage(parsed.data, resolved.ctx, outcomeRanking, 'export')
+    // a customer-held project reads its own database through the data plane (no fallback to Pype)
+    const plane = resolved.customerHeld ? await dp.forProject(resolved.ctx.projectId) : undefined
+    const { rows, nextCursor } = await fetchRowPage(parsed.data, resolved.ctx, outcomeRanking, 'export', plane)
     const columns = [...ROW_COLUMNS, ...(rows[0] && 'series' in rows[0] ? ['series'] : [])]
     const isFirstPage = !parsed.data.cursor
 
@@ -45,6 +48,7 @@ export const POST = guarded('analytics/export', async (req: NextRequest) => {
       },
     })
   } catch (err) {
+    rethrowDataPlane(err)
     return specErrorResponse('analytics/export', err, 'Could not build the export')
   }
-})
+}))
