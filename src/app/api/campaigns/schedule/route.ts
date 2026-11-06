@@ -1,5 +1,6 @@
 // app/api/campaigns/schedule/route.ts
 import { NextRequest, NextResponse } from 'next/server'
+import { callScheduler } from '@/lib/campaignScheduler'
 import { schedulerErrorMessage } from '@/utils/campaigns/constants'
 import { VALID_SIP_ERROR_CODE_VALUES, VALID_CALL_METADATA_FIELD_KEYS } from '@/utils/campaigns/constants'
 
@@ -198,9 +199,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN
-    const apiUrl = `${baseUrl}/api/v1/campaigns/${campaignId}/schedule`
-
     const requestBody: any = {
       startTime,
       endTime,
@@ -216,13 +214,9 @@ export async function POST(request: NextRequest) {
       requestBody.retryConfig = retryConfig
     }
 
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    })
+    const out = await callScheduler(`campaigns/${campaignId}/schedule`, { method: 'POST', body: JSON.stringify(requestBody) })
+    if ('error' in out) return out.error
+    const response = out.res
 
     const data = await response.json()
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { callScheduler } from '@/lib/campaignScheduler'
 import { schedulerErrorMessage } from '@/utils/campaigns/constants'
 
 export async function POST(request: NextRequest) {
@@ -13,15 +14,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN
-    const apiUrl = `${baseUrl}/api/v1/campaigns/${campaignId}/pause`
-
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    })
+    const out = await callScheduler(`campaigns/${campaignId}/pause`, { method: 'POST' })
+    if ('error' in out) return out.error
+    const response = out.res
 
     const data = await response.json()
 
