@@ -10,6 +10,19 @@ const dest = { id: 'd1', name: 'acme', config: { base_url: 'https://acme.test/' 
 afterEach(() => vi.unstubAllGlobals())
 
 describe('postgrest adapter', () => {
+  it('signRecordingUrl asks the customer signer for a link lifetime it accepts (300..900 s), whatever the caller wants', async () => {
+    const fetchMock = vi.fn(async () => new Response('{"url":"https://store.test/x?sig=1","expires_at":"2026-01-01T00:00:00Z"}', { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const plane = createPostgrestPlane(dest, pem)
+    const key = 'recordings/88f5145b-90c4-44e3-aacb-5b15ea24a159/x.ogg'
+    for (const [asked, sent] of [[3600, 900], [60, 300], [600, 600]] as const) {
+      await plane.storage.signRecordingUrl(key, asked)
+      const [url, init] = fetchMock.mock.calls.at(-1) as unknown as [string, RequestInit]
+      expect(url).toBe('https://acme.test/signer/v1/recordings/sign')
+      expect(JSON.parse(init.body as string)).toEqual({ key, expires_in: sent })
+    }
+  })
+
   it('mints a 5-minute RS256 token for the customer audience', () => {
     const tok = mintToken(dest, pem, 1_000_000_000)
     const [h, b, s] = tok.split('.')
