@@ -24,7 +24,6 @@ const ADAPTERS = 'src/server/data-plane/adapters/'
 const LEGACY = new Set([
   'src/app/[projectid]/agents/[agentid]/observability/page.tsx',
   'src/app/[projectid]/agents/[agentid]/studio/page.tsx',
-  'src/app/api/logs/call-logs/route.ts',
   'src/components/Dashboard.tsx',
   'src/components/FlagRulesDialog.tsx',
   'src/components/calls/DownloadDialog.tsx',
