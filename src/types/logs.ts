@@ -138,6 +138,8 @@ export interface CallLogRequest {
   transcript_with_metrics?: TranscriptWithMetrics[];
   recording_url?: string;
   voice_recording_url?: string;
+  recording_key?: string;
+  voice_recording_key?: string;
   telemetry_data?: TelemetryData;
   environment?: string;
   wcall_event?: 'call_started' | 'call_ended';

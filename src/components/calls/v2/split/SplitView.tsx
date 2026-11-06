@@ -5,7 +5,7 @@ import AudioPlayer, { type AudioPlayerControls } from "@/components/AudioPlayer"
 import { useCallTranscript } from "@/hooks/useCallTranscript"
 import { useTranscriptEnglishToggle } from "@/hooks/useTranscriptEnglishToggle"
 import { useCallLogsStore } from "@/stores/callLogsStore"
-import { extractS3Key } from "@/utils/s3"
+import { extractS3Key, routedRecordingKey } from "@/utils/s3"
 import type { CallLog } from "@/types/logs"
 import type { PhoneNumber } from "@/lib/callDispatch"
 import { cn } from "@/lib/utils"
@@ -85,7 +85,8 @@ export function SplitView(props: Readonly<SplitViewProps>) {
   // Recording keys, as in the mockup: Space plays/pauses, ← / → jump 5 seconds.
   const rootRef = useRef<HTMLDivElement>(null)
   const stepNames = useMemo(() => workflowStepNames(agent), [agent])
-  const hasRecording = !!call.recording_url
+  const recordingKey = routedRecordingKey(call as Parameters<typeof routedRecordingKey>[0])
+  const hasRecording = !!call.recording_url || !!recordingKey
   useEffect(() => {
     if (!hasRecording) return
     const onKey = (e: KeyboardEvent) => {
@@ -156,7 +157,7 @@ export function SplitView(props: Readonly<SplitViewProps>) {
         timeZero={timeZero}
         cues={cues}
         activeCue={activeCue}
-        onSeek={call.recording_url ? seekTo : undefined}
+        onSeek={hasRecording ? seekTo : undefined}
       />
 
       <CallInspector
@@ -181,6 +182,8 @@ export function SplitView(props: Readonly<SplitViewProps>) {
         <div className="min-w-0 flex-1">
           {call.recording_url ? (
             <AudioPlayer key={call.id} s3Key={extractS3Key(call.recording_url)} url={call.recording_url} callId={call.id} agentId={call.agent_id} controlRef={playerRef} onTimeUpdate={onPlayhead} preload className="border-0 bg-transparent p-0 shadow-none dark:bg-transparent" />
+          ) : recordingKey ? (
+            <AudioPlayer key={call.id} s3Key={recordingKey} url={null} callId={call.id} agentId={call.agent_id} controlRef={playerRef} onTimeUpdate={onPlayhead} preload className="border-0 bg-transparent p-0 shadow-none dark:bg-transparent" />
           ) : (
             <p className="py-2 text-center text-[13px] text-[var(--cl-text3)]">No recording for this call.</p>
           )}
