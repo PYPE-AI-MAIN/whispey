@@ -221,7 +221,7 @@ const AgentSelectionContent: React.FC<{ projectId: string }> = ({ projectId }) =
         <div className="mb-4 flex gap-2 md:shrink-0" role="tablist">
           {([
             ['prod', 'Production', prodCount, 'border-red-500/40 bg-red-500/15 text-red-700 dark:border-red-400/40 dark:bg-red-400/15 dark:text-red-300', 'border-transparent bg-red-500/5 text-muted-foreground hover:bg-red-500/10', 'bg-red-500 dark:bg-red-400'],
-            ['dev', 'Development', (agents || []).length - prodCount, 'border-green-600/40 bg-green-500/15 text-green-700 dark:border-green-400/40 dark:bg-green-400/15 dark:text-green-300', 'border-transparent bg-green-500/5 text-muted-foreground hover:bg-green-500/10', 'bg-green-600 dark:bg-green-400'],
+            ['dev', 'Development', (agents || []).length - prodCount, 'border-primary/30 bg-primary/10 text-primary dark:border-green-400/40 dark:bg-green-400/15 dark:text-green-300', 'border-transparent bg-primary/5 text-muted-foreground hover:bg-primary/10 dark:bg-green-500/5 dark:hover:bg-green-500/10', 'bg-primary dark:bg-green-400'],
           ] as const).map(([k, label, n, on, off, dot]) => (
             <button key={k} role="tab" aria-selected={tab === k} onClick={() => setEnvTab(k)}
               className={`flex items-center gap-2 rounded-lg border px-3.5 py-1.5 text-sm transition-colors ${tab === k ? on + ' font-medium' : off}`}>
