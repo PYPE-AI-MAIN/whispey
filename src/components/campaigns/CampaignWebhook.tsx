@@ -8,11 +8,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { useCampaignLocation } from '@/hooks/useCampaignExtras'
 import { MAX_CAMPAIGN_WEBHOOKS } from '@/utils/campaigns/constants'
 import type { CampaignWebhookEntry, CampaignWebhooks, CampaignWebhookSend } from '@/utils/campaigns/constants'
 
 const HELP = 'Called once automatically when the campaign completes. You can also send it manually at any time. Your endpoint should reply with a 2xx status.'
 const TOKEN_HINT = 'Optional, sent as Authorization: Bearer <token>'
+const REF_HINT = 'Secret reference, e.g. env:HOOK_TOKEN'
+const REF_NOTE = "Tokens can't be stored in the customer's cloud; point to a secret there instead."
+const refError = (ref?: string) => (ref && (ref.length > 512 || /\s/.test(ref)) ? 'Not a valid reference' : undefined)
 const HTTPS = /^https:\/\/\S+$/i
 
 export const webhookUrlError = (url: string) => (url.trim() && !HTTPS.test(url.trim()) ? 'Must be an https:// URL' : undefined)
@@ -42,17 +46,19 @@ function NoteLine({ note }: Readonly<{ note: Note | null }>) {
 
 // ─── Create page: optional, collapsed by default ─────────────────────────────
 
-export type WebhookDraft = { url: string; token: string }
+export type WebhookDraft = { url: string; token: string; tokenRef?: string }
 
 interface WebhookCreateSectionProps {
   projectId: string
   webhooks: WebhookDraft[]
   onChange: (webhooks: WebhookDraft[]) => void
+  /** New campaigns are stored in the customer's cloud: a reference instead of a token. */
+  customerHeld?: boolean
 }
 
-export function WebhookCreateSection({ projectId, webhooks, onChange }: Readonly<WebhookCreateSectionProps>) {
+export function WebhookCreateSection({ projectId, webhooks, onChange, customerHeld }: Readonly<WebhookCreateSectionProps>) {
   const tokenError = (token: string) => (token.length > 1024 ? 'Token is too long' : undefined)
-  const hasInvalid = webhooks.some((w) => webhookUrlError(w.url) || tokenError(w.token))
+  const hasInvalid = webhooks.some((w) => webhookUrlError(w.url) || tokenError(w.token) || refError(w.tokenRef))
   const [open, setOpen] = useState(webhooks.some((w) => w.url))
   const [testing, setTesting] = useState<number | null>(null)
   const [notes, setNotes] = useState<Record<number, Note>>({})
@@ -111,16 +117,34 @@ export function WebhookCreateSection({ projectId, webhooks, onChange }: Readonly
                   className="h-8 text-xs"
                 />
                 {error && <p className="text-xs text-destructive">{error}</p>}
-                <Input
-                  type="password"
-                  autoComplete="off"
-                  aria-label="Token"
-                  value={w.token}
-                  onChange={(e) => update(i, { token: e.target.value })}
-                  placeholder={TOKEN_HINT}
-                  className="h-8 text-xs"
-                />
-                {tokenError(w.token) && <p className="text-xs text-destructive">{tokenError(w.token)}</p>}
+                {customerHeld ? (
+                  <>
+                    <Input
+                      autoComplete="off"
+                      spellCheck={false}
+                      aria-label="Token reference"
+                      value={w.tokenRef ?? ''}
+                      onChange={(e) => update(i, { tokenRef: e.target.value })}
+                      placeholder={REF_HINT}
+                      className="h-8 text-xs"
+                    />
+                    <p className="text-[11px] text-muted-foreground">{REF_NOTE}</p>
+                    {refError(w.tokenRef) && <p className="text-xs text-destructive">{refError(w.tokenRef)}</p>}
+                  </>
+                ) : (
+                  <>
+                    <Input
+                      type="password"
+                      autoComplete="off"
+                      aria-label="Token"
+                      value={w.token}
+                      onChange={(e) => update(i, { token: e.target.value })}
+                      placeholder={TOKEN_HINT}
+                      className="h-8 text-xs"
+                    />
+                    {tokenError(w.token) && <p className="text-xs text-destructive">{tokenError(w.token)}</p>}
+                  </>
+                )}
                 <div className="flex items-center gap-3">
                   <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={() => test(i)} disabled={!w.url.trim() || Boolean(error) || testing !== null}>
                     {testing === i && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}
@@ -282,7 +306,7 @@ function HistoryDialog({ campaignId, webhook, onClose }: Readonly<{ campaignId: 
   )
 }
 
-type Editing = { id: string; url: string; token: string; loadingToken: boolean; tokenFailed: boolean }
+type Editing = { id: string; url: string; token: string; tokenRef: string; loadingToken: boolean; tokenFailed: boolean }
 
 // className sets padding/grid placement to match the surrounding cards (the details sheet uses roomier ones).
 export function CampaignWebhookCard({ campaignId, className = 'p-4 sm:p-6' }: Readonly<{ campaignId: string; className?: string }>) {
@@ -305,6 +329,7 @@ export function CampaignWebhookCard({ campaignId, className = 'p-4 sm:p-6' }: Re
     refetchInterval: (query) => (query.state.data?.webhooks.some((w) => w.status === 'sending') ? 5000 : false),
     retry: false,
   })
+  const customerHeld = useCampaignLocation(data?.projectId ?? '').data === 'customer'
 
   const note = (key: string, value: Note | null) =>
     setNotes(({ [key]: _old, ...rest }) => (value ? { ...rest, [key]: value } : rest))
@@ -351,7 +376,7 @@ export function CampaignWebhookCard({ campaignId, className = 'p-4 sm:p-6' }: Re
   const canAdd = data.webhooks.length < MAX_CAMPAIGN_WEBHOOKS
   const startEdit = async (w?: CampaignWebhookEntry) => {
     const id = w?.id ?? 'new'
-    setEditing({ id, url: w?.url ?? '', token: '', loadingToken: Boolean(w?.hasToken), tokenFailed: false })
+    setEditing({ id, url: w?.url ?? '', token: '', tokenRef: '', loadingToken: Boolean(w?.hasToken), tokenFailed: false })
     note(id, null)
     if (!w?.hasToken) return
     // Fetched only when the dialog opens; the campaign page itself never holds tokens.
@@ -377,7 +402,8 @@ export function CampaignWebhookCard({ campaignId, className = 'p-4 sm:p-6' }: Re
       // If the saved token could not be loaded, an empty field means "unchanged", never "clear".
       const typed = editing.token.trim()
       const token = editing.tokenFailed && !typed ? undefined : typed
-      const body = w ? { action: 'update', id: w.id, url: editing.url.trim(), token } : { action: 'add', url: editing.url.trim(), token }
+      const tokenRef = editing.tokenRef.trim() || undefined
+      const body = w ? { action: 'update', id: w.id, url: editing.url.trim(), token, tokenRef } : { action: 'add', url: editing.url.trim(), token, tokenRef }
       if (await call(key, '', 'PUT', body)) setEditing(null)
     }
     const remove = async () => {
@@ -431,6 +457,22 @@ export function CampaignWebhookCard({ campaignId, className = 'p-4 sm:p-6' }: Re
             />
             <p className="text-[11px] text-muted-foreground mt-1">Sent as Authorization: Bearer &lt;token&gt;</p>
           </div>
+          {customerHeld && (
+            <div>
+              <Label htmlFor={`edit-webhook-ref-${key}`} className="text-xs font-medium text-muted-foreground mb-1.5 block">Token reference <span className="font-normal">(optional)</span></Label>
+              <Input
+                id={`edit-webhook-ref-${key}`}
+                autoComplete="off"
+                spellCheck={false}
+                value={editing.tokenRef}
+                onChange={(e) => setEditing({ ...editing, tokenRef: e.target.value })}
+                placeholder={REF_HINT}
+                className="h-9 text-sm"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1">{REF_NOTE} Campaigns kept in Pype still use a token.</p>
+              {refError(editing.tokenRef) && <p className="text-xs text-destructive mt-1">{refError(editing.tokenRef)}</p>}
+            </div>
+          )}
           <NoteLine note={notes[key] ?? null} />
         </div>
         <DialogFooter className="flex-row sm:justify-between gap-2">
@@ -445,7 +487,7 @@ export function CampaignWebhookCard({ campaignId, className = 'p-4 sm:p-6' }: Re
             <Button type="button" variant="outline" size="sm" className="h-9 text-xs" onClick={test} disabled={busy !== null || editing.loadingToken || !editing.url.trim() || Boolean(urlError)}>
               Send test
             </Button>
-            <Button type="button" size="sm" className="h-9 text-xs" onClick={save} disabled={busy !== null || editing.loadingToken || !editing.url.trim() || Boolean(urlError)}>
+            <Button type="button" size="sm" className="h-9 text-xs" onClick={save} disabled={busy !== null || editing.loadingToken || !editing.url.trim() || Boolean(urlError) || Boolean(refError(editing.tokenRef))}>
               {busy === key && <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />}Save
             </Button>
           </div>

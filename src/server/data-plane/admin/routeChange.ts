@@ -4,7 +4,7 @@
  * switch, resume. A failed or timed-out step puts the old routes back.
  * `dryRun` writes nothing but the audit entry (marked dry_run) and reports the plan.
  */
-import { checkRoutes, type DataType, type PolicyRoute } from '../routingPolicy'
+import { CAMPAIGNS_NOTE, checkCampaignsDestination, checkRoutes, type DataType, type PolicyRoute } from '../routingPolicy'
 import { REGISTRY_CACHE_MS } from '../resolver'
 import type { RegistryStore, RouteRow } from './registryStore'
 
@@ -39,10 +39,12 @@ async function finalRoutes(o: RouteChangeOptions, current: RouteRow[]) {
   for (const [data_type, id] of merged) {
     if (id === null) continue
     const d = dests.get(id)
-    if (!d) return { error: `Destination ${id} does not exist` as const }
+    if (!d) return { error: `Destination ${id} does not exist` as const, campaignsMoved: false }
     policy.push({ data_type, destination: { id: d.id, name: d.name, kind: d.kind } })
   }
-  return { policy, error: checkRoutes(policy) }
+  const changed = o.desired.find((x) => x.data_type === 'campaigns' && x.destination_id)
+  const campaignsDest = changed && dests.get(changed.destination_id!)
+  return { policy, error: checkRoutes(policy) ?? (campaignsDest ? checkCampaignsDestination(campaignsDest.kind, campaignsDest.status) : null), campaignsMoved: !!campaignsDest && campaignsDest.kind !== 'pype_supabase' }
 }
 
 async function drain(o: RouteChangeOptions): Promise<number> {
@@ -67,6 +69,7 @@ export async function changeProjectRoutes(o: RouteChangeOptions): Promise<RouteC
     `drain: ${active} active call${active === 1 ? '' : 's'}`,
     'bump version and switch',
     'resume',
+    ...(final.campaignsMoved ? [CAMPAIGNS_NOTE] : []),
   ]
   const nextVersion = (t: DataType) => (current.find((r) => r.data_type === t)?.version ?? 0) + 1
   const routes = o.desired.map((d) => ({ data_type: d.data_type, destination_id: d.destination_id, version: nextVersion(d.data_type) }))
@@ -74,7 +77,7 @@ export async function changeProjectRoutes(o: RouteChangeOptions): Promise<RouteC
     o.store.addAudit({ action, actor_email: o.actor, project_id: o.projectId, dry_run: o.dryRun, ...extra })
 
   if (o.dryRun) {
-    await audit('route_change', { before: current.map(({ destination, ...r }) => r), after: routes })
+    await audit('route_change', { before: current.map(({ destination, ...r }) => r), after: final.campaignsMoved ? { routes, note: CAMPAIGNS_NOTE } : routes })
     return { ok: true, dryRun: true, plan, activeCalls: active, routes }
   }
 
@@ -103,7 +106,7 @@ export async function changeProjectRoutes(o: RouteChangeOptions): Promise<RouteC
     for (const d of o.desired) if (d.destination_id !== null) await o.store.setRouteState(o.projectId, d.data_type, 'active')
     // Routes the change did not touch were paused above and are active again.
     for (const r of current) if (!o.desired.some((d) => d.data_type === r.data_type)) await o.store.setRouteState(o.projectId, r.data_type, r.state)
-    await audit('route_change', { before: current.map(({ destination, ...r }) => r), after: routes })
+    await audit('route_change', { before: current.map(({ destination, ...r }) => r), after: final.campaignsMoved ? { routes, note: CAMPAIGNS_NOTE } : routes })
     return { ok: true, dryRun: false, plan, activeCalls: left, routes }
   } catch (e) {
     await restore().catch(() => undefined)

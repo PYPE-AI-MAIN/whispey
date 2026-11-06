@@ -16,7 +16,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
   }
 }
 
-// Body: { action: 'add', url, token? } | { action: 'update', id, url, token? } | { action: 'remove', id }.
+// Body: { action: 'add', url, token?, tokenRef? } | { action: 'update', id, url, token?, tokenRef? } | { action: 'remove', id }.
 // token omitted keeps the saved one (same URL only), '' clears it.
 export async function PUT(request: NextRequest, { params }: Params) {
   try {
@@ -29,7 +29,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     return relay(await schedulerWebhookFetch(webhookPath(campaignId), {
       method: 'PUT',
-      body: { action: body.action, id: body.id, url: body.url, token: body.token },
+      body: { action: body.action, id: body.id, url: body.url, token: body.token, tokenRef: body.tokenRef },
     }))
   } catch (error) {
     console.error('Save campaign webhook error:', error)

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { customerHeldResponse } from '@/server/data-plane'
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,6 +17,9 @@ export async function POST(request: NextRequest) {
     if (!csvFile) {
       return NextResponse.json({ error: 'CSV file is required' }, { status: 400 })
     }
+
+    const held = await customerHeldResponse(projectId)
+    if (held) return held
 
     // Validate project ID for enhanced project only
     const ENHANCED_PROJECT_ID = '371c4bbb-76db-4c61-9926-bd75726a1cda'

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, ScanCommand, BatchWriteCommand } from '@aws-sdk/lib-dynamodb'
+import { customerHeldResponse } from '@/server/data-plane'
 
 // Initialize DynamoDB client
 const client = new DynamoDBClient({
@@ -202,6 +203,10 @@ export async function GET(request: NextRequest) {
       return createErrorResponse('Missing project_id parameter', 400)
     }
 
+    // This table is Pype's own (Dynamo); a customer-held project's campaign data never comes from it.
+    const held = await customerHeldResponse(project_id)
+    if (held) return held
+
     // Validate project access
     if (!validateProjectAccess(project_id)) {
       return createErrorResponse('Campaign logs not available for this project', 403)
@@ -335,6 +340,9 @@ export async function POST(request: NextRequest) {
       return createErrorResponse('Missing projectId in request body', 400)
     }
 
+    const held = await customerHeldResponse(projectId)
+    if (held) return held
+
     // Validate project access
     if (!validateProjectAccess(projectId)) {
       return createErrorResponse('Campaign logs not available for this project', 403)
@@ -449,6 +457,9 @@ export async function DELETE(request: NextRequest) {
     if (!projectId) {
       return createErrorResponse('Missing project_id parameter', 400)
     }
+
+    const held = await customerHeldResponse(projectId)
+    if (held) return held
 
     if (!validateProjectAccess(projectId)) {
       return createErrorResponse('Campaign logs deletion not available for this project', 403)

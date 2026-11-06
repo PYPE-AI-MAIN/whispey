@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { customerHeldResponse } from '@/server/data-plane'
 
 // Create Supabase client for server-side operations
 const supabase = createServiceRoleClient()
@@ -49,6 +50,10 @@ export async function POST(request: NextRequest) {
     if (retryError) {
       return NextResponse.json({ error: retryError }, { status: 400 })
     }
+
+    // This legacy flow uploads the contact CSV to Pype's S3: never for a customer-held project.
+    const held = await customerHeldResponse(projectId)
+    if (held) return held
 
     // Verify project exists
     const { data: project, error: projectError } = await supabase

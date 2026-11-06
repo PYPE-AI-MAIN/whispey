@@ -54,9 +54,16 @@ describe('routing policy', () => {
     expect(checkRoutes(['call_data', 'qa', 'dnc'].map((t) => ({ data_type: t as any, destination: d('1') })))).toBeNull()
     expect(checkRoutes([{ data_type: 'call_data', destination: d('1') }, { data_type: 'qa', destination: d('2') }, { data_type: 'dnc', destination: d('1') }])).toMatch(/share one/)
   })
-  it('campaigns only Pype', () => {
-    expect(checkRoutes([{ data_type: 'campaigns', destination: d('1') }])).toMatch(/Pype/)
+  it('campaigns in a customer destination need call data on the same one', () => {
+    const unit = ['call_data', 'qa', 'dnc'].map((t) => ({ data_type: t as any, destination: d('1') }))
+    expect(checkRoutes([{ data_type: 'campaigns', destination: d('1') }])).toMatch(/same destination/)
+    expect(checkRoutes([...unit, { data_type: 'campaigns', destination: d('2') }])).toMatch(/same destination/)
+    expect(checkRoutes([...unit, { data_type: 'campaigns', destination: d('1') }])).toBeNull()
     expect(checkRoutes([{ data_type: 'campaigns', destination: d('1', 'pype_supabase') }])).toBeNull()
+  })
+  it('a default country code looks like +NN', () => {
+    expect(parseDestinationInput({ name: 'acme', kind: 'postgrest', config: { default_country_code: '+1' } })).toHaveProperty('value')
+    expect(parseDestinationInput({ name: 'acme', kind: 'postgrest', config: { default_country_code: '91' } })).toHaveProperty('error')
   })
   it('a routed destination cannot be detached', () => {
     expect(checkDetach(2)).toMatch(/2 routes/)
@@ -129,6 +136,21 @@ describe('route change procedure', () => {
     expect(reg.routes.every((r) => r.destination_id === d2.id && r.version === 2 && r.state === 'active')).toBe(true)
     expect(sleeps[0]).toBeGreaterThanOrEqual(15_000)
     expect(reg.audit.map((a) => a.action)).toContain('pause')
+  })
+
+  it('campaigns: refuses an unhealthy destination, notes that existing campaigns stay in Pype', async () => {
+    const d = await dest()
+    const withCampaigns = base(d.id, { dryRun: true, desired: ['call_data', 'qa', 'dnc', 'campaigns'].map((t) => ({ data_type: t as any, destination_id: d.id })) })
+    expect(await changeProjectRoutes(withCampaigns)).toMatchObject({ ok: false, status: 400, error: expect.stringMatching(/healthy/) })
+    await reg.recordHealth(d.id, 'healthy', {})
+    const r = await changeProjectRoutes(withCampaigns)
+    expect(r).toMatchObject({ ok: true })
+    expect(r.ok && r.plan.at(-1)).toMatch(/existing campaigns stay in Pype/)
+    expect(JSON.stringify(reg.audit.at(-1)?.after)).toMatch(/existing campaigns stay in Pype/)
+    // call data alone: no campaigns note
+    const plain = await changeProjectRoutes(base(d.id, { dryRun: true }))
+    expect(plain.ok && plain.plan.join()).not.toMatch(/campaigns/)
+    expect(reg.audit.at(-1)?.after).toBeInstanceOf(Array)
   })
 
   it('aborts and restores the old routes when calls are still active', async () => {

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createServiceRoleClient } from '@/lib/supabase-server'
+import { getDataPlaneResolver } from '@/server/data-plane'
 
 const SCHEDULER_API_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL_CAMPAIGN || process.env.SCHEDULER_API_URL || ''
@@ -43,6 +45,11 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
+    if (!body.projectId) {
+      // a customer-held store needs the project id in the body; Pype's body stays as sent
+      const { data } = await createServiceRoleClient().from('pype_voice_agents').select('project_id').eq('id', id).maybeSingle()
+      if (data?.project_id && (await getDataPlaneResolver().isCustomerHeld(data.project_id))) body.projectId = data.project_id
+    }
 
     const response = await fetch(
       `${SCHEDULER_API_URL}/api/v1/agents/${id}/callback-settings`,

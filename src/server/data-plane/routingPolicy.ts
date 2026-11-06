@@ -20,7 +20,10 @@ export interface PolicyRoute {
 export function checkRoutes(routes: PolicyRoute[]): string | null {
   const byType = new Map(routes.map((r) => [r.data_type, r]))
   const campaigns = byType.get('campaigns')
-  if (campaigns && campaigns.destination?.kind !== 'pype_supabase') return 'Campaigns can only use Pype for now'
+  if (campaigns && campaigns.destination?.kind !== 'pype_supabase') {
+    // Campaign contacts and their call logs must not split: same customer destination as call data.
+    if (!campaigns.destination || campaigns.destination.id !== byType.get('call_data')?.destination?.id) return 'Campaigns in a customer destination need call data on the same destination'
+  }
 
   const together = TOGETHER.map((t) => byType.get(t))
   if (together.some(Boolean)) {
@@ -29,6 +32,13 @@ export function checkRoutes(routes: PolicyRoute[]): string | null {
   }
   return null
 }
+
+/** Saving-time only (not while serving): a new campaigns route must point at a healthy destination. */
+export function checkCampaignsDestination(kind: DestinationKind, status: string): string | null {
+  return kind !== 'pype_supabase' && status !== 'healthy' ? `Destination is ${status}; campaigns need a healthy destination` : null
+}
+
+export const CAMPAIGNS_NOTE = 'existing campaigns stay in Pype; only campaigns created after the switch use the new destination'
 
 /** A destination that any project routes to cannot be deleted or detached. */
 export function checkDetach(routeCount: number): string | null {
@@ -61,6 +71,7 @@ export function parseDestinationInput(body: Record<string, unknown>, partial = f
     const cfg = body.config as Record<string, unknown>
     if (cfg.mtls !== undefined && typeof cfg.mtls !== 'boolean') return { error: 'config.mtls must be true or false' }
     if (cfg.ingress !== undefined && (typeof cfg.ingress !== 'string' || cfg.ingress.length > 500)) return { error: 'config.ingress must be text (500 chars max)' }
+    if (cfg.default_country_code !== undefined && (typeof cfg.default_country_code !== 'string' || !/^\+\d{1,3}$/.test(cfg.default_country_code))) return { error: 'config.default_country_code must look like +1 or +91' }
     out.config = cfg
   } else if (!partial) out.config = {}
   if (body.secret_ref !== undefined && body.secret_ref !== null) {

@@ -25,15 +25,20 @@ export function useCampaignCounts(projectId: string, ids: string[]) {
   })
 }
 
-/** 'customer' when the project's contacts live in the customer's environment. */
-export function useCampaignLocation(projectId: string) {
-  return useQuery<'pype' | 'customer'>({
+/** location 'customer' when the project's contacts live in the customer's environment; destination is its name. */
+export function useCampaignStorage(projectId: string) {
+  return useQuery<{ location: 'pype' | 'customer'; destination?: string | null }>({
     queryKey: ['campaign-location', projectId],
-    queryFn: async () => (await getJson<{ location: 'pype' | 'customer' }>(`/api/campaigns/location?projectId=${encodeURIComponent(projectId)}`)).location,
+    queryFn: () => getJson(`/api/campaigns/location?projectId=${encodeURIComponent(projectId)}`),
     enabled: !!projectId,
     retry: false,
     staleTime: 5 * 60_000,
   })
+}
+
+export const useCampaignLocation = (projectId: string) => {
+  const q = useCampaignStorage(projectId)
+  return { ...q, data: q.data?.location }
 }
 
 /** Import progress and rejected rows; polls while processing. Optional: undefined when unsupported. */

@@ -185,6 +185,12 @@ export class DataPlaneResolver {
     return route?.destination && route.destination.kind !== 'pype_supabase' ? 'customer' : 'pype'
   }
 
+  /** Name of the customer destination holding new campaigns, or null (Pype). */
+  async campaignDestinationName(projectId: string): Promise<string | null> {
+    const d = (await this.routesFor(projectId)).find((x) => x.data_type === 'campaigns')?.destination
+    return d && d.kind !== 'pype_supabase' ? d.name : null
+  }
+
   /** The routes in effect for the project; a route with a future effective_from has not switched yet. */
   private async routesFor(projectId: string): Promise<RegistryRoute[]> {
     const hit = this.routeCache.get(projectId)
@@ -229,9 +235,10 @@ export class DataPlaneResolver {
   }
 }
 
-export type PlaneSource = Pick<DataPlaneResolver, 'forProject' | 'isCustomerHeld' | 'pype' | 'campaignLocation'>
+export type PlaneSource = Pick<DataPlaneResolver, 'forProject' | 'isCustomerHeld' | 'pype' | 'campaignLocation' | 'campaignDestinationName'>
 
 export const campaignDataLocation = (projectId: string) => getDataPlaneResolver().campaignLocation(projectId)
+export const campaignDestinationName = (projectId: string) => getDataPlaneResolver().campaignDestinationName(projectId)
 
 let shared: PlaneSource | null = null
 export const getDataPlaneResolver = (): PlaneSource => (shared ??= new DataPlaneResolver())
@@ -245,6 +252,7 @@ export const setDataPlaneResolverForTests = (
   shared = r && {
     isCustomerHeld: async () => false,
     campaignLocation: async () => 'pype' as const,
+    campaignDestinationName: async () => null,
     pype: () => { throw new Error('no Pype plane in this test') },
     ...r,
   }
