@@ -54,6 +54,11 @@ export interface CallDataReader {
   countRows(table: string, filters: Filter[]): Promise<number>
   /** Overview analytics input: the columns the aggregator reads, call_started_at in [from, to) (UTC `timestamp` text), at most maxRows. */
   analyticsRows(q: { agentIds: string[]; from: string; to: string; maxRows: number; /** comma list; default is the base columns */ columns?: string }): Promise<Row[]>
+  /**
+   * Runs one analytics Spec inside the customer database (api.analytics_run, schema revision 2+). Rejects with
+   * `code: 'PGRST202'` when the function is not installed. Pype's own plane has no such function.
+   */
+  analyticsRun(spec: Record<string, unknown>, ctx: { project_id: string; agent_ids: string[]; tz: string; now?: string }): Promise<Row[]>
   /** Newest calls of one agent since `from`, with the given columns (field-catalog sampling). */
   sampleCallRows(q: { agentId: string; from: string; limit: number; columns: string }): Promise<Row[]>
 }

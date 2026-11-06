@@ -392,14 +392,18 @@ export function aggregateCustomerRows(all: Row[], spec: Spec, ctx: Ctx): Custome
     out.sort((a, b) => String((a as { bucket?: string }).bucket).localeCompare(String((b as { bucket?: string }).bucket)) || String((a as { series?: string }).series ?? '').localeCompare(String((b as { series?: string }).series ?? '')))
   } else if (spec.dimension) out = out.sort((a, b) => (b.value ?? -Infinity) - (a.value ?? -Infinity)).slice(0, spec.dimension.limit)
 
+  return { rows: out, meta: metaFor(spec, ctx) }
+}
+
+/** What the card shows next to a number: the bucket size, the range read and whether filters ran after dedupe. */
+export function metaFor(spec: Spec, ctx: Ctx): Built['meta'] {
+  const range = resolveRange(spec, ctx)
+  const bucket = spec.bucket === 'auto' ? (range.days <= 2 ? 'hour' : range.days <= 31 ? 'day' : range.days <= 120 ? 'week' : 'month') : spec.bucket
   return {
-    rows: out,
-    meta: {
-      bucket,
-      filtersAfterDedupe: spec.having.length > 0,
-      rangeUtc: { from: pgTimestamp(range.lo), to: pgTimestamp(range.hi) },
-      lookbackDays: range.lookbackDays,
-    },
+    bucket,
+    filtersAfterDedupe: spec.having.length > 0,
+    rangeUtc: { from: pgTimestamp(range.lo), to: pgTimestamp(range.hi) },
+    lookbackDays: range.lookbackDays,
   }
 }
 

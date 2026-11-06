@@ -182,6 +182,11 @@ export function createQueryPlane(db: Db, opts: { typed: boolean; destination?: s
         }
         return rows
       },
+      async analyticsRun(spec, ctx) {
+        const data = (await ok(await db.rpc('analytics_run', { p_spec: spec, p_ctx: ctx }))).data as unknown
+        const rows = Array.isArray(data) ? data : (data as { rows?: unknown[] } | null)?.rows
+        return (rows ?? []) as Row[]
+      },
       async sampleCallRows(q) {
         return selectRows(T.callLogs, {
           select: q.columns,

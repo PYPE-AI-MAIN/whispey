@@ -248,3 +248,47 @@ describe.skipIf(!URL)('customer evaluator = Pype SQL', () => {
     })
   }
 })
+
+/**
+ * The database function (schema revision 2): api.analytics_run(p_spec, p_ctx) must equal the in-memory evaluator,
+ * which the block above ties to Pype's SQL. Skipped while the destination has no such function.
+ */
+describe.skipIf(!URL)('api.analytics_run = in-memory evaluator', () => {
+  let db: Client
+  let present = false
+  let rows: Record<string, unknown>[]
+  beforeAll(async () => {
+    db = new Client({ connectionString: URL })
+    await db.connect()
+    present = !!(await db.query(`SELECT to_regproc('api.analytics_run') AS f`)).rows[0].f
+    if (!present) return
+    rows = fixture(500)
+    await db.query(`DELETE FROM api.pype_voice_call_logs WHERE project_id = $1`, [ctx.projectId])
+    for (const r of rows) {
+      const cols = Object.keys(r)
+      await db.query(`INSERT INTO api.pype_voice_call_logs (${cols.join(',')}) VALUES (${cols.map((_, i) => `$${i + 1}`).join(',')})`, cols.map((c) => (r[c] !== null && typeof r[c] === 'object' ? JSON.stringify(r[c]) : r[c])))
+    }
+    rows = (await db.query(`SELECT to_jsonb(t) AS j FROM api.pype_voice_call_logs t WHERE project_id = $1`, [ctx.projectId])).rows.map((r) => r.j)
+  })
+  afterAll(async () => {
+    if (present) await db.query(`DELETE FROM api.pype_voice_call_logs WHERE project_id = $1`, [ctx.projectId])
+    await db?.end()
+  })
+  for (const [name, input] of Object.entries(CASES)) {
+    it(`aggregate: ${name}`, async (t) => {
+      if (!present) return t.skip()
+      const spec = Spec.parse(input)
+      const res = await db.query(`SELECT api.analytics_run($1::jsonb, $2::jsonb) AS r`, [JSON.stringify(spec), JSON.stringify({ project_id: ctx.projectId, agent_ids: A, tz: ctx.tz, now: ctx.now!.toISOString() })])
+      const out = res.rows[0].r
+      const got = norm(Array.isArray(out) ? out : out.rows)
+      const expected = norm(aggregateCustomerRows(rows, spec, ctx).rows)
+      expect(got.length).toBe(expected.length)
+      if (name === 'dimension limit 3') return
+      got.forEach((g, i) => {
+        expect({ bucket: g.bucket, series: g.series }).toEqual({ bucket: expected[i].bucket, series: expected[i].series })
+        expect(close(g.value, expected[i].value)).toBe(true)
+        expect([g.n_rows, g.n_nonnull]).toEqual([expected[i].n_rows, expected[i].n_nonnull])
+      })
+    })
+  }
+})

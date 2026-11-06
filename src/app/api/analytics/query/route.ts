@@ -21,6 +21,7 @@ import { resolveScope, isDenied, outcomeOrderFor } from '@/server/analytics/cont
 import { guarded } from '@/server/analytics/guard'
 import { withDataPlane } from '@/server/data-plane'
 import { assertSupported, aggregateCustomerRows, loadCustomerRows } from '@/server/analytics/customerQuery'
+import { rpcEnabled, runViaRpc } from '@/server/analytics/customerRun'
 import { asFormulaSpec, combineFormula, type WidgetResult } from '@/server/analytics/formula'
 
 export const runtime = 'nodejs'
@@ -234,15 +235,27 @@ export const POST = guarded('analytics/query', withDataPlane(async (dp, req: Nex
       const plane = await dp.forProject(ctx.projectId)
       let rows: Awaited<ReturnType<typeof loadCustomerRows>> | null = null
       let loadError = ''
-      try {
-        rows = await loadCustomerRows(plane, supported.map((w) => w.spec), ctx)
-      } catch (err) {
-        if (!(err instanceof SpecError)) throw err
-        loadError = err.message
-      }
+      // rows are fetched once for every chart, and only when some chart is not answered by the database function
+      let loading: Promise<void> | null = null
+      const load = () => (loading ??= (async () => {
+        try {
+          rows = await loadCustomerRows(plane, supported.map((w) => w.spec), ctx)
+        } catch (err) {
+          if (!(err instanceof SpecError)) throw err
+          loadError = err.message
+        }
+      })())
+      let rpcMissing = false
       exec = async (plan) => {
+        const spec = specs.get(plan.members[0])!
+        if (rpcEnabled() && !rpcMissing) {
+          const viaDb = await runViaRpc(plane, spec, ctx)
+          if (viaDb) return viaDb
+          rpcMissing = true
+        }
+        await load()
         if (!rows) throw new SpecError(loadError)
-        return aggregateCustomerRows(rows, specs.get(plan.members[0])!, ctx)
+        return aggregateCustomerRows(rows, spec, ctx)
       }
     }
   } else if (runnable.length) {
