@@ -12,6 +12,9 @@ import { mtlsFetch, type ClientCert } from './mtlsFetch'
 
 export const CALL_TIMEOUT_MS = 8000
 const TOKEN_TTL_S = 300
+/** The customer signer only signs read links that live 5 to 15 minutes; anything else is a 400. */
+const SIGNER_MIN_TTL_S = 300
+const SIGNER_MAX_TTL_S = 900
 
 export interface PostgrestDestination {
   id: string
@@ -77,7 +80,7 @@ export function createPostgrestPlane(dest: PostgrestDestination, privateKeyPem: 
           res = await send(`${base}/signer/v1/recordings/sign`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ key, expires_in: ttlSeconds }),
+            body: JSON.stringify({ key, expires_in: Math.min(Math.max(Math.round(ttlSeconds), SIGNER_MIN_TTL_S), SIGNER_MAX_TTL_S) }),
             signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
           })
         } catch {
