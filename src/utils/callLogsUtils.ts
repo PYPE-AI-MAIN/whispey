@@ -521,32 +521,28 @@ export async function fetchTranscriptTurnsForSessions(
   const map = new Map<string, MetricsLogTurn[]>()
   for (const ids of chunk(sessionIds.filter(Boolean), 200)) {
     if (ids.length === 0) continue
-    try {
-      const res = await fetch('/api/data/supabase-select', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          table: 'pype_voice_metrics_logs',
-          mode: 'list',
-          query: {
-            select: 'session_id,turn_id,user_transcript,agent_response,unix_timestamp',
-            filters: [{ column: 'session_id', operator: 'in', value: ids }],
-            orderBy: { column: 'unix_timestamp', ascending: true },
-          },
-          auth: { agentId },
-        }),
-      })
-      if (!res.ok) continue // transcript is best-effort — don't fail the whole export
-      const json = (await res.json()) as { data?: MetricsLogTurn[] }
-      for (const turn of json.data || []) {
-        if (!turn?.session_id) continue
-        const list = map.get(turn.session_id) ?? []
-        list.push(turn)
-        map.set(turn.session_id, list)
-      }
-    } catch {
-      // network failure / bad JSON — transcript is best-effort, keep exporting the rest
-      continue
+    const res = await fetch('/api/data/supabase-select', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        table: 'pype_voice_metrics_logs',
+        mode: 'list',
+        query: {
+          select: 'session_id,turn_id,user_transcript,agent_response,unix_timestamp',
+          filters: [{ column: 'session_id', operator: 'in', value: ids }],
+          orderBy: { column: 'unix_timestamp', ascending: true },
+        },
+        auth: { agentId },
+      }),
+    })
+    // a dropped chunk would silently export calls without transcripts: fail the export instead
+    if (!res.ok) throw new Error(`Transcript fetch failed (HTTP ${res.status}); the export was not completed`)
+    const json = (await res.json()) as { data?: MetricsLogTurn[] }
+    for (const turn of json.data || []) {
+      if (!turn?.session_id) continue
+      const list = map.get(turn.session_id) ?? []
+      list.push(turn)
+      map.set(turn.session_id, list)
     }
   }
 

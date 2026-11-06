@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createServiceRoleClient } from '@/lib/supabase-server'
+import { getProjectRoleForApi } from '@/lib/getProjectRoleForApi'
 import { withDataPlane, rethrowDataPlane, projectIdForAgent } from '@/server/data-plane'
 
 const supabase = createServiceRoleClient()
@@ -75,6 +76,7 @@ export const GET = withDataPlane(async (dp, request: NextRequest) => {
     }
     const projectOfCalls = agent_id ? await projectIdForAgent(agent_id) : project_id
     if (!projectOfCalls) return NextResponse.json({ count: 0 })
+    if (!(await getProjectRoleForApi(projectOfCalls))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     const plane = await dp.forProject(projectOfCalls)
 
     let agentIds: string[]

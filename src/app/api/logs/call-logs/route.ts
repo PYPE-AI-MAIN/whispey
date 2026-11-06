@@ -6,9 +6,7 @@ import { processFPOTranscript } from '../../../../lib/transcriptProcessor';
 import { CallLogRequest, TranscriptWithMetrics, UsageData, TelemetryAnalytics, TelemetryData } from '../../../../types/logs';
 import { gunzipSync } from 'zlib'
 import { createServiceRoleClient } from '@/lib/supabase-server'
-
-// Create server-side Supabase client
-const supabase = createServiceRoleClient();
+import { withDataPlane, rethrowDataPlane, projectIdForAgent } from '@/server/data-plane'
 
 // Decompression function for compressed data
 function decompressData(compressedData: string): any {
@@ -34,7 +32,7 @@ export async function OPTIONS(request: NextRequest) {
   });
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withDataPlane(async (dp, request: NextRequest) => {
   try {
     const token = request.headers.get('x-pype-token');
     
@@ -165,9 +163,32 @@ export async function POST(request: NextRequest) {
 
     const { project_id } = tokenVerification;
 
+    // The token names the project and the project's route names where the call is written.
+    // A project that cannot be resolved is an error, never Pype's database.
+    if (!project_id) {
+      return NextResponse.json(
+        { success: false, error: 'Project could not be resolved', retryable: true },
+        { status: 503, headers: { 'Retry-After': '5' } }
+      );
+    }
+    const plane = await dp.forProject(project_id);
+    if (await dp.isCustomerHeld(project_id)) {
+      const agentProject = await projectIdForAgent(agent_id);
+      if (!agentProject) {
+        return NextResponse.json(
+          { success: false, error: 'Agent could not be resolved', retryable: true },
+          { status: 503, headers: { 'Retry-After': '5' } }
+        );
+      }
+      if (agentProject !== project_id) {
+        return NextResponse.json({ success: false, error: 'Agent does not belong to this project' }, { status: 403 });
+      }
+    }
+
     if (wcall_event === 'call_started') {
       console.log('🟢 call_started branch hit:', { call_id, agent_id, call_started_at, environment });
       const minimalData = {
+        project_id,
         call_id,
         agent_id,
         customer_number: customer_number ?? null,
@@ -177,25 +198,17 @@ export async function POST(request: NextRequest) {
         wcall_event: 'call_started' as const,
         created_at: new Date().toISOString()
       };
-      const { data: existing } = await supabase
-        .from('pype_voice_call_logs')
-        .select('id')
-        .eq('agent_id', agent_id)
-        .eq('call_id', call_id)
-        .eq('wcall_event', 'call_started')
-        .limit(1)
-        .maybeSingle();
+      const existing = await plane.callLogs.findStartedLog(agent_id, call_id);
       console.log('🔍 call_started existing row check:', existing ? `found id=${existing.id}` : 'not found → will insert');
       if (existing) {
-        const { error: updErr } = await supabase
-          .from('pype_voice_call_logs')
-          .update({
+        try {
+          await plane.callLogs.updateCallLog(existing.id, {
             call_started_at: minimalData.call_started_at,
             customer_number: minimalData.customer_number,
             duration_seconds: 0
-          })
-          .eq('id', existing.id);
-        if (updErr) {
+          });
+        } catch (updErr) {
+          rethrowDataPlane(updErr);
           console.error('❌ call_started update error:', updErr);
           return NextResponse.json(
             { success: false, error: 'Failed to update call_started log' },
@@ -208,12 +221,11 @@ export async function POST(request: NextRequest) {
           data: { message: 'Call started log updated', log_id: existing.id, agent_id, project_id }
         }, { status: 200 });
       }
-      const { data: inserted, error: insErr } = await supabase
-        .from('pype_voice_call_logs')
-        .insert(minimalData)
-        .select('id')
-        .single();
-      if (insErr) {
+      let inserted: { id: string };
+      try {
+        inserted = (await plane.callLogs.insertCallLog(minimalData)) as { id: string };
+      } catch (insErr) {
+        rethrowDataPlane(insErr);
         console.error('❌ call_started insert error:', insErr);
         return NextResponse.json(
           { success: false, error: 'Failed to save call_started log' },
@@ -309,6 +321,7 @@ export async function POST(request: NextRequest) {
     }
 
     const logData = {
+      project_id,
       call_id,
       agent_id,
       customer_number,
@@ -331,45 +344,31 @@ export async function POST(request: NextRequest) {
       wcall_event: 'call_ended' as const
     };
 
-    const { data: existingStarted } = await supabase
-      .from('pype_voice_call_logs')
-      .select('id')
-      .eq('agent_id', agent_id)
-      .eq('call_id', call_id)
-      .eq('wcall_event', 'call_started')
-      .limit(1)
-      .maybeSingle();
+    const existingStarted = await plane.callLogs.findStartedLog(agent_id, call_id);
 
     let insertedLog: { id: string; [k: string]: any };
     if (existingStarted) {
-      const { data: updated, error: updateError } = await supabase
-        .from('pype_voice_call_logs')
-        .update(logData)
-        .eq('id', existingStarted.id)
-        .select()
-        .single();
-      if (updateError) {
+      try {
+        insertedLog = await plane.callLogs.updateCallLog(existingStarted.id, logData) as { id: string; [k: string]: any };
+      } catch (updateError) {
+        rethrowDataPlane(updateError);
         console.error('Database update error:', updateError);
         return NextResponse.json(
           { success: false, error: 'Failed to update call log' },
           { status: 500 }
         );
       }
-      insertedLog = updated;
     } else {
-      const { data: inserted, error: insertError } = await supabase
-        .from('pype_voice_call_logs')
-        .insert(logData)
-        .select()
-        .single();
-      if (insertError) {
+      try {
+        insertedLog = await plane.callLogs.insertCallLog(logData) as { id: string; [k: string]: any };
+      } catch (insertError) {
+        rethrowDataPlane(insertError);
         console.error('Database insert error:', insertError);
         return NextResponse.json(
           { success: false, error: 'Failed to save call log' },
           { status: 500 }
         );
       }
-      insertedLog = inserted;
     }
 
     console.log("✅ Successfully inserted log:", {
@@ -383,9 +382,10 @@ export async function POST(request: NextRequest) {
     if (telemetry_data && (telemetry_data as any).session_traces && (telemetry_data as any).session_traces.length > 0) {
       const traceKey = `session_${insertedLog.id}`;
 
-      const { data: insertedTrace, error: traceError } = await supabase
-        .from('pype_voice_session_traces')
-        .insert({
+      let insertedTrace: Record<string, any> | null = null;
+      let traceError: unknown = null;
+      try {
+        insertedTrace = await plane.callLogs.insertTrace({
           session_id: insertedLog.id,
           trace_key: traceKey,
           total_spans: (telemetry_data as any).session_traces.length,
@@ -395,9 +395,11 @@ export async function POST(request: NextRequest) {
           session_end_time: call_ended_at,
           total_duration_ms: duration_seconds ? duration_seconds * 1000 : null,
           created_at: new Date().toISOString()
-        })
-        .select()
-        .single();
+        });
+      } catch (e) {
+        rethrowDataPlane(e);
+        traceError = e;
+      }
 
       if (!traceError && insertedTrace) {
         const spanInserts = (telemetry_data as any).session_traces.map((span: any) => ({
@@ -421,12 +423,10 @@ export async function POST(request: NextRequest) {
           request_id_source: span.request_id_source
         }));
 
-        const { error: spansError } = await supabase
-          .from('pype_voice_spans')
-          .insert(spanInserts)
-          .select('id');
-
-        if (spansError) {
+        try {
+          await plane.callLogs.insertSpans(spanInserts);
+        } catch (spansError) {
+          rethrowDataPlane(spansError);
           console.error('SPANS INSERT ERROR:', spansError);
         }
       } else if (traceError) {
@@ -481,14 +481,12 @@ export async function POST(request: NextRequest) {
         };
       });
 
-      const { error: turnsError } = await supabase
-        .from('pype_voice_metrics_logs')
-        .insert(conversationTurns);
-
-      if (turnsError) {
-        console.error('Error inserting conversation turns:', turnsError);
-      } else {
+      try {
+        await plane.callLogs.insertTurns(conversationTurns);
         console.log(`Inserted ${conversationTurns.length} conversation turns`);
+      } catch (turnsError) {
+        rethrowDataPlane(turnsError);
+        console.error('Error inserting conversation turns:', turnsError);
       }
     }
 
@@ -508,14 +506,17 @@ export async function POST(request: NextRequest) {
           callStartedAt: call_started_at
         });
 
-      const { error: costError } = await supabase
-        .from('pype_voice_call_logs')
-        .update({
+      let costError: unknown = null;
+      try {
+        await plane.callLogs.updateCallLog(insertedLog.id, {
           total_llm_cost: total_llm_cost_inr,
           total_tts_cost: total_tts_cost_inr,
           total_stt_cost: total_stt_cost_inr
-        })
-        .eq('id', insertedLog.id);
+        });
+      } catch (e) {
+        rethrowDataPlane(e);
+        costError = e;
+      }
 
       if (costError) {
         console.log("Total cost insertion error:", costError);
@@ -529,7 +530,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Process transcript with field extraction
-    const { data: agentConfig, error: agentError } = await supabase
+    const { data: agentConfig, error: agentError } = await createServiceRoleClient()
       .from('pype_voice_agents')
       .select('field_extractor, field_extractor_prompt')
       .eq('id', agent_id)
@@ -553,14 +554,10 @@ export async function POST(request: NextRequest) {
             field_extractor_prompt: agentConfig.field_extractor_prompt,
           });
 
-          const { error: insertFpoError } = await supabase
-            .from('pype_voice_call_logs')
-            .update({
-              transcription_metrics: fpoResult?.logData
-            })
-            .eq('id', insertedLog.id);
-
-          if (insertFpoError) {
+          try {
+            await plane.callLogs.setTranscriptionMetrics(insertedLog.id, fpoResult?.logData as Record<string, unknown>);
+          } catch (insertFpoError) {
+            rethrowDataPlane(insertFpoError);
             console.error('Error updating FPO transcript log:', insertFpoError);
           }
 
@@ -584,13 +581,14 @@ export async function POST(request: NextRequest) {
     }, { status: 200 });
 
   } catch (error) {
+    rethrowDataPlane(error);
     console.error('Send call log error:', error);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }
     );
   }
-}
+});
 
 
 function calculateCriticalPathLatency(

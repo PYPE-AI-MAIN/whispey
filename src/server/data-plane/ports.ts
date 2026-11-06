@@ -55,6 +55,12 @@ export interface CallDataReader {
 export interface CallLogMutator {
   insertCallLog(row: Row): Promise<Row>
   insertTurns(rows: Row[]): Promise<void>
+  /** The call_started row of this call, if the worker already sent one. */
+  findStartedLog(agentId: string, callId: string): Promise<{ id: string } | null>
+  updateCallLog(id: string, patch: Row): Promise<Row>
+  /** Session trace row; resolves with it (null when the store returned none). */
+  insertTrace(row: Row): Promise<Row | null>
+  insertSpans(rows: Row[]): Promise<void>
   setTranscriptionMetrics(id: string, metrics: Record<string, unknown>): Promise<void>
   /** Deletes the per-turn rows (keyed by call log id) and then the call logs of these agents. */
   deleteCallDataForAgents(agentIds: string[]): Promise<void>

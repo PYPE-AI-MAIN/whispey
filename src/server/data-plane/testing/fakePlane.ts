@@ -43,6 +43,13 @@ export function createFakePlane(seed: Record<string, Row[]> = {}): FakePlane {
     callLogs: {
       async insertCallLog(row) { const r = { id: `log-${t(CALL_LOGS).length + 1}`, ...row }; t(CALL_LOGS).push(r); return log('insertCallLog', r) },
       async insertTurns(r) { t(TURNS).push(...r); log('insertTurns', 0) },
+      async findStartedLog(agentId, callId) {
+        const r = t(CALL_LOGS).find((x) => x.agent_id === agentId && x.call_id === callId && x.wcall_event === 'call_started')
+        return log('findStartedLog', r ? { id: r.id } : null)
+      },
+      async updateCallLog(id, patch) { const r = t(CALL_LOGS).find((x) => x.id === id)!; Object.assign(r, patch); return log('updateCallLog', r) },
+      async insertTrace(row) { const r = { id: `tr-${t('traces').length + 1}`, ...row }; t('traces').push(r); return log('insertTrace', r) },
+      async insertSpans(r) { t('spans').push(...r); log('insertSpans', 0) },
       async setTranscriptionMetrics(id, metrics) {
         const row = t(CALL_LOGS).find((r) => r.id === id)
         if (row) row.transcription_metrics = metrics

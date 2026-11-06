@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withDataPlane, rethrowDataPlane } from '@/server/data-plane';
+import { withDataPlane, rethrowDataPlane, projectIdForAgent } from '@/server/data-plane';
 import { verifyToken } from '../../../../lib/auth';
 import { FailureReportRequest } from '../../../../types/logs';
 
@@ -21,6 +21,7 @@ export const POST = withDataPlane(async (dp, request: NextRequest) => {
     const {
       token,
       call_id,
+      agent_id,
       error_message,
       error_type,
       stack_trace,
@@ -43,8 +44,27 @@ export const POST = withDataPlane(async (dp, request: NextRequest) => {
       );
     }
 
+    const projectId = tokenVerification.project_id as string;
+    // The token names the project, and the project's route names where the log is written.
+    const plane = await dp.forProject(projectId);
+    // A customer-held project's schema needs the agent, and the agent must belong to the token's project.
+    if (await dp.isCustomerHeld(projectId)) {
+      if (!agent_id) {
+        return NextResponse.json({ success: false, error: 'agent_id is required' }, { status: 400 });
+      }
+      const agentProject = await projectIdForAgent(agent_id);
+      if (!agentProject) {
+        return NextResponse.json({ success: false, error: 'Agent could not be resolved', retryable: true }, { status: 503, headers: { 'Retry-After': '5' } });
+      }
+      if (agentProject !== projectId) {
+        return NextResponse.json({ success: false, error: 'Agent does not belong to this project' }, { status: 403 });
+      }
+    }
+
     // Create failure report log
     const failureData = {
+      project_id: projectId,
+      ...(agent_id && { agent_id }),
       call_id,
       call_ended_reason: 'failure',
       transcript_type: 'error',
@@ -62,8 +82,6 @@ export const POST = withDataPlane(async (dp, request: NextRequest) => {
       created_at: new Date().toISOString()
     };
 
-    // The token names the project, and the project's route names where the log is written.
-    const plane = await dp.forProject(tokenVerification.project_id as string);
     let insertedLog;
     try {
       insertedLog = await plane.callLogs.insertCallLog(failureData);

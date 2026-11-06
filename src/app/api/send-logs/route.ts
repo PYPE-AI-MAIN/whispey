@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { createServiceRoleClient } from '@/lib/supabase-server'
-import { withDataPlane, rethrowDataPlane } from '@/server/data-plane'
+import { withDataPlane, rethrowDataPlane, projectIdForAgent } from '@/server/data-plane'
 
 // Create Supabase client for server-side operations
 const supabase = createServiceRoleClient()
@@ -118,8 +118,18 @@ export const POST = withDataPlane(async (dp, request: NextRequest) => {
 
     console.log("calculated avgLatency", avgLatency)
 
+    const plane = await dp.forProject(project_id as string)
+    // A customer-held project's schema needs the agent, and the agent must belong to the token's project.
+    if (await dp.isCustomerHeld(project_id as string)) {
+      if (!agent_id) return NextResponse.json({ error: 'agent_id is required' }, { status: 400 })
+      const agentProject = await projectIdForAgent(agent_id)
+      if (!agentProject) return NextResponse.json({ error: 'Agent could not be resolved', retryable: true }, { status: 503, headers: { 'Retry-After': '5' } })
+      if (agentProject !== project_id) return NextResponse.json({ error: 'Agent does not belong to this project' }, { status: 403 })
+    }
+
     // Prepare log data for Supabase
     const logData = {
+      project_id,
       call_id,
       agent_id,
       customer_number,
@@ -138,8 +148,6 @@ export const POST = withDataPlane(async (dp, request: NextRequest) => {
       created_at: new Date().toISOString()
     }
 
-    // The token names the project, and the project's route names where the log is written.
-    const plane = await dp.forProject(project_id as string)
     let insertedLog
     try {
       insertedLog = await plane.callLogs.insertCallLog(logData)

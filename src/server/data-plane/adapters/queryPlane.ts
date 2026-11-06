@@ -68,6 +68,9 @@ export function applyFilters(query: any, filters: Filter[]) {
   return q
 }
 
+/** Columns the customer schema (v1) does not have; dropped from writes until schema v2 adds them. */
+const CUSTOMER_UNKNOWN_COLUMNS = ['voice_recording_url']
+
 /**
  * `typed` is true for customer destinations: a network failure, timeout or 5xx
  * is a DestinationUnavailable (counted by the breaker). Pype keeps today's
@@ -77,6 +80,12 @@ export function createQueryPlane(db: Db, opts: { typed: boolean; destination?: s
   const fail = (res: { error: any; status?: number }): never => {
     if (opts.typed && (!res.status || res.status >= 500)) throw new DestinationUnavailable(opts.destination)
     throw Object.assign(new Error(res.error.message), { code: res.error.code, details: res.error.details })
+  }
+  const writable = (row: Row): Row => {
+    if (!opts.typed) return row
+    const out = { ...row }
+    for (const c of CUSTOMER_UNKNOWN_COLUMNS) delete out[c]
+    return out
   }
   const ok = <R extends { error: any; status?: number }>(res: R): R => (res.error ? fail(res) : res)
 
@@ -171,10 +180,23 @@ export function createQueryPlane(db: Db, opts: { typed: boolean; destination?: s
     },
     callLogs: {
       async insertCallLog(row) {
-        return (await ok(await db.from(T.callLogs).insert(row).select().single())).data as Row
+        return (await ok(await db.from(T.callLogs).insert(writable(row)).select().single())).data as Row
       },
       async insertTurns(rows) {
         ok(await db.from(T.metrics).insert(rows))
+      },
+      async findStartedLog(agentId, callId) {
+        const res = await db.from(T.callLogs).select('id').eq('agent_id', agentId).eq('call_id', callId).eq('wcall_event', 'call_started').limit(1).maybeSingle()
+        return ok(res).data as { id: string } | null
+      },
+      async updateCallLog(id, patch) {
+        return (await ok(await db.from(T.callLogs).update(writable(patch)).eq('id', id).select().single())).data as Row
+      },
+      async insertTrace(row) {
+        return (await ok(await db.from(T.traces).insert(row).select().single())).data as Row | null
+      },
+      async insertSpans(rows) {
+        ok(await db.from(T.spans).insert(rows).select('id'))
       },
       async setTranscriptionMetrics(id, metrics) {
         ok(await db.from(T.callLogs).update({ transcription_metrics: metrics }).eq('id', id))
