@@ -13,7 +13,7 @@ describe('analytics_run on the customer plane', () => {
     let sent: any
     plane.callData.analyticsRun = async (s, c) => { sent = { s, c }; return [{ bucket: '2026-11-06 00:00:00', value: '3', n_rows: 3, n_nonnull: '3' }] }
     const run = await runViaRpc(plane, spec, ctx)
-    expect(sent.c).toEqual({ project_id: 'p', agent_ids: ['a'], tz: 'Asia/Kolkata', now: '2026-11-06T06:00:00.000Z' })
+    expect(sent.c).toEqual({ project_id: 'p', agent_ids: ['a'], tz: 'Asia/Kolkata', denied_fields: [], max_days: 400, now: '2026-11-06T06:00:00.000Z' })
     expect(sent.s.agg.fn).toBe('count')
     expect(run!.rows).toEqual([{ bucket: '2026-11-06T00:00:00.000Z', value: 3, n_rows: 3, n_nonnull: 3 }])
     expect(run!.meta.bucket).toBe('day')

@@ -24,6 +24,8 @@ export async function runViaRpc(plane: DataPlane, spec: Spec, ctx: Ctx): Promise
       project_id: ctx.projectId,
       agent_ids: ctx.agentIds,
       tz: ctx.tz,
+      denied_fields: [...ctx.deniedFields], // the function enforces the same field permissions as the SQL path
+      max_days: ctx.maxDays,
       ...(ctx.now ? { now: ctx.now.toISOString() } : {}),
     })
   } catch (e) {

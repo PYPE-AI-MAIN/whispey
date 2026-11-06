@@ -58,7 +58,7 @@ export interface CallDataReader {
    * Runs one analytics Spec inside the customer database (api.analytics_run, schema revision 2+). Rejects with
    * `code: 'PGRST202'` when the function is not installed. Pype's own plane has no such function.
    */
-  analyticsRun(spec: Record<string, unknown>, ctx: { project_id: string; agent_ids: string[]; tz: string; now?: string }): Promise<Row[]>
+  analyticsRun(spec: Record<string, unknown>, ctx: { project_id: string; agent_ids: string[]; tz: string; now?: string; denied_fields?: string[]; max_days?: number }): Promise<Row[]>
   /** Newest calls of one agent since `from`, with the given columns (field-catalog sampling). */
   sampleCallRows(q: { agentId: string; from: string; limit: number; columns: string }): Promise<Row[]>
 }
